@@ -2,9 +2,9 @@
 #PBS -P m19
 #PBS -q express
 #PBS -N TestsRun
-#PBS -l walltime=01:00:00
+#PBS -l walltime=00:30:00
 #PBS -l mem=25000MB
-#PBS -l cput=04:00:00
+#PBS -l cput=02:00:00
 #PBS -l wd
 #PBS -l ncpus=4
 #PBS -j oe
@@ -18,21 +18,8 @@ if [ -z ${PBS_O_LOGNAME} ]; then
     exit 0
 fi
 
-#------------------
-# make sure correct python environment is going, then run python
-# function
-#------------------
-#source activate jwg366_hdf5
-source activate jwg_py3
-
-# run the test methods
-#python - <<END
-#import test_fio
-#test_fio.test_apriori()
-#END
-
-# run the script
-python tests.py
+# run the tests script, send stdout and stderr to log.tests
+python3 tests.py &> log.tests
 
 echo "Finished job ${PBS_JOBID}"
 

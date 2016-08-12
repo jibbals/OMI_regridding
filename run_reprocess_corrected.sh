@@ -18,15 +18,8 @@ if [ -z ${PBS_O_LOGNAME} ]; then
     exit 0
 fi
 
-#------------------
-# make sure correct python environment is going, then run python
-# function
-#------------------
-#source activate jwg366_hdf5
-source activate jwg_py3
-
 # run the test methods
-python - <<END
+python3 - <<END
 import reprocess
 from datetime import datetime
 day=datetime(2005,1,1)

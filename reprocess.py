@@ -36,7 +36,7 @@ def sum_dicts(d1,d2):
     return d3
     
 
-def calculate_amf_sigma(AMF_G, w, S, w_coords, S_coords, plotname=None):
+def calculate_amf_sigma(AMF_G, w, S, w_coords, S_coords, plotname=None, plt=None):
     '''
     Determine AMF using AMF_G * \int_0^1 { w(s) S(s) ds }
     using sigma coordinate system
@@ -60,9 +60,9 @@ def calculate_amf_sigma(AMF_G, w, S, w_coords, S_coords, plotname=None):
     # numpy linear interp, by default w_(>xmax) = w_(xmax), and same for negative side
     # numpy interp requires ascending 'from' coordinates
     def w_(x):
-        return (np.interp(x, w_coords[::-1], w[::-1]))
+        return(np.interp(x, w_coords[::-1], w[::-1]))
     def S_(x):
-        return (np.interp(x, S_coords[::-1], S[::-1]))
+        return(np.interp(x, S_coords[::-1], S[::-1]))
         
     ## just use sum of w * S / delta s for a bunch of steps...
     
@@ -76,6 +76,21 @@ def calculate_amf_sigma(AMF_G, w, S, w_coords, S_coords, plotname=None):
     int3 = np.sum(w_(mids)*S_(mids) * lens)
     
     AMF_new = AMF_G * int3
+    if plotname is not None:
+        assert plt is not None, 'need to pass plt'
+        f=plt.figure(figsize=(10,8))
+        plt.plot(w, w_coords, '.', label='orig $\omega$')
+        plt.plot(w_(mids),mids, label='interp $\omega$')
+        plt.plot(S, S_coords, '.', label='orig S')
+        plt.plot(S_(mids),mids,label='interp S')
+        plt.ylabel('$\sigma$'); plt.xlabel('unitless')
+        mval=max(max(w),max(S),2.0)
+        plt.ylim([1.05,-0.05]); plt.xlim([0.,mval])
+        plt.legend(); plt.title('amf calculation factors')
+        plt.text(.15,.7,'AMF=%5.2f'%AMF_new)
+        f.savefig(plotname)
+        print('saved '+plotname); plt.close()
+    
     return(AMF_new)
 
 def get_good_pixel_list(date):

@@ -6297,3 +6297,452 @@ Job Id: 8024858.r-man2
     Submit_arguments = run_check_reprocessed.sh
     project = m19
 
+Job Id: 8025214.r-man2
+    Job_Name = TestCheckReprocessed
+    Job_Owner = jwg574@raijin4
+    job_state = R
+    queue = express-def
+    server = r-man2
+    Checkpoint = u
+    ctime = Wed Aug 10 16:27:24 2016
+    Error_Path = raijin4:/home/574/jwg574/OMI_regridding/TestCheckReprocessed.e
+	8025214
+    exec_host = r48/1*4
+    exec_vnode = (r48:ncpus=4:mem=10240000kb:jobfs_local=102400kb)
+    group_list = m19
+    Hold_Types = n
+    Join_Path = oe
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Wed Aug 10 16:29:48 2016
+    Output_Path = raijin4:/home/574/jwg574/OMI_regridding/TestCheckReprocessed.
+	o8025214
+    Priority = 0
+    qtime = Wed Aug 10 16:27:25 2016
+    Rerunable = False
+    Resource_List.cput = 00:20:00
+    Resource_List.HT = 0
+    Resource_List.jobfs = 104857600b
+    Resource_List.jobfs_local = 104857600b
+    Resource_List.jobprio = 100020.6172
+    Resource_List.mem = 10485760000b
+    Resource_List.mpiprocs = 4
+    Resource_List.ncpus = 4
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.queue_charge_rate = 3
+    Resource_List.select = 1:ncpus=4:mpiprocs=4:mem=10485760000:job_tags=expres
+	s:jobfs_local=104857600
+    Resource_List.walltime = 00:08:00
+    Resource_List.wd = 1
+    substate = 41
+    Variable_List = PBS_O_SYSTEM=Linux,PBS_O_SHELL=/bin/bash,
+	PBS_NCI_FS_GDATA1=0,PBS_O_HOME=/home/574/jwg574,PBS_VMEM=10485760000,
+	PBS_NCI_WD=1,PBS_O_LOGNAME=jwg574,PBS_NCI_FS_GDATA3=0,
+	PBS_O_WORKDIR=/home/574/jwg574/OMI_regridding,PBS_O_LANG=C,
+	PBS_O_PATH=~/bin:/apps/geos/3.5.0/bin:/home/574/jwg574/bin:/apps/pytho
+	n3/3.5.2/bin:/apps/cdo/1.7.1/bin:/apps/nco/4.5.3/bin:/apps/idl/idl82/bi
+	n:/apps/netcdf/4.2.1.1/bin:/apps/openmpi/wrapper/fortran:/apps/openmpi/
+	wrapper:/apps/openmpi/1.6.3/bin:/apps/intel-ct/cc-wrapper:/apps/intel-c
+	t/12.1.9.293/cc/bin/intel64:/apps/intel-ct/fc-wrapper/:/apps/intel-ct/1
+	2.1.9.293/fc/bin/intel64:/opt/bin:/bin:/usr/bin:/opt/pbs/default/bin:.,
+	PBS_NCPUS=4,PBS_NCI_HT=0,PROJECT=m19,PBS_NCI_FS_GDATA2=0,PBS_NGPUS=0,
+	PBS_NCI_JOBFS_LOCAL=104857600b,PBS_O_MAIL=/var/spool/mail/jwg574,
+	PBS_O_QUEUE=express,PBS_O_HOST=raijin4
+    comment = Job run at Wed Aug 10 at 16:29 on (r48:ncpus=4:mem=10240000kb:job
+	fs_local=102400kb)
+    etime = Wed Aug 10 16:27:25 2016
+    run_count = 1
+    eligible_time = 00:00:00
+    Submit_arguments = run_check_reprocessed.sh
+    project = m19
+
+Job Id: 8025259.r-man2
+    Job_Name = TestCheckReprocessed
+    Job_Owner = jwg574@raijin4
+    job_state = R
+    queue = express-def
+    server = r-man2
+    Checkpoint = u
+    ctime = Wed Aug 10 16:33:57 2016
+    Error_Path = raijin4:/home/574/jwg574/OMI_regridding/TestCheckReprocessed.e
+	8025259
+    exec_host = r48/1*4
+    exec_vnode = (r48:ncpus=4:mem=10240000kb:jobfs_local=102400kb)
+    group_list = m19
+    Hold_Types = n
+    Join_Path = oe
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Wed Aug 10 16:35:32 2016
+    Output_Path = raijin4:/home/574/jwg574/OMI_regridding/TestCheckReprocessed.
+	o8025259
+    Priority = 0
+    qtime = Wed Aug 10 16:33:57 2016
+    Rerunable = False
+    Resource_List.cput = 00:20:00
+    Resource_List.HT = 0
+    Resource_List.jobfs = 104857600b
+    Resource_List.jobfs_local = 104857600b
+    Resource_List.jobprio = 100020.6172
+    Resource_List.mem = 10485760000b
+    Resource_List.mpiprocs = 4
+    Resource_List.ncpus = 4
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.queue_charge_rate = 3
+    Resource_List.select = 1:ncpus=4:mpiprocs=4:mem=10485760000:job_tags=expres
+	s:jobfs_local=104857600
+    Resource_List.walltime = 00:08:00
+    Resource_List.wd = 1
+    substate = 41
+    Variable_List = PBS_O_SYSTEM=Linux,PBS_O_SHELL=/bin/bash,
+	PBS_NCI_FS_GDATA1=0,PBS_O_HOME=/home/574/jwg574,PBS_VMEM=10485760000,
+	PBS_NCI_WD=1,PBS_O_LOGNAME=jwg574,PBS_NCI_FS_GDATA3=0,
+	PBS_O_WORKDIR=/home/574/jwg574/OMI_regridding,PBS_O_LANG=C,
+	PBS_O_PATH=/apps/hdf5/1.8.10/bin:/home/574/jwg574/bin:/apps/geos/3.5.0
+	/bin:/home/574/jwg574/bin:/apps/python3/3.5.2/bin:/apps/cdo/1.7.1/bin:/
+	apps/nco/4.5.3/bin:/apps/idl/idl82/bin:/apps/netcdf/4.2.1.1/bin:/apps/o
+	penmpi/wrapper/fortran:/apps/openmpi/wrapper:/apps/openmpi/1.6.3/bin:/o
+	pt/bin:/bin:/usr/bin:/opt/pbs/default/bin:.,PBS_NCPUS=4,PBS_NCI_HT=0,
+	PROJECT=m19,PBS_NCI_FS_GDATA2=0,PBS_NGPUS=0,
+	PBS_NCI_JOBFS_LOCAL=104857600b,PBS_O_MAIL=/var/spool/mail/jwg574,
+	PBS_O_QUEUE=express,PBS_O_HOST=raijin4
+    comment = Job run at Wed Aug 10 at 16:35 on (r48:ncpus=4:mem=10240000kb:job
+	fs_local=102400kb)
+    etime = Wed Aug 10 16:33:57 2016
+    run_count = 1
+    eligible_time = 00:00:00
+    Submit_arguments = run_check_reprocessed.sh
+    project = m19
+
+Job Id: 8025323.r-man2
+    Job_Name = TestCheckReprocessed
+    Job_Owner = jwg574@raijin4
+    job_state = R
+    queue = express-def
+    server = r-man2
+    Checkpoint = u
+    ctime = Wed Aug 10 16:38:30 2016
+    Error_Path = raijin4:/home/574/jwg574/OMI_regridding/TestCheckReprocessed.e
+	8025323
+    exec_host = r37/0*4
+    exec_vnode = (r37:ncpus=4:mem=10240000kb:jobfs_local=102400kb)
+    group_list = m19
+    Hold_Types = n
+    Join_Path = oe
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Wed Aug 10 16:40:19 2016
+    Output_Path = raijin4:/home/574/jwg574/OMI_regridding/TestCheckReprocessed.
+	o8025323
+    Priority = 0
+    qtime = Wed Aug 10 16:38:30 2016
+    Rerunable = False
+    Resource_List.cput = 00:20:00
+    Resource_List.HT = 0
+    Resource_List.jobfs = 104857600b
+    Resource_List.jobfs_local = 104857600b
+    Resource_List.jobprio = 100024.3438
+    Resource_List.mem = 10485760000b
+    Resource_List.mpiprocs = 4
+    Resource_List.ncpus = 4
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.queue_charge_rate = 3
+    Resource_List.select = 1:ncpus=4:mpiprocs=4:mem=10485760000:job_tags=expres
+	s:jobfs_local=104857600
+    Resource_List.walltime = 00:08:00
+    Resource_List.wd = 1
+    substate = 41
+    Variable_List = PBS_O_SYSTEM=Linux,PBS_O_SHELL=/bin/bash,
+	PBS_NCI_FS_GDATA1=0,PBS_O_HOME=/home/574/jwg574,PBS_VMEM=10485760000,
+	PBS_NCI_WD=1,PBS_O_LOGNAME=jwg574,PBS_NCI_FS_GDATA3=0,
+	PBS_O_WORKDIR=/home/574/jwg574/OMI_regridding,PBS_O_LANG=C,
+	PBS_O_PATH=/apps/hdf5/1.8.10/bin:/home/574/jwg574/bin:/apps/geos/3.5.0
+	/bin:/home/574/jwg574/bin:/apps/python3/3.5.2/bin:/apps/cdo/1.7.1/bin:/
+	apps/nco/4.5.3/bin:/apps/idl/idl82/bin:/apps/netcdf/4.2.1.1/bin:/apps/o
+	penmpi/wrapper/fortran:/apps/openmpi/wrapper:/apps/openmpi/1.6.3/bin:/o
+	pt/bin:/bin:/usr/bin:/opt/pbs/default/bin:.,PBS_NCPUS=4,PBS_NCI_HT=0,
+	PROJECT=m19,PBS_NCI_FS_GDATA2=0,PBS_NGPUS=0,
+	PBS_NCI_JOBFS_LOCAL=104857600b,PBS_O_MAIL=/var/spool/mail/jwg574,
+	PBS_O_QUEUE=express,PBS_O_HOST=raijin4
+    comment = Job run at Wed Aug 10 at 16:40 on (r37:ncpus=4:mem=10240000kb:job
+	fs_local=102400kb)
+    etime = Wed Aug 10 16:38:30 2016
+    run_count = 1
+    eligible_time = 00:00:00
+    Submit_arguments = run_check_reprocessed.sh
+    project = m19
+
+Job Id: 8025333.r-man2
+    Job_Name = ReprocessCorrected
+    Job_Owner = jwg574@raijin4
+    resources_used.cpupercent = 0
+    resources_used.cput = 00:00:00
+    resources_used.mem = 0kb
+    resources_used.ncpus = 8
+    resources_used.vmem = 0kb
+    resources_used.walltime = 00:00:00
+    job_state = R
+    queue = express-def
+    server = r-man2
+    Checkpoint = u
+    ctime = Wed Aug 10 16:40:33 2016
+    Error_Path = raijin4:/home/574/jwg574/OMI_regridding/ReprocessCorrected.e80
+	25333
+    exec_host = r47/1*8
+    exec_vnode = (r47:ncpus=8:mem=20480000kb:jobfs_local=102400kb)
+    group_list = m19
+    Hold_Types = n
+    Join_Path = oe
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Wed Aug 10 16:42:39 2016
+    Output_Path = raijin4:/home/574/jwg574/OMI_regridding/ReprocessCorrected.o8
+	025333
+    Priority = 0
+    qtime = Wed Aug 10 16:40:33 2016
+    Rerunable = False
+    Resource_List.cput = 32:00:00
+    Resource_List.HT = 0
+    Resource_List.jobfs = 104857600b
+    Resource_List.jobfs_local = 104857600b
+    Resource_List.jobprio = 100028.75
+    Resource_List.mem = 20971520000b
+    Resource_List.mpiprocs = 8
+    Resource_List.ncpus = 8
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.queue_charge_rate = 3
+    Resource_List.select = 1:ncpus=8:mpiprocs=8:mem=20971520000:job_tags=expres
+	s:jobfs_local=104857600
+    Resource_List.walltime = 06:00:00
+    Resource_List.wd = 1
+    stime = Wed Aug 10 16:42:39 2016
+    session_id = 25887
+    jobdir = /home/574/jwg574
+    substate = 42
+    Variable_List = PBS_O_SYSTEM=Linux,PBS_O_HOME=/home/574/jwg574,
+	PBS_O_HOST=raijin4,PROJECT=m19,PBS_O_LANG=C,PBS_NCI_FS_GDATA3=0,
+	PBS_NCI_FS_GDATA2=0,PBS_NCI_FS_GDATA1=0,
+	PBS_O_MAIL=/var/spool/mail/jwg574,PBS_O_LOGNAME=jwg574,
+	PBS_O_SHELL=/bin/bash,PBS_VMEM=20971520000,PBS_NCI_WD=1,
+	PBS_O_QUEUE=express,PBS_O_WORKDIR=/home/574/jwg574/OMI_regridding,
+	PBS_O_PATH=/apps/hdf5/1.8.10/bin:/home/574/jwg574/bin:/apps/geos/3.5.0
+	/bin:/home/574/jwg574/bin:/apps/python3/3.5.2/bin:/apps/cdo/1.7.1/bin:/
+	apps/nco/4.5.3/bin:/apps/idl/idl82/bin:/apps/netcdf/4.2.1.1/bin:/apps/o
+	penmpi/wrapper/fortran:/apps/openmpi/wrapper:/apps/openmpi/1.6.3/bin:/o
+	pt/bin:/bin:/usr/bin:/opt/pbs/default/bin:.,PBS_NCPUS=8,PBS_NCI_HT=0,
+	PBS_NGPUS=0,PBS_NCI_JOBFS_LOCAL=104857600b,
+	PBS_JOBFS=/jobfs/local/8025333.r-man2
+    comment = Job run at Wed Aug 10 at 16:42 on (r47:ncpus=8:mem=20480000kb:job
+	fs_local=102400kb)
+    etime = Wed Aug 10 16:40:33 2016
+    run_count = 1
+    eligible_time = 00:00:00
+    Submit_arguments = run_reprocess_corrected.sh
+    project = m19
+
+Job Id: 8025360.r-man2
+    Job_Name = ReprocessCorrected
+    Job_Owner = jwg574@raijin4
+    resources_used.cpupercent = 2772
+    resources_used.cput = 17:39:35
+    resources_used.jobfs = 0b
+    resources_used.mem = 5010728kb
+    resources_used.ncpus = 8
+    resources_used.vmem = 8714448kb
+    resources_used.walltime = 02:16:07
+    job_state = R
+    queue = express-def
+    server = r-man2
+    Checkpoint = u
+    ctime = Wed Aug 10 16:43:07 2016
+    depend = beforeok:8025396.r-man2@r-man2
+    Error_Path = raijin4:/home/574/jwg574/OMI_regridding/ReprocessCorrected.e80
+	25360
+    exec_host = r47/1*8
+    exec_vnode = (r47:ncpus=8:mem=20480000kb:jobfs_local=102400kb)
+    group_list = m19
+    Hold_Types = n
+    Join_Path = oe
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Wed Aug 10 19:02:02 2016
+    Output_Path = raijin4:/home/574/jwg574/OMI_regridding/ReprocessCorrected.o8
+	025360
+    Priority = 0
+    qtime = Wed Aug 10 16:43:07 2016
+    Rerunable = False
+    Resource_List.cput = 32:00:00
+    Resource_List.HT = 0
+    Resource_List.jobfs = 104857600b
+    Resource_List.jobfs_local = 104857600b
+    Resource_List.jobprio = 100028.4375
+    Resource_List.mem = 20971520000b
+    Resource_List.mpiprocs = 8
+    Resource_List.ncpus = 8
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.queue_charge_rate = 3
+    Resource_List.select = 1:ncpus=8:mpiprocs=8:mem=20971520000:job_tags=expres
+	s:jobfs_local=104857600
+    Resource_List.walltime = 06:00:00
+    Resource_List.wd = 1
+    stime = Wed Aug 10 16:46:02 2016
+    session_id = 26212
+    jobdir = /home/574/jwg574
+    substate = 42
+    Variable_List = PBS_O_SYSTEM=Linux,PBS_O_HOME=/home/574/jwg574,
+	PBS_O_HOST=raijin4,PBS_NGPUS=0,PROJECT=m19,PBS_O_LANG=C,
+	PBS_NCI_FS_GDATA3=0,PBS_NCI_FS_GDATA2=0,PBS_NCI_FS_GDATA1=0,
+	PBS_O_MAIL=/var/spool/mail/jwg574,PBS_O_LOGNAME=jwg574,
+	PBS_O_SHELL=/bin/bash,PBS_VMEM=20971520000,PBS_O_QUEUE=express,
+	PBS_O_WORKDIR=/home/574/jwg574/OMI_regridding,
+	PBS_JOBFS=/jobfs/local/8025360.r-man2,PBS_NCPUS=8,PBS_NCI_HT=0,
+	PBS_NCI_WD=1,PBS_NCI_JOBFS_LOCAL=104857600b,
+	PBS_O_PATH=/apps/hdf5/1.8.10/bin:/home/574/jwg574/bin:/apps/geos/3.5.0
+	/bin:/home/574/jwg574/bin:/apps/python3/3.5.2/bin:/apps/cdo/1.7.1/bin:/
+	apps/nco/4.5.3/bin:/apps/idl/idl82/bin:/apps/netcdf/4.2.1.1/bin:/apps/o
+	penmpi/wrapper/fortran:/apps/openmpi/wrapper:/apps/openmpi/1.6.3/bin:/o
+	pt/bin:/bin:/usr/bin:/opt/pbs/default/bin:.
+    comment = Job run at Wed Aug 10 at 16:45 on (r47:ncpus=8:mem=20480000kb:job
+	fs_local=102400kb)
+    etime = Wed Aug 10 16:43:07 2016
+    run_count = 1
+    eligible_time = 00:00:00
+    Submit_arguments = run_reprocess_corrected.sh
+    project = m19
+
+Job Id: 8025396.r-man2
+    Job_Name = TestCheckReprocessed
+    Job_Owner = jwg574@raijin4
+    job_state = R
+    queue = express-def
+    server = r-man2
+    Checkpoint = u
+    ctime = Wed Aug 10 16:48:38 2016
+    Error_Path = raijin4:/home/574/jwg574/OMI_regridding/TestCheckReprocessed.e
+	8025396
+    exec_host = r38/1*4
+    exec_vnode = (r38:ncpus=4:mem=10240000kb:jobfs_local=102400kb)
+    group_list = m19
+    Hold_Types = n
+    Join_Path = oe
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Wed Aug 10 19:03:50 2016
+    Output_Path = raijin4:/home/574/jwg574/OMI_regridding/TestCheckReprocessed.
+	o8025396
+    Priority = 0
+    qtime = Wed Aug 10 16:48:42 2016
+    Rerunable = False
+    Resource_List.cput = 00:20:00
+    Resource_List.HT = 0
+    Resource_List.jobfs = 104857600b
+    Resource_List.jobfs_local = 104857600b
+    Resource_List.jobprio = 100020.1484
+    Resource_List.mem = 10485760000b
+    Resource_List.mpiprocs = 4
+    Resource_List.ncpus = 4
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.queue_charge_rate = 3
+    Resource_List.select = 1:ncpus=4:mpiprocs=4:mem=10485760000:job_tags=expres
+	s:jobfs_local=104857600
+    Resource_List.walltime = 00:08:00
+    Resource_List.wd = 1
+    substate = 41
+    Variable_List = PBS_O_SYSTEM=Linux,PBS_O_HOME=/home/574/jwg574,
+	PBS_O_HOST=raijin4,PROJECT=m19,PBS_O_LANG=C,PBS_NCI_FS_GDATA3=0,
+	PBS_NCI_FS_GDATA2=0,PBS_NCI_FS_GDATA1=0,
+	PBS_O_MAIL=/var/spool/mail/jwg574,PBS_O_LOGNAME=jwg574,
+	PBS_O_SHELL=/bin/bash,PBS_VMEM=10485760000,PBS_NCI_WD=1,
+	PBS_O_QUEUE=express,PBS_O_WORKDIR=/home/574/jwg574/OMI_regridding,
+	PBS_O_PATH=~/bin:/apps/hdf5/1.8.10/bin:/apps/geos/3.5.0/bin:/apps/pyth
+	on3/3.5.2/bin:/apps/cdo/1.7.1/bin:/apps/nco/4.5.3/bin:/apps/idl/idl82/b
+	in:/apps/netcdf/4.2.1.1/bin:/apps/openmpi/wrapper/fortran:/apps/openmpi
+	/wrapper:/apps/openmpi/1.6.3/bin:/apps/intel-ct/cc-wrapper:/apps/intel-
+	ct/12.1.9.293/cc/bin/intel64:/apps/intel-ct/fc-wrapper/:/apps/intel-ct/
+	12.1.9.293/fc/bin/intel64:/opt/bin:/bin:/usr/bin:/opt/pbs/default/bin:.
+	,PBS_NCPUS=4,PBS_NCI_HT=0,PBS_NGPUS=0,PBS_NCI_JOBFS_LOCAL=104857600b,
+	PBS_JOBFS=/jobfs/local/8025396.r-man2
+    comment = Job run at Wed Aug 10 at 19:03 on (r38:ncpus=4:mem=10240000kb:job
+	fs_local=102400kb)
+    etime = Wed Aug 10 19:03:19 2016
+    run_count = 1
+    eligible_time = 00:00:52
+    Submit_arguments = -W depend=afterok:8025360 run_check_reprocessed.sh
+    project = m19
+
+Job Id: 8034362.r-man2
+    Job_Name = TestCheckReprocessed
+    Job_Owner = jwg574@raijin4
+    resources_used.cpupercent = 0
+    resources_used.cput = 00:00:00
+    resources_used.mem = 0kb
+    resources_used.ncpus = 4
+    resources_used.vmem = 0kb
+    resources_used.walltime = 00:00:00
+    job_state = R
+    queue = express-def
+    server = r-man2
+    Checkpoint = u
+    ctime = Thu Aug 11 08:44:53 2016
+    Error_Path = raijin4:/home/574/jwg574/OMI_regridding/TestCheckReprocessed.e
+	8034362
+    exec_host = r42/1*4
+    exec_vnode = (r42:ncpus=4:mem=10240000kb:jobfs_local=102400kb)
+    group_list = m19
+    Hold_Types = n
+    Join_Path = oe
+    Keep_Files = n
+    Mail_Points = a
+    mtime = Thu Aug 11 08:45:33 2016
+    Output_Path = raijin4:/home/574/jwg574/OMI_regridding/TestCheckReprocessed.
+	o8034362
+    Priority = 0
+    qtime = Thu Aug 11 08:44:53 2016
+    Rerunable = False
+    Resource_List.cput = 00:20:00
+    Resource_List.HT = 0
+    Resource_List.jobfs = 104857600b
+    Resource_List.jobfs_local = 104857600b
+    Resource_List.jobprio = 100020.3359
+    Resource_List.mem = 10485760000b
+    Resource_List.mpiprocs = 4
+    Resource_List.ncpus = 4
+    Resource_List.nodect = 1
+    Resource_List.place = free
+    Resource_List.queue_charge_rate = 3
+    Resource_List.select = 1:ncpus=4:mpiprocs=4:mem=10485760000:job_tags=expres
+	s:jobfs_local=104857600
+    Resource_List.walltime = 00:08:00
+    Resource_List.wd = 1
+    stime = Thu Aug 11 08:45:33 2016
+    session_id = 29530
+    jobdir = /home/574/jwg574
+    substate = 42
+    Variable_List = PBS_O_SYSTEM=Linux,PBS_O_HOME=/home/574/jwg574,
+	PBS_O_HOST=raijin4,PROJECT=m19,PBS_O_LANG=C,PBS_NCI_FS_GDATA3=0,
+	PBS_NCI_FS_GDATA2=0,PBS_NCI_FS_GDATA1=0,
+	PBS_O_MAIL=/var/spool/mail/jwg574,PBS_O_LOGNAME=jwg574,
+	PBS_O_SHELL=/bin/bash,PBS_VMEM=10485760000,PBS_NCI_WD=1,
+	PBS_O_QUEUE=express,PBS_O_WORKDIR=/home/574/jwg574/OMI_regridding,
+	PBS_O_PATH=~/bin:/apps/hdf5/1.8.10/bin:/apps/geos/3.5.0/bin:/apps/pyth
+	on3/3.5.2/bin:/apps/cdo/1.7.1/bin:/apps/nco/4.5.3/bin:/apps/idl/idl82/b
+	in:/apps/netcdf/4.2.1.1/bin:/apps/openmpi/wrapper/fortran:/apps/openmpi
+	/wrapper:/apps/openmpi/1.6.3/bin:/apps/intel-ct/cc-wrapper:/apps/intel-
+	ct/12.1.9.293/cc/bin/intel64:/apps/intel-ct/fc-wrapper/:/apps/intel-ct/
+	12.1.9.293/fc/bin/intel64:/opt/bin:/bin:/usr/bin:/opt/pbs/default/bin:.
+	,PBS_NCPUS=4,PBS_NCI_HT=0,PBS_NGPUS=0,PBS_NCI_JOBFS_LOCAL=104857600b,
+	PBS_JOBFS=/jobfs/local/8034362.r-man2
+    comment = Job run at Thu Aug 11 at 08:44 on (r42:ncpus=4:mem=10240000kb:job
+	fs_local=102400kb)
+    etime = Thu Aug 11 08:44:53 2016
+    run_count = 1
+    eligible_time = 00:00:00
+    Submit_arguments = run_check_reprocessed.sh
+    project = m19
+

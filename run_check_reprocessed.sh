@@ -18,8 +18,12 @@ if [ -z ${PBS_O_LOGNAME} ]; then
     exit 0
 fi
 
+load module python3/3.5.2
+load module python3/3.5.2-matplotlib
+load module hdf5
+
 # run the test methods
-python - <<END
+python3 - <<END
 import tests
 tests.check_reprocessed()
 END

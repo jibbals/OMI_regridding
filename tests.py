@@ -4,8 +4,8 @@ File to test various parts of fio.py and reprocess.py
 ## Modules
 # these 2 lines make plots not show up ( can save them as output faster )
 # use needs to be called before anythin tries to import matplotlib modules
-#import matplotlib
-#matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
 
 # my file reading and writing module
 import fio
@@ -127,15 +127,15 @@ def test_reprocess_corrected(run_reprocess=True, oneday=True):
         print ("Took " + str(elapsed/60.0)+ " minutes to reprocess eight days")
     
     # Grab one day of reprocessed OMI data
-    omi=fio.read_omhchorp(date,oneday=oneday)
+    omhchorp=fio.read_omhchorp(date,oneday=oneday)
     # Grab monthly averaged GEOS-Chem data
     # gc=fio.read_gchcho(date)
     
-    counts = omi['gridentries']
+    counts = omhchorp['gridentries']
     print( "at most %d entries "%np.nanmax(counts) )
     print( "%d entries in total"%np.nansum(counts) )
-    lonmids=omi['longitude']
-    latmids=omi['latitude']
+    lonmids=omhchorp['longitude']
+    latmids=omhchorp['latitude']
     lons,lats = np.meshgrid(lonmids,latmids)
     
     # Plot 
@@ -146,22 +146,22 @@ def test_reprocess_corrected(run_reprocess=True, oneday=True):
     # Plot OMI, old, new AMF map
     # set currently active axis from [2,3] axes array
     plt.sca(axes[0,0])
-    m,cs,cb = createmap(omi['SC'],lats,lons)
+    m,cs,cb = createmap(omhchorp['SC'],lats,lons)
     plt.title('SC')
     plt.sca(axes[0,1])
-    m,cs,cb = createmap(omi['VC_OMI'],lats,lons)
+    m,cs,cb = createmap(omhchorp['VC_OMI'],lats,lons)
     plt.title('VC OMI')
     plt.sca(axes[0,2])
-    m,cs,cb = linearmap(omi['AMF_OMI'],lats,lons,vmin=1.0,vmax=6.0)
+    m,cs,cb = linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=1.0,vmax=6.0)
     plt.title('AMF OMI')
     plt.sca(axes[1,0])
-    m,cs,cb = createmap(omi['VCC'],lats,lons)
+    m,cs,cb = createmap(omhchorp['VCC'],lats,lons)
     plt.title('VCC')
     plt.sca(axes[1,1])
-    m,cs,cb = createmap(omi['VC_GC'],lats,lons)
-    plt.title('VCC')
+    m,cs,cb = createmap(omhchorp['VC_GC'],lats,lons)
+    plt.title('VC GC')
     plt.sca(axes[1,2])
-    m,cs,cb = linearmap(omi['AMF_GC'],lats,lons,vmin=1.0,vmax=6.0)
+    m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=1.0,vmax=6.0)
     plt.title('AMF_GC')
     
     # save plots
@@ -180,9 +180,9 @@ def compare_cloudy_map():
     date=datetime(2005,1,1,0)
     # read the dataset WITHOUT cloud filtering:
     data=fio.read_omhchorp(date)
-    counts = data['GridEntries']
-    lonmids=data['Longitude']
-    latmids=data['Latitude']
+    counts = data['gridentries']
+    lonmids=data['longitude']
+    latmids=data['latitude']
     # read the dataset WITH cloud filtering 
     # ( at that point I stored regridded vc seperately )
     cloudyfile="omhchorp/cloudy_omhcho_8p0.25x0.31_20050101.he5"
@@ -198,18 +198,18 @@ def compare_cloudy_map():
     print("NEW AMF: ")
     mmm(data['AMF_GC'])
     print("OLD_VC:  ")
-    mmm(data['ColumnAmountHCHO_OMI'] )
+    mmm(data['VC_OMI'] )
     print("NEW_VC:  ")
-    mmm(data['ColumnAmountHCHO'] )
+    mmm(data['VC_GC'] )
     print("Unfiltered stats:")
     print("OLD AMF: ")
     mmm(cloudydata['AMF_OMI'])
     print("NEW AMF: ")
     mmm(cloudydata['AMF_GC'])
     print("OLD_VC:  ")
-    mmm(cloudydata['ColumnAmountHCHO_OMI'] )
+    mmm(cloudydata['VC_OMI'] )
     print("NEW_VC:  ")
-    mmm(cloudydata['ColumnAmountHCHO'] )
+    mmm(cloudydata['VC_GC'] )
     
     # Plot OMI, oldrp, newrp VC map
     f, axes = plt.subplots(2,3,num=0,figsize=(16,14))
@@ -219,10 +219,10 @@ def compare_cloudy_map():
     i=0
     for d in [cloudydata, data]:
         plt.sca(axes[i,0])
-        m,cs,cb = createmap(d['ColumnAmountHCHO_OMI'],latmids,lonmids)
+        m,cs,cb = createmap(d['VC_OMI'],latmids,lonmids)
         plt.title('VC Regridded')
         plt.sca(axes[i,1])
-        m,cs,cb = createmap(d['ColumnAmountHCHO'],latmids,lonmids)
+        m,cs,cb = createmap(d['VC_GC'],latmids,lonmids)
         plt.title('VC Reprocessed')
         plt.sca(axes[i,2])
         m,cs,cb = linearmap(d['AMF_GC'],latmids,lonmids,vmin=1.0,vmax=6.0)
@@ -231,7 +231,7 @@ def compare_cloudy_map():
         
     # save plots
     plt.tight_layout()
-    plt.savefig("cloud_filter_effects.png")
+    plt.savefig("pictures/cloud_filter_effects.png")
     plt.close()
     
 def test_fires_fio():
@@ -320,20 +320,20 @@ def test_gchcho():
     print(vars(gchcho).keys())
     
     print ("Total of a sample of normalized columns")
-    ii=random.sample(np.arange(91),10)
-    jj=random.sample(np.arange(144),10)
+    ii=random.sample(range(0,91),10)
+    jj=random.sample(range(144),10)
     S_s=gchcho.Shape_s
     for i in range(10):
         print ("sum(S_s[:,%d,%d]): %f"%(ii[i],jj[i],np.sum(S_s[:,ii[i],jj[i]])))
         
     plt.figure(figsize=(14,12))
     m,cs,cb=gchcho.PlotVC()
-    plt.savefig('GC_Vertical_Columns.png')
+    plt.savefig('pictures/GC_Vertical_Columns.png')
     plt.clf()
     
     plt.figure(figsize=(12,12))
     gchcho.PlotProfile()
-    plt.savefig('GC_Profile.png')
+    plt.savefig('pictures/GC_Profile.png')
     plt.clf()
     
     # Check that structure's get_apriori function works:
@@ -360,7 +360,7 @@ def test_gchcho():
     # new grid shape factor
     plt.plot(new_S[:,new_yi,new_xi], z, label='on .25x.3125 grid', linewidth=2, color='pink')
     plt.legend()
-    plt.savefig('GC_apriori_interpolation.png')
+    plt.savefig('pictures/GC_apriori_interpolation.png')
     plt.clf()
     
     return()
@@ -379,9 +379,9 @@ def test_hchorp_apriori():
     
     ## grab shape factors and aprioris from reprocessed file ( one day average for now )
     #
-    keylist= ['Latitude','Longitude','ShapeFactor_GC','ShapeFactor_OMI','Sigma_GC', 'Sigma_OMI']
+    keylist= ['latitude','longitude','ShapeFactor_GC','ShapeFactor_OMI','Sigma_GC', 'Sigma_OMI']
     omhchorp = fio.read_omhchorp(day0, oneday=True, keylist=keylist)
-    lats, lons = omhchorp['Latitude'], omhchorp['Longitude']
+    lats, lons = omhchorp['latitude'], omhchorp['longitude']
     mlons, mlats = np.meshgrid(lons,lats)
     
     ## CHECK Shape factors from OMI interpolated to the new grid OK
@@ -405,8 +405,8 @@ def test_hchorp_apriori():
     
     # Sample of normalized columns
     scount=10
-    ii=random.sample(np.arange(181)-90, scount) # lat samples
-    jj=random.sample(np.arange(361)-180,scount) # lon samples
+    ii=random.sample(range(-90,91), scount) # lat samples
+    jj=random.sample(range(-180,181),scount) # lon samples
     f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, sharey=True, figsize=(13,9))
     for i in range(scount):
         # indices of random lat/lon pair
@@ -437,7 +437,7 @@ def test_hchorp_apriori():
     #chart_patch = mpatches.Patch(color='purple', label='S_s[xnew,ynew,:]')
     #plt.legend(handles=[black_patch, chart_patch])
     
-    plt.savefig('Shape_Factor_Examples.png')
+    plt.savefig('pictures/Shape_Factor_Examples.png')
     print("Shape_Factor_Examples.png saved!")
 
 def check_reprocessed(date=datetime(2005,1,1)):
@@ -448,12 +448,12 @@ def check_reprocessed(date=datetime(2005,1,1)):
     data=fio.read_omhchorp(date)
     amf_new = data['AMF_GC']
     amf_old = data['AMF_OMI']
-    VC_new = data['ColumnAmountHCHO']
-    #VC_old = data['ColumnAmountHCHO_OMI']
-    counts = data['GridEntries']
+    VC_new = data['VC_GC']
+    #VC_old = data['VC_OMI']
+    counts = data['gridentries']
     print (type(amf_new))
-    lonmids=data['Longitude']
-    latmids=data['Latitude']
+    lonmids=data['longitude']
+    latmids=data['latitude']
     lonedges= regularbounds(lonmids)
     latedges= regularbounds(latmids)
     
@@ -571,7 +571,7 @@ def test_reprocess():
     '''
     # run it, save it, play with 1-day mean
     meandict = fio.omhcho_1_day_reprocess(save=True)
-    check_array(meandict['ColumnAmountHCHO'])
+    check_array(meandict['VC_GC'])
     # check the data created...
     test_hchorp_apriori()
     check_reprocessed()  
@@ -608,8 +608,8 @@ def test_amf_calculation():
     
     # Look at 5 random columns
     scount=5
-    ii=random.sample(np.arange(180)-90, 50) # lat sample
-    jj=random.sample(np.arange(360)-180,50) # lon sample
+    ii=random.sample(range(-90,90), 50) # lat sample
+    jj=random.sample(range(-180,180),50) # lon sample
     omegas=[]
     Shapes=[]
     Product=[]
@@ -658,7 +658,10 @@ def test_amf_calculation():
         Product.append(winterp(scoords)*sinterp(scoords))
         Product_new.append(winterp_new(scoords)*sinterp_new(scoords))
         # use all these to create new AMF
-        AMF_new.append(fio.calculate_amf_sigma(AMF_G[i], omegas[i], Shapes[i], wcoords, scoords))
+        innerplot='pictures/AMF_test_innerplot%d.png'%i
+        AMF_new.append(reprocess.calculate_amf_sigma(AMF_G[i], 
+            omegas[i], Shapes[i], wcoords, scoords,
+            plotname=innerplot, plt=plt))
         
         # Plot the 5 random columns
         ax=axes[i]
@@ -676,7 +679,7 @@ def test_amf_calculation():
             x=[winterp(scoords), sinterp(scoords), winterp_new(scoords), sinterp_new(scoords)][k]
             y=scoords
             c=['maroon','darkgreen'][k%2]
-            d=['.','x'][k/2]
+            d=['.','x'][int(k/2)]
             leg=['w interp','S interp','w interp(new)','S interp(new)'][k]
             ax.plot(x,y, d,color=c,linewidth=1,label=leg)
         
@@ -687,17 +690,17 @@ def test_amf_calculation():
                 horizontalalignment='right', verticalalignment='bottom')
             y=y+0.05
     axes[2].legend()
-    plt.tight_layout()   
-    plt.savefig('AMF_test.png')
-    print('AMF_test.png Saved')
+    plt.tight_layout()
+    plt.savefig('pictures/AMF_test.png')
+    print('pictures/AMF_test.png Saved')
     
     plt.close()
     plt.figure(3,(5,5))
     # ALSO plot the OMI apriori
-    plt.plot(S_omi,wcoords,color='k',label='OMI apriori')
-    plt.tight_layout()
-    plt.title('OMI Apriori')
-    plt.savefig('OMI_apriori.png')
+    #plt.plot(S_omi,wcoords,color='k',label='OMI apriori')
+    #plt.tight_layout()
+    #plt.title('OMI Apriori')
+    #plt.savefig('pictures/OMI_apriori.png')
     
 
 def check_RSC(day=datetime(2005,1,1), track_corrections=False):
@@ -712,7 +715,7 @@ def check_RSC(day=datetime(2005,1,1), track_corrections=False):
     yyyymmdd=day.strftime("%Y%m%d")
     rsc=omhchorp1['RSC']
     ref_lat_bins=omhchorp1['RSC_latitude']
-    rsc_gc=omhchorp1['RSC_GC']*1e-4 # RSC_GC is in molecs/cm2 as of 21/06/2016
+    rsc_gc=omhchorp1['RSC_GC'] # RSC_GC is in molecs/cm2 as of 11/08/2016
     
     ## plot each track with a slightly different colour
     #
@@ -734,36 +737,35 @@ def check_RSC(day=datetime(2005,1,1), track_corrections=False):
         print(outfig1+' saved')
         plt.close(f1)
     
-    def RSC_map(lons,lats,data):
+    def RSC_map(lons,lats,data,labels=[0,0,0,0]):
         ''' Draw standard map around RSC region '''
         vmin, vmax= 5e14, 1e16
-        llcrnrlat, urcrnrlat, llcrnrlon, urcrnrlon=-75, 75, -170, -130
-        m=Basemap(llcrnrlat=llcrnrlat, urcrnrlat=urcrnrlat,
-          llcrnrlon=llcrnrlon, urcrnrlon=urcrnrlon,
-          resolution='i',projection='merc')
+        lat0, lat1, lon0, lon1=-75, 75, -170, -130
+        m=Basemap(lon0,lat0,lon1,lat1, resolution='i', projection='merc')
         cs=m.pcolormesh(lons, lats, data, latlon=True, 
               vmin=vmin,vmax=vmax,norm = LogNorm(), clim=(vmin,vmax))
         cs.cmap.set_under('white')
         cs.cmap.set_over('pink')
         cs.set_clim(vmin,vmax)
         m.drawcoastlines()
-        m.drawmeridians([ -160, -140],labels=[0,0,0,0])
+        m.drawmeridians([ -160, -140],labels=labels)
         return m, cs
     
     ## plot the reference region, 
     #
-    # we need 501x3 bounding edges for our 500x2 2D data (just the 500x1 data twice)
+    # we need 501x3 bounding edges for our 500x2 2D data (which is just the 500x1 data twice)
     rsc_lat_edges= list(ref_lat_bins-0.18)
     rsc_lat_edges.append(90.)
     rsc_lat_edges = np.array(rsc_lat_edges)
     lons_gc, lats_gc = np.meshgrid( [-160., -150, -140.], rsc_lat_edges )
+    
     # Make the GC map:
     f2=plt.figure(1, figsize=(14,10))
     plt.subplot(141)
     rsc_gc_new = np.transpose(np.array([ rsc_gc, rsc_gc] ))
-    m,cs = RSC_map(lons_gc,lats_gc,rsc_gc_new)
-    cb=m.colorbar(cs,"right",size="8%", pad="3%")
+    m,cs = RSC_map(lons_gc,lats_gc,rsc_gc_new, labels=[0,0,0,1])
     m.drawparallels([-45,0,45],labels=[1,0,0,0])
+    cb=m.colorbar(cs,"right",size="8%", pad="3%")
     cb.set_label('Molecules/cm2')
     plt.title('RSC_GC')
     
@@ -803,13 +805,65 @@ def check_RSC(day=datetime(2005,1,1), track_corrections=False):
     print(outfig2+' saved')
     plt.close(f2)
 
+def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
+    '''
+    Count entries and how many entries were filtered out
+    Plot histograms of some fields for one or 8 day averaged omhchorp data
+    '''
+    
+    print("Running check_flags_and_entries")
+    # Read in one day average
+    omhchorp=fio.read_omhchorp(day,oneday=oneday)
+    yyyymmdd=day.strftime("%Y%m%d")
+    rsc=omhchorp['RSC']
+    rsc_gc=omhchorp['RSC_GC'] # RSC_GC is in molecs/cm2 as of 11/08/2016
+    rsc_region=omhchorp['RSC_region']
+    print(("RSC region: ", rsc_region))
+    VC_GC=omhchorp['VC_GC']
+    VC_OMI=omhchorp['VC_OMI']
+    VCC=omhchorp['VCC']
+    entries=omhchorp['gridentries']
+    
+    # show histograms for positive and negative part of data
+    # pass in two axes
+    def show_distribution(axes, bins, data, log=True):
+        notnans=~np.isnan(data)
+        fdata=data[notnans]
+        plus=fdata[fdata>0]
+        minus=-1*fdata[fdata<0]
+        plt.sca(axes[0])
+        plt.hist(minus,bins=bins)
+        if log: plt.xscale("log")
+        axes[0].invert_xaxis()
+        plt.sca(axes[1])
+        plt.hist(plus,bins=bins)
+        if log: plt.xscale("log")
+    
+    f, axes = plt.subplots(2,2)
+    # Logarithmic space from 1e12 - 1e19, 50 steps
+    logbins=np.logspace(12,19,50)
+    
+    show_distribution(axes[0,:], logbins, VC_GC)
+    axes[0,0].set_title("Negative GC_VC_HCHO")
+    axes[0,1].set_title('Positive GC_VC_HCHO')
+    
+    show_distribution(axes[1,:], logbins, VC_OMI)
+    axes[1,0].set_title("Negative OMI_VC_HCHO")
+    axes[1,1].set_title('Positive OMI_VC_HCHO')
+    
+    plt.suptitle("VC distributions for %d day average on %s"%([8,1][oneday],yyyymmdd), fontsize=25)
+    plt.savefig("pictures/distributions%d_%s"%([8,1][oneday], yyyymmdd))
+    plt.close()
+
 ##############################
 ########## IF CALLED #########
 ##############################
 if __name__ == '__main__':
     print("Running tests.py")
     #test_fires_fio()
-    #test_amf_calculation()
+    test_amf_calculation() # Check the AMF stuff
+    check_flags_and_entries() # check how many entries are filtered etc...
+    
     #test_hchorp_apriori()
     #test_gchcho()
     #test_gchcho()
@@ -821,5 +875,5 @@ if __name__ == '__main__':
     
     # Plot SC, VC_omi, VC_gc, AMF_omi, AMF_gc from
     # one or eight day average reprocessed netcdf output
-    #test_reprocess_corrected(False,False);
-    check_RSC()
+    #test_reprocess_corrected(run_reprocess=False, oneday=False);
+    #check_RSC(track_corrections=True)

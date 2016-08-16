@@ -1,1 +1,4 @@
-python3: can't open file 'tests.py': [Errno 2] No such file or directory
+Running tests.py
+Running check_high_amfs
+Took  81.77 seconds to read 1241784 entries
+saved pictures/high_AMF_omegas.png

@@ -701,7 +701,82 @@ def test_amf_calculation():
     #plt.tight_layout()
     #plt.title('OMI Apriori')
     #plt.savefig('pictures/OMI_apriori.png')
+
+def check_high_amfs(day=datetime(2005,1,1)):
+    '''
+    Get good pixels, look at AMFs over 10, examine other properties of pixel
+    '''
+    print("Running check_high_amfs")
     
+    start_time=timeit.default_timer()
+    pix=reprocess.get_good_pixel_list(day, getExtras=True)
+    elapsed = timeit.default_timer() - start_time
+    print ("Took %6.2f seconds to read %d entries"%(elapsed, len(pix['AMF_OMI'])))
+    
+    cloud=np.array(pix['cloudfrac'])  # [~1e6]
+    # inds2 = high amf, cloud < 0.4
+    inds2= (np.array(pix['AMF_GC']) > 10.0) * (cloud < 0.4)
+    # inds1 = non high amf, cloud < 0.4
+    inds1= (~inds2) * (cloud < 0.4)
+    omegas=pix['omega']     # [47, ~1e6]
+    aprioris=pix['apriori'] #
+    sigmas=pix['sigma']     #
+    
+    assert np.sum(np.abs(pix['qualityflag']))==0, 'qualityflags non zero!'
+    assert np.sum(np.abs(pix['xtrackflag']))==0, 'xtrackflags non zero!'
+    
+    # normal AMFS
+    omegas1=omegas[:,inds1]
+    n1=len(omegas1[0,:])
+    sigmas1=pix['sigma'][:,inds1]
+    cloud1=cloud[inds1]
+    # high AMFS
+    omegas2=omegas[:,inds2]
+    n2=len(omegas2[0,:])
+    sigmas2=pix['sigma'][:,inds2]
+    cloud2=cloud[inds2]
+    f = plt.figure(figsize=(15,9))
+    a1 = f.add_subplot(1, 3, 1)
+    a2 = f.add_subplot(1, 3, 2, sharex = a1, sharey=a1)
+    a3 = f.add_subplot(2, 3, 3)
+    a4 = f.add_subplot(2, 3, 6)
+    plt.sca(a1)
+    # plot random set of 100 normal omegas
+    for i in random.sample(range(n1),100):
+        plt.plot(omegas1[:,i],sigmas1[:,i])
+    # plot mean omega
+    X,Y = np.mean(omegas1, axis=1), np.mean(sigmas1,axis=1)
+    Xl,Xr = X-np.std(omegas1,axis=1),X+np.std(omegas1,axis=1)
+    plt.plot(X,Y, linewidth=3, color='k')
+    plt.fill_betweenx(Y, Xl, Xr, alpha=0.3, color='grey')
+    plt.text(4.75,.8, 'mean cloud frac = %6.2f'%np.mean(cloud1))
+    plt.text(4.75,.75, 'count = %d'%n1)
+    plt.title('AMF <= 10.0')
+    plt.sca(a2)
+    #plot 100 highamf omegas
+    for i in random.sample(range(n2),100):
+        plt.plot(omegas2[:,i],sigmas2[:,i])
+    # plot mean omega
+    X,Y = np.mean(omegas2, axis=1), np.mean(sigmas2,axis=1)
+    Xl,Xr = X-np.std(omegas2,axis=1),X+np.std(omegas2,axis=1)
+    plt.plot(X,Y, linewidth=3, color='k')
+    plt.fill_betweenx(Y, Xl, Xr, alpha=0.3, color='grey')
+    plt.text(5.75,.8, 'mean cloud frac = %6.2f'%np.mean(cloud2))
+    plt.text(5.75,.75, 'count=%d'%n2)
+    plt.title('AMF > 10.0')
+    plt.ylim([1.05,-0.05])
+    plt.xlim([-0.1, np.max(omegas2)])
+    # plot cloud frac histogram
+    plt.sca(a3)
+    plt.hist(cloud1)
+    plt.title('cloud fraction: AMF < 10')
+    plt.sca(a4)
+    plt.hist(cloud2)
+    plt.title('cloud fraction: AMF > 10')
+    plt.suptitle('Omegas')
+    outpic='pictures/high_AMF_omegas.png'
+    plt.savefig(outpic)
+    print('saved %s'%outpic)
 
 def check_RSC(day=datetime(2005,1,1), track_corrections=False):
     '''
@@ -861,8 +936,9 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     #test_fires_fio()
-    test_amf_calculation() # Check the AMF stuff
-    check_flags_and_entries() # check how many entries are filtered etc...
+    #test_amf_calculation() # Check the AMF stuff
+    #check_flags_and_entries() # check how many entries are filtered etc...
+    check_high_amfs()
     
     #test_hchorp_apriori()
     #test_gchcho()

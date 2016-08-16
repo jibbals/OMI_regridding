@@ -93,10 +93,12 @@ def calculate_amf_sigma(AMF_G, w, S, w_coords, S_coords, plotname=None, plt=None
     
     return(AMF_new)
 
-def get_good_pixel_list(date):
+def get_good_pixel_list(date, getExtras=False):
     '''
     Create a long list of 'good' pixels
     Also calculate new AMF for each good pixel
+    If getExtras==True then also return q and xtrack flags, along with 
+        omega and apriori columns, FOR TESTING ONLY
     '''
     ## 0) setup stuff:
     # list where we keep good ref sector pixels
@@ -107,6 +109,11 @@ def get_good_pixel_list(date):
     AMFgcs=list()
     cloudfracs=list()
     track=list() # track index 0-59 (for reference sector correction)
+    flags=list()
+    xflags=list()
+    apris=None # aprioris (molecs/cm3?)
+    ws=None # omegas
+    sigmas=None
     
     ## grab our GEOS-Chem apriori info (dimension: [ levs, lats, lons ])
     gchcho = fio.read_gchcho(date)
@@ -124,6 +131,7 @@ def get_good_pixel_list(date):
         
         # only looking at good pixels
         goods = np.logical_not(np.isnan(flat))
+        
         #if __VERBOSE__:
         #    print('%4e good entries in %s'%(np.sum(goods),ff))
         # some things for later use:
@@ -157,6 +165,20 @@ def get_good_pixel_list(date):
         for ss in range(47):
             om_sigma[ss,:] = (plevs[ss,:] - om_toa)/om_diff
         
+        if getExtras:
+            flags.extend(list((omiswath['qualityflag'])[goods])) # should all be zeros
+            xflags.extend(list((omiswath['xtrackflag'])[goods])) # also zeros
+            # these are 47x1600x60
+            aprioris=(omiswath['apriori'])[:,goods]
+            if apris is None:
+                apris=aprioris
+                ws=omegas
+                sigmas=om_sigma
+            else: # turn these into arrays of 47xentries
+                apris=np.append(apris, aprioris,axis=1)
+                ws=np.append(ws, omegas,axis=1)
+                sigmas=np.append(sigmas, om_sigma,axis=1)
+        
         # Create new AMF for each good entry...
         for i in range(np.sum(goods)):
             gc_shape_i, gc_sigma_i = gchcho.get_single_apriori(flats[i], flons[i])
@@ -171,7 +193,9 @@ def get_good_pixel_list(date):
     # dictionary structure
     return({'lat':lats,'lon':lons,'SC':slants,
             'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 
-            'cloudfrac':cloudfracs, 'track':track})
+            'cloudfrac':cloudfracs, 'track':track,
+            'qualityflag':flags,'xtrackflag':xflags,
+            'omega':ws,'apriori':apris,'sigma':sigmas})
 
 def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=None):
     '''

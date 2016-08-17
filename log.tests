@@ -1,4 +1,11 @@
+/apps/python3/3.5.2/lib/python3.5/site-packages/matplotlib-1.5.1-py3.5-linux-x86_64.egg/matplotlib/colors.py:1018: RuntimeWarning: invalid value encountered in less_equal
+  mask |= resdat <= 0
+/apps/python3/3.5.2/lib/python3.5/site-packages/matplotlib-1.5.1-py3.5-linux-x86_64.egg/matplotlib/colors.py:581: RuntimeWarning: invalid value encountered in less
+  cbook._putmask(xa, xa < 0.0, -1)
 Running tests.py
-Running check_high_amfs
-Took  81.77 seconds to read 1241784 entries
-saved pictures/high_AMF_omegas.png
+at most 11 entries 
+805400 entries in total
+pictures/one_day_corrected20050101.png Saved.
+at most 45 entries 
+6337175 entries in total
+pictures/eight_day_corrected20050101.png Saved.

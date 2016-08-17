@@ -110,11 +110,10 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
-def test_reprocess_corrected(run_reprocess=True, oneday=True):
+def test_reprocess_corrected(run_reprocess=False, oneday=True):
     '''
     Run and time reprocess method
     Plot some of the outputs
-    
     '''
     date=datetime(2005,1,1)
     
@@ -128,8 +127,6 @@ def test_reprocess_corrected(run_reprocess=True, oneday=True):
     
     # Grab one day of reprocessed OMI data
     omhchorp=fio.read_omhchorp(date,oneday=oneday)
-    # Grab monthly averaged GEOS-Chem data
-    # gc=fio.read_gchcho(date)
     
     counts = omhchorp['gridentries']
     print( "at most %d entries "%np.nanmax(counts) )
@@ -141,28 +138,39 @@ def test_reprocess_corrected(run_reprocess=True, oneday=True):
     # Plot 
     # SC, VC_omi, AMF_omi
     # VCC, VC_gc, AMF_gc
-    # 
-    f, axes = plt.subplots(2,3,num=0,figsize=(16,14))
+    # GEOS-Chem month average map
+    #
+    f = plt.figure(num=0,figsize=(16,16))
+    axes=[f.add_subplot(3,3,j) for j in range(1,7)]
     # Plot OMI, old, new AMF map
     # set currently active axis from [2,3] axes array
-    plt.sca(axes[0,0])
+    plt.sca(axes[0])
     m,cs,cb = createmap(omhchorp['SC'],lats,lons)
     plt.title('SC')
-    plt.sca(axes[0,1])
+    plt.sca(axes[1])
     m,cs,cb = createmap(omhchorp['VC_OMI'],lats,lons)
     plt.title('VC OMI')
-    plt.sca(axes[0,2])
+    plt.sca(axes[2])
     m,cs,cb = linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=1.0,vmax=6.0)
     plt.title('AMF OMI')
-    plt.sca(axes[1,0])
+    plt.sca(axes[3])
     m,cs,cb = createmap(omhchorp['VCC'],lats,lons)
     plt.title('VCC')
-    plt.sca(axes[1,1])
+    plt.sca(axes[4])
     m,cs,cb = createmap(omhchorp['VC_GC'],lats,lons)
     plt.title('VC GC')
-    plt.sca(axes[1,2])
+    plt.sca(axes[5])
     m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=1.0,vmax=6.0)
     plt.title('AMF_GC')
+    
+    # Plot finally the GEOS-Chem map 
+    gc=fio.read_gchcho(date) # read the GC data
+    glons,glats=np.meshgrid(gc.lons,gc.lats)
+    ax=f.add_subplot(3,1,3) # make 3rd row the plot axis
+    plt.sca(ax)
+    
+    m,cs,cb = createmap(gc.VC_HCHO*1e-4, glats,glons, llcrnrlat=-60, urcrnrlat=60, llcrnrlon=-179, urcrnrlon=179)
+    plt.title('GEOS-Chem $\Omega_{HCHO}$')
     
     # save plots
     plt.tight_layout()
@@ -713,14 +721,15 @@ def check_high_amfs(day=datetime(2005,1,1)):
     elapsed = timeit.default_timer() - start_time
     print ("Took %6.2f seconds to read %d entries"%(elapsed, len(pix['AMF_OMI'])))
     
-    cloud=np.array(pix['cloudfrac'])  # [~1e6]
+    cloud=np.array(pix['cloudfrac'])    # [~1e6]
+    lat=np.array(pix['lat'])            #
     # inds2 = high amf, cloud < 0.4
     inds2= (np.array(pix['AMF_GC']) > 10.0) * (cloud < 0.4)
     # inds1 = non high amf, cloud < 0.4
     inds1= (~inds2) * (cloud < 0.4)
-    omegas=pix['omega']     # [47, ~1e6]
-    aprioris=pix['apriori'] #
-    sigmas=pix['sigma']     #
+    omegas=pix['omega']         # [47, ~1e6]
+    aprioris=pix['apriori']     #
+    sigmas=pix['sigma']         #
     
     assert np.sum(np.abs(pix['qualityflag']))==0, 'qualityflags non zero!'
     assert np.sum(np.abs(pix['xtrackflag']))==0, 'xtrackflags non zero!'
@@ -729,51 +738,60 @@ def check_high_amfs(day=datetime(2005,1,1)):
     omegas1=omegas[:,inds1]
     n1=len(omegas1[0,:])
     sigmas1=pix['sigma'][:,inds1]
+    # cloud seems fine, check relation to latitude
     cloud1=cloud[inds1]
+    lat1=lat[inds1]
     # high AMFS
     omegas2=omegas[:,inds2]
     n2=len(omegas2[0,:])
     sigmas2=pix['sigma'][:,inds2]
     cloud2=cloud[inds2]
+    lat2=lat[inds2]
     f = plt.figure(figsize=(15,9))
     a1 = f.add_subplot(1, 3, 1)
     a2 = f.add_subplot(1, 3, 2, sharex = a1, sharey=a1)
     a3 = f.add_subplot(2, 3, 3)
-    a4 = f.add_subplot(2, 3, 6)
+    a4 = f.add_subplot(2, 3, 6, sharex = a3)
     plt.sca(a1)
     # plot random set of 100 normal omegas
     for i in random.sample(range(n1),100):
-        plt.plot(omegas1[:,i],sigmas1[:,i])
+        plt.plot(omegas1[:,i],sigmas1[:,i],alpha=0.4,color='orange')
     # plot mean omega
     X,Y = np.mean(omegas1, axis=1), np.mean(sigmas1,axis=1)
-    Xl,Xr = X-np.std(omegas1,axis=1),X+np.std(omegas1,axis=1)
+    Xl,Xr = X-2*np.std(omegas1,axis=1),X+2*np.std(omegas1,axis=1)
     plt.plot(X,Y, linewidth=3, color='k')
-    plt.fill_betweenx(Y, Xl, Xr, alpha=0.3, color='grey')
-    plt.text(4.75,.8, 'mean cloud frac = %6.2f'%np.mean(cloud1))
-    plt.text(4.75,.75, 'count = %d'%n1)
+    plt.fill_betweenx(Y, Xl, Xr, alpha=0.5, color='cyan')
+    plt.text(4.75,.9, 'mean cloud =%6.2f%%'%(np.mean(cloud1)*100.))
+    plt.text(4.75,.86, 'count = %d'%n1)
+    plt.text(6, 0.12, 'Mean profile',fontweight='bold')
+    plt.text(6, 0.16, '$\pm$2 std devs', color='cyan')
+    plt.text(6, 0.20, '100 random $\omega$ profiles', color='orange')
     plt.title('AMF <= 10.0')
+    plt.ylabel('Altitude ($\sigma$)')
     plt.sca(a2)
     #plot 100 highamf omegas
     for i in random.sample(range(n2),100):
-        plt.plot(omegas2[:,i],sigmas2[:,i])
+        plt.plot(omegas2[:,i],sigmas2[:,i],alpha=0.4,color='orange')
     # plot mean omega
     X,Y = np.mean(omegas2, axis=1), np.mean(sigmas2,axis=1)
-    Xl,Xr = X-np.std(omegas2,axis=1),X+np.std(omegas2,axis=1)
+    Xl,Xr = X-2*np.std(omegas2,axis=1),X+2*np.std(omegas2,axis=1)
     plt.plot(X,Y, linewidth=3, color='k')
-    plt.fill_betweenx(Y, Xl, Xr, alpha=0.3, color='grey')
-    plt.text(5.75,.8, 'mean cloud frac = %6.2f'%np.mean(cloud2))
-    plt.text(5.75,.75, 'count=%d'%n2)
+    plt.fill_betweenx(Y, Xl, Xr, alpha=0.5, color='cyan')
+    plt.text(5.75,.9, 'mean cloud =%6.2f%%'%(np.mean(cloud2)*100.))
+    plt.text(5.75,.86, 'count = %d'%n2)
     plt.title('AMF > 10.0')
     plt.ylim([1.05,-0.05])
     plt.xlim([-0.1, np.max(omegas2)])
     # plot cloud frac histogram
     plt.sca(a3)
-    plt.hist(cloud1)
-    plt.title('cloud fraction: AMF < 10')
+    plt.hist(lat1)
+    plt.title('histogram: AMF < 10')
     plt.sca(a4)
-    plt.hist(cloud2)
-    plt.title('cloud fraction: AMF > 10')
-    plt.suptitle('Omegas')
+    plt.hist(lat2, bins=np.arange(-90,91,5))
+    plt.title('histogram: AMF > 10')
+    plt.setp(a3, xticks=np.arange(-90,91,30)) # set xticks for histograms
+    plt.xlabel('Latitude')
+    plt.suptitle('Scattering weights ($\omega$)')
     outpic='pictures/high_AMF_omegas.png'
     plt.savefig(outpic)
     print('saved %s'%outpic)
@@ -938,7 +956,9 @@ if __name__ == '__main__':
     #test_fires_fio()
     #test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
-    check_high_amfs()
+    for oneday in [True, False]:
+        test_reprocess_corrected(run_reprocess=False, oneday=oneday)
+    #check_high_amfs()
     
     #test_hchorp_apriori()
     #test_gchcho()
@@ -951,5 +971,4 @@ if __name__ == '__main__':
     
     # Plot SC, VC_omi, VC_gc, AMF_omi, AMF_gc from
     # one or eight day average reprocessed netcdf output
-    #test_reprocess_corrected(run_reprocess=False, oneday=False);
     #check_RSC(track_corrections=True)

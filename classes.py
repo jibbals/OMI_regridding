@@ -102,22 +102,28 @@ class gchcho:
         sigma=self.sigmas[:,latind,lonind]
         return(shape,sigma)
     
-    def PlotVC(self, lllat=-65, urlat=65, lllon=-179, urlon=179, vmin=1e17, vmax=1e21):
+    def PlotVC(self, lllat=-65, urlat=65, lllon=-179, urlon=179, vmin=1e17, vmax=1e21, cm2=False):
         '''
         Basemap(...).pcolor of vertical column HCHO
         returns (map, image, colorbar)
         '''
         m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon, resolution='i',projection='merc')
         mlons, mlats= np.meshgrid(self.lons,self.lats)
+        VC=self.VC_HCHO
+        label='Molecules m$^{-2}$'
+        if cm2:
+            VC = VC*1e-4
+            label='Molecules cm$^{-2}$'
+        cs=m.pcolor(mlons,mlats,VC,latlon=True, vmin=vmin,vmax=vmax,norm = LogNorm())
         
-        cs=m.pcolor(mlons,mlats,self.VC_HCHO,latlon=True, vmin=vmin,vmax=vmax,norm = LogNorm())
         # draw coastlines and equator
         m.drawcoastlines()
         m.drawparallels([0],labels=[0,0,0,0])
+        
         # add title, colorbar
-        plt.title('GEOS-Chem VC_HCHO (2x2.5)')
+        plt.title('GEOS-Chem $\Omega_{HCHO}$')
         cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
-        cb.set_label('Molecules/m2')
+        cb.set_label(label)
         return (m,cs,cb)
 
     def PlotProfile(self, lat=-30,lon=140):

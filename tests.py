@@ -93,6 +93,7 @@ def linearmap(data,lats,lons,vmin=None,vmax=None,
 
 def mmm(arr):
     print("%1.5e, %1.5e, %1.5e"%(np.nanmin(arr),np.nanmean(arr),np.nanmax(arr)))
+
 def check_array(array, nonzero=False):
     '''
     print basic stuff about an array
@@ -471,7 +472,7 @@ def check_reprocessed(date=datetime(2005,1,1)):
     amf_new = data['AMF_GC']
     amf_old = data['AMF_OMI']
     VC_new = data['VC_GC']
-    #VC_old = data['VC_OMI']
+    VC_old = data['VC_OMI']
     counts = data['gridentries']
     print (type(amf_new))
     lonmids=data['longitude']
@@ -506,8 +507,8 @@ def check_reprocessed(date=datetime(2005,1,1)):
     print("min mean max new AMFS(sub 60 lats)")
     mmm(fio.filter_high_latitudes(amf_new))
     
-    print ("min mean max old VCs:TBD")
-    #mmm(VC_old)
+    print ("min mean max old VCs:")
+    mmm(VC_old)
     
     print ("min mean max new VCs:")
     mmm(VC_new)
@@ -547,7 +548,7 @@ def check_reprocessed(date=datetime(2005,1,1)):
     
     # title and save the figure
     plt.suptitle('AMF updated with GC aprioris 2005 01 01', fontsize=22)
-    figname1='Reprocessed_AMF_comparison.png'
+    figname1='pictures/Reprocessed_AMF_comparison.png'
     plt.savefig(figname1)
     print("figure saved:" + figname1)
     # clear the figure
@@ -560,7 +561,7 @@ def check_reprocessed(date=datetime(2005,1,1)):
     # old VCs
     plt.subplot(221)
     plt.title('Regridded VC')
-    #m,cs,cb = createmap(VC_old, latmids, lonmids)
+    m,cs,cb = createmap(VC_old, mlats, mlons)
     cb.set_label('Molecules/cm2')
     
     # new VCs
@@ -572,17 +573,18 @@ def check_reprocessed(date=datetime(2005,1,1)):
     # diff:
     plt.subplot(223)
     plt.title('OMHCHOG (L2 gridded)')
-    m,cs,cb = createmap(omg_hcho, omg_lats, omg_lons)
-    cb.set_label('New-Old')
+    omgmlons,omgmlats = np.meshgrid(regularbounds(omg_lons),regularbounds(omg_lats))
+    m,cs,cb = createmap(omg_hcho, omgmlats, omgmlons)
+    cb.set_label('molecs/cm2')
     
     plt.subplot(224)
     plt.title('Pct Diff')
-    #m,cs,cb = linearmap(100.0*(VC_new-VC_old)/VC_old, mlats, mlons, vmin=-100,vmax=100)
+    m,cs,cb = linearmap(100.0*(VC_new-VC_old)/VC_old, mlats, mlons, vmin=-200,vmax=200)
     cb.set_label('(New-Old) * 100 / Old')
     
     # save figure
     plt.suptitle('Reprocessed Vertical Columns 2005 01 01',fontsize=22)
-    figname2='Reprocessed_VC_comparison.png'
+    figname2='pictures/Reprocessed_VC_comparison.png'
     plt.savefig(figname2)
     print("figure saved: "+figname2)
     plt.close()
@@ -965,15 +967,15 @@ if __name__ == '__main__':
     #test_fires_fio()
     #test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
-    for oneday in [True, False]:
-        test_reprocess_corrected(run_reprocess=False, oneday=oneday)
+    #for oneday in [True, False]:
+    #    test_reprocess_corrected(run_reprocess=False, oneday=oneday)
     #check_high_amfs()
     
     #test_hchorp_apriori()
     #test_gchcho()
     #test_gchcho()
     #test_reprocess()
-    #check_reprocessed()
+    check_reprocessed()
     
     # Check that cloud filter is doing as expected using old output without the cloud filter
     #compare_cloudy_map()

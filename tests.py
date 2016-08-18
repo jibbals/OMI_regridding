@@ -141,7 +141,7 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True):
     # GEOS-Chem month average map
     #
     f = plt.figure(num=0,figsize=(16,16))
-    axes=[f.add_subplot(3,3,j) for j in range(1,7)]
+    axes=[f.add_subplot(3,3,j) for j in range(1,10)]
     # Plot OMI, old, new AMF map
     # set currently active axis from [2,3] axes array
     plt.sca(axes[0])
@@ -149,7 +149,7 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True):
     plt.title('SC')
     plt.sca(axes[1])
     m,cs,cb = createmap(omhchorp['VC_OMI'],lats,lons)
-    plt.title('VC OMI')
+    plt.title('VC OMI ($\Omega_{OMI}$)')
     plt.sca(axes[2])
     m,cs,cb = linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=1.0,vmax=6.0)
     plt.title('AMF OMI')
@@ -163,19 +163,33 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True):
     m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=1.0,vmax=6.0)
     plt.title('AMF_GC')
     
-    # Plot finally the GEOS-Chem map 
-    gc=fio.read_gchcho(date) # read the GC data
-    glons,glats=np.meshgrid(gc.lons,gc.lats)
-    ax=f.add_subplot(3,1,3) # make 3rd row the plot axis
-    plt.sca(ax)
+    # Plot finally the GEOS-Chem map divergences
     
-    m,cs,cb = createmap(gc.VC_HCHO*1e-4, glats,glons, llcrnrlat=-60, urcrnrlat=60, llcrnrlon=-179, urcrnrlon=179)
+    gc=fio.read_gchcho(date) # read the GC data
+    fineHCHO=gc.interp_to_grid(latmids,lonmids) * 1e-4 # molecules/m2 -> molecules/cm2
+    print(fineHCHO.shape)
+    print(lats.shape)
+    OMIdiff=100*(omhchorp['VC_OMI'] - fineHCHO) / fineHCHO
+    GCdiff=100*(omhchorp['VCC'] - fineHCHO) / fineHCHO
+    plt.sca(axes[6])
+    vmin,vmax = -150, 150
+    m,cs,cb = linearmap(OMIdiff, lats,lons,vmin=vmin,vmax=vmax)
+    #m,cs,cb = createmap(gc.VC_HCHO*1e-4, glats,glons, llcrnrlat=-60, urcrnrlat=60, llcrnrlon=-179, urcrnrlon=179)
+    plt.title('100($\Omega_{OMI}$-GEOSChem)/GEOSChem')
+    plt.sca(axes[7])
+    m,cs,cb = linearmap(GCdiff, lats,lons,vmin=vmin,vmax=vmax)
+    plt.title('100(VCC-GEOSChem)/GEOSChem')
+    plt.sca(axes[8])
+    m,cs,cb = createmap(fineHCHO, lats,lons)
     plt.title('GEOS-Chem $\Omega_{HCHO}$')
     
     # save plots
+    yyyymmdd = date.strftime("%Y%m%d")
+    f.suptitle(yyyymmdd, fontsize=20)
     plt.tight_layout()
+    plt.subplots_adjust(top=0.94)
     onedaystr= [ 'eight_day_','one_day_' ][oneday]
-    outfig="pictures/%scorrected%s.png"%(onedaystr, date.strftime("%Y%m%d"))
+    outfig="pictures/%scorrected%s.png"%(onedaystr, yyyymmdd)
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
@@ -704,11 +718,6 @@ def test_amf_calculation():
     
     plt.close()
     plt.figure(3,(5,5))
-    # ALSO plot the OMI apriori
-    #plt.plot(S_omi,wcoords,color='k',label='OMI apriori')
-    #plt.tight_layout()
-    #plt.title('OMI Apriori')
-    #plt.savefig('pictures/OMI_apriori.png')
 
 def check_high_amfs(day=datetime(2005,1,1)):
     '''

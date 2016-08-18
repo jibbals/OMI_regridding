@@ -9,6 +9,7 @@ import numpy as np
 from datetime import datetime
 from glob import glob
 from scipy.interpolate import griddata
+from scipy.interpolate import RectBivariateSpline as RBS
 import h5py
 
 class gchcho:
@@ -29,9 +30,9 @@ class gchcho:
     # dimensions
     pmids=0     #(hPa)
     pedges=0    #(hPa)
-    lons=0
-    lats=0
-    sigmas=0
+    lons=0      # [144]
+    lats=0      # [91]
+    sigmas=0    # [72]
     boxH=0      #(m)
     
     def __init__(self):
@@ -101,6 +102,20 @@ class gchcho:
         shape=self.Shape_s[:,latind,lonind]
         sigma=self.sigmas[:,latind,lonind]
         return(shape,sigma)
+    
+    def interp_to_grid(self, newlats, newlons):
+        '''
+        Return interpolated HCHO columns
+        Inputs:
+            newlats: ascending regular grid of latitudes
+            newlons: '' of longitudes
+        Outputs: VC_HCHO in molecs/m2
+            VC_HCHO[ newlats, newlons ], newlats, newlons
+        '''
+        # X, Y, DATA[X,Y]
+        interp=RBS(self.lons, self.lats, np.transpose(self.VC_HCHO))
+        newhcho=np.transpose(interp(newlons,newlats))
+        return newhcho
     
     def PlotVC(self, lllat=-65, urlat=65, lllon=-179, urlon=179, vmin=1e17, vmax=1e21, cm2=False):
         '''

@@ -42,9 +42,9 @@ def regularbounds(x,fix=False):
     return newx
 
 def createmap(data,lats,lons, vmin=5e13, vmax=1e17, 
-              llcrnrlat=-80, urcrnrlat=80, llcrnrlon=-179, urcrnrlon=179):
-    m=Basemap(llcrnrlat=llcrnrlat,  urcrnrlat=urcrnrlat,
-          llcrnrlon=llcrnrlon, urcrnrlon=urcrnrlon,
+              lllat=-80, urlat=80, lllon=-179, urlon=179):
+    m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
+          llcrnrlon=lllon, urcrnrlon=urlon,
           resolution='i',projection='merc')
     if len(lats.shape) == 1:
         latsnew=regularbounds(lats)
@@ -69,10 +69,10 @@ def globalmap(data,lats,lons):
 def ausmap(data,lats,lons):
     return createmap(data,lats,lons,-52,-5,100,160)
 def linearmap(data,lats,lons,vmin=None,vmax=None,
-              llcrnrlat=-80, urcrnrlat=80, llcrnrlon=-179, urcrnrlon=179):
+              lllat=-80, urlat=80, lllon=-179, urlon=179):
     
-    m=Basemap(llcrnrlat=llcrnrlat,  urcrnrlat=urcrnrlat,
-          llcrnrlon=llcrnrlon, urcrnrlon=urcrnrlon,
+    m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
+          llcrnrlon=lllon, urcrnrlon=urlon,
           resolution='l',projection='merc')
     
     if len(lats.shape) == 1:
@@ -111,7 +111,7 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
-def test_reprocess_corrected(run_reprocess=False, oneday=True):
+def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179):
     '''
     Run and time reprocess method
     Plot some of the outputs
@@ -140,28 +140,28 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True):
     # SC, VC_omi, AMF_omi
     # VCC, VC_gc, AMF_gc
     # GEOS-Chem month average map
-    #
-    f = plt.figure(num=0,figsize=(16,16))
-    axes=[f.add_subplot(3,3,j) for j in range(1,10)]
+    # uncertainties, fit flag
+    
+    f, axes = plt.subplots(4,3,num=0,figsize=(16,20))
     # Plot OMI, old, new AMF map
     # set currently active axis from [2,3] axes array
     plt.sca(axes[0])
-    m,cs,cb = createmap(omhchorp['SC'],lats,lons)
+    m,cs,cb = createmap(omhchorp['SC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('SC')
     plt.sca(axes[1])
-    m,cs,cb = createmap(omhchorp['VC_OMI'],lats,lons)
+    m,cs,cb = createmap(omhchorp['VC_OMI'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VC OMI ($\Omega_{OMI}$)')
     plt.sca(axes[2])
-    m,cs,cb = linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=1.0,vmax=6.0)
+    m,cs,cb = linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=1.0,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF OMI')
     plt.sca(axes[3])
-    m,cs,cb = createmap(omhchorp['VCC'],lats,lons)
+    m,cs,cb = createmap(omhchorp['VCC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VCC')
     plt.sca(axes[4])
-    m,cs,cb = createmap(omhchorp['VC_GC'],lats,lons)
+    m,cs,cb = createmap(omhchorp['VC_GC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VC GC')
     plt.sca(axes[5])
-    m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=1.0,vmax=6.0)
+    m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=1.0,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF_GC')
     
     # Plot finally the GEOS-Chem map divergences
@@ -174,8 +174,8 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True):
     GCdiff=100*(omhchorp['VCC'] - fineHCHO) / fineHCHO
     plt.sca(axes[6])
     vmin,vmax = -150, 150
-    m,cs,cb = linearmap(OMIdiff, lats,lons,vmin=vmin,vmax=vmax)
-    #m,cs,cb = createmap(gc.VC_HCHO*1e-4, glats,glons, llcrnrlat=-60, urcrnrlat=60, llcrnrlon=-179, urcrnrlon=179)
+    m,cs,cb = linearmap(OMIdiff, lats,lons,vmin=vmin,vmax=vmax,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    #m,cs,cb = createmap(gc.VC_HCHO*1e-4, glats,glons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('100($\Omega_{OMI}$-GEOSChem)/GEOSChem')
     plt.sca(axes[7])
     m,cs,cb = linearmap(GCdiff, lats,lons,vmin=vmin,vmax=vmax)
@@ -184,11 +184,34 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True):
     m,cs,cb = createmap(fineHCHO, lats,lons)
     plt.title('GEOS-Chem $\Omega_{HCHO}$')
     
+    # plot uncertainties - direct from swaths
+    omhchoswth=fio.read_omhcho_day(date)
+    cunc=omhchoswth['coluncertainty']
+    fcf=omhchoswth['convergenceflag']
+    frms=omhchoswth['fittingRMS']
+    lats=omhchoswth['lats']
+    lons=omhchoswth['lons']
+    print('cunc')
+    mmm(cunc)
+    print('fcf')
+    mmm(fcf)
+    print('frms')
+    mmm(frms)
+    plt.sca(axes[9])
+    m,cs,cb = linearmap(cunc,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('column uncertainty')
+    plt.sca(axes[10])
+    m,cs,cb = linearmap(fcf,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('fit convergence flag')
+    plt.sca(axes[11])
+    m,cs,cb = linearmap(frms,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('fitting RMS')
+    
     # save plots
     yyyymmdd = date.strftime("%Y%m%d")
     f.suptitle(yyyymmdd, fontsize=20)
     plt.tight_layout()
-    plt.subplots_adjust(top=0.94)
+    plt.subplots_adjust(top=0.95)
     onedaystr= [ 'eight_day_','one_day_' ][oneday]
     outfig="pictures/%scorrected%s.png"%(onedaystr, yyyymmdd)
     plt.savefig(outfig)
@@ -310,10 +333,10 @@ def test_fires_fio():
     
     ax1=plt.subplot(121)
     m1,cs1, cb1 = linearmap(orig,mlats,mlons, vmin=1, vmax=10,
-        llcrnrlat=-57, urcrnrlat=1, llcrnrlon=110, urcrnrlon=170)
+        lllat=-57, urlat=1, lllon=110, urlon=170)
     ax2=plt.subplot(122)
     m2,cs2, cb2 = linearmap(regr,mlats2,mlons2, vmin=1, vmax=10,
-        llcrnrlat=-57, urcrnrlat=1, llcrnrlon=110, urcrnrlon=170)
+        lllat=-57, urlat=1, lllon=110, urlon=170)
     
     for i in range(2):
         [ax1,ax2][i].set_title(axtitles[i])
@@ -463,7 +486,7 @@ def test_hchorp_apriori():
     plt.savefig('pictures/Shape_Factor_Examples.png')
     print("Shape_Factor_Examples.png saved!")
 
-def check_reprocessed(date=datetime(2005,1,1)):
+def check_reprocessed(date=datetime(2005,1,1), lllat=-80, lllon=-179, urlat=80, urlon=179):
     '''
     Read reprocessed file and look at data comparisons
     ''' 
@@ -480,7 +503,7 @@ def check_reprocessed(date=datetime(2005,1,1)):
     lonedges= regularbounds(lonmids)
     latedges= regularbounds(latmids)
     
-    (omg_hcho, omg_lats, omg_lons, omg_amf, omg_counts) = fio.read_omhchog_8day(date)
+    (omg_hcho, omg_lats, omg_lons, omg_amf, omg_counts) = fio.read_omhchog(date,eightday=True)
     
     # remove divide by zero crap
     amf_new[counts<1] = np.nan
@@ -525,24 +548,24 @@ def check_reprocessed(date=datetime(2005,1,1)):
     # old amf
     plt.subplot(221)
     plt.title('OMI AMF(regridded)')
-    m,cs,cb = linearmap(amf_old, latmids, lonmids, vmin=amf_l, vmax=amf_h)
+    m,cs,cb = linearmap(amf_old, latmids, lonmids, vmin=amf_l, vmax=amf_h,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     cb.set_label('Air Mass Factor')
     
     # new amfs (counts < 1 removed)
     plt.subplot(222)
     plt.title('new AMF')
-    m,cs,cb = linearmap(amf_new, latmids, lonmids, vmin=amf_l, vmax=amf_h)
+    m,cs,cb = linearmap(amf_new, latmids, lonmids, vmin=amf_l, vmax=amf_h,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     
     # pct difference
     plt.subplot(223)
     plt.title('(new-old)*100/old')
-    m,cs,cb = linearmap((amf_new-amf_old)*100/amf_old, clats, clons, vmin=-100, vmax=100)
+    m,cs,cb = linearmap((amf_new-amf_old)*100/amf_old, clats, clons, vmin=-100, vmax=100,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     cb.set_label('Pct Changed')
     
     # AMF from OMHCHOG
     plt.subplot(224)
     plt.title('OMHCHOG AMF(orig gridded product)')
-    m,cs,cb = linearmap(omg_amf, omg_lats, omg_lons, vmin=amf_l, vmax=amf_h)
+    m,cs,cb = linearmap(omg_amf, omg_lats, omg_lons, vmin=amf_l, vmax=amf_h,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     cb.set_label('Air Mass Factor .25x.25')
     
     
@@ -561,7 +584,7 @@ def check_reprocessed(date=datetime(2005,1,1)):
     # old VCs
     plt.subplot(221)
     plt.title('Regridded VC')
-    m,cs,cb = createmap(VC_old, mlats, mlons)
+    m,cs,cb = createmap(VC_old, mlats, mlons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     cb.set_label('Molecules/cm2')
     
     # new VCs
@@ -574,13 +597,16 @@ def check_reprocessed(date=datetime(2005,1,1)):
     plt.subplot(223)
     plt.title('OMHCHOG (L2 gridded)')
     omgmlons,omgmlats = np.meshgrid(regularbounds(omg_lons),regularbounds(omg_lats))
-    m,cs,cb = createmap(omg_hcho, omgmlats, omgmlons)
+    m,cs,cb = createmap(omg_hcho, omgmlats, omgmlons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     cb.set_label('molecs/cm2')
     
     plt.subplot(224)
     plt.title('Pct Diff')
-    m,cs,cb = linearmap(100.0*(VC_new-VC_old)/VC_old, mlats, mlons, vmin=-200,vmax=200)
+    m,cs,cb = linearmap(100.0*(VC_new-VC_old)/VC_old, mlats, mlons, vmin=-200,vmax=200,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     cb.set_label('(New-Old) * 100 / Old')
+    
+    plt.subplot()
+    
     
     # save figure
     plt.suptitle('Reprocessed Vertical Columns 2005 01 01',fontsize=22)
@@ -967,6 +993,7 @@ if __name__ == '__main__':
     #test_fires_fio()
     #test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
+    test_reprocess_corrected(run_reprocess=False, oneday=True,lllat=-60,lllon=100,urlat=-10,urlon=170)
     #for oneday in [True, False]:
     #    test_reprocess_corrected(run_reprocess=False, oneday=oneday)
     #check_high_amfs()
@@ -975,7 +1002,7 @@ if __name__ == '__main__':
     #test_gchcho()
     #test_gchcho()
     #test_reprocess()
-    check_reprocessed()
+    #check_reprocessed()
     
     # Check that cloud filter is doing as expected using old output without the cloud filter
     #compare_cloudy_map()

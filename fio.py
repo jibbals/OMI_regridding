@@ -166,7 +166,8 @@ def read_omhcho(path):
     NANify entries where xtrackqualityflags aren't zero
     Returns:{'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
             'omega':w,'apriori':apri,'plevels':plevs, 'cloudfrac':clouds,
-            'qualityflag':qf, 'xtrackflag':xqf }
+            'qualityflag':qf, 'xtrackflag':xqf,
+            'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
     '''
     
     # Total column amounts are in molecules/cm2
@@ -182,6 +183,11 @@ def read_omhcho(path):
     field_xqf   = geofields +'XtrackQualityFlags'
     field_lon   = geofields +'Longitude'
     field_lat   = geofields +'Latitude'
+    # uncertainty flags
+    field_colUnc    = datafields+'ColumnUncertainty'
+    field_fitflag   = datafields+'FitConvergenceFlag'
+    field_fitRMS    = datafields+'FittingRMS'
+    
     
     ## read in file:
     with h5py.File(path,'r') as in_f:
@@ -189,14 +195,20 @@ def read_omhcho(path):
         lats    = in_f[field_lat].value     #[ 1644, 60 ]
         lons    = in_f[field_lon].value     #
         hcho    = in_f[field_hcho].value    #
+        amf     = in_f[field_amf].value     # 
+        amfg    = in_f[field_amfg].value    # geometric amf
+        clouds  = in_f[field_clouds].value  # cloud fraction
         qf      = in_f[field_qf].value      #
-        amf     = in_f[field_amf].value     #
-        amfg    = in_f[field_amfg].value    #
-        clouds  = in_f[field_clouds].value  #
-        xqf     = in_f[field_xqf].value     #
-        w       = in_f[field_w].value       #[ 47, 1644, 60 ]
-        apri    = in_f[field_apri].value    #
-        plevs   = in_f[field_plevs].value   #
+        xqf     = in_f[field_xqf].value     # cross track flag
+        # uncertainty arrays                #
+        cunc    = in_f[field_colUnc].value  # uncertainty
+        fcf     = in_f[field_fitflag].value # convergence flag
+        frms    = in_f[field_fitRMS].value  # fitting rms
+        #                                   # [ 47, 1644, 60 ]
+        w       = in_f[field_w].value       # scattering weights
+        apri    = in_f[field_apri].value    # apriori
+        plevs   = in_f[field_plevs].value   # pressure dim
+        
         #
         ## remove missing values and bad flags: 
         # QF: missing<0, suss=1, bad=2
@@ -216,56 +228,74 @@ def read_omhcho(path):
     #return hcho, lats, lons, amf, amfg, w, apri, plevs
     return {'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
             'omega':w,'apriori':apri,'plevels':plevs, 'cloudfrac':clouds,
-            'qualityflag':qf, 'xtrackflag':xqf }
+            'qualityflag':qf, 'xtrackflag':xqf,
+            'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
 
-def read_omhchog(date):
+def read_omhcho_day(day=datetime(2005,1,1)):
+    '''
+    Read an entire day of omhcho swaths
+    '''
+    fnames=determine_filepath(day)
+    data=read_omhcho(fnames[0]) # read first swath
+    swths=[]
+    for fname in fnames[1:]: # read the rest of the swaths
+        swths.append(read_omhcho(fname))
+    for swth in swths: # combine into one struct
+        for key in swth.keys():
+            if key in ['omega','apriori','plevels']:
+                axis=1
+            else:
+                axis=0
+            data[key] = np.vstack(data[key],swth[key],axis=axis)
+    return data
+
+def read_omhchog(date, eightdays=False, verbose=False):
     '''
     Function to read provided lvl 2 gridded product omhchog
     '''
-    ## File to be read:
-    fname=determine_filepath(date, gridded=True)
-    print ("reading "+fname)
-    #files=glob(folder+'/*.he5')
-
-    # Total column amounts are in molecules/cm2
-    # total vertical columns
-    field_hcho  = datafieldsg+'ColumnAmountHCHO' 
-    # other useful fields
-    field_amf   = datafieldsg+'AirMassFactor'
-    field_qf    = datafieldsg+'MainDataQualityFlag'
-    field_xf    = datafieldsg+'' # todo: cross track flags
-    field_lon   = datafieldsg+'Longitude'
-    field_lat   = datafieldsg+'Latitude'
+    def getdata(date, verbose=False):
+        ## File to be read:
+        fname=determine_filepath(date, gridded=True)
+        if verbose: print ("reading "+fname)
+        
+        # Total column amounts are in molecules/cm2
+        # total vertical columns
+        field_hcho  = datafieldsg+'ColumnAmountHCHO' 
+        # other useful fields
+        field_amf   = datafieldsg+'AirMassFactor'
+        field_qf    = datafieldsg+'MainDataQualityFlag'
+        field_xf    = datafieldsg+'' # todo: cross track flags
+        field_lon   = datafieldsg+'Longitude'
+        field_lat   = datafieldsg+'Latitude'
+        
+        ## read in file:
+        with h5py.File(fname,'r') as in_f:        
+            ## get data arrays
+            lats    = in_f[field_lat].value
+            lons    = in_f[field_lon].value
+            hcho    = in_f[field_hcho].value
+            amf     = in_f[field_amf].value
+            qf      = in_f[field_qf].value
+            #xf      = in_f[field_xf].value
+        
+        ## remove missing values and bad flags: 
+        # QF: missing<0, suss=1, bad=2
+        suss = qf != 0
+        amf[suss] =np.NaN
+        hcho[suss]=np.NaN
+        lats[suss]=np.NaN
+        lons[suss]=np.NaN
+        
+        # TODO: Remove row anomaly
+        # TODO: Cloud frac removal?
+        # TODO: Make function to remove post processed AAOD>thresh data
+        
+        return (hcho, lats, lons, amf)#, xf)
     
-    ## read in file:
-    with h5py.File(fname,'r') as in_f:        
-        ## get data arrays
-        lats    = in_f[field_lat].value
-        lons    = in_f[field_lon].value
-        hcho    = in_f[field_hcho].value
-        amf     = in_f[field_amf].value
-        qf      = in_f[field_qf].value
-        #xf      = in_f[field_xf].value
+    # Return our day if that's all we want
+    if not eightdays:
+        return getdata(date,verbose=verbose)
     
-    
-    ## remove missing values and bad flags: 
-    # QF: missing<0, suss=1, bad=2
-    suss = qf != 0
-    amf[suss] =np.NaN
-    hcho[suss]=np.NaN
-    lats[suss]=np.NaN
-    lons[suss]=np.NaN
-    
-    # TODO: Remove row anomaly
-    # TODO: Remove cloud fraction above 0.4
-    # TODO: Make function to remove post processed AAOD>thresh data
-    
-    return (hcho, lats, lons, amf)#, xf)
-
-def read_omhchog_8day(date):
-    '''
-    Function to read 8 days of gridded data and avg it together
-    '''
     # our 8 days in a list
     days8 = [ date + timedelta(days=dd) for dd in range(8)]
     lats=np.arange(-90,90,0.25)+0.25/2.0
@@ -274,7 +304,7 @@ def read_omhchog_8day(date):
     amfs=np.zeros([len(lats),len(lons)])
     counts=0
     for day in days8:
-        hcho, daylats, daylons, amf = read_omhchog(day)
+        hcho, daylats, daylons, amf = getdata(day,verbose=verbose)
         count=1-np.isnan(hcho)
         counts=np.nansum(count,axis=0)+counts
         hchos=np.nansum(hcho,axis=0) + hchos
@@ -282,8 +312,6 @@ def read_omhchog_8day(date):
     amfs=amfs/counts
     hchos=hchos/counts
     return (hchos, lats, lons, amfs, counts)
-        
-        
 
 def read_omhchorg(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None):
     '''

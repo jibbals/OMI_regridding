@@ -17,7 +17,7 @@ from multiprocessing import Pool
 #from functools import partial
 
 from datetime import timedelta, datetime
-from glob import glob
+#from glob import glob
 
 # GLOBALS
 __VERBOSE__=True # set to true for more print statements
@@ -113,6 +113,10 @@ def get_good_pixel_list(date, getExtras=False):
     xflags=list()
     apris=None # aprioris (molecs/cm3?)
     ws=None # omegas
+    cunc=list()
+    fcf=list()
+    frms=list()
+    
     sigmas=None
     
     ## grab our GEOS-Chem apriori info (dimension: [ levs, lats, lons ])
@@ -132,8 +136,6 @@ def get_good_pixel_list(date, getExtras=False):
         # only looking at good pixels
         goods = np.logical_not(np.isnan(flat))
         
-        #if __VERBOSE__:
-        #    print('%4e good entries in %s'%(np.sum(goods),ff))
         # some things for later use:
         flats=list(flat[goods])
         flons=list(flon[goods])
@@ -168,6 +170,9 @@ def get_good_pixel_list(date, getExtras=False):
         if getExtras:
             flags.extend(list((omiswath['qualityflag'])[goods])) # should all be zeros
             xflags.extend(list((omiswath['xtrackflag'])[goods])) # also zeros
+            cunc.extend(list((omiswath['coluncertainty'])))     
+            fcf.extend(list((omiswath['convergenceflag'])))
+            frms.extend(list((omiswath['frms'])))
             # these are 47x1600x60
             aprioris=(omiswath['apriori'])[:,goods]
             if apris is None:
@@ -195,7 +200,8 @@ def get_good_pixel_list(date, getExtras=False):
             'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 
             'cloudfrac':cloudfracs, 'track':track,
             'qualityflag':flags,'xtrackflag':xflags,
-            'omega':ws,'apriori':apris,'sigma':sigmas})
+            'omega':ws,'apriori':apris,'sigma':sigmas,
+            'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms})
 
 def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=None):
     '''

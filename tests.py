@@ -168,8 +168,6 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=
     
     gc=fio.read_gchcho(date) # read the GC data
     fineHCHO=gc.interp_to_grid(latmids,lonmids) * 1e-4 # molecules/m2 -> molecules/cm2
-    print(fineHCHO.shape)
-    print(lats.shape)
     OMIdiff=100*(omhchorp['VC_OMI'] - fineHCHO) / fineHCHO
     GCdiff=100*(omhchorp['VCC'] - fineHCHO) / fineHCHO
     plt.sca(axes[2,0])
@@ -208,12 +206,17 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=
         darr[frms<-1e25]=np.NaN
     print('cunc')
     mmm(cunc)
+    print(cunc.shape)
     print('fcf')
     mmm(fcf)
+    print(fcf.shape)
     print('frms')
     mmm(frms)
-    
+    print(frms.shape)
+    print(frmslats.shape)
+    print(frms[0:50,0:50])
     # plot uncertainties
+    # 
     
     plt.sca(axes[3,0])
     m,cs,cb = createmap(cunc,cunclats,cunclons, vmin=1e14,vmax=1e17,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)

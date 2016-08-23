@@ -1,19 +1,26 @@
+/home/574/jwg574/.local/lib/python3.5/site-packages/mpl_toolkits/basemap/__init__.py:4726: RuntimeWarning: invalid value encountered in greater
+  lonsin1 = np.where(lonsin1 > lon_0+180, lonsin1-360 ,lonsin1)
+/home/574/jwg574/.local/lib/python3.5/site-packages/mpl_toolkits/basemap/__init__.py:4727: RuntimeWarning: invalid value encountered in less
+  lonsin1 = np.where(lonsin1 < lon_0-180, lonsin1+360 ,lonsin1)
+/home/574/jwg574/.local/lib/python3.5/site-packages/mpl_toolkits/basemap/__init__.py:4728: RuntimeWarning: invalid value encountered in absolute
+  londiff = np.abs(lonsin1[0:-1]-lonsin1[1:])
+/home/574/jwg574/.local/lib/python3.5/site-packages/mpl_toolkits/basemap/__init__.py:4731: RuntimeWarning: invalid value encountered in greater_equal
+  itemindex = nlons-np.where(londiff>=thresh)[0]
+/apps/python3/3.5.2/lib/python3.5/site-packages/matplotlib-1.5.1-py3.5-linux-x86_64.egg/matplotlib/colors.py:1018: RuntimeWarning: invalid value encountered in less_equal
+  mask |= resdat <= 0
+/apps/python3/3.5.2/lib/python3.5/site-packages/matplotlib-1.5.1-py3.5-linux-x86_64.egg/matplotlib/colors.py:581: RuntimeWarning: invalid value encountered in less
+  cbook._putmask(xa, xa < 0.0, -1)
+/apps/python3/3.5.2/lib/python3.5/site-packages/matplotlib-1.5.1-py3.5-linux-x86_64.egg/matplotlib/colors.py:1016: RuntimeWarning: invalid value encountered in less_equal
+  mask = (resdat <= 0)
 Running tests.py
 at most 11 entries 
 805400 entries in total
-Traceback (most recent call last):
-  File "tests.py", line 966, in <module>
-    test_reprocess_corrected(run_reprocess=False, oneday=oneday)
-  File "tests.py", line 169, in test_reprocess_corrected
-    fineHCHO=gc.interp_to_grid(latmids,lonmids) * 1e-4 # molecules/m2 -> molecules/cm2
-  File "/short/m19/jwg574/OMI_regridding/classes.py", line 116, in interp_to_grid
-    newhcho=interp.ev(newlats,newlons)
-  File "/apps/python3/3.5.2/lib/python3.5/site-packages/scipy/interpolate/fitpack2.py", line 954, in ev
-    return self.__call__(xi, yi, dx=dx, dy=dy, grid=False)
-  File "/apps/python3/3.5.2/lib/python3.5/site-packages/scipy/interpolate/fitpack2.py", line 834, in __call__
-    x, y = np.broadcast_arrays(x, y)
-  File "/apps/python3/3.5.2/lib/python3.5/site-packages/numpy-1.11.1-py3.5-linux-x86_64.egg/numpy/lib/stride_tricks.py", line 191, in broadcast_arrays
-    shape = _broadcast_shape(*args)
-  File "/apps/python3/3.5.2/lib/python3.5/site-packages/numpy-1.11.1-py3.5-linux-x86_64.egg/numpy/lib/stride_tricks.py", line 126, in _broadcast_shape
-    b = np.broadcast(*args[:32])
-ValueError: shape mismatch: objects cannot be broadcast to a single shape
+(720, 1152)
+(720, 1152)
+cunc
+8.32446e+14, 4.18238e+15, 1.49096e+18
+fcf
+4.00000e+01, 1.02045e+04, 1.03400e+04
+frms
+3.53560e-04, 9.59528e-04, 4.71940e-02
+pictures/one_day_corrected20050101.png Saved.

@@ -242,11 +242,8 @@ def read_omhcho_day(day=datetime(2005,1,1)):
         swths.append(read_omhcho(fname))
     for swth in swths: # combine into one struct
         for key in swth.keys():
-            if key in ['omega','apriori','plevels']:
-                axis=1
-            else:
-                axis=0
-            data[key] = np.vstack(data[key],swth[key],axis=axis)
+            axis= [0,1][key in ['omega','apriori','plevels']]
+            data[key] = np.concatenate( (data[key], swth[key]), axis=axis)
     return data
 
 def read_omhchog(date, eightdays=False, verbose=False):

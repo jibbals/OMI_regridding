@@ -145,22 +145,22 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=
     f, axes = plt.subplots(4,3,num=0,figsize=(16,20))
     # Plot OMI, old, new AMF map
     # set currently active axis from [2,3] axes array
-    plt.sca(axes[0])
+    plt.sca(axes[0,0])
     m,cs,cb = createmap(omhchorp['SC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('SC')
-    plt.sca(axes[1])
+    plt.sca(axes[0,1])
     m,cs,cb = createmap(omhchorp['VC_OMI'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VC OMI ($\Omega_{OMI}$)')
-    plt.sca(axes[2])
+    plt.sca(axes[0,2])
     m,cs,cb = linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=1.0,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF OMI')
-    plt.sca(axes[3])
+    plt.sca(axes[1,0])
     m,cs,cb = createmap(omhchorp['VCC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VCC')
-    plt.sca(axes[4])
+    plt.sca(axes[1,1])
     m,cs,cb = createmap(omhchorp['VC_GC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VC GC')
-    plt.sca(axes[5])
+    plt.sca(axes[1,2])
     m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=1.0,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF_GC')
     
@@ -172,39 +172,57 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=
     print(lats.shape)
     OMIdiff=100*(omhchorp['VC_OMI'] - fineHCHO) / fineHCHO
     GCdiff=100*(omhchorp['VCC'] - fineHCHO) / fineHCHO
-    plt.sca(axes[6])
+    plt.sca(axes[2,0])
     vmin,vmax = -150, 150
     m,cs,cb = linearmap(OMIdiff, lats,lons,vmin=vmin,vmax=vmax,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     #m,cs,cb = createmap(gc.VC_HCHO*1e-4, glats,glons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('100($\Omega_{OMI}$-GEOSChem)/GEOSChem')
-    plt.sca(axes[7])
-    m,cs,cb = linearmap(GCdiff, lats,lons,vmin=vmin,vmax=vmax)
+    plt.sca(axes[2,1])
+    m,cs,cb = linearmap(GCdiff, lats,lons,vmin=vmin,vmax=vmax,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('100(VCC-GEOSChem)/GEOSChem')
-    plt.sca(axes[8])
-    m,cs,cb = createmap(fineHCHO, lats,lons)
+    plt.sca(axes[2,2])
+    m,cs,cb = createmap(fineHCHO, lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('GEOS-Chem $\Omega_{HCHO}$')
     
     # plot uncertainties - direct from swaths
     omhchoswth=fio.read_omhcho_day(date)
-    cunc=omhchoswth['coluncertainty']
-    fcf=omhchoswth['convergenceflag']
-    frms=omhchoswth['fittingRMS']
     lats=omhchoswth['lats']
     lons=omhchoswth['lons']
+    
+    # remove filler for cunc
+    cunc=omhchoswth['coluncertainty'] # molecs/cm2
+    cunclats,cunclons=lats.copy(),lons.copy()
+    for darr in [cunclats,cunclons,cunc]:
+        darr[cunc<-1e25]=np.NaN
+    
+    # remove filler for conv
+    fcf=np.array(omhchoswth['convergenceflag'],dtype=float)
+    fcflats,fcflons=lats.copy(),lons.copy()
+    for darr in [fcflats,fcflons,fcf]:
+        darr[fcf < -10]=np.NaN
+    
+    # remove filler for frms
+    frms=omhchoswth['fittingRMS']
+    frmslats,frmslons=lats.copy(),lons.copy()
+    for darr in [frmslats,frmslons,frms]:
+        darr[frms<-1e25]=np.NaN
     print('cunc')
     mmm(cunc)
     print('fcf')
     mmm(fcf)
     print('frms')
     mmm(frms)
-    plt.sca(axes[9])
-    m,cs,cb = linearmap(cunc,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    
+    # plot uncertainties
+    
+    plt.sca(axes[3,0])
+    m,cs,cb = createmap(cunc,cunclats,cunclons, vmin=1e14,vmax=1e17,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('column uncertainty')
-    plt.sca(axes[10])
-    m,cs,cb = linearmap(fcf,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.sca(axes[3,1])
+    m,cs,cb = linearmap(fcf,fcflats,fcflons,vmin=-10,vmax=12344,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('fit convergence flag')
-    plt.sca(axes[11])
-    m,cs,cb = linearmap(frms,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.sca(axes[3,2])
+    m,cs,cb = linearmap(frms,frmslats,frmslons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('fitting RMS')
     
     # save plots
@@ -993,7 +1011,7 @@ if __name__ == '__main__':
     #test_fires_fio()
     #test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
-    test_reprocess_corrected(run_reprocess=False, oneday=True,lllat=-60,lllon=100,urlat=-10,urlon=170)
+    test_reprocess_corrected(run_reprocess=False, oneday=True,lllat=-50,lllon=100,urlat=-10,urlon=170)
     #for oneday in [True, False]:
     #    test_reprocess_corrected(run_reprocess=False, oneday=oneday)
     #check_high_amfs()

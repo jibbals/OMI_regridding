@@ -13,14 +13,23 @@
 /apps/python3/3.5.2/lib/python3.5/site-packages/matplotlib-1.5.1-py3.5-linux-x86_64.egg/matplotlib/colors.py:1016: RuntimeWarning: invalid value encountered in less_equal
   mask = (resdat <= 0)
 Running tests.py
-at most 11 entries 
-805400 entries in total
-(720, 1152)
-(720, 1152)
 cunc
 8.32446e+14, 4.18238e+15, 1.49096e+18
+(24502, 60)
 fcf
 4.00000e+01, 1.02045e+04, 1.03400e+04
+(24502, 60)
 frms
 3.53560e-04, 9.59528e-04, 4.71940e-02
+(24502, 60)
+(24502, 60)
+[[ nan  nan  nan ...,  nan  nan  nan]
+ [ nan  nan  nan ...,  nan  nan  nan]
+ [ nan  nan  nan ...,  nan  nan  nan]
+ ..., 
+ [ nan  nan  nan ...,  nan  nan  nan]
+ [ nan  nan  nan ...,  nan  nan  nan]
+ [ nan  nan  nan ...,  nan  nan  nan]]
+at most 11 entries 
+805400 entries in total
 pictures/one_day_corrected20050101.png Saved.

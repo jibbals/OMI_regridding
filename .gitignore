@@ -3,6 +3,9 @@
 **/*.h5
 **/*.he5
 
+# unignore some data files
+!omhchorp/*20050101.he5
+
 # ignore qsub output files
 *.o[0-9][0-9][0-9][0-9][0-9][0-9][0-9]
 

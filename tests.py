@@ -126,6 +126,40 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=
         elapsed = timeit.default_timer() - start_time
         print ("Took " + str(elapsed/60.0)+ " minutes to reprocess eight days")
     
+    # uncertainties - direct from swaths
+    omhchoswth=fio.read_omhcho_day(date)
+    lats=omhchoswth['lats']
+    lons=omhchoswth['lons']
+    
+    # remove filler for cunc
+    cunc=omhchoswth['coluncertainty'] # molecs/cm2
+    cunclats,cunclons=lats.copy(),lons.copy()
+    for darr in [cunclats,cunclons,cunc]:
+        darr[cunc<-1e25]=np.NaN
+    
+    # remove filler for conv
+    fcf=np.array(omhchoswth['convergenceflag'],dtype=float)
+    fcflats,fcflons=lats.copy(),lons.copy()
+    for darr in [fcflats,fcflons,fcf]:
+        darr[fcf < -10]=np.NaN
+    
+    # remove filler for frms
+    frms=omhchoswth['fittingRMS']
+    frmslats,frmslons=lats.copy(),lons.copy()
+    for darr in [frmslats,frmslons,frms]:
+        darr[frms<-1e25]=np.NaN
+    print('cunc')
+    mmm(cunc)
+    print(cunc.shape)
+    print('fcf')
+    mmm(fcf)
+    print(fcf.shape)
+    print('frms')
+    mmm(frms)
+    print(frms.shape)
+    print(frmslats.shape)
+    print(frms[0:50,0:50])
+    
     # Grab one day of reprocessed OMI data
     omhchorp=fio.read_omhchorp(date,oneday=oneday)
     
@@ -182,39 +216,6 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=
     m,cs,cb = createmap(fineHCHO, lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('GEOS-Chem $\Omega_{HCHO}$')
     
-    # plot uncertainties - direct from swaths
-    omhchoswth=fio.read_omhcho_day(date)
-    lats=omhchoswth['lats']
-    lons=omhchoswth['lons']
-    
-    # remove filler for cunc
-    cunc=omhchoswth['coluncertainty'] # molecs/cm2
-    cunclats,cunclons=lats.copy(),lons.copy()
-    for darr in [cunclats,cunclons,cunc]:
-        darr[cunc<-1e25]=np.NaN
-    
-    # remove filler for conv
-    fcf=np.array(omhchoswth['convergenceflag'],dtype=float)
-    fcflats,fcflons=lats.copy(),lons.copy()
-    for darr in [fcflats,fcflons,fcf]:
-        darr[fcf < -10]=np.NaN
-    
-    # remove filler for frms
-    frms=omhchoswth['fittingRMS']
-    frmslats,frmslons=lats.copy(),lons.copy()
-    for darr in [frmslats,frmslons,frms]:
-        darr[frms<-1e25]=np.NaN
-    print('cunc')
-    mmm(cunc)
-    print(cunc.shape)
-    print('fcf')
-    mmm(fcf)
-    print(fcf.shape)
-    print('frms')
-    mmm(frms)
-    print(frms.shape)
-    print(frmslats.shape)
-    print(frms[0:50,0:50])
     # plot uncertainties
     # 
     

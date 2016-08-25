@@ -61,11 +61,7 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=0.0, verbose=False):
                                   data=darr, compression_opts=9,
                                   chunks=True, compression="gzip")
             # for VC items and RSC, note the units in the file.
-            if 'VC' in name:
-                dset.attrs["Units"] = "Molecules/cm2"
-            if 'RSC' == name:
-                dset.attrs["Units"] = "Molecules/cm2"
-            if 'SC' == name:
+            if ('VC' in name) or ('RSC' == name) or ('SC' == name) or ('col_uncertainty' in name):
                 dset.attrs["Units"] = "Molecules/cm2"
         # force h5py to flush buffers to disk
         f.flush()
@@ -184,7 +180,7 @@ def read_omhcho(path):
     field_lon   = geofields +'Longitude'
     field_lat   = geofields +'Latitude'
     # uncertainty flags
-    field_colUnc    = datafields+'ColumnUncertainty'
+    field_colUnc    = datafields+'ColumnUncertainty' # also molecules/cm2
     field_fitflag   = datafields+'FitConvergenceFlag'
     field_fitRMS    = datafields+'FittingRMS'
     
@@ -346,7 +342,8 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     
     if keylist is None:
         keylist=['AMF_GC','AMF_OMI','SC','VC_GC','VC_OMI','VCC','gridentries',
-                 'latitude','longitude','RSC','RSC_latitude','RSC_GC','RSC_region']
+                 'latitude','longitude','RSC','RSC_latitude','RSC_GC','RSC_region',
+                 'col_uncertainty_OMI']
     retstruct=dict.fromkeys(keylist)
     if filename is None:
         fpath=determine_filepath(date,oneday=oneday,latres=latres,lonres=lonres,reprocessed=True)
@@ -357,12 +354,14 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
         #print('reading from file '+fpath)
         for key in keylist:
             # AMFs are not stored as they can be recreated using the VC and SC
-            if 'AMF_GC' == key:
-                retstruct[key]=in_f['SC'].value / in_f['VC_GC'].value
-            elif 'AMF_OMI' == key:
-                retstruct[key]=in_f['SC'].value / in_f['VC_OMI'].value
-            else:
-                retstruct[key]=in_f[key].value
+            # right now they are stored just in case
+            #if 'AMF_GC' == key:
+            #    retstruct[key]=in_f['SC'].value / in_f['VC_GC'].value
+            #elif 'AMF_OMI' == key:
+            #    retstruct[key]=in_f['SC'].value / in_f['VC_OMI'].value
+            #else:
+            #    retstruct[key]=in_f[key].value
+            retstruct[key]=in_f[key].value
     return (retstruct)
 
 def read_gchcho(date):

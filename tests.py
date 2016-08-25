@@ -41,7 +41,7 @@ def regularbounds(x,fix=False):
         if newx[0] <= -180: newx[0]=-179.99
     return newx
 
-def createmap(data,lats,lons, vmin=5e13, vmax=1e17, 
+def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True, 
               lllat=-80, urlat=80, lllon=-179, urlon=179):
     m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
           llcrnrlon=lllon, urcrnrlon=urlon,
@@ -51,7 +51,7 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17,
         lonsnew=regularbounds(lons)
     else:
         latsnew,lonsnew=(lats,lons)
-    cs=m.pcolormesh(lonsnew, latsnew, data, latlon=True, 
+    cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon, 
                 vmin=vmin,vmax=vmax,norm = LogNorm(), clim=(vmin,vmax))
     cs.cmap.set_under('white')
     cs.cmap.set_over('pink')
@@ -68,7 +68,7 @@ def globalmap(data,lats,lons):
     return createmap(data,lats,lons,-80,80,-179,179)
 def ausmap(data,lats,lons):
     return createmap(data,lats,lons,-52,-5,100,160)
-def linearmap(data,lats,lons,vmin=None,vmax=None,
+def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True, 
               lllat=-80, urlat=80, lllon=-179, urlon=179):
     
     m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
@@ -81,7 +81,7 @@ def linearmap(data,lats,lons,vmin=None,vmax=None,
         lonsnew,latsnew=np.meshgrid(lonsnew,latsnew)
     else:
         latsnew,lonsnew=(lats,lons)
-    cs=m.pcolormesh(lonsnew, latsnew, data, latlon=True, vmin=vmin, vmax=vmax)
+    cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon, vmin=vmin, vmax=vmax)
     if vmin is not None:
         cs.cmap.set_under('white')
         cs.cmap.set_over('pink')
@@ -111,7 +111,7 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
-def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179):
+def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179,pltname=None):
     '''
     Run and time reprocess method
     Plot some of the outputs
@@ -126,39 +126,6 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=
         elapsed = timeit.default_timer() - start_time
         print ("Took " + str(elapsed/60.0)+ " minutes to reprocess eight days")
     
-    # uncertainties - direct from swaths
-    omhchoswth=fio.read_omhcho_day(date)
-    lats=omhchoswth['lats']
-    lons=omhchoswth['lons']
-    
-    # remove filler for cunc
-    cunc=omhchoswth['coluncertainty'] # molecs/cm2
-    cunclats,cunclons=lats.copy(),lons.copy()
-    for darr in [cunclats,cunclons,cunc]:
-        darr[cunc<-1e25]=np.NaN
-    
-    # remove filler for conv
-    fcf=np.array(omhchoswth['convergenceflag'],dtype=float)
-    fcflats,fcflons=lats.copy(),lons.copy()
-    for darr in [fcflats,fcflons,fcf]:
-        darr[fcf < -10]=np.NaN
-    
-    # remove filler for frms
-    frms=omhchoswth['fittingRMS']
-    frmslats,frmslons=lats.copy(),lons.copy()
-    for darr in [frmslats,frmslons,frms]:
-        darr[frms<-1e25]=np.NaN
-    print('cunc')
-    mmm(cunc)
-    print(cunc.shape)
-    print('fcf')
-    mmm(fcf)
-    print(fcf.shape)
-    print('frms')
-    mmm(frms)
-    print(frms.shape)
-    print(frmslats.shape)
-    print(frms[0:50,0:50])
     
     # Grab one day of reprocessed OMI data
     omhchorp=fio.read_omhchorp(date,oneday=oneday)
@@ -186,7 +153,7 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=
     m,cs,cb = createmap(omhchorp['VC_OMI'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VC OMI ($\Omega_{OMI}$)')
     plt.sca(axes[0,2])
-    m,cs,cb = linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=1.0,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF OMI')
     plt.sca(axes[1,0])
     m,cs,cb = createmap(omhchorp['VCC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
@@ -195,7 +162,7 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=
     m,cs,cb = createmap(omhchorp['VC_GC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VC GC')
     plt.sca(axes[1,2])
-    m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=1.0,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF_GC')
     
     # Plot finally the GEOS-Chem map divergences
@@ -218,15 +185,48 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=
     
     # plot uncertainties
     # 
+    # uncertainties - direct from swaths
+    omhchoswth=fio.read_omhcho_day(date)
+    latswth=omhchoswth['lats']
+    lonswth=omhchoswth['lons']
+    
+    # remove filler for cunc
+    cunc=omhchoswth['coluncertainty'] # molecs/cm2
+    cunclats,cunclons=latswth.copy(),lonswth.copy()
+    for darr in [cunclats,cunclons,cunc]:
+        darr[cunc<-1e25]=np.NaN
+    
+    # remove filler for conv
+    fcf=np.array(omhchoswth['convergenceflag'],dtype=float)
+    fcflats,fcflons=latswth.copy(),lonswth.copy()
+    for darr in [fcflats,fcflons,fcf]:
+        darr[fcf < -10]=np.NaN
+    fcflons,fcflats = m(fcflons,fcflats)
+    
+    # remove filler for frms
+    frms=omhchoswth['fittingRMS']
+    frmslats,frmslons=latswth.copy(),lonswth.copy()
+    for darr in [frmslats,frmslons,frms]:
+        darr[frms<-1e25]=np.NaN
+    frmslons,frmslats=m(frmslons,frmslats)
+    
+    print('cunc')
+    mmm(cunc)
+    print('cunc.shape')
+    print(cunc.shape)
+    print('fcf')
+    mmm(fcf)
+    print('frms')
+    mmm(frms)
     
     plt.sca(axes[3,0])
-    m,cs,cb = createmap(cunc,cunclats,cunclons, vmin=1e14,vmax=1e17,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    plt.title('column uncertainty')
+    m,cs,cb = createmap(omhchorp['col_uncertainty_OMI'], lats, lons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('column uncertainty (regridded)')
     plt.sca(axes[3,1])
-    m,cs,cb = linearmap(fcf,fcflats,fcflons,vmin=-10,vmax=12344,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = linearmap(fcf,fcflats,fcflons,vmin=-10,vmax=12344,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon,latlon=False)
     plt.title('fit convergence flag')
     plt.sca(axes[3,2])
-    m,cs,cb = linearmap(frms,frmslats,frmslons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = linearmap(frms,frmslats,frmslons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon,latlon=False)
     plt.title('fitting RMS')
     
     # save plots
@@ -235,7 +235,9 @@ def test_reprocess_corrected(run_reprocess=False, oneday=True, lllat=-80, lllon=
     plt.tight_layout()
     plt.subplots_adjust(top=0.95)
     onedaystr= [ 'eight_day_','one_day_' ][oneday]
-    outfig="pictures/%scorrected%s.png"%(onedaystr, yyyymmdd)
+    if pltname is None:
+        pltname = ""
+    outfig="pictures/%scorrected%s%s.png"%(onedaystr, yyyymmdd,pltname)
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
@@ -1015,9 +1017,9 @@ if __name__ == '__main__':
     #test_fires_fio()
     #test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
-    test_reprocess_corrected(run_reprocess=False, oneday=True,lllat=-50,lllon=100,urlat=-10,urlon=170)
-    #for oneday in [True, False]:
-    #    test_reprocess_corrected(run_reprocess=False, oneday=oneday)
+    test_reprocess_corrected(run_reprocess=False, oneday=True,lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+    for oneday in [True, False]:
+        test_reprocess_corrected(run_reprocess=False, oneday=oneday)
     #check_high_amfs()
     
     #test_hchorp_apriori()

@@ -113,7 +113,7 @@ def get_good_pixel_list(date, getExtras=False):
     xflags=list()
     apris=None # aprioris (molecs/cm3?)
     ws=None # omegas
-    cunc=list()
+    cunc=list() # OMI Uncertainties (molecs/cm2)
     fcf=list()
     frms=list()
     
@@ -152,6 +152,7 @@ def get_good_pixel_list(date, getExtras=False):
         lons.extend(flons)
         AMFos.extend(list((omiswath['AMF'])[goods]))        
         cloudfracs.extend(list((omiswath['cloudfrac'])[goods]))
+        cunc.extend(list((omiswath['coluncertainty'])[goods]))
         
         # we still need to work out Geos Chem based AMFs for our pixels
         # for which we need pressures, sigmas, and omegas
@@ -170,7 +171,6 @@ def get_good_pixel_list(date, getExtras=False):
         if getExtras:
             flags.extend(list((omiswath['qualityflag'])[goods])) # should all be zeros
             xflags.extend(list((omiswath['xtrackflag'])[goods])) # also zeros
-            cunc.extend(list((omiswath['coluncertainty'])))     
             fcf.extend(list((omiswath['convergenceflag'])))
             frms.extend(list((omiswath['frms'])))
             # these are 47x1600x60
@@ -201,7 +201,7 @@ def get_good_pixel_list(date, getExtras=False):
             'cloudfrac':cloudfracs, 'track':track,
             'qualityflag':flags,'xtrackflag':xflags,
             'omega':ws,'apriori':apris,'sigma':sigmas,
-            'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms})
+            'columnuncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms})
 
 def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=None):
     '''
@@ -307,6 +307,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     omi_AMF_omi=np.array(goodpixels['AMF_OMI'])
     omi_tracks=np.array(goodpixels['track'])
     omi_clouds=np.array(goodpixels['cloudfrac'])
+    omi_cunc=np.array(goodpixels['columnuncertainty'])
     
     ## 2)
     # reference sector correction to slant column pixels
@@ -358,6 +359,9 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_omi  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VCC     = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    cunc_omi= np.zeros([ny,nx],dtype=np.double)+np.NaN
+    AMF_gc  = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    AMF_omi = np.zeros([ny,nx],dtype=np.double)+np.NaN
     counts  = np.zeros([ny,nx],dtype=np.int)
     for i in range(ny):
         for j in range(nx):
@@ -369,28 +373,32 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
             if counts[i,j] < 1:
                 continue
             # Save the means of each good grid pixel
-            SC[i,j]     =np.mean(omi_SC[matches])
-            VC_gc[i,j]  =np.mean(omi_VC_gc[matches])
-            VC_omi[i,j] =np.mean(omi_VC_omi[matches])
-            VCC[i,j]    =np.mean(omi_VCC[matches])
-            #AMF_gc[i,j] =np.mean(omi_AMF_gc[matches])
-            #AMF_omi[i,j]=np.mean(omi_AMF_omi[matches])
+            SC[i,j]         = np.mean(omi_SC[matches])
+            VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
+            VC_omi[i,j]     = np.mean(omi_VC_omi[matches])
+            VCC[i,j]        = np.mean(omi_VCC[matches])
             # TODO: store analysis data for saving, when we decide what we want analysed
+            cunc_omi[i,j]   = np.mean(omi_cunc[matches])
+            AMF_gc[i,j]     = np.mean(omi_AMF_gc[matches])
+            AMF_omi[i,j]    = np.mean(omi_AMF_omi[matches])
     
     ## 5) 
     # Save one day averages to file
     outd=dict()
-    outd['VC_OMI']      =VC_omi
-    outd['VC_GC']       =VC_gc
-    outd['SC']          =SC
-    outd['VCC']         =VCC
-    outd['gridentries'] =counts
-    outd['latitude']    =lats
-    outd['longitude']   =lons
-    outd['RSC']         =ref_sec_correction
-    outd['RSC_latitude']=ref_lat_bins
-    outd['RSC_GC']      =GC_ref_sec
-    outd['RSC_region']  =np.array([-90, -160, 90, -140])
+    outd['VC_OMI']              = VC_omi
+    outd['VC_GC']               = VC_gc
+    outd['SC']                  = SC
+    outd['VCC']                 = VCC
+    outd['gridentries']         = counts
+    outd['latitude']            = lats
+    outd['longitude']           = lons
+    outd['RSC']                 = ref_sec_correction
+    outd['RSC_latitude']        = ref_lat_bins
+    outd['RSC_GC']              = GC_ref_sec
+    outd['RSC_region']          = np.array([-90, -160, 90, -140])
+    outd['col_uncertainty_OMI'] = cunc_omi
+    outd['AMF_GC']              = AMF_gc
+    outd['AMF_OMI']             = AMF_omi
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True,oneday=True)
     
     if __VERBOSE__:
@@ -420,7 +428,7 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
     # normal stuff will be identical between days
     normallist=['latitude','longitude','RSC_latitude','RSC_region']
     # list of things we need to add together and average
-    sumlist=['AMF_GC','AMF_OMI','SC','VC_GC','VC_OMI','VCC']
+    sumlist=['AMF_GC','AMF_OMI','SC','VC_GC','VC_OMI','VCC','col_uncertainty_OMI']
     # other things need to be handled seperately
     otherlist=['gridentries','RSC', 'RSC_GC']
     
@@ -469,7 +477,6 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,oneday=False,reprocessed=True)
     fio.save_to_hdf5(outfilename, avgdict)
     print("File Saved: "+outfilename)
-
 
 def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True):
     '''

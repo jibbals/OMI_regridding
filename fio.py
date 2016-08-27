@@ -17,7 +17,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from glob import glob
 # my module with class definitions and that jazz
-from classes import gchcho
+from gchcho import gchcho
 
 # interpolation method for ND arrays
 # todo: remove once this is ported to reprocess.py

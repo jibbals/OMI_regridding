@@ -654,6 +654,7 @@ def test_amf_calculation():
     '''
     Grab 5 columns and the apriori and omega values and check the AMF calculation on them
     Plot old, new AMF and integrand at each column
+    Also check the AMF calculated using non sigma normalised shape factor
     '''
     day=datetime(2005,1,1)
     # Read OMHCHO data ( 1 day of swathes averaged )
@@ -678,6 +679,7 @@ def test_amf_calculation():
     lats = gchcho.lats
     lons = gchcho.lons
     S_gc = gchcho.Shape_s
+    S_gcz= gchcho.Shape_z
     Sigma_gc = gchcho.sigmas
     
     # Look at 5 random columns
@@ -691,12 +693,11 @@ def test_amf_calculation():
     AMF_G=[]
     AMF_old=[]
     AMF_new=[]
+    AMF_z, AMF_s=[],[]
+    Shapez=[]
+    zmids=[]
     goodcols=[]
     
-    f, axes = plt.subplots(1, scount, sharey=True, figsize=(17,10))
-    axes[0].set_ylim([1,0])
-    axes[0].set_ylabel('Sigma')
-    plt.setp(axes, xlim=[0,6], xticks=range(7))
     # find 5 GOOD columns(non nans)
     for j in range(50):
         latj=np.searchsorted(lats,ii[j])
@@ -715,9 +716,12 @@ def test_amf_calculation():
         AMF_G.append(amfg_omi[lati,loni])
         omegas.append(omega[lati,loni,:])
         Shapes.append(S_gc[:,lati,loni])
+        Shapez.append(S_gcz[:,lati,loni])
         wcoords=Sigma_omi[lati,loni,:]
+        w_pmids=plevs_omi[lati,loni,:]
         winterp=interp1d(omegas[i],wcoords,'linear',bounds_error=False)#, fill_value=0.0)
         scoords=Sigma_gc[:,lati,loni]
+        zmids.append(gchcho.zmids[:,lati,loni])
         sinterp=interp1d(Shapes[i],scoords,'linear',bounds_error=False)#, fill_value=0.0)
         
         
@@ -733,43 +737,51 @@ def test_amf_calculation():
         Product_new.append(winterp_new(scoords)*sinterp_new(scoords))
         # use all these to create new AMF
         innerplot='pictures/AMF_test_innerplot%d.png'%i
-        AMF_new.append(reprocess.calculate_amf_sigma(AMF_G[i], 
-            omegas[i], Shapes[i], wcoords, scoords,
-            plotname=innerplot, plt=plt))
         
-        # Plot the 5 random columns
-        ax=axes[i]
-        # title=[lat, lon]
-        ax.set_title("[%4d, %4d]"%(lats[lati],lons[loni]))
-        for k in range(3):
-            x=[ omegas[i], Shapes[i], Product_new[i] ][k]
-            y=[wcoords, scoords, scoords][k]
-            style =['--','-','.'][k]
-            leg = ['omega','apriori','product(new)'][k]
-            ax.plot(x,y, style,label=leg, linewidth=2)
+        AMFS,AMFZ = gchcho.calculate_AMF(omegas[i], w_pmids, AMF_G[i], lats[lati],lons[loni], plotname=innerplot)
+        AMF_s.append(AMFS)
+        AMF_z.append(AMFZ)
+        #AMF_new.append(reprocess.calculate_amf_sigma(AMF_G[i], 
+        #    omegas[i], Shapes[i], wcoords, scoords,
+        #    plotname=innerplot, plt=plt))
+    print( "AMF_s=", AMF_s[:] )
+    print( "AMF_z=", AMF_z[:] )
+    # Plot the 5 random columns
+    #f,axes=plt.subplots(1,scount,sharey=True,figsize=(14,8))
+    #axes[0].set_ylim([1.05,-0.05])
+    #axes[0].set_ylabel('$\sigma$')
+    #for (lati,loni),i in zip(goodcols,range(scount)):
+    #    ax=axes[i]
+    #    # title=[lat, lon]
+    #    ax.set_title("[%4d, %4d]"%(lats[lati],lons[loni]))
+        #for k in range(3):
+        #    x=[ omegas[i], Shapes[i], Product_new[i] ][k]
+        #    y=[wcoords, scoords, scoords][k]
+        #    style =['--','-','.'][k]
+        #    leg = ['omega','apriori','product(new)'][k]
+        #    ax.plot(x,y, style,label=leg, linewidth=2)
             
-        # Also plot the interpolated things
-        for k in np.arange(2,4):
-            x=[winterp(scoords), sinterp(scoords), winterp_new(scoords), sinterp_new(scoords)][k]
-            y=scoords
-            c=['maroon','darkgreen'][k%2]
-            d=['.','x'][int(k/2)]
-            leg=['w interp','S interp','w interp(new)','S interp(new)'][k]
-            ax.plot(x,y, d,color=c,linewidth=1,label=leg)
+        ## Also plot the interpolated things
+        #for k in np.arange(2,4):
+        #    x=[winterp(scoords), sinterp(scoords), winterp_new(scoords), sinterp_new(scoords)][k]
+        #    y=scoords
+        #    c=['maroon','darkgreen'][k%2]
+        #    d=['.','x'][int(k/2)]
+        #    leg=['w interp','S interp','w interp(new)','S interp(new)'][k]
+        #    ax.plot(x,y, d,color=c,linewidth=1,label=leg)
         
         # text of AMF amounts
-        y=0
-        for label in [ 'AMF_G=%1.2f'%AMF_G[i], 'AMF=%1.2f'%AMF_old[i],'AMF_new=%2.2f'%AMF_new[i]]:
-            ax.annotate(label, xy=(1, y), xycoords='axes fraction', fontsize=14,
-                horizontalalignment='right', verticalalignment='bottom')
-            y=y+0.05
-    axes[2].legend()
-    plt.tight_layout()
-    plt.savefig('pictures/AMF_test.png')
-    print('pictures/AMF_test.png Saved')
+        #y=0
+        #for label in [ 'AMF_G=%4.2f'%AMF_G[i],'AMF=%4.2f'%AMF_old[i],'AMF_z=%5.2f'%AMF_z[i],'AMF_s=%5.2f'%AMF_s[i] ]:
+        #    ax.annotate(label, xy=(1, y), xycoords='axes fraction', fontsize=14,
+        #        horizontalalignment='right', verticalalignment='bottom')
+        #    y=y+0.05
+    #axes[2].legend()
+    #plt.tight_layout()
+    #plt.savefig('pictures/AMF_test.png')
+    #print('pictures/AMF_test.png Saved')
     
-    plt.close()
-    plt.figure(3,(5,5))
+    #plt.close()
 
 def check_high_amfs(day=datetime(2005,1,1)):
     '''
@@ -1015,11 +1027,11 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     #test_fires_fio()
-    #test_amf_calculation() # Check the AMF stuff
+    test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
-    test_reprocess_corrected(run_reprocess=False, oneday=True,lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
-    for oneday in [True, False]:
-        test_reprocess_corrected(run_reprocess=False, oneday=oneday)
+    #test_reprocess_corrected(run_reprocess=False, oneday=True,lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+    #for oneday in [True, False]:
+    #    test_reprocess_corrected(run_reprocess=False, oneday=oneday)
     #check_high_amfs()
     
     #test_hchorp_apriori()

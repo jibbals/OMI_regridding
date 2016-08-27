@@ -34,64 +34,6 @@ def sum_dicts(d1,d2):
     for k in set(d1) & set(d2):
         d3[k]=d1[k]+d2[k]
     return d3
-    
-
-def calculate_amf_sigma(AMF_G, w, S, w_coords, S_coords, plotname=None, plt=None):
-    '''
-    Determine AMF using AMF_G * \int_0^1 { w(s) S(s) ds }
-    using sigma coordinate system
-    w and S datapoints should be at w_coords and S_coords respectively
-    This is for interpolation of w and S before integration
-    scipy.integrate.quad() uses QUADPACK from fortran77 integration library:
-        This uses adaptive quadrature and keeps error below (TODO: set a good tolerance)
-    Inputs:(AMF_G, w, S, w_coords, S_coords, plotname=None)
-        AMF_G   : geometric AMF from OMI data
-        w       : array of OMI scattering weights
-        S       : apriori ( sigma normalised )
-        w_coords: sigma coordinates of w data array
-        S_coords: sigma coordinates of S data array
-        plotname: Set to something if you want to save a plot output
-    Returns: AMF_new
-    '''
-    
-    # linear interpolation, these become functions of w and S
-    # w_ = interp1d(w_coords,w,'linear')
-    
-    # numpy linear interp, by default w_(>xmax) = w_(xmax), and same for negative side
-    # numpy interp requires ascending 'from' coordinates
-    def w_(x):
-        return(np.interp(x, w_coords[::-1], w[::-1]))
-    def S_(x):
-        return(np.interp(x, S_coords[::-1], S[::-1]))
-        
-    ## just use sum of w * S / delta s for a bunch of steps...
-    
-    # 101 equidistant steps:
-    #coord101 = np.linspace(1,0,101)
-    #int1= np.sum(w_(coord101)*S_(coord101)*(coord101[0]-coord101[1]))
-    
-    # using geos 72 sigma levels:
-    mids= (S_coords[0:-2] + S_coords[1:-1]) / 2.0
-    lens= (S_coords[0:-2] - S_coords[1:-1])    
-    int3 = np.sum(w_(mids)*S_(mids) * lens)
-    
-    AMF_new = AMF_G * int3
-    if plotname is not None:
-        assert plt is not None, 'need to pass plt'
-        f=plt.figure(figsize=(10,8))
-        plt.plot(w, w_coords, '.', label='orig $\omega$')
-        plt.plot(w_(mids),mids, label='interp $\omega$')
-        plt.plot(S, S_coords, '.', label='orig S')
-        plt.plot(S_(mids),mids,label='interp S')
-        plt.ylabel('$\sigma$'); plt.xlabel('unitless')
-        mval=max(max(w),max(S),2.0)
-        plt.ylim([1.05,-0.05]); plt.xlim([0.,mval])
-        plt.legend(); plt.title('amf calculation factors')
-        plt.text(.15,.7,'AMF=%5.2f'%AMF_new)
-        f.savefig(plotname)
-        print('saved '+plotname); plt.close()
-    
-    return(AMF_new)
 
 def get_good_pixel_list(date, getExtras=False):
     '''
@@ -102,22 +44,24 @@ def get_good_pixel_list(date, getExtras=False):
     '''
     ## 0) setup stuff:
     # list where we keep good ref sector pixels
+    # Stuff from OMI
     lats=list()
     lons=list()
-    slants=list()
-    AMFos=list()
-    AMFgcs=list()
-    cloudfracs=list()
-    track=list() # track index 0-59 (for reference sector correction)
-    flags=list()
-    xflags=list()
-    apris=None # aprioris (molecs/cm3?)
-    ws=None # omegas
-    cunc=list() # OMI Uncertainties (molecs/cm2)
+    slants=list()       # Slant columns from (molecs/cm2)
+    AMFos=list()        # AMFs from OMI
+    cloudfracs=list()   # cloud fraction
+    track=list()        # track index 0-59, used in refseccorrection
+    flags=list()        # main data quality flags
+    xflags=list()       # cross track flags from
+    apris=None          # aprioris (molecs/cm3)
+    ws=None             # omegas
+    cunc=list()         # Uncertainties (molecs/cm2)
     fcf=list()
     frms=list()
-    
+    # Stuff created using GEOS-Chem info
     sigmas=None
+    AMFgcs=list()       # AMFs using S_s
+    AMFgczs=list()      # AMFs using S_z
     
     ## grab our GEOS-Chem apriori info (dimension: [ levs, lats, lons ])
     gchcho = fio.read_gchcho(date)
@@ -135,6 +79,7 @@ def get_good_pixel_list(date, getExtras=False):
         
         # only looking at good pixels
         goods = np.logical_not(np.isnan(flat))
+        if __VERBOSE__: print("%d good pixels in %s"%(np.sum(goods),ff))
         
         # some things for later use:
         flats=list(flat[goods])
@@ -186,9 +131,13 @@ def get_good_pixel_list(date, getExtras=False):
         
         # Create new AMF for each good entry...
         for i in range(np.sum(goods)):
-            gc_shape_i, gc_sigma_i = gchcho.get_single_apriori(flats[i], flons[i])
-            NEWAMF = calculate_amf_sigma(omamfgs[i], omegas[:,i], gc_shape_i, om_sigma[:,i], gc_sigma_i)
-            AMFgcs.append(NEWAMF)
+            newAMF_s, newAMF_z = gchcho.calculate_AMF(omegas[:,i],plevs[:,i],omamfgs[i],flats[i],flons[i])
+            AMFgcs.append(newAMF_s)
+            AMFgczs.append(newAMF_z)
+            #TODO: just use one of these and assert they are the same.
+            #if np.abs(newAMF_s-newAMF_z) > .01:
+            #    print("Warning: AMF calculations are divergent (%6.3f difference)"%(newAMF_s-newAMF_z))
+            #assert np.abs(newAMF_s-newAMF_z) < .01, "AMFs are different for no reason"
         
         # We also store the track position for reference sector correction later
         swathtrack=np.where(goods==True)[1]
@@ -197,7 +146,7 @@ def get_good_pixel_list(date, getExtras=False):
     # after all the swaths are read in: send the lists back in a single 
     # dictionary structure
     return({'lat':lats,'lon':lons,'SC':slants,
-            'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 
+            'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 'AMF_GCz':AMFgczs, 
             'cloudfrac':cloudfracs, 'track':track,
             'qualityflag':flags,'xtrackflag':xflags,
             'omega':ws,'apriori':apris,'sigma':sigmas,
@@ -298,12 +247,15 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     '''
     ## 1) 
     # 
+    if __VERBOSE__: 
+        print("Getting good pixel list")
     goodpixels=get_good_pixel_list(date)
     omi_lons=np.array(goodpixels['lon'])
     omi_lats=np.array(goodpixels['lat'])
     # SC UNITS: Molecs/cm2
     omi_SC=np.array(goodpixels['SC'])
     omi_AMF_gc=np.array(goodpixels['AMF_GC'])
+    omi_AMF_gcz=np.array(goodpixels['AMF_GCz'])
     omi_AMF_omi=np.array(goodpixels['AMF_OMI'])
     omi_tracks=np.array(goodpixels['track'])
     omi_clouds=np.array(goodpixels['cloudfrac'])
@@ -361,6 +313,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     VCC     = np.zeros([ny,nx],dtype=np.double)+np.NaN
     cunc_omi= np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_gc  = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    AMF_gcz = np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_omi = np.zeros([ny,nx],dtype=np.double)+np.NaN
     counts  = np.zeros([ny,nx],dtype=np.int)
     for i in range(ny):
@@ -380,6 +333,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
             # TODO: store analysis data for saving, when we decide what we want analysed
             cunc_omi[i,j]   = np.mean(omi_cunc[matches])
             AMF_gc[i,j]     = np.mean(omi_AMF_gc[matches])
+            AMF_gcz[i,j]    = np.mean(omi_AMF_gcz[matches])
             AMF_omi[i,j]    = np.mean(omi_AMF_omi[matches])
     
     ## 5) 
@@ -398,6 +352,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     outd['RSC_region']          = np.array([-90, -160, 90, -140])
     outd['col_uncertainty_OMI'] = cunc_omi
     outd['AMF_GC']              = AMF_gc
+    outd['AMF_GCz']             = AMF_gcz
     outd['AMF_OMI']             = AMF_omi
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True,oneday=True)
     
@@ -428,7 +383,7 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
     # normal stuff will be identical between days
     normallist=['latitude','longitude','RSC_latitude','RSC_region']
     # list of things we need to add together and average
-    sumlist=['AMF_GC','AMF_OMI','SC','VC_GC','VC_OMI','VCC','col_uncertainty_OMI']
+    sumlist=['AMF_GC','AMF_GCz','AMF_OMI','SC','VC_GC','VC_OMI','VCC','col_uncertainty_OMI']
     # other things need to be handled seperately
     otherlist=['gridentries','RSC', 'RSC_GC']
     

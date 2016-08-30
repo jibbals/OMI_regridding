@@ -1,0 +1,148 @@
+reprocessing from 20050101
+processing   8 days using  8 processes
+Getting good pixel list
+83014 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t2229-o02500_v003-2014m0618t144105.he5
+82921 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t0739-o02491_v003-2014m0618t152640.he5
+82731 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t0103-o02487_v003-2014m0618t142908.he5
+82649 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t0600-o02490_v003-2014m0618t145633.he5
+83049 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t1553-o02496_v003-2014m0618t152252.he5
+83044 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t2050-o02499_v003-2014m0618t144425.he5
+82727 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t1732-o02497_v003-2014m0618t145501.he5
+82901 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t1057-o02493_v003-2014m0618t144137.he5
+83242 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t1236-o02494_v003-2014m0618t141436.he5
+82929 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t1911-o02498_v003-2014m0618t152537.he5
+81809 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t1415-o02495_v003-2014m0618t154009.he5
+83006 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t0918-o02492_v003-2014m0618t142737.he5
+82731 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t0421-o02489_v003-2014m0618t153459.he5
+82663 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0102t0242-o02488_v003-2014m0618t143600.he5
+sending day average to be saved: omhchorp/omhcho_1p0.25x0.31_20050102.he5
+('keys: ', dict_keys(['AMF_GCz', 'VCC', 'RSC_GC', 'RSC', 'gridentries', 'col_uncertainty_OMI', 'longitude', 'RSC_region', 'latitude', 'SC', 'AMF_GC', 'RSC_latitude', 'AMF_OMI', 'VC_GC', 'VC_OMI']))
+Getting good pixel list
+83067 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t1115-o02566_v003-2014m0618t155049.he5
+81901 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t2248-o02573_v003-2014m0618t160340.he5
+83009 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t0758-o02564_v003-2014m0618t160648.he5
+83109 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t1930-o02571_v003-2014m0618t155628.he5
+82990 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t0440-o02562_v003-2014m0618t155032.he5
+83155 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t2109-o02572_v003-2014m0618t155541.he5
+82884 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t0619-o02563_v003-2014m0618t155113.he5
+83075 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t1254-o02567_v003-2014m0618t155405.he5
+83128 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t0937-o02565_v003-2014m0618t162727.he5
+82867 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t0122-o02560_v003-2014m0618t154957.he5
+82876 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t0301-o02561_v003-2014m0618t155122.he5
+83113 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t1433-o02568_v003-2014m0618t155935.he5
+83097 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t1612-o02569_v003-2014m0618t160153.he5
+82977 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0107t1751-o02570_v003-2014m0618t160551.he5
+sending day average to be saved: omhchorp/omhcho_1p0.25x0.31_20050107.he5
+('keys: ', dict_keys(['AMF_GCz', 'VCC', 'RSC_GC', 'RSC', 'gridentries', 'col_uncertainty_OMI', 'longitude', 'RSC_region', 'latitude', 'SC', 'AMF_GC', 'RSC_latitude', 'AMF_OMI', 'VC_GC', 'VC_OMI']))
+Getting good pixel list
+81620 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t1541-o02525_v003-2014m0618t151248.he5
+82725 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t1720-o02526_v003-2014m0618t151710.he5
+82720 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t1859-o02527_v003-2014m0618t151827.he5
+82927 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t1402-o02524_v003-2014m0618t151006.he5
+82987 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t1223-o02523_v003-2014m0618t150945.he5
+82970 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t1044-o02522_v003-2014m0618t150313.he5
+82938 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t2038-o02528_v003-2014m0618t151800.he5
+82959 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t0906-o02521_v003-2014m0618t150755.he5
+82695 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t0409-o02518_v003-2014m0618t150408.he5
+82853 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t2217-o02529_v003-2014m0618t160411.he5
+82739 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t0548-o02519_v003-2014m0618t151554.he5
+82636 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t0051-o02516_v003-2014m0618t150558.he5
+82796 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t0230-o02517_v003-2014m0618t150144.he5
+82860 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t2356-o02530_v003-2014m0618t151552.he5
+82947 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0104t0727-o02520_v003-2014m0618t151149.he5
+sending day average to be saved: omhchorp/omhcho_1p0.25x0.31_20050104.he5
+('keys: ', dict_keys(['AMF_GCz', 'VCC', 'RSC_GC', 'RSC', 'gridentries', 'col_uncertainty_OMI', 'longitude', 'RSC_region', 'latitude', 'SC', 'AMF_GC', 'RSC_latitude', 'AMF_OMI', 'VC_GC', 'VC_OMI']))
+Getting good pixel list
+82867 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t0452-o02533_v003-2014m0618t152150.he5
+82973 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t2300-o02544_v003-2014m0618t153414.he5
+83059 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t1128-o02537_v003-2014m0618t154754.he5
+83154 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t0949-o02536_v003-2014m0618t152712.he5
+83043 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t2121-o02543_v003-2014m0618t153120.he5
+82888 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t0810-o02535_v003-2014m0618t152302.he5
+82894 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t1942-o02542_v003-2014m0618t162452.he5
+82707 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t1803-o02541_v003-2014m0618t153710.he5
+82995 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t1307-o02538_v003-2014m0618t152829.he5
+82960 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t1445-o02539_v003-2014m0618t153156.he5
+82788 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t0134-o02531_v003-2014m0618t152006.he5
+82666 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t0631-o02534_v003-2014m0618t152125.he5
+82737 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t0313-o02532_v003-2014m0618t151900.he5
+81622 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0105t1624-o02540_v003-2014m0618t153031.he5
+sending day average to be saved: omhchorp/omhcho_1p0.25x0.31_20050105.he5
+('keys: ', dict_keys(['AMF_GCz', 'VCC', 'RSC_GC', 'RSC', 'gridentries', 'col_uncertainty_OMI', 'longitude', 'RSC_region', 'latitude', 'SC', 'AMF_GC', 'RSC_latitude', 'AMF_OMI', 'VC_GC', 'VC_OMI']))
+Getting good pixel list
+81565 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t1847-o02556_v003-2014m0618t154746.he5
+83248 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t1032-o02551_v003-2014m0618t153553.he5
+83145 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t2204-o02558_v003-2014m0618t160334.he5
+83042 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t1529-o02554_v003-2014m0618t154813.he5
+82940 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t0535-o02548_v003-2014m0618t153611.he5
+82964 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t0714-o02549_v003-2014m0618t160347.he5
+82926 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t0039-o02545_v003-2014m0618t153429.he5
+83073 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t1211-o02552_v003-2014m0618t154136.he5
+81763 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t2025-o02557_v003-2014m0618t154336.he5
+82981 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t0218-o02546_v003-2014m0618t154518.he5
+81887 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t1708-o02555_v003-2014m0618t164238.he5
+83000 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t1350-o02553_v003-2014m0618t154637.he5
+83055 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t0357-o02547_v003-2014m0618t160040.he5
+83203 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t0853-o02550_v003-2014m0618t161437.he5
+82922 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0106t2343-o02559_v003-2014m0618t161220.he5
+sending day average to be saved: omhchorp/omhcho_1p0.25x0.31_20050106.he5
+('keys: ', dict_keys(['AMF_GCz', 'VCC', 'RSC_GC', 'RSC', 'gridentries', 'col_uncertainty_OMI', 'longitude', 'RSC_region', 'latitude', 'SC', 'AMF_GC', 'RSC_latitude', 'AMF_OMI', 'VC_GC', 'VC_OMI']))
+Getting good pixel list
+81724 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1331-o02480_v003-2014m0618t142145.he5
+82851 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0517-o02475_v003-2014m0618t144149.he5
+82989 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0835-o02477_v003-2014m0618t145223.he5
+82982 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1152-o02479_v003-2014m0618t143228.he5
+82745 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0338-o02474_v003-2014m0618t142021.he5
+82823 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2146-o02485_v003-2014m0618t143440.he5
+82926 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0159-o02473_v003-2014m0618t141848.he5
+83006 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1013-o02478_v003-2014m0618t142337.he5
+82737 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1828-o02483_v003-2014m0618t142823.he5
+82684 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1649-o02482_v003-2014m0618t142709.he5
+82769 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2007-o02484_v003-2014m0618t142950.he5
+82920 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0656-o02476_v003-2014m0618t144307.he5
+82855 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0020-o02472_v003-2014m0618t141821.he5
+82884 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2325-o02486_v003-2014m0618t142342.he5
+82889 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1510-o02481_v003-2014m0618t141800.he5
+sending day average to be saved: omhchorp/omhcho_1p0.25x0.31_20050101.he5
+('keys: ', dict_keys(['AMF_GCz', 'VCC', 'RSC_GC', 'RSC', 'gridentries', 'col_uncertainty_OMI', 'longitude', 'RSC_region', 'latitude', 'SC', 'AMF_GC', 'RSC_latitude', 'AMF_OMI', 'VC_GC', 'VC_OMI']))
+Getting good pixel list
+82741 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t0702-o02578_v003-2014m0618t160822.he5
+83060 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t0841-o02579_v003-2014m0618t161044.he5
+81713 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t2331-o02588_v003-2014m0618t161330.he5
+83078 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t2152-o02587_v003-2014m0618t161528.he5
+82907 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t1020-o02580_v003-2014m0618t160849.he5
+82882 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t0027-o02574_v003-2014m0618t160541.he5
+82793 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t0344-o02576_v003-2014m0618t160154.he5
+82749 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t0205-o02575_v003-2014m0618t160249.he5
+82719 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t0523-o02577_v003-2014m0618t160426.he5
+82930 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t1655-o02584_v003-2014m0618t161601.he5
+82978 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t1338-o02582_v003-2014m0618t161349.he5
+82663 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t1159-o02581_v003-2014m0618t161128.he5
+82995 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t1834-o02585_v003-2014m0618t160957.he5
+82995 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t1516-o02583_v003-2014m0618t161412.he5
+83099 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0108t2013-o02586_v003-2014m0618t162055.he5
+sending day average to be saved: omhchorp/omhcho_1p0.25x0.31_20050108.he5
+('keys: ', dict_keys(['AMF_GCz', 'VCC', 'RSC_GC', 'RSC', 'gridentries', 'col_uncertainty_OMI', 'longitude', 'RSC_region', 'latitude', 'SC', 'AMF_GC', 'RSC_latitude', 'AMF_OMI', 'VC_GC', 'VC_OMI']))
+Getting good pixel list
+83001 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t1140-o02508_v003-2014m0618t144946.he5
+82782 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t1816-o02512_v003-2014m0618t145327.he5
+82732 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t1637-o02511_v003-2014m0618t145412.he5
+82929 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t2133-o02514_v003-2014m0618t145548.he5
+82767 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t2312-o02515_v003-2014m0618t154732.he5
+82977 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t0008-o02501_v003-2014m0618t152708.he5
+82845 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t1954-o02513_v003-2014m0618t145736.he5
+81649 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t1458-o02510_v003-2014m0618t150543.he5
+83127 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t0504-o02504_v003-2014m0618t145624.he5
+82871 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t0147-o02502_v003-2014m0618t144959.he5
+83086 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t0822-o02506_v003-2014m0618t145039.he5
+82958 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t1319-o02509_v003-2014m0618t144841.he5
+83041 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t1001-o02507_v003-2014m0618t150305.he5
+82940 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t0643-o02505_v003-2014m0618t145830.he5
+83002 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0103t0326-o02503_v003-2014m0618t144301.he5
+sending day average to be saved: omhchorp/omhcho_1p0.25x0.31_20050103.he5
+('keys: ', dict_keys(['AMF_GCz', 'VCC', 'RSC_GC', 'RSC', 'gridentries', 'col_uncertainty_OMI', 'longitude', 'RSC_region', 'latitude', 'SC', 'AMF_GC', 'RSC_latitude', 'AMF_OMI', 'VC_GC', 'VC_OMI']))
+Pool Created 
+apply_async called for each day
+Close and Join called for Pool
+Took  89.53 minutes to reprocess   8 days using  8 processes
+File Saved: omhchorp/omhcho_8p0.25x0.31_20050101.he5

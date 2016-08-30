@@ -49,12 +49,14 @@ def get_good_pixel_list(date, getExtras=False):
     lons=list()
     slants=list()       # Slant columns from (molecs/cm2)
     AMFos=list()        # AMFs from OMI
+    AMFGs=list()        # Geometric AMFs from OMI
     cloudfracs=list()   # cloud fraction
     track=list()        # track index 0-59, used in refseccorrection
     flags=list()        # main data quality flags
     xflags=list()       # cross track flags from
     apris=None          # aprioris (molecs/cm3)
     ws=None             # omegas
+    w_pmids=None        # omega pressure mids (hPa)
     cunc=list()         # Uncertainties (molecs/cm2)
     fcf=list()
     frms=list()
@@ -95,7 +97,8 @@ def get_good_pixel_list(date, getExtras=False):
         slants.extend(list(fslants[goods]))
         lats.extend(flats)
         lons.extend(flons)
-        AMFos.extend(list((omiswath['AMF'])[goods]))        
+        AMFos.extend(list((omiswath['AMF'])[goods]))
+        AMFGs.extend(omamfgs)     
         cloudfracs.extend(list((omiswath['cloudfrac'])[goods]))
         cunc.extend(list((omiswath['coluncertainty'])[goods]))
         
@@ -117,17 +120,19 @@ def get_good_pixel_list(date, getExtras=False):
             flags.extend(list((omiswath['qualityflag'])[goods])) # should all be zeros
             xflags.extend(list((omiswath['xtrackflag'])[goods])) # also zeros
             fcf.extend(list((omiswath['convergenceflag'])))
-            frms.extend(list((omiswath['frms'])))
+            frms.extend(list((omiswath['fittingRMS'])))
             # these are 47x1600x60
             aprioris=(omiswath['apriori'])[:,goods]
             if apris is None:
                 apris=aprioris
                 ws=omegas
                 sigmas=om_sigma
+                w_pmids=plevs
             else: # turn these into arrays of 47xentries
                 apris=np.append(apris, aprioris,axis=1)
                 ws=np.append(ws, omegas,axis=1)
                 sigmas=np.append(sigmas, om_sigma,axis=1)
+                w_pmids=np.append(w_pmids, plevs, axis=1)
         
         # Create new AMF for each good entry...
         for i in range(np.sum(goods)):
@@ -145,11 +150,11 @@ def get_good_pixel_list(date, getExtras=False):
     
     # after all the swaths are read in: send the lists back in a single 
     # dictionary structure
-    return({'lat':lats,'lon':lons,'SC':slants,
-            'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 'AMF_GCz':AMFgczs, 
+    return({'lat':lats, 'lon':lons, 'SC':slants,
+            'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 'AMF_GCz':AMFgczs, 'AMF_G':AMFGs,
             'cloudfrac':cloudfracs, 'track':track,
-            'qualityflag':flags,'xtrackflag':xflags,
-            'omega':ws,'apriori':apris,'sigma':sigmas,
+            'qualityflag':flags, 'xtrackflag':xflags,
+            'omega':ws, 'omega_pmids':w_pmids, 'apriori':apris, 'sigma':sigmas,
             'columnuncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms})
 
 def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=None):
@@ -357,8 +362,8 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True,oneday=True)
     
     if __VERBOSE__:
-        print("sending day average to be saved:")
-        print(outd.keys())
+        print("sending day average to be saved: "+outfilename)
+        print(("keys: ",outd.keys()))
     fio.save_to_hdf5(outfilename, outd)
     
     ## 5.1)

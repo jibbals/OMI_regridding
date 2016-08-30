@@ -1,0 +1,71 @@
+/apps/python3/3.5.2/lib/python3.5/site-packages/matplotlib-1.5.1-py3.5-linux-x86_64.egg/matplotlib/pyplot.py:516: RuntimeWarning: More than 20 figures have been opened. Figures created through the pyplot interface (`matplotlib.pyplot.figure`) are retained until explicitly closed and may consume too much memory. (To control this warning, see the rcParam `figure.max_open_warning`).
+  max_open_warning, RuntimeWarning)
+Running tests.py
+81724 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1331-o02480_v003-2014m0618t142145.he5
+82851 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0517-o02475_v003-2014m0618t144149.he5
+82989 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0835-o02477_v003-2014m0618t145223.he5
+82982 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1152-o02479_v003-2014m0618t143228.he5
+82745 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0338-o02474_v003-2014m0618t142021.he5
+82823 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2146-o02485_v003-2014m0618t143440.he5
+82926 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0159-o02473_v003-2014m0618t141848.he5
+83006 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1013-o02478_v003-2014m0618t142337.he5
+82737 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1828-o02483_v003-2014m0618t142823.he5
+82684 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1649-o02482_v003-2014m0618t142709.he5
+82769 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2007-o02484_v003-2014m0618t142950.he5
+82920 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0656-o02476_v003-2014m0618t144307.he5
+82855 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0020-o02472_v003-2014m0618t141821.he5
+82884 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2325-o02486_v003-2014m0618t142342.he5
+82889 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1510-o02481_v003-2014m0618t141800.he5
+pictures/AMF_test_innerplot0.png saved
+pictures/AMF_test_innerplot1.png saved
+pictures/AMF_test_innerplot2.png saved
+pictures/AMF_test_innerplot3.png saved
+pictures/AMF_test_innerplot4.png saved
+pictures/AMF_test_innerplot5.png saved
+pictures/AMF_test_innerplot6.png saved
+pictures/AMF_test_innerplot7.png saved
+pictures/AMF_test_innerplot8.png saved
+pictures/AMF_test_innerplot9.png saved
+pictures/AMF_test_innerplot10.png saved
+pictures/AMF_test_innerplot11.png saved
+pictures/AMF_test_innerplot12.png saved
+pictures/AMF_test_innerplot13.png saved
+pictures/AMF_test_innerplot14.png saved
+pictures/AMF_test_innerplot15.png saved
+pictures/AMF_test_innerplot16.png saved
+pictures/AMF_test_innerplot17.png saved
+pictures/AMF_test_innerplot18.png saved
+pictures/AMF_test_innerplot19.png saved
+pictures/AMF_test_innerplot20.png saved
+pictures/AMF_test_innerplot21.png saved
+pictures/AMF_test_innerplot22.png saved
+pictures/AMF_test_innerplot23.png saved
+pictures/AMF_test_innerplot24.png saved
+pictures/AMF_test_innerplot25.png saved
+pictures/AMF_test_innerplot26.png saved
+pictures/AMF_test_innerplot27.png saved
+pictures/AMF_test_innerplot28.png saved
+pictures/AMF_test_innerplot29.png saved
+pictures/AMF_test_innerplot30.png saved
+pictures/AMF_test_innerplot31.png saved
+pictures/AMF_test_innerplot32.png saved
+pictures/AMF_test_innerplot33.png saved
+pictures/AMF_test_innerplot34.png saved
+pictures/AMF_test_innerplot35.png saved
+pictures/AMF_test_innerplot36.png saved
+pictures/AMF_test_innerplot37.png saved
+pictures/AMF_test_innerplot38.png saved
+pictures/AMF_test_innerplot39.png saved
+pictures/AMF_test_innerplot40.png saved
+pictures/AMF_test_innerplot41.png saved
+pictures/AMF_test_innerplot42.png saved
+pictures/AMF_test_innerplot43.png saved
+pictures/AMF_test_innerplot44.png saved
+pictures/AMF_test_innerplot45.png saved
+pictures/AMF_test_innerplot46.png saved
+pictures/AMF_test_innerplot47.png saved
+pictures/AMF_test_innerplot48.png saved
+pictures/AMF_test_innerplot49.png saved
+AMF_s= [3.0935801227516984, 6.1721785666425317, 5.8189030680914104, 2.8930634104149457, 14.216453199040092, 11.890382822491201, 5.3507520536949098, 5.2782343785535959, 4.5092829263318519, 4.6358159849005451, 6.2275412502476826, 4.8524315024708633, 3.4836711086434429, 22.838204040487597, 5.2355813756206988, 24.791934752458346, 13.111813004915421, 2.6631719401800735, 2.6784791234011247, 22.242873341171475, 6.6475442379366037, 8.4386437115143291, 13.507980481817626, 6.4953588770258515, 3.1667476692136725, 17.196506253473377, 4.6559607177396938, 3.5387279041435495, 12.364581828651945, 5.0432271767078785, 18.567785843168682, 6.9641414015229692, 6.0565703067822021, 6.7069488147784151, 3.8449866135943296, 1.7544844268555286, 10.810262284955236, 4.3183997806807142, 14.177558191840621, 5.5939677936820456, 8.0568639581359385, 6.2251949418019619, 1.9892742046586542, 22.002123656330404, 3.4443600134572891, 9.7604589430880146, 2.8629881537200212, 3.1754662124046193, 2.528722649095978, 13.051716018119528]
+AMF_z= [3.093160478278548, 6.1713170189106092, 5.8188192828563761, 2.8928573111861327, 14.216951162329142, 11.890844284889292, 5.3510939614990169, 5.2778251156598968, 4.5093007958816562, 4.6357984728183323, 6.2275360519417093, 4.8522922260447094, 3.4836729539373961, 22.840180965244752, 5.2134018954516623, 24.790804962560433, 13.110778012160218, 2.6629847440334631, 2.6785061883705148, 22.242696482258232, 6.6442465756490741, 8.4378102709975256, 13.450114743308545, 6.4922290199845145, 3.1664729256451114, 17.197725331577978, 4.6558785006485728, 3.5383576332271809, 12.366356339691112, 5.0424998278052726, 18.568358203255578, 6.9646489722345164, 6.0564973931388808, 6.7076116608854299, 3.8448452016539036, 1.754373507022124, 10.810862875515797, 4.318164074096992, 14.174866487650061, 5.5943099064989861, 8.0572942112200767, 6.1371847314076042, 1.989132891187684, 22.001737195927888, 3.4440207042113631, 9.7609607129986635, 2.8627311066331926, 3.1753680547096277, 2.5286052734768418, 13.053103665945388]
+AMF_o= [0.87478, 2.08465, 2.12991, 1.3703099, 3.98909, 2.7427599, 2.1366501, 1.62843, 1.40189, 1.9879301, 2.59462, 1.98701, 1.52096, 4.5295801, 1.66097, 3.9884801, 2.09115, 1.0624599, 1.25859, 4.0834999, 2.1399601, 1.58285, 2.4787199, 2.0241899, 1.40539, 4.16998, 1.56669, 1.1161, 3.81638, 1.37344, 3.92536, 2.4877801, 2.1252501, 2.0430901, 1.67687, 0.79069, 3.61181, 1.78859, 2.0037999, 2.1243, 2.93244, 1.45882, 0.51533002, 3.7497799, 1.36445, 3.4947901, 1.42958, 1.3903, 0.99535, 4.0188098]

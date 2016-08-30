@@ -130,6 +130,8 @@ class gchcho:
         Determine AMF_z using AMF_G * \int_0^{\infty} { w(z) S_z(z) dz }
         
         Determine AMF_sigma using AMF_G * \int_0^1 { w(s) S_s(s) ds }
+        
+        LEFT AND RIGHT NOW SET TO 0 (updated: 20160829)
         '''
         # column index, pressures, altitudes, sigmas
         #
@@ -147,12 +149,16 @@ class gchcho:
         S_z=self.Shape_z[:,lati,loni]
         S_s=self.Shape_s[:,lati,loni]
         
+        # Default left,right values (now zero)
+        lv,rv=0.,0.
+        
         # convert w(press) to w(z) and w(s), on GEOS-Chem's grid
         # 
         w_zmids = np.interp(w_pmids, S_pmids[::-1], S_zmids[::-1])
-        w_z     = np.interp(S_zmids, w_zmids, w)
+        w_z     = np.interp(S_zmids, w_zmids, w,left=lv,right=rv)
         w_smids = (w_pmids - S_pedges[-1])/ (S_pedges[0]-S_pedges[-1])
-        w_s     = np.interp(S_smids, w_smids[::-1], w[::-1])
+        w_s     = np.interp(S_smids, w_smids[::-1], w[::-1],left=lv,right=rv)
+        w_s_2   = np.interp(S_smids, w_smids[::-1], w[::-1]) # compare without fixed edges!
         # TODO: Maybe interpolate using logarithms?
         
         # Integrate w(z) * S_z(z) dz using summation
@@ -163,6 +169,9 @@ class gchcho:
         AMF_s = AMF_G * integral_s
         
         if plotname is not None:
+            integral_s_old=np.sum(w_s_2 * S_s * dsigma)
+            AMF_s_old= AMF_G * integral_s_old
+            
             f,axes=plt.subplots(2,2,figsize=(14,12))
             # omega vs pressure, interpolated and not interpolated
             plt.sca(axes[0,0])
@@ -186,23 +195,35 @@ class gchcho:
             axes[0,1].yaxis.tick_right()
             axes[0,1].yaxis.set_label_position("right")
             # add AMF value to plot
-            for yy,lbl in zip([0.8,0.9],['AMF$_z$=%5.2f'%AMF_z,'AMF$_{\sigma}$=%5.2f'%AMF_s]):
+            for yy,lbl in zip([0.7, 0.8, 0.9],['AMF$_z$=%5.2f'%AMF_z,'AMF$_{\sigma}$=%5.2f'%AMF_s,'AMF$_{\sigma}$(pre-fix)=%5.2f'%AMF_s_old]):
                 plt.text(.1,yy,lbl,transform=axes[0,1].transAxes,fontsize=16)
             
-            # shape factor plots
-            plt.sca(axes[1,0]); plt.plot(S_z, S_pmids, '.')
+            # shape factor z plots
+            plt.sca(axes[1,0])
+            plt.plot(S_z, S_pmids, '.',label='S$_z$(p)', color='k')
             plt.ylim([1015,0.01])
-            plt.title('S$_z$(p)')
+            plt.title('Shape')
             plt.ylabel('p(hPa)')
             plt.yscale('log')
             plt.xlabel('m$^{-1}$')
+            # overplot omega*shape factor on second y axis
+            ax=plt.twinx(); ax.set_ylabel('z(m)'); plt.sca(ax)
+            plt.plot(S_z*w_z, S_zmids,label='$S_z(z) * \omega(z)$',color='fuchsia')
+            # legend
+            h1,l1 = axes[1,0].get_legend_handles_labels()
+            h2,l2 = ax.get_legend_handles_labels()
+            ax.legend(h1+h2,l1+l2,loc=0)
+            axes[1,0].xaxis.set_major_formatter(fsf('%2.1e'))
             
+            # sigma shape factor plots
             plt.sca(axes[1,1]);
-            plt.plot(S_z*w_z, S_zmids)
-            plt.title('$S_z(z) * \omega(z)$')
-            plt.ylabel('z(m)')
-            plt.xlabel('m$^{-1}$')
-            for ax in axes[1,:]: ax.xaxis.set_major_formatter(fsf('%2.1e'))
+            plt.title('Shape$_\sigma$')
+            plt.plot(S_s, S_smids, label='S$_\sigma$', color='k')
+            plt.plot(S_s*w_s, S_smids, label='S$_\sigma * \omega_\sigma$', color='fuchsia')
+            plt.plot(S_s*w_s_2, S_smids, '--', label='product pre-fix', color='cyan')
+            plt.ylim([1.05,-0.05])
+            plt.ylabel('$\sigma$')
+            plt.xlabel('unitless')
             
             plt.suptitle('amf calculation factors')
             f.savefig(plotname)

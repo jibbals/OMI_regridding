@@ -341,7 +341,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     '''
     
     if keylist is None:
-        keylist=['AMF_GC','AMF_OMI','SC','VC_GC','VC_OMI','VCC','gridentries',
+        keylist=['AMF_GC','AMF_GCz','AMF_OMI','SC','VC_GC','VC_OMI','VCC','gridentries',
                  'latitude','longitude','RSC','RSC_latitude','RSC_GC','RSC_region',
                  'col_uncertainty_OMI']
     retstruct=dict.fromkeys(keylist)

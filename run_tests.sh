@@ -19,8 +19,8 @@ if [ -z ${PBS_O_LOGNAME} ]; then
 fi
 
 # run the tests script, send stdout and stderr to log.tests
-echo "Running tests.py &> log.tests"
-python3 tests.py &> log.tests
+echo "Running tests.py &> logs/log.tests"
+python3 tests.py &> logs/log.tests
 
 echo "Finished job ${PBS_JOBID}"
 

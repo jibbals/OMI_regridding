@@ -221,6 +221,7 @@ class gchcho:
             plt.plot(S_s, S_smids, label='S$_\sigma$', color='k')
             plt.plot(S_s*w_s, S_smids, label='S$_\sigma * \omega_\sigma$', color='fuchsia')
             plt.plot(S_s*w_s_2, S_smids, '--', label='product pre-fix', color='cyan')
+            plt.legend(loc=0)
             plt.ylim([1.05,-0.05])
             plt.ylabel('$\sigma$')
             plt.xlabel('unitless')

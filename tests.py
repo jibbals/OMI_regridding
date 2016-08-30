@@ -649,12 +649,19 @@ def test_amf_calculation(scount=50):
     print( "AMF_s=", AMF_s[:] )
     print( "AMF_z=", AMF_z[:] )
     print( "AMF_o=", AMF_old[:] )
-    f=plt.figure(figsize=(7,7))
+    
+    # Also make a plot of the regression new vs old AMFs
+    f=plt.figure(figsize=(12,12))
     amfs=pixels['AMF_GC']
-    amfz=pixels['AMF_GCz']
     amfo=pixels['AMF_OMI']
-    plt.scatter(amfs, amfo, color='k', label='OMI')
-    plt.scatter(amfs, amfz, color='red', label='shape factor comparison')
+    plt.scatter(amfs, amfo, color='k', label='pixel AMFs')
+    # line of best fit
+    from scipy import stats
+    slope,intercept,r,p,sterr=stats.linregress(amfs,amfo)
+    plt.plot([1,75], slope*np.array([1,75])+intercept,color='red',
+            label='slope=%.5f, r=%.5f'%(slope,r))
+    plt.xlabel('AMF_GC')
+    plt.ylabel('AMF_OMI')
     plt.legend(loc=0)
     plt.title('AMF correlation')
     f.savefig('pictures/AMF_test_corr.png')

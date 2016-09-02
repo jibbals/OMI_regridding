@@ -2,10 +2,8 @@
 File to test various parts of fio.py and reprocess.py
 '''
 ## Modules
-# these 2 lines make plots not show up ( can save them as output faster )
-# use needs to be called before anythin tries to import matplotlib modules
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('Agg') # don't actually display any plots, just create them
 
 # my file reading and writing module
 import fio
@@ -13,10 +11,11 @@ import reprocess
 
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy import stats
 
 from datetime import datetime
 
-from mpl_toolkits.basemap import Basemap
+from mpl_toolkits.basemap import Basemap, maskoceans
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm # for lognormal colour bar
 #import matplotlib.patches as mpatches
@@ -29,6 +28,8 @@ import random
 ##############################
 
 def regularbounds(x,fix=False):
+    # Take a lat or lon array input and return the grid edges
+    
     newx=np.zeros(len(x)+1)
     xres=x[1]-x[0]
     newx[0:-1]=np.array(x) - xres/2.0
@@ -43,6 +44,7 @@ def regularbounds(x,fix=False):
 
 def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True, 
               lllat=-80, urlat=80, lllon=-179, urlon=179):
+    # Create a basemap map with 
     m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
           llcrnrlon=lllon, urcrnrlon=urlon,
           resolution='i',projection='merc')
@@ -111,7 +113,7 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
-def test_reprocess_corrected(oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179,pltname=None):
+def test_reprocess_corrected(oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179,pltname=""):
     '''
     Run and time reprocess method
     Plot some of the outputs
@@ -183,8 +185,8 @@ def test_reprocess_corrected(oneday=True, lllat=-80, lllon=-179, urlat=80, urlon
     plt.scatter(omhchorp['VC_GC'],omhchorp['VC_OMI'])
     plt.xlabel('VC_GC')
     plt.ylabel('VC_OMI')
-    plt.yscale('log')
-    plt.xscale('log')
+    plt.yscale('log'); plt.ylim([1e13, 5e17])
+    plt.xscale('log'); plt.xlim([1e13, 5e17])
     plt.title("VC_GC vs VC_OMI")
     plt.sca(axes[3,2])
     m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
@@ -196,145 +198,107 @@ def test_reprocess_corrected(oneday=True, lllat=-80, lllon=-179, urlat=80, urlon
     plt.tight_layout()
     plt.subplots_adjust(top=0.95)
     onedaystr= [ 'eight_day_','one_day_' ][oneday]
-    if pltname is None:
-        pltname = ""
-    outfig="pictures/%scorrected%s%s.png"%(onedaystr, yyyymmdd,pltname)
+    outfig="pictures/%scorrected%s%s.png"%(onedaystr, yyyymmdd, pltname)
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
 
-
-def check_reprocessed(date=datetime(2005,1,1), lllat=-80, lllon=-179, urlat=80, urlon=179):
+def test_amf_calculation(scount=50):
     '''
-    Read reprocessed file and look at data comparisons
-    ''' 
-    # First read the reprocessed data:
-    data=fio.read_omhchorp(date,oneday=False)
-    amf_new = data['AMF_GC']                # AMF calculated using sigma shape factor
-    amf_newz= data['AMF_GCz']               # '' using z shape factor
-    amf_old = data['AMF_OMI']               # '' from swath files
-    VC_new  = data['VC_GC']                 # molect/cm2
-    VC_old  = data['VC_OMI']                # 
-    cunc    = data['col_uncertainty_OMI']   # molecs/cm2
-    counts  = data['gridentries']           # counts
-    print (type(amf_new))
-    lonmids=data['longitude']
-    latmids=data['latitude']
-    lonedges= regularbounds(lonmids)
-    latedges= regularbounds(latmids)
+    Grab input argument(=50) columns and the apriori and omega values and check the AMF calculation on them
+    Plot old, new AMF and integrand at each column
+    Also check the AMF calculated using non sigma normalised shape factor
+    '''
+    day=datetime(2005,1,1)
+    # Read OMHCHO data ( using reprocess get_good_pixels function )
+    pixels=reprocess.get_good_pixel_list(day, getExtras=True)
+    N = len(pixels['lat']) # how many pixels do we have
     
-    (omg_hcho, omg_lats, omg_lons, omg_amf, omg_counts) = fio.read_omhchog(date,eightday=True)
+    # read gchcho 
+    gchcho = fio.read_gchcho(day)
     
-    # remove divide by zero crap
-    amf_new[counts<1] = np.nan
-    clons,clats=np.meshgrid(lonmids,latmids)
-    clats[counts<1] = np.nan
-    clons[counts<1] = np.nan
+    # check the random columns
+    AMF_old=[]
+    AMF_z, AMF_s=[],[]
     
-    # min mean max of array 
+    # find 50 GOOD columns(non nans)
+    for i, jj in enumerate(random.sample(range(N), scount)):
+        lat,lon=pixels['lat'][jj],pixels['lon'][jj]
+        omega=pixels['omega'][:,jj]
+        AMF_G=pixels['AMF_G'][jj]
+        AMF_old.append(pixels['AMF_OMI'][jj])
+        w_pmids=pixels['omega_pmids'][:,jj]
+        # rerun the AMF calculation and plot the shampoo
+        innerplot='pictures/AMF_test_innerplot%d.png'%i
+        AMFS,AMFZ = gchcho.calculate_AMF(omega, w_pmids, AMF_G, lat, lon, plotname=innerplot)
+        AMF_s.append(AMFS)
+        AMF_z.append(AMFZ)
+    print( "AMF_s=", AMF_s[:] )
+    print( "AMF_z=", AMF_z[:] )
+    print( "AMF_o=", AMF_old[:] )
     
-    # look at data entry counts...  
-    print ("grid squares with/without new AMF:")
-    print (np.sum(counts > 0), np.sum(counts < 1))
-    print ("min, mean, max of counts:")
-    print(mmm(counts))
+    # Also make a plot of the regression new vs old AMFs
+    f=plt.figure(figsize=(12,12))
+    amfs=pixels['AMF_GC']
+    amfo=pixels['AMF_OMI']
+    plt.scatter(amfs, amfo, color='k', label='pixel AMFs')
+    # line of best fit
+    slope,intercept,r,p,sterr=stats.linregress(amfs,amfo)
+    plt.plot([1,75], slope*np.array([1,75])+intercept,color='red',
+            label='slope=%.5f, r=%.5f'%(slope,r))
+    plt.xlabel('AMF_GC')
+    plt.ylabel('AMF_OMI')
+    plt.legend(loc=0)
+    plt.title('AMF correlation')
+    f.savefig('pictures/AMF_test_corr.png')
+    plt.close(f)
     
-    print ("min mean max old amfs:")
-    mmm(amf_old)
-    print ("min mean max of OMI gridded amfs")
-    #omg_amf[omg_amf < 0] = np.nan
-    mmm(omg_amf)
-    print ("min mean max new amfs:")
-    mmm(amf_new)
-    
-    print("min mean max new AMFS(sub 60 lats)")
-    mmm(fio.filter_high_latitudes(amf_new))
-    
-    print ("min mean max old VCs:")
-    mmm(VC_old)
-    
-    print ("min mean max new VCs:")
-    mmm(VC_new)
-    
-    print("min mean max new VCs(sub 60 lat):")
-    mmm(fio.filter_high_latitudes(VC_new))
-    ## plot old vs new AMF:
+    # Post regridding, check the AMFs within 50 degrees of the equator, and color by land/sea 
+    # Achieve this using maskoceans
     #
-    plt.figure(figsize=(18,18))
-    
-    amf_l=0.1
-    amf_h=10
-    
-    # old amf
-    plt.subplot(221)
-    plt.title('OMI AMF(regridded)')
-    m,cs,cb = linearmap(amf_old, latmids, lonmids, vmin=amf_l, vmax=amf_h,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    cb.set_label('Air Mass Factor')
-    
-    # new amfs (counts < 1 removed)
-    plt.subplot(222)
-    plt.title('new AMF')
-    m,cs,cb = linearmap(amf_new, latmids, lonmids, vmin=amf_l, vmax=amf_h,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    
-    # pct difference
-    plt.subplot(223)
-    plt.title('(new-old)*100/old')
-    m,cs,cb = linearmap((amf_new-amf_old)*100/amf_old, clats, clons, vmin=-100, vmax=100,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    cb.set_label('Pct Changed')
-    
-    # AMF from OMHCHOG
-    plt.subplot(224)
-    plt.title('OMHCHOG AMF(orig gridded product)')
-    m,cs,cb = linearmap(omg_amf, omg_lats, omg_lons, vmin=amf_l, vmax=amf_h,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    cb.set_label('Air Mass Factor .25x.25')
-    
-    
-    # title and save the figure
-    plt.suptitle('AMF updated with GC aprioris 2005 01 01', fontsize=22)
-    figname1='pictures/Reprocessed_AMF_comparison.png'
-    plt.savefig(figname1)
-    print("figure saved:" + figname1)
-    # clear the figure
-    plt.clf()
-    mlons,mlats=np.meshgrid(lonedges,latedges)
-    
-    plt.figure(figsize=(18,18))
-    ## Old vs New Vertical Columns
-    #
-    # old VCs
-    plt.subplot(221)
-    plt.title('Regridded VC')
-    m,cs,cb = createmap(VC_old, mlats, mlons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    cb.set_label('Molecules/cm2')
-    
-    # new VCs
-    plt.subplot(222)
-    plt.title('Reprocessed VC')
-    m,cs,cb = createmap(VC_new, mlats, mlons)
-    cb.set_label('Molecules/cm2')
-    
-    # diff:
-    plt.subplot(223)
-    plt.title('OMHCHOG (L2 gridded)')
-    omgmlons,omgmlats = np.meshgrid(regularbounds(omg_lons),regularbounds(omg_lats))
-    m,cs,cb = createmap(omg_hcho, omgmlats, omgmlons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    cb.set_label('molecs/cm2')
-    
-    plt.subplot(224)
-    plt.title('Pct Diff')
-    m,cs,cb = linearmap(100.0*(VC_new-VC_old)/VC_old, mlats, mlons, vmin=-200,vmax=200,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    cb.set_label('(New-Old) * 100 / Old')
-    
-    plt.subplot()
+    f=plt.figure(figsize=(10,10))
+    omhchorp=fio.read_omhchorp(day,oneday=True, keylist=['AMF_GC','AMF_OMI','latitude','longitude'])
+    lats=omhchorp['latitude']
+    lons=omhchorp['longitude']
+    mlons,mlats=np.meshgrid(lons,lats)  # [lats x lons] ?
+    amf=omhchorp['AMF_GC']      # [lats x lons]
+    amfo=omhchorp['AMF_OMI']    # [lats x lons]
+    ocean=maskoceans(mlons,mlats,amf,inlands=False).mask
+    landamfo=amfo.copy()
+    landmlats=mlats.copy()
+    landmlons=mlons.copy()
+    landamf=amf.copy()
+    oceanamfo=amfo.copy()
+    oceanmlats=mlats.copy()
+    oceanmlons=mlons.copy()
+    oceanamf=amf.copy()
+    for arrr in [landamf, landamfo, landmlats, landmlons]:
+        arrr[ocean]=np.NaN
+    for arrr in [oceanamf, oceanamfo, oceanmlats, oceanmlons]:
+        arrr[~ocean]=np.NaN
+    m,cs,cb=linearmap(landmlats,landmlons,landamfo)
+    f.savefig('oceancheck.png')
+    plt.close(f)
+    # Check slopes and regressions of ocean/non ocean AMFs
+    f=plt.figure(figsize=(14,14))
+    plt.scatter(amf[ocean], amfo[ocean], color='cyan')
+    plt.scatter(amf[~ocean],amfo[~ocean], color='fuchsia', alpha=0.6)
+    slopeo,intercepto,ro,p,sterr = stats.linregress(amf[ocean], amfo[ocean])
+    slopel,interceptl,rl,p,sterr = stats.linregress(amf[~ocean],amfo[~ocean])
+    plt.plot([1,60], slopel*np.array([1,60])+interceptl,color='fuchsia',
+            label='Land: slope=%.5f, r=%.5f'%(slopel,rl))
+    plt.plot([1,60], slopeo*np.array([1,60])+intercepto, color='cyan',
+            label='Ocean: slope=%.5f, r=%.5f'%(slopeo,ro))
+    plt.xlabel('AMF_GC')
+    plt.ylabel('AMF_OMI')
+    plt.legend(loc=0)
+    plt.title('AMF correlation')
+    f.savefig('pictures/AMF_test_corr_masked.png')
     
     
-    # save figure
-    plt.suptitle('Reprocessed Vertical Columns 2005 01 01',fontsize=22)
-    figname2='pictures/Reprocessed_VC_comparison.png'
-    plt.savefig(figname2)
-    print("figure saved: "+figname2)
-    plt.close()
-
+    #amfland=maskoceans(mlons,mlats,amf,inlands=False)
+    #amfoland=maskoceans(mlons,mlats,amfo,inlands=False)
+    
 
 def compare_cloudy_map():
     '''
@@ -604,67 +568,7 @@ def test_hchorp_apriori():
     plt.savefig('pictures/Shape_Factor_Examples.png')
     print("Shape_Factor_Examples.png saved!")
 
-
-def test_reprocess():
-    '''
-    read reprocessed data and check for problems...
-    '''
-    # run it, save it, play with 1-day mean
-    meandict = fio.omhcho_1_day_reprocess(save=True)
-    check_array(meandict['VC_GC'])
-    # check the data created...
-    test_hchorp_apriori()
-    check_reprocessed()  
-
-def test_amf_calculation(scount=50):
-    '''
-    Grab input argument(=50) columns and the apriori and omega values and check the AMF calculation on them
-    Plot old, new AMF and integrand at each column
-    Also check the AMF calculated using non sigma normalised shape factor
-    '''
-    day=datetime(2005,1,1)
-    # Read OMHCHO data ( using reprocess get_good_pixels function )
-    pixels=reprocess.get_good_pixel_list(day, getExtras=True)
-    N = len(pixels['lat']) # how many pixels do we have
     
-    # read gchcho 
-    gchcho = fio.read_gchcho(day)
-    
-    # check the random columns
-    AMF_old=[]
-    AMF_z, AMF_s=[],[]
-    
-    # find 50 GOOD columns(non nans)
-    for i, jj in enumerate(random.sample(range(N), scount)):
-        lat,lon=pixels['lat'][jj],pixels['lon'][jj]
-        omega=pixels['omega'][:,jj]
-        AMF_G=pixels['AMF_G'][jj]
-        AMF_old.append(pixels['AMF_OMI'][jj])
-        w_pmids=pixels['omega_pmids'][:,jj]
-        # rerun the AMF calculation and plot the shampoo
-        innerplot='pictures/AMF_test_innerplot%d.png'%i
-        AMFS,AMFZ = gchcho.calculate_AMF(omega, w_pmids, AMF_G, lat, lon, plotname=innerplot)
-        AMF_s.append(AMFS)
-        AMF_z.append(AMFZ)
-    print( "AMF_s=", AMF_s[:] )
-    print( "AMF_z=", AMF_z[:] )
-    print( "AMF_o=", AMF_old[:] )
-    
-    # Also make a plot of the regression new vs old AMFs
-    f=plt.figure(figsize=(12,12))
-    amfs=pixels['AMF_GC']
-    amfo=pixels['AMF_OMI']
-    plt.scatter(amfs, amfo, color='k', label='pixel AMFs')
-    # line of best fit
-    from scipy import stats
-    slope,intercept,r,p,sterr=stats.linregress(amfs,amfo)
-    plt.plot([1,75], slope*np.array([1,75])+intercept,color='red',
-            label='slope=%.5f, r=%.5f'%(slope,r))
-    plt.xlabel('AMF_GC')
-    plt.ylabel('AMF_OMI')
-    plt.legend(loc=0)
-    plt.title('AMF correlation')
-    f.savefig('pictures/AMF_test_corr.png')
 
 def check_high_amfs(day=datetime(2005,1,1)):
     '''
@@ -912,20 +816,16 @@ if __name__ == '__main__':
     #test_fires_fio()
     test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
-    #for oneday in [True, False]:
-    #    test_reprocess_corrected(oneday=oneday)
-    #    test_reprocess_corrected(oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
-    #check_high_amfs()
+    for oneday in [True, False]:
+        test_reprocess_corrected(oneday=oneday)
+        test_reprocess_corrected(oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
     
+    #check_high_amfs()
     #test_hchorp_apriori()
     #test_gchcho()
-    #test_gchcho()
-    #test_reprocess()
-    #check_reprocessed()
     
     # Check that cloud filter is doing as expected using old output without the cloud filter
     #compare_cloudy_map()
     
-    # Plot SC, VC_omi, VC_gc, AMF_omi, AMF_gc from
-    # one or eight day average reprocessed netcdf output
+    # check the ref sector correction is not weird.
     #check_RSC(track_corrections=True)

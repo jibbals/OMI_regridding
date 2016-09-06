@@ -25,83 +25,133 @@
 /apps/python3/3.5.2/lib/python3.5/site-packages/matplotlib-1.5.1-py3.5-linux-x86_64.egg/matplotlib/colors.py:1016: RuntimeWarning: invalid value encountered in less_equal
   mask = (resdat <= 0)
 Running tests.py
-81724 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1331-o02480_v003-2014m0618t142145.he5
-82851 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0517-o02475_v003-2014m0618t144149.he5
-82989 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0835-o02477_v003-2014m0618t145223.he5
-82982 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1152-o02479_v003-2014m0618t143228.he5
-82745 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0338-o02474_v003-2014m0618t142021.he5
-82823 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2146-o02485_v003-2014m0618t143440.he5
-82926 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0159-o02473_v003-2014m0618t141848.he5
-83006 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1013-o02478_v003-2014m0618t142337.he5
-82737 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1828-o02483_v003-2014m0618t142823.he5
-82684 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1649-o02482_v003-2014m0618t142709.he5
-82769 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2007-o02484_v003-2014m0618t142950.he5
-82920 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0656-o02476_v003-2014m0618t144307.he5
-82855 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0020-o02472_v003-2014m0618t141821.he5
-82884 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2325-o02486_v003-2014m0618t142342.he5
-82889 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1510-o02481_v003-2014m0618t141800.he5
+54901 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1331-o02480_v003-2014m0618t142145.he5
+54747 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0517-o02475_v003-2014m0618t144149.he5
+54841 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0835-o02477_v003-2014m0618t145223.he5
+54731 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1152-o02479_v003-2014m0618t143228.he5
+54580 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0338-o02474_v003-2014m0618t142021.he5
+54695 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2146-o02485_v003-2014m0618t143440.he5
+54757 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0159-o02473_v003-2014m0618t141848.he5
+54883 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1013-o02478_v003-2014m0618t142337.he5
+54655 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1828-o02483_v003-2014m0618t142823.he5
+54284 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1649-o02482_v003-2014m0618t142709.he5
+54649 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2007-o02484_v003-2014m0618t142950.he5
+54782 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0656-o02476_v003-2014m0618t144307.he5
+54696 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t0020-o02472_v003-2014m0618t141821.he5
+54776 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t2325-o02486_v003-2014m0618t142342.he5
+54788 good pixels in omhcho/OMI-Aura_L2-OMHCHO_2005m0101t1510-o02481_v003-2014m0618t141800.he5
+checking levels
 pictures/AMF_test_innerplot0.png saved
+checking levels
 pictures/AMF_test_innerplot1.png saved
+checking levels
 pictures/AMF_test_innerplot2.png saved
+checking levels
 pictures/AMF_test_innerplot3.png saved
+checking levels
 pictures/AMF_test_innerplot4.png saved
+checking levels
 pictures/AMF_test_innerplot5.png saved
+checking levels
 pictures/AMF_test_innerplot6.png saved
+checking levels
 pictures/AMF_test_innerplot7.png saved
+checking levels
 pictures/AMF_test_innerplot8.png saved
+checking levels
 pictures/AMF_test_innerplot9.png saved
+checking levels
 pictures/AMF_test_innerplot10.png saved
+checking levels
 pictures/AMF_test_innerplot11.png saved
+checking levels
 pictures/AMF_test_innerplot12.png saved
+checking levels
 pictures/AMF_test_innerplot13.png saved
+checking levels
 pictures/AMF_test_innerplot14.png saved
+checking levels
 pictures/AMF_test_innerplot15.png saved
+checking levels
 pictures/AMF_test_innerplot16.png saved
+checking levels
 pictures/AMF_test_innerplot17.png saved
+checking levels
 pictures/AMF_test_innerplot18.png saved
+checking levels
 pictures/AMF_test_innerplot19.png saved
+checking levels
 pictures/AMF_test_innerplot20.png saved
+checking levels
 pictures/AMF_test_innerplot21.png saved
+checking levels
 pictures/AMF_test_innerplot22.png saved
+checking levels
 pictures/AMF_test_innerplot23.png saved
+checking levels
 pictures/AMF_test_innerplot24.png saved
+checking levels
 pictures/AMF_test_innerplot25.png saved
+checking levels
 pictures/AMF_test_innerplot26.png saved
+checking levels
 pictures/AMF_test_innerplot27.png saved
+checking levels
 pictures/AMF_test_innerplot28.png saved
+checking levels
 pictures/AMF_test_innerplot29.png saved
+checking levels
 pictures/AMF_test_innerplot30.png saved
+checking levels
 pictures/AMF_test_innerplot31.png saved
+checking levels
 pictures/AMF_test_innerplot32.png saved
+checking levels
 pictures/AMF_test_innerplot33.png saved
+checking levels
 pictures/AMF_test_innerplot34.png saved
+checking levels
 pictures/AMF_test_innerplot35.png saved
+checking levels
 pictures/AMF_test_innerplot36.png saved
+checking levels
 pictures/AMF_test_innerplot37.png saved
+checking levels
 pictures/AMF_test_innerplot38.png saved
+checking levels
 pictures/AMF_test_innerplot39.png saved
+checking levels
 pictures/AMF_test_innerplot40.png saved
+checking levels
 pictures/AMF_test_innerplot41.png saved
+checking levels
 pictures/AMF_test_innerplot42.png saved
+checking levels
 pictures/AMF_test_innerplot43.png saved
+checking levels
 pictures/AMF_test_innerplot44.png saved
+checking levels
 pictures/AMF_test_innerplot45.png saved
+checking levels
 pictures/AMF_test_innerplot46.png saved
+checking levels
 pictures/AMF_test_innerplot47.png saved
+checking levels
 pictures/AMF_test_innerplot48.png saved
+checking levels
 pictures/AMF_test_innerplot49.png saved
-AMF_s= [13.716270911475478, 2.9460757624955836, 6.9081789279666239, 8.6899341843399487, 4.1771482862485749, 33.68577689215504, 9.1909810278329971, 3.8923897648841614, 13.300678690700552, 1.8489405360147382, 36.921440383027146, 3.9915323827212563, 4.2863136895715721, 4.5517363247358524, 3.9341899182811142, 4.8829816085276221, 4.3308794057510616, 15.272984901974839, 13.540865025654634, 2.4171652614383667, 5.2687412393651565, 6.7385515386674095, 3.5301066846824796, 3.8409312661888886, 5.7002396453648272, 3.7727902837233525, 5.6135327011845018, 3.590811222732913, 0.79297266492888796, 7.8682357559944336, 26.024576731242821, 3.6806515632063301, 12.017621520846026, 5.2563288983885164, 4.3661421448896878, 1.3231294661959641, 0.12628813753370374, 2.7640042033102423, 9.916313630402799, 4.2637266529470876, 12.201572032958177, 8.1590119698755075, 17.906704795518799, 6.8883200091893251, 7.5388365653667364, 8.1377698765082993, 3.8612853253793107, 5.3856930910468588, 6.0726390987583416, 6.0420923548811221]
-AMF_z= [13.713517381473311, 2.9461308447473553, 6.9084990098021626, 8.6905916394826317, 4.1775202556839153, 33.679399806251126, 9.190667669573056, 3.8922494682539832, 13.30028573223562, 1.8478815408753027, 36.920566110532334, 3.9912250075259283, 4.2860320746407501, 4.5516458846547341, 3.9339425489223565, 4.8829852017592277, 4.3308265181867682, 15.272824963663512, 13.541348927661035, 2.4171148537856491, 5.267593361854102, 6.7383393906963658, 3.5160144683011736, 3.840841908149887, 5.7002457769620927, 3.7727188187661893, 5.6121674744682943, 3.5907337168120659, 0.79295466521275548, 7.8657401959545101, 26.013948049054218, 3.6806371779099849, 12.018775465389854, 5.2538528364163151, 4.3658468325010533, 1.3230258717937315, 0.12612402913212381, 2.7639722027970439, 9.9140648758155656, 4.2621955313647, 12.202604895172856, 8.1594022197271467, 17.908918030365314, 6.8884662057333497, 7.5389605589142086, 8.1380549736066712, 3.8612972885720267, 5.3852986135223624, 6.0725225724333471, 5.9736998800063557]
-AMF_o= [1.75539, 1.1926, 2.4642601, 3.31463, 1.74041, 3.64398, 2.84041, 1.64244, 1.81627, 0.85917002, 4.5803499, 1.85615, 1.84261, 1.88676, 1.58724, 1.93212, 1.68458, 2.9404299, 4.0081601, 1.22137, 1.99862, 2.2780199, 0.96138, 1.56871, 2.4007499, 1.5993201, 1.8581899, 1.63036, 0.40722001, 1.50413, 4.3584299, 1.60778, 3.57359, 1.76995, 1.43344, 0.49836001, 0.099179998, 1.30513, 2.5116, 1.51916, 4.0180101, 2.5069799, 4.26859, 2.2990601, 2.7042999, 3.0293, 1.79567, 1.91658, 1.93747, 1.7211601]
-at most 11 entries 
-805400 entries in total
+at most 7 entries 
+563079 entries in total
 pictures/one_day_corrected20050101.png Saved.
-at most 11 entries 
-805400 entries in total
+at most 7 entries 
+563079 entries in total
 pictures/one_day_corrected20050101zoomed.png Saved.
-at most 45 entries 
-6337175 entries in total
+at most 24 entries 
+4463064 entries in total
 pictures/eight_day_corrected20050101.png Saved.
-at most 45 entries 
-6337175 entries in total
+at most 24 entries 
+4463064 entries in total
 pictures/eight_day_corrected20050101zoomed.png Saved.
+Testing GCHCHO apriori stuff on 2005 Jan
+pictures/Shape_Factor_Examples.png saved!
+Testing GCHCHO stuff on 2005 Jan

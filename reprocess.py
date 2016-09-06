@@ -252,8 +252,6 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     '''
     ## 1) 
     # 
-    if __VERBOSE__: 
-        print("Getting good pixel list")
     goodpixels=get_good_pixel_list(date)
     omi_lons=np.array(goodpixels['lon'])
     omi_lats=np.array(goodpixels['lat'])
@@ -454,7 +452,7 @@ def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remo
     # create pool of M processes
     pool = Pool(processes=processes)
     if __VERBOSE__:
-        print ("Pool Created ")
+        print ("Process pool created ")
     
     #arguments: date,latres,lonres,getsum
     # function arguments in a list, for each of N days
@@ -467,7 +465,7 @@ def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remo
     pool.close()
     pool.join() # wait until all jobs have finished(~ 70 minutes)
     if __VERBOSE__:
-        print("Close and Join called for Pool")
+        print("Pool Closed and Joined")
         elapsed = timeit.default_timer() - start_time
         print ("Took %6.2f minutes to reprocess %3d days using %2d processes"%(elapsed/60.0,days,processes))
 

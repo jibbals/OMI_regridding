@@ -155,7 +155,7 @@ def read_8dayfire_interpolated(date,latres,lonres):
 method='nearest')
     return interp, newlats, newlons
 
-def read_omhcho(path):
+def read_omhcho(path, szamax=60, screen=[-5e16, 1e17]):
     '''
     Read info from a single swath file
     NANify entries with main quality flag not equal to zero
@@ -179,6 +179,7 @@ def read_omhcho(path):
     field_xqf   = geofields +'XtrackQualityFlags'
     field_lon   = geofields +'Longitude'
     field_lat   = geofields +'Latitude'
+    field_sza   = geofields +'SolarZenithAngle'
     # uncertainty flags
     field_colUnc    = datafields+'ColumnUncertainty' # also molecules/cm2
     field_fitflag   = datafields+'FitConvergenceFlag'
@@ -196,6 +197,7 @@ def read_omhcho(path):
         clouds  = in_f[field_clouds].value  # cloud fraction
         qf      = in_f[field_qf].value      #
         xqf     = in_f[field_xqf].value     # cross track flag
+        sza     = in_f[field_sza].value     # solar zenith angle
         # uncertainty arrays                #
         cunc    = in_f[field_colUnc].value  # uncertainty
         fcf     = in_f[field_fitflag].value # convergence flag
@@ -208,23 +210,41 @@ def read_omhcho(path):
         #
         ## remove missing values and bad flags: 
         # QF: missing<0, suss=1, bad=2
-        suss = qf != 0
-        hcho[suss]=np.NaN
-        lats[suss]=np.NaN
-        lons[suss]=np.NaN
-        amf[suss] =np.NaN
+        suss       = qf != 0
+        hcho[suss] = np.NaN
+        lats[suss] = np.NaN
+        lons[suss] = np.NaN
+        amf[suss]  = np.NaN
         
         # remove xtrack flagged data
-        xsuss = xqf != 0
-        hcho[xsuss]=np.NaN
-        lats[xsuss]=np.NaN
-        lons[xsuss]=np.NaN
-        amf[xsuss] =np.NaN
+        xsuss       = xqf != 0
+        hcho[xsuss] = np.NaN
+        lats[xsuss] = np.NaN
+        lons[xsuss] = np.NaN
+        amf[xsuss]  = np.NaN
+        
+        # remove solarzenithangle over 60 degrees
+        if szamax is not None:
+            rmsza       = sza > szamax
+            hcho[rmsza] = np.NaN
+            lats[rmsza] = np.NaN
+            lons[rmsza] = np.NaN
+            amf[rmsza]  = np.NaN
+        
+        # remove VCs outside screen range
+        if screen is not None:
+            # ignore warnings from comparing NaNs to Values
+            with np.errstate(invalid='ignore'):
+                rmscr   = (hcho<screen[0]) + (hcho>screen[1]) # A or B
+            hcho[rmscr] = np.NaN
+            lats[rmscr] = np.NaN
+            lons[rmscr] = np.NaN
+            amf[rmscr]  = np.NaN
     
     #return hcho, lats, lons, amf, amfg, w, apri, plevs
     return {'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
             'omega':w,'apriori':apri,'plevels':plevs, 'cloudfrac':clouds,
-            'qualityflag':qf, 'xtrackflag':xqf,
+            'qualityflag':qf, 'xtrackflag':xqf, 'sza':sza,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
 
 def read_omhcho_day(day=datetime(2005,1,1)):

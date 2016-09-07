@@ -231,7 +231,7 @@ class gchcho:
             plt.ylabel('$\sigma$')
             plt.ylim([1.01, 0.85])
             plt.title('Shape Factor ($\sigma$ normalised)')
-            debugname='pictures/levels_debug_%06.2f_%06.2f.png'%(lat,lon)
+            debugname='pictures/levels_debug/latlon_%07.2f_%07.2f.png'%(lat,lon)
             f.savefig(debugname)
             print("%s saved"%debugname)
             plt.close(f)

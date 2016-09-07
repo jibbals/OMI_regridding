@@ -155,7 +155,7 @@ def read_8dayfire_interpolated(date,latres,lonres):
 method='nearest')
     return interp, newlats, newlons
 
-def read_omhcho(path, szamax=60, screen=[-5e16, 1e17]):
+def read_omhcho(path, szamax=60, screen=[-5e15, 1e17]):
     '''
     Read info from a single swath file
     NANify entries with main quality flag not equal to zero

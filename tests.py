@@ -240,7 +240,7 @@ def test_amf_calculation(scount=50):
         AMF_old.append(pixels['AMF_OMI'][jj])
         w_pmids=pixels['omega_pmids'][:,jj]
         # rerun the AMF calculation and plot the shampoo
-        innerplot='pictures/AMF_test_innerplot%d.png'%i
+        innerplot='pictures/AMF_test/AMF_test_innerplot%d.png'%i
         AMFS,AMFZ = gchcho.calculate_AMF(omega, w_pmids, AMF_G, lat, lon, plotname=innerplot,debug_levels=True)
         AMF_s.append(AMFS)
         AMF_z.append(AMFZ)
@@ -261,7 +261,7 @@ def test_amf_calculation(scount=50):
     plt.ylabel('AMF_OMI')
     plt.legend(loc=0)
     plt.title('AMF correlation')
-    f.savefig('pictures/AMF_test_corr.png')
+    f.savefig('pictures/AMF_test/AMF_test_corr.png')
     plt.close(f)
     
     # Post regridding, check the AMFs within 50 degrees of the equator, and color by land/sea 
@@ -304,7 +304,7 @@ def test_amf_calculation(scount=50):
     plt.ylabel('AMF_OMI')
     plt.legend(loc=0)
     plt.title('AMF correlation')
-    f.savefig('pictures/AMF_test_corr_masked.png')
+    f.savefig('pictures/AMF_test/AMF_test_corr_masked.png')
     
     
     #amfland=maskoceans(mlons,mlats,amf,inlands=False)

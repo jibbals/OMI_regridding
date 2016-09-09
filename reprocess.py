@@ -35,12 +35,13 @@ def sum_dicts(d1,d2):
         d3[k]=d1[k]+d2[k]
     return d3
 
-def get_good_pixel_list(date, getExtras=False):
+def get_good_pixel_list(date, getExtras=False, maxlat=60):
     '''
     Create a long list of 'good' pixels
     Also calculate new AMF for each good pixel
     If getExtras==True then also return q and xtrack flags, along with 
         omega and apriori columns, FOR TESTING ONLY
+    
     '''
     ## 0) setup stuff:
     # list where we keep good ref sector pixels
@@ -76,7 +77,7 @@ def get_good_pixel_list(date, getExtras=False):
     # loop through swaths
     files = fio.determine_filepath(date)
     for ff in files:
-        omiswath = fio.read_omhcho(ff)
+        omiswath = fio.read_omhcho(ff, maxlat=maxlat)
         flat,flon = omiswath['lats'], omiswath['lons']
         
         # only looking at good pixels
@@ -139,10 +140,9 @@ def get_good_pixel_list(date, getExtras=False):
             newAMF_s, newAMF_z = gchcho.calculate_AMF(omegas[:,i],plevs[:,i],omamfgs[i],flats[i],flons[i])
             AMFgcs.append(newAMF_s)
             AMFgczs.append(newAMF_z)
-            #TODO: just use one of these and assert they are the same.
-            #if np.abs(newAMF_s-newAMF_z) > .01:
-            #    print("Warning: AMF calculations are divergent (%6.3f difference)"%(newAMF_s-newAMF_z))
-            #assert np.abs(newAMF_s-newAMF_z) < .01, "AMFs are different for no reason"
+            # AMF_GCz does not relevel to the highest surface pressure between pixel and gridbox
+            # AMF_GC does (using this one)
+            # We can do some sort of test here if required.
         
         # We also store the track position for reference sector correction later
         swathtrack=np.where(goods==True)[1]

@@ -13,7 +13,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy import stats
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from mpl_toolkits.basemap import Basemap, maskoceans
 import matplotlib.pyplot as plt
@@ -49,8 +49,9 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
           llcrnrlon=lllon, urcrnrlon=urlon,
           resolution='i',projection='merc')
     if len(lats.shape) == 1:
-        latsnew=regularbounds(lats)
-        lonsnew=regularbounds(lons)
+        latnew=regularbounds(lats)
+        lonnew=regularbounds(lons)
+        lonsnew,latsnew=np.meshgrid(lonnew,latnew)
     else:
         latsnew,lonsnew=(lats,lons)
     cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon, 
@@ -67,9 +68,9 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
     
     return m, cs, cb
 def globalmap(data,lats,lons):
-    return createmap(data,lats,lons,-80,80,-179,179)
+    return createmap(data,lats,lons,lllat=-80,urlat=80,lllon=-179,urlon=179)
 def ausmap(data,lats,lons):
-    return createmap(data,lats,lons,-52,-5,100,160)
+    return createmap(data,lats,lons,lllat=-52,urlat=-5,lllon=100,urlon=160)
 def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True, 
               lllat=-80, urlat=80, lllon=-179, urlon=179):
     
@@ -113,13 +114,12 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
-def test_reprocess_corrected(oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179,pltname=""):
+def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179,pltname=""):
     '''
     Test a day or 8-day reprocessed HCHO map
     Plot VCs, both OMI and Reprocessed, 
         as well as AMFs and comparison against GEOS-Chem model.
     '''
-    date=datetime(2005,1,1)
     
     # Grab one day of reprocessed OMI data
     omhchorp=fio.read_omhchorp(date,oneday=oneday)
@@ -214,6 +214,55 @@ def test_reprocess_corrected(oneday=True, lllat=-80, lllon=-179, urlat=80, urlon
     plt.close()
     print(outfig+" Saved.")
 
+def test_amf_over_australia(day=datetime(2005,1,1), oneday=False):
+    '''
+    Look closely at AMFs over Australia, specifically over land
+    and see how our values compare against the model and OMI swaths.
+    '''
+    print("To Be Implemented")
+    
+    # read in omhchorp
+    omhchorp=fio.read_omhchorp(day,oneday=oneday)
+    AMF_GC=omhchorp['AMF_GC']
+    AMF_OMI=omhchorp['AMF_OMI']
+    VC_GC=omhchorp['VC_GC']
+    VC_OMI=omhchorp['VC_OMI']
+    lats=omhchorp['latitude']
+    lons=omhchorp['longitude']
+    mlons0,mlats0=np.meshgrid(lons,lats)
+    # read in pixel list? or omhcho swaths
+    # or not
+    
+    # filter to just Australia rectangle [.,.,.,.]
+    lllat,lllon,urlat,urlon=-50,105,-10,155
+    lllati,urlati=158, 320
+    llloni,urloni=927, 1075
+    mlons,mlats=np.meshgrid(lons,lats)
+    mlons,mlats=mlons[lllati:urlati,llloni:urloni], mlats[lllati:urlati,llloni:urloni]
+    ausvcgc=VC_GC[lllati:urlati,llloni:urloni]
+    ausvcomi=VC_OMI[lllati:urlati,llloni:urloni]
+    ausamfgc=AMF_GC[lllati:urlati,llloni:urloni]
+    ausamfomi=AMF_OMI[lllati:urlati,llloni:urloni]
+    print(AMF_GC.shape)
+    print(ausamfgc.shape)
+    print(mlons.shape)
+    print(("lats ",lats.shape))
+    print(("lons ",lons.shape))
+    print(("VC_GC ",VC_GC.shape))
+    # Mask out the ocean
+    landvcgc=maskoceans(mlons,mlats,ausvcgc,inlands=False)
+    
+    # show plot with and without ocean mask
+    f=plt.figure(figsize=(12,8))
+    ax=plt.subplot(121)
+    # ocean masked array
+    m,cs,cb = ausmap(landvcgc,mlats,mlons)
+    ax=plt.subplot(122)
+    # full array
+    m,cs,cb = ausmap(VC_GC,mlats0,mlons0)
+    # show corellations with and without ocean mask
+    plt.savefig('austest.png')
+
 def test_amf_calculation(scount=50):
     '''
     Grab input argument(=50) columns and the apriori and omega values and check the AMF calculation on them
@@ -250,13 +299,15 @@ def test_amf_calculation(scount=50):
     
     # Also make a plot of the regression new vs old AMFs
     f=plt.figure(figsize=(12,12))
-    amfs=pixels['AMF_GC']
-    amfo=pixels['AMF_OMI']
+    amfs=np.array(pixels['AMF_GC'])
+    amfo=np.array(pixels['AMF_OMI'])
     plt.scatter(amfs, amfo, color='k', label='pixel AMFs')
     # line of best fit
-    slope,intercept,r,p,sterr=stats.linregress(amfs,amfo)
-    plt.plot([1,75], slope*np.array([1,75])+intercept,color='red',
-            label='slope=%.5f, r=%.5f'%(slope,r))
+    isnans= np.isnan(amfs) + np.isnan(amfo)
+    slp,intrcpt,r,p,sterr=stats.linregress(amfs[~isnans],amfo[~isnans])
+    # straight line on log-log plot is 10^(slope*log(X) + Yintercept)
+    plt.plot([1,75], 10**(slp*np.log(np.array([1,75]))+intrcpt),color='red',
+            label='slope=%.5f, r=%.5f'%(slp,r))
     plt.xlabel('AMF_GC')
     plt.ylabel('AMF_OMI')
     plt.legend(loc=0)
@@ -305,7 +356,6 @@ def test_amf_calculation(scount=50):
     plt.legend(loc=0)
     plt.title('AMF correlation')
     f.savefig('pictures/AMF_test/AMF_test_corr_masked.png')
-    
     
     #amfland=maskoceans(mlons,mlats,amf,inlands=False)
     #amfoland=maskoceans(mlons,mlats,amfo,inlands=False)
@@ -764,15 +814,18 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     #test_fires_fio()
-    test_amf_calculation() # Check the AMF stuff
+    #test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
-    for oneday in [True, False]:
-        test_reprocess_corrected(oneday=oneday)
-        test_reprocess_corrected(oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+    #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 40] ]
+    #for day in dates:
+    #    for oneday in [True, False]:
+    #        test_reprocess_corrected(date=day, oneday=oneday)
+    #        test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+    test_amf_over_australia()
     
     #check_high_amfs()
-    test_hchorp_apriori()
-    test_gchcho()
+    #test_hchorp_apriori()
+    #test_gchcho()
     
     # Check that cloud filter is doing as expected using old output without the cloud filter
     #compare_cloudy_map()

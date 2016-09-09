@@ -181,6 +181,39 @@ class gchcho:
             # Interpolate the shape factors to these new pressure levels:
             S_s=np.interp(S_pmids, S_pmids_init[::-1], S_s[::-1])
             # also do S_z? currently I'm leaving this for comparison. AMF_z will be sanity check
+            # this is for testing the update:20160905
+            if debug_levels:
+                f=plt.figure(figsize=(15,10))
+                # plot the init vs new coords
+                ax=plt.subplot(131)
+                plt.scatter(w_pmids_init[0:5],w_pmids[0:5],color='k', label='$\omega$ coords')
+                plt.scatter(S_pmids_init[0:5],S_pmids[0:5],color='cyan', label='Shape coords')
+                plt.xlabel('p')
+                plt.ylabel('p$_{new}$')
+                plt.title('hPa')
+                
+                # plot the old and new scattering weights
+                ax=plt.subplot(132)
+                plt.plot(w, w_pmids_init, '.k', label='$\omega$(p$_0$)')
+                plt.plot(np.interp(w_pmids,w_pmids_init[::-1],w[::-1]), w_pmids, 'xk', label='$\omega$(p)')
+                plt.ylabel('Press (hPa)')
+                plt.ylim([1050, 700])
+                plt.title('$\omega$')
+                plt.legend(loc=0)
+                
+                # plot the old and new shape factor(sigma)
+                ax=plt.subplot(133)
+                S_s_init = self.Shape_s[:,lati,loni]
+                S_smids_init = self.sigmas[:,lati,loni]
+                plt.plot(S_s_init, S_smids_init, '.k', label='S$_\sigma_0$($\sigma_0$)')
+                plt.plot(S_s, S_smids, 'xk', label='S$_\sigma$($\sigma$)')
+                plt.ylabel('$\sigma$')
+                plt.ylim([1.01, 0.85])
+                plt.title('Shape Factor ($\sigma$ normalised)')
+                debugname='pictures/levels_debug/latlonrecord_%07.2f_%07.2f.png'%(lat,lon)
+                f.savefig(debugname)
+                print("%s saved"%debugname)
+                plt.close(f)
             
         else: # Otherwise GC has higher lowest level
             # in this case we move the OMI bottom level up, and the omega is interpolated from these new pmids
@@ -215,27 +248,7 @@ class gchcho:
         AMF_z = AMF_G * integral_z
         integral_s = np.sum(w_s * S_s * dsigma)
         AMF_s = AMF_G * integral_s
-        
-        # this is for testing the update:20160905
-        if debug_levels:
-            f, axes=plt.subplots(1,2,figsize=(12,10))
-            plt.sca(axes[0])
-            plt.plot(w, w_pmids_init, '.k', np.interp(w_pmids,w_pmids_init,w), w_pmids, 'xk')
-            plt.ylabel('Press (hPa)')
-            plt.ylim([1050, 700])
-            plt.title('$\omega$')
-            plt.sca(axes[1])
-            S_s_init = self.Shape_s[:,lati,loni]
-            S_smids_init = self.sigmas[:,lati,loni]
-            plt.plot(S_s_init, S_smids_init, '.k', S_s, S_smids, 'xk')
-            plt.ylabel('$\sigma$')
-            plt.ylim([1.01, 0.85])
-            plt.title('Shape Factor ($\sigma$ normalised)')
-            debugname='pictures/levels_debug/latlon_%07.2f_%07.2f.png'%(lat,lon)
-            f.savefig(debugname)
-            print("%s saved"%debugname)
-            plt.close(f)
-        
+                    
         if plotname is not None:
             integral_s_old=np.sum(w_s_2 * S_s * dsigma)
             AMF_s_old= AMF_G * integral_s_old

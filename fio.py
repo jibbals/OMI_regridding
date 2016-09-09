@@ -155,7 +155,7 @@ def read_8dayfire_interpolated(date,latres,lonres):
 method='nearest')
     return interp, newlats, newlons
 
-def read_omhcho(path, szamax=60, screen=[-5e15, 1e17]):
+def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=False):
     '''
     Read info from a single swath file
     NANify entries with main quality flag not equal to zero
@@ -210,7 +210,11 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17]):
         #
         ## remove missing values and bad flags: 
         # QF: missing<0, suss=1, bad=2
+        if verbose:
+            print("%d pixels in %s prior to filtering"%(np.sum(~np.isnan(hcho)),path))
         suss       = qf != 0
+        if verbose:
+            print("%d pixels removed by main quality flag"%np.nansum(suss))
         hcho[suss] = np.NaN
         lats[suss] = np.NaN
         lons[suss] = np.NaN
@@ -218,6 +222,8 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17]):
         
         # remove xtrack flagged data
         xsuss       = xqf != 0
+        if verbose:
+            print("%d pixels removed by xtrack flag"%np.nansum(xsuss))
         hcho[xsuss] = np.NaN
         lats[xsuss] = np.NaN
         lons[xsuss] = np.NaN
@@ -226,6 +232,8 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17]):
         # remove solarzenithangle over 60 degrees
         if szamax is not None:
             rmsza       = sza > szamax
+            if verbose:
+                print("%d pixels removed as sza > 60"%np.nansum(rmsza))
             hcho[rmsza] = np.NaN
             lats[rmsza] = np.NaN
             lons[rmsza] = np.NaN
@@ -236,10 +244,23 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17]):
             # ignore warnings from comparing NaNs to Values
             with np.errstate(invalid='ignore'):
                 rmscr   = (hcho<screen[0]) + (hcho>screen[1]) # A or B
+            if verbose:
+                print("%d pixels removed as value is outside of screen"%np.nansum(rmscr))
             hcho[rmscr] = np.NaN
             lats[rmscr] = np.NaN
             lons[rmscr] = np.NaN
             amf[rmscr]  = np.NaN
+        
+        # remove pixels polewards of maxlat
+        if maxlat is not None:
+            with np.errstate(invalid='ignore'):
+                rmlat   = np.abs(lats) > maxlat
+            if verbose:
+                print("%d pixels removed as |latitude| > 60"%np.nansum(rmscr))
+            hcho[rmlat] = np.NaN
+            lats[rmlat] = np.NaN
+            lons[rmlat] = np.NaN
+            amf[rmlat]  = np.NaN
     
     #return hcho, lats, lons, amf, amfg, w, apri, plevs
     return {'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
@@ -247,20 +268,33 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17]):
             'qualityflag':qf, 'xtrackflag':xqf, 'sza':sza,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
 
-def read_omhcho_day(day=datetime(2005,1,1)):
+def read_omhcho_day(day=datetime(2005,1,1),verbose=False):
     '''
     Read an entire day of omhcho swaths
     '''
     fnames=determine_filepath(day)
-    data=read_omhcho(fnames[0]) # read first swath
+    data=read_omhcho(fnames[0],verbose=verbose) # read first swath
     swths=[]
     for fname in fnames[1:]: # read the rest of the swaths
-        swths.append(read_omhcho(fname))
+        swths.append(read_omhcho(fname),verbose=verbose)
     for swth in swths: # combine into one struct
         for key in swth.keys():
             axis= [0,1][key in ['omega','apriori','plevels']]
             data[key] = np.concatenate( (data[key], swth[key]), axis=axis)
     return data
+
+def read_omhcho_8days(day=datetime(2005,1,1)):
+    '''
+    Read in 8 days all at once
+    '''
+    data8=read_omhcho_day(day)
+    for date in [ day + timedelta(days=d) for d in range(1,8) ]:
+        data=read_omhcho_day(date) 
+        for key in data.keys():
+            axis= [0,1][key in ['omega','apriori','plevels']]
+            data8[key] = np.concatenate( (data8[key], data[key]), axis=axis)
+    return data8
+        
 
 def read_omhchog(date, eightdays=False, verbose=False):
     '''

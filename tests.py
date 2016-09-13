@@ -490,6 +490,23 @@ def test_fires_fio():
     plt.savefig('pictures/AQUA2005001.png')
     plt.close()
 
+def test_fires_removed(day=datetime(2005,1,1)):
+    '''
+    Check that fire affected pixels are actually removed
+    TODO: implement
+    '''
+    # read 8 day average prior to fior
+    #
+    pre = fio.read_omhchorp(day, oneday=False, filename="omhchorp/BeforeFireRemoved/omhcho_8p0.25x0.31_20050101.he5"
+    
+    # read 8 day average post toast
+    #
+    post = fio.read_omhchorp(day,oneday=False)
+    
+    # compare and beware
+    #
+    
+
 def test_gchcho():
     '''
     Function tests gchcho output file created by create_column.pro

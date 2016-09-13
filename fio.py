@@ -223,17 +223,31 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
         # remove xtrack flagged data
         xsuss       = xqf != 0
         if verbose:
-            print("%d pixels removed by xtrack flag"%np.nansum(xsuss))
+            removedcount= np.nansum(xsuss+suss) - np.nansum(suss)
+            print("%d further pixels removed by xtrack flag"%removedcount)
         hcho[xsuss] = np.NaN
         lats[xsuss] = np.NaN
         lons[xsuss] = np.NaN
         amf[xsuss]  = np.NaN
         
+        # remove pixels polewards of maxlat
+        if maxlat is not None:
+            with np.errstate(invalid='ignore'):
+                rmlat   = np.abs(lats) > maxlat
+            if verbose:
+                removedcount=np.nansum(rmlat+xsuss+suss) - np.nansum(xsuss+suss)
+                print("%d further pixels removed as |latitude| > 60"%removedcount)
+            hcho[rmlat] = np.NaN
+            lats[rmlat] = np.NaN
+            lons[rmlat] = np.NaN
+            amf[rmlat]  = np.NaN
+        
         # remove solarzenithangle over 60 degrees
         if szamax is not None:
             rmsza       = sza > szamax
             if verbose:
-                print("%d pixels removed as sza > 60"%np.nansum(rmsza))
+                removedcount= np.nansum(rmsza+rmlat+xsuss+suss) - np.nansum(rmlat+xsuss+suss)
+                print("%d further pixels removed as sza > 60"%removedcount)
             hcho[rmsza] = np.NaN
             lats[rmsza] = np.NaN
             lons[rmsza] = np.NaN
@@ -245,22 +259,12 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
             with np.errstate(invalid='ignore'):
                 rmscr   = (hcho<screen[0]) + (hcho>screen[1]) # A or B
             if verbose:
-                print("%d pixels removed as value is outside of screen"%np.nansum(rmscr))
+                removedcount= np.nansum(rmscr+rmsza+rmlat+xsuss+suss)-np.nansum(rmsza+rmlat+xsuss+suss)
+                print("%d further pixels removed as value is outside of screen"%removedcount)
             hcho[rmscr] = np.NaN
             lats[rmscr] = np.NaN
             lons[rmscr] = np.NaN
             amf[rmscr]  = np.NaN
-        
-        # remove pixels polewards of maxlat
-        if maxlat is not None:
-            with np.errstate(invalid='ignore'):
-                rmlat   = np.abs(lats) > maxlat
-            if verbose:
-                print("%d pixels removed as |latitude| > 60"%np.nansum(rmscr))
-            hcho[rmlat] = np.NaN
-            lats[rmlat] = np.NaN
-            lons[rmlat] = np.NaN
-            amf[rmlat]  = np.NaN
     
     #return hcho, lats, lons, amf, amfg, w, apri, plevs
     return {'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
@@ -407,14 +411,6 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     with h5py.File(fpath,'r') as in_f:
         #print('reading from file '+fpath)
         for key in keylist:
-            # AMFs are not stored as they can be recreated using the VC and SC
-            # right now they are stored just in case
-            #if 'AMF_GC' == key:
-            #    retstruct[key]=in_f['SC'].value / in_f['VC_GC'].value
-            #elif 'AMF_OMI' == key:
-            #    retstruct[key]=in_f['SC'].value / in_f['VC_OMI'].value
-            #else:
-            #    retstruct[key]=in_f[key].value
             retstruct[key]=in_f[key].value
     return (retstruct)
 

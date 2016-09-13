@@ -19366,3 +19366,42 @@ Job id            Name             User              Time Use S Queue
 Job id            Name             User              Time Use S Queue
 ----------------  ---------------- ----------------  -------- - -----
 8616898.r-man2    ReprocessCorrec  jwg574            05:15:12 R normal-def      
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8637873.r-man2    ReprocessCorrec  jwg574            05:15:02 R normal-def      
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8640917.r-man2    onedayReprocess  jwg574            00:00:00 R express-def     
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8641322.r-man2    onedayReprocess  jwg574            00:00:00 R express-def     
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8684352.r-man2    onedayReprocess  jwg574            00:00:00 R express-def     
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8684586.r-man2    onedayReprocess  jwg574            00:00:13 R express-def     
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8685825.r-man2    onedayReprocess  jwg574                   0 R express-def     
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8687173.r-man2    onedayReprocess  jwg574                   0 R express-def     
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8688257.r-man2    onedayReprocess  jwg574            00:00:00 R express-def     
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8688488.r-man2    onedayReprocess  jwg574            00:00:01 R express-def     
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8688911.r-man2    onedayReprocess  jwg574            00:00:00 R express-def     
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8706672.r-man2    onedayReprocess  jwg574            00:00:02 R express-def     
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8707259.r-man2    onedayReprocess  jwg574                   0 R express-def     
+Job id            Name             User              Time Use S Queue
+----------------  ---------------- ----------------  -------- - -----
+8707399.r-man2    onedayReprocess  jwg574            00:21:28 R express-def     

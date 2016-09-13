@@ -35,7 +35,7 @@ def sum_dicts(d1,d2):
         d3[k]=d1[k]+d2[k]
     return d3
 
-def get_good_pixel_list(date, getExtras=False, maxlat=60):
+def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
     '''
     Create a long list of 'good' pixels
     Also calculate new AMF for each good pixel
@@ -77,7 +77,8 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60):
     # loop through swaths
     files = fio.determine_filepath(date)
     for ff in files:
-        omiswath = fio.read_omhcho(ff, maxlat=maxlat)
+        if __VERBOSE__: print("trying to read %s"%ff)
+        omiswath = fio.read_omhcho(ff, maxlat=maxlat, verbose=verbose)
         flat,flon = omiswath['lats'], omiswath['lons']
         
         # only looking at good pixels
@@ -147,6 +148,11 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60):
         # We also store the track position for reference sector correction later
         swathtrack=np.where(goods==True)[1]
         track.extend(list(swathtrack))
+        # TODO:? maybe I should add VCC correction stuff here
+    
+    # TODO:maybe read and remove fire affected pixels here
+    # Using the AQUA/TERRA day/night fires
+    
     
     # after all the swaths are read in: send the lists back in a single 
     # dictionary structure
@@ -227,7 +233,7 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
         track_inds= ref_track == i
         track_lats=ref_lats[track_inds]
         track_corrections = ref_corrections[track_inds]
-        # for each latitude bin ( PRE ABAD EMAIL )
+        # reference sector is interpolated over 500 latitudes
         for j in range(500):
             lat_low=ref_lat_bounds[j]
             lat_high=ref_lat_bounds[j+1]
@@ -242,7 +248,7 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
     # ref_sec_correction [500, 60] is done
     return(ref_sec_correction, gc_VC_ref_func(ref_lat_mids))
 
-def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
+def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True remove_fires=True, verbose=False):
     '''
     1) get good pixels list from OMI swath files
     2) determine reference sector correction
@@ -252,7 +258,10 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     '''
     ## 1) 
     # 
-    goodpixels=get_good_pixel_list(date)
+    ymdstr=date.strftime("%Y%m%d")
+    if __VERBOSE__: 
+        print("create_omhchorp_1 called for %s"%ymdstr)
+    goodpixels=get_good_pixel_list(date, verbose=verbose)
     omi_lons=np.array(goodpixels['lon'])
     omi_lats=np.array(goodpixels['lat'])
     # SC UNITS: Molecs/cm2
@@ -277,7 +286,24 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
         # fix the NAN values through interpolation
         # [nan, 1, 2, nan, 4, nan, 4] -> [1, 1, 2, 3, 4, 4, 4]
         nans=np.isnan(track_correction)
-        track_correction = np.interp(ref_lat_bins, ref_lat_bins[~nans], track_correction[~nans])
+        latnans=np.isnan(lats)
+        
+        # if they're all nans we should skip.
+        #assert np.sum(nans) >= len(track_correction)-1, 'track_corrections are all nan!'
+        #assert np.sum(latnans) >= len(lats)-1, 'lats are all nans in rsc_function call'
+        if nans.all() or latnans.all():
+            # this should be handled outside this function...
+            print(("nans, latnans: ",nans.all(), latnans.all()))
+            return np.repeat(np.NaN,len(lats))
+            #assert False, 'lats are all nans in rsc_function call'
+        
+        try:
+            track_correction = np.interp(ref_lat_bins, ref_lat_bins[~nans], track_correction[~nans])
+        except ValueError as verr:
+            print("ERROR:")
+            print(verr)
+            print("Warning: Continuing on after that ERROR")
+            return np.repeat(np.NaN, len(lats))
         return(np.interp(lats, ref_lat_bins, track_correction))
     
     ## 3)
@@ -289,9 +315,15 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     for track in range(60):
         track_inds= omi_tracks==track
         # for each track VCC = (SC - correction) / AMF_GC
+        # If track has one or less non-nan values then skip
+        if np.isnan(omi_lats[track_inds]).all():
+            continue
         omi_VCC[track_inds]= (omi_SC[track_inds] - rsc_function(omi_lats[track_inds],track)) / omi_AMF_gc[track_inds]
-    # that should cover all good pixels
-    assert np.sum(np.isnan(omi_VCC))==0, "VCC not created at every pixel!"
+    # that should cover all good pixels - except if we had a completely bad track some day
+    #assert np.sum(np.isnan(omi_VCC))==0, "VCC not created at every pixel!"
+    if __VERBOSE__ and np.isnan(omi_VCC).any():
+        vccnans=np.sum(np.isnan(omi_VCC))
+        print ("Warning %d nan vcc entries on %s"%(vccnans,ymdstr))
     
     ## 4)
     # take list and turn into gridded product...
@@ -308,7 +340,9 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     nx=len(lons)
     
     # Filter for removing cloudy entries
-    cloud_filter= omi_clouds < 0.4
+    cloud_filter = omi_clouds < 0.4
+    # Filter for removing fire affected squares(from current and prior 8 days)
+    fire_filter = get_16day_fires_mask(date,latres=latres,lonres=lonres)
     
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -322,8 +356,11 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     for i in range(ny):
         for j in range(nx):
             matches=(omi_lats >= lat_bounds[i]) & (omi_lats < lat_bounds[i+1]) & (omi_lons >= lon_bounds[j]) & (omi_lons < lon_bounds[j+1])
+            # remove clouds and fires
             if remove_clouds:
                 matches = matches & cloud_filter
+            if remove_fires:
+                matches = matches & fire_filter
             # if no pixels in this grid square, continue
             counts[i,j]= np.sum(matches)
             if counts[i,j] < 1:
@@ -483,17 +520,18 @@ def get_8day_fires_mask(date=datetime(2005,1,1), latres=0.25, lonres=0.3125):
                 mask_copy[y,x] = np.sum(mask[[y-1,y,y+1],[x-1,x,(x+1)%ny]]) > 0
         return mask_copy
     
-    # read reprocessed:
-    
-    # read fires
+    # read day fires
     fires, flats, flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
+    
+    # TODO: read night fires:
+    
     # create a mask in squares with fires or adjacent to fires
     mask = fires > 0
     retmask = set_adjacent_to_true(mask)
     
     return retmask
 
-def get_16day_first_mask(date, latres=0.25, lonres=0.3125):
+def get_16day_fires_mask(date, latres=0.25, lonres=0.3125):
     ''' 
     '''
     # current 8 day fire mask

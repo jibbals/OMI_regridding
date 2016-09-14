@@ -45,7 +45,7 @@ def main(argv):
     ####################################
     ymd=start.strftime('%Y%m%d')
     print('Reprocessing from %s'%ymd)
-    reprocess.Reprocess_N_days(start, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True)
+    reprocess.Reprocess_N_days(start, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True, remove_fires=True)
     print("Combining the 8 days from %s"%ymd)
     reprocess.create_omhchorp_8(start,latres=0.25,lonres=0.3125)
 

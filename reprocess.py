@@ -21,6 +21,7 @@ from datetime import timedelta, datetime
 
 # GLOBALS
 __VERBOSE__=True # set to true for more print statements
+__DEBUG__=False # set to true for even more print statements
 
 # interpolate linearly to 500 points
 ref_lat_bins=np.arange(-90,90,0.36)+0.18
@@ -34,6 +35,20 @@ def sum_dicts(d1,d2):
     for k in set(d1) & set(d2):
         d3[k]=d1[k]+d2[k]
     return d3
+
+def create_lat_lon_grid(latres=0.25,lonres=0.3125):
+    '''
+    Returns lats, lons, latbounds, lonbounds for grid with input resolution
+    '''
+    # lat and lon bin boundaries
+    lat_bounds=np.arange(-90, 90+latres/2.0, latres)
+    lon_bounds=np.arange(-180, 180+lonres/2.0, lonres)
+    # lat and lon bin midpoints
+    lats=np.arange(-90,90,latres)+latres/2.0
+    lons=np.arange(-180,180,lonres)+lonres/2.0
+    
+    return(lats,lons,lat_bounds,lon_bounds)
+    
 
 def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
     '''
@@ -77,7 +92,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
     # loop through swaths
     files = fio.determine_filepath(date)
     for ff in files:
-        if __VERBOSE__: print("trying to read %s"%ff)
+        if __DEBUG__: print("trying to read %s"%ff)
         omiswath = fio.read_omhcho(ff, maxlat=maxlat, verbose=verbose)
         flat,flon = omiswath['lats'], omiswath['lons']
         
@@ -248,7 +263,7 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
     # ref_sec_correction [500, 60] is done
     return(ref_sec_correction, gc_VC_ref_func(ref_lat_mids))
 
-def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True remove_fires=True, verbose=False):
+def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remove_fires=True, verbose=False):
     '''
     1) get good pixels list from OMI swath files
     2) determine reference sector correction
@@ -292,10 +307,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True remov
         #assert np.sum(nans) >= len(track_correction)-1, 'track_corrections are all nan!'
         #assert np.sum(latnans) >= len(lats)-1, 'lats are all nans in rsc_function call'
         if nans.all() or latnans.all():
-            # this should be handled outside this function...
-            print(("nans, latnans: ",nans.all(), latnans.all()))
             return np.repeat(np.NaN,len(lats))
-            #assert False, 'lats are all nans in rsc_function call'
         
         try:
             track_correction = np.interp(ref_lat_bins, ref_lat_bins[~nans], track_correction[~nans])
@@ -323,25 +335,20 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True remov
     #assert np.sum(np.isnan(omi_VCC))==0, "VCC not created at every pixel!"
     if __VERBOSE__ and np.isnan(omi_VCC).any():
         vccnans=np.sum(np.isnan(omi_VCC))
-        print ("Warning %d nan vcc entries on %s"%(vccnans,ymdstr))
+        print ("Warning %d nan vcc entries from %d on %s"%(vccnans, len(omi_VCC),ymdstr))
     
     ## 4)
     # take list and turn into gridded product...
     # majority of processing time in here ( 75 minutes? )
     
-    # lat and lon bin boundaries
-    lat_bounds=np.arange(-90, 90+latres/2.0, latres)
-    lon_bounds=np.arange(-180, 180+lonres/2.0, lonres)
-    # lat and lon bin midpoints
-    lats=np.arange(-90,90,latres)+latres/2.0
-    lons=np.arange(-180,180,lonres)+lonres/2.0
     # how many lats, lons
-    ny=len(lats)
-    nx=len(lons)
+    lats,lons,lat_bounds,lon_bounds=create_lat_lon_grid(latres=latres,lonres=lonres)
+    ny,nx = len(lats), len(lons)
     
     # Filter for removing cloudy entries
-    cloud_filter = omi_clouds < 0.4
+    cloud_filter = omi_clouds < 0.4 # This is a list of booleans for the pixels
     # Filter for removing fire affected squares(from current and prior 8 days)
+    # filter is booleans matching lat/lon grid. True for fires
     fire_filter = get_16day_fires_mask(date,latres=latres,lonres=lonres)
     
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -355,16 +362,22 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True remov
     counts  = np.zeros([ny,nx],dtype=np.int)
     for i in range(ny):
         for j in range(nx):
+            # don't calculate if there's fires
+            if remove_fires:
+                localfire=fire_filter[i,j]
+                if localfire:
+                    continue
+            
+            # how many pixels within this grid box
             matches=(omi_lats >= lat_bounds[i]) & (omi_lats < lat_bounds[i+1]) & (omi_lons >= lon_bounds[j]) & (omi_lons < lon_bounds[j+1])
-            # remove clouds and fires
+            
+            # remove clouds
             if remove_clouds:
                 matches = matches & cloud_filter
-            if remove_fires:
-                matches = matches & fire_filter
-            # if no pixels in this grid square, continue
             counts[i,j]= np.sum(matches)
             if counts[i,j] < 1:
                 continue
+            
             # Save the means of each good grid pixel
             SC[i,j]         = np.mean(omi_SC[matches])
             VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
@@ -398,6 +411,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True remov
     
     if __VERBOSE__:
         print("sending day average to be saved: "+outfilename)
+    if __DEBUG__:
         print(("keys: ",outd.keys()))
     fio.save_to_hdf5(outfilename, outd)
     
@@ -473,7 +487,7 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
     fio.save_to_hdf5(outfilename, avgdict)
     print("File Saved: "+outfilename)
 
-def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True):
+def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True,remove_fires=True):
     '''
     run the one day reprocessing function in parallel using N processes for M days
     '''
@@ -488,21 +502,22 @@ def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remo
     
     # create pool of M processes
     pool = Pool(processes=processes)
-    if __VERBOSE__:
+    if __DEBUG__:
         print ("Process pool created ")
     
     #arguments: date,latres,lonres,getsum
     # function arguments in a list, for each of N days
-    inputs = [(dd, latres, lonres, remove_clouds) for dd in daysN]
+    inputs = [(dd, latres, lonres, remove_clouds, remove_fires) for dd in daysN]
     
     # run all at once since each day can be independantly processed
     results = [ pool.apply_async(create_omhchorp_1, args=inp) for inp in inputs ]
-    if __VERBOSE__:
+    if __DEBUG__:
         print("apply_async called for each day")
     pool.close()
     pool.join() # wait until all jobs have finished(~ 70 minutes)
-    if __VERBOSE__:
+    if __DEBUG__:
         print("Pool Closed and Joined")
+    if __VERBOSE__:
         elapsed = timeit.default_timer() - start_time
         print ("Took %6.2f minutes to reprocess %3d days using %2d processes"%(elapsed/60.0,days,processes))
 
@@ -516,8 +531,8 @@ def get_8day_fires_mask(date=datetime(2005,1,1), latres=0.25, lonres=0.3125):
         mask_copy = np.zeros(mask.shape).astype(bool)
         ny,nx=mask.shape
         for x in range(nx):
-            for y in range(ny-1)+1: # don't worry about top and bottom row
-                mask_copy[y,x] = np.sum(mask[[y-1,y,y+1],[x-1,x,(x+1)%ny]]) > 0
+            for y in np.arange(1,ny-1): # don't worry about top and bottom row
+                mask_copy[y,x] = np.sum(mask[[y-1,y,y+1],[x-1,x,(x+1)%nx]]) > 0
         return mask_copy
     
     # read day fires

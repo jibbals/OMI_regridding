@@ -114,6 +114,16 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
+def  reprocessed_amf_correlations(date=datetime(2005,1,1), oneday=True)
+    '''
+    '''
+    print("Reprocessed_amf_correlations To Be Implemented")
+
+def check_timeline()
+    '''
+    '''
+    print("Check Timeline test to be implemented")
+
 def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179,pltname=""):
     '''
     Test a day or 8-day reprocessed HCHO map
@@ -831,14 +841,16 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     #test_fires_fio()
-    #test_amf_calculation() # Check the AMF stuff
+    test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 40] ]
-    #for day in dates:
-    #    for oneday in [True, False]:
-    #        test_reprocess_corrected(date=day, oneday=oneday)
-    #        test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+    for day in dates:
+        for oneday in [True, False]:
+            test_reprocess_corrected(date=day, oneday=oneday)
+            test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
     test_amf_over_australia()
+    check_timeline()
+    reprocessed_amf_correlations()
     
     #check_high_amfs()
     #test_hchorp_apriori()

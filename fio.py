@@ -107,9 +107,7 @@ def read_8dayfire(date=datetime(2005,1,1,0)):
     
     # only every 8 days matches a file
     # this will give us a multiple of 8 which matches our DOY
-    daymatch= int(np.floor(tt.tm_yday/8)*8) 
-    if daymatch == 0:
-        daymatch = 1
+    daymatch= int(np.floor(tt.tm_yday/8)*8) +1 
     filepath='MYD14C8H/MYD14C8H.%4d%03d.h5' % (tt.tm_year, daymatch)
     return read_8dayfire_path(filepath)
 
@@ -147,12 +145,11 @@ def read_8dayfire_interpolated(date,latres,lonres):
     newlats= np.arange(-90,90, latres) + latres/2.0
     newlons= np.arange(-180,180, lonres) + lonres/2.0
 
-    mlons,mlats = np.meshgrid(lons,lats) # this order keeps the lats/lons dimension order
+    mlons,mlats = np.meshgrid(lons,lats)
     mnewlons,mnewlats = np.meshgrid(newlons,newlats)    
     
     fires = read_8dayfire(date)[0]
-    interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons),
-method='nearest')
+    interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons), method='nearest')
     return interp, newlats, newlons
 
 def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=False):

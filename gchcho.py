@@ -186,11 +186,12 @@ class gchcho:
                 f=plt.figure(figsize=(15,10))
                 # plot the init vs new coords
                 ax=plt.subplot(131)
-                plt.scatter(w_pmids_init[0:5],w_pmids[0:5],color='k', label='$\omega$ coords')
-                plt.scatter(S_pmids_init[0:5],S_pmids[0:5],color='cyan', label='Shape coords')
+                plt.scatter(w_pmids_init[0:10],w_pmids[0:10],color='k', label='OMI coords')
+                plt.scatter(S_pmids_init[0:10],S_pmids[0:10],color='cyan', label='GEOS-Chem coords')
                 plt.xlabel('p')
                 plt.ylabel('p$_{new}$')
                 plt.title('hPa')
+                plt.legend(loc=0)
                 
                 # plot the old and new scattering weights
                 ax=plt.subplot(132)

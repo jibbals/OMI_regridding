@@ -1,14 +1,14 @@
-Finished job 8579349.r-man2
+Finished job 8740220.r-man2
 
 ======================================================================================
-                  Resource Usage on 2016-09-07 11:58:45:
-   Job Id:             8579349.r-man2
+                  Resource Usage on 2016-09-14 17:41:42:
+   Job Id:             8740220.r-man2
    Project:            m19
    Exit Status:        0
-   Service Units:      10.52
+   Service Units:      10.34
    NCPUs Requested:    8                      NCPUs Used: 8               
-                                           CPU Time Used: 10:13:03                                   
-   Memory Requested:   19.53GB               Memory Used: 3.26GB          
-   Walltime requested: 04:00:00            Walltime Used: 01:18:56        
+                                           CPU Time Used: 08:58:30                                   
+   Memory Requested:   19.53GB               Memory Used: 3.07GB          
+   Walltime requested: 04:00:00            Walltime Used: 01:17:32        
    JobFS requested:    100.0MB                JobFS used: 0B              
 ======================================================================================

@@ -114,12 +114,12 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
-def  reprocessed_amf_correlations(date=datetime(2005,1,1), oneday=True)
+def  reprocessed_amf_correlations(date=datetime(2005,1,1), oneday=True):
     '''
     '''
     print("Reprocessed_amf_correlations To Be Implemented")
 
-def check_timeline()
+def check_timeline():
     '''
     '''
     print("Check Timeline test to be implemented")
@@ -507,7 +507,7 @@ def test_fires_removed(day=datetime(2005,1,1)):
     '''
     # read 8 day average prior to fior
     #
-    pre = fio.read_omhchorp(day, oneday=False, filename="omhchorp/BeforeFireRemoved/omhcho_8p0.25x0.31_20050101.he5"
+    pre = fio.read_omhchorp(day, oneday=False, filename="omhchorp/BeforeFireRemoved/omhcho_8p0.25x0.31_20050101.he5")
     
     # read 8 day average post toast
     #
@@ -843,7 +843,7 @@ if __name__ == '__main__':
     #test_fires_fio()
     test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
-    #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 40] ]
+    dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 80] ]
     for day in dates:
         for oneday in [True, False]:
             test_reprocess_corrected(date=day, oneday=oneday)

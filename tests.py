@@ -49,9 +49,10 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
           llcrnrlon=lllon, urcrnrlon=urlon,
           resolution='i',projection='merc')
     if len(lats.shape) == 1:
-        latnew=regularbounds(lats)
-        lonnew=regularbounds(lons)
-        lonsnew,latsnew=np.meshgrid(lonnew,latnew)
+        #latnew=regularbounds(lats)
+        #lonnew=regularbounds(lons)
+        #lonsnew,latsnew=np.meshgrid(lonnew,latnew)
+        lonsnew,latsnew=np.meshgrid(lons,lats)
     else:
         latsnew,lonsnew=(lats,lons)
     cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon, 
@@ -69,8 +70,8 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
     return m, cs, cb
 def globalmap(data,lats,lons):
     return createmap(data,lats,lons,lllat=-80,urlat=80,lllon=-179,urlon=179)
-def ausmap(data,lats,lons):
-    return createmap(data,lats,lons,lllat=-52,urlat=-5,lllon=100,urlon=160)
+def ausmap(data,lats,lons,vmin=None,vmax=None):
+    return createmap(data,lats,lons,lllat=-50,urlat=-5,lllon=100,urlon=160, vmin=vmin, vmax=vmax)
 def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True, 
               lllat=-80, urlat=80, lllon=-179, urlon=179):
     
@@ -500,22 +501,62 @@ def test_fires_fio():
     plt.savefig('pictures/AQUA2005001.png')
     plt.close()
 
-def test_fires_removed(day=datetime(2005,1,1)):
+def test_fires_removed(day=datetime(2005,1,1),oneday=False):
     '''
     Check that fire affected pixels are actually removed
     TODO: implement
     '''
-    # read 8 day average prior to fior
+    # read 8 day average prior to fi-or
     #
-    pre = fio.read_omhchorp(day, oneday=False, filename="omhchorp/BeforeFireRemoved/omhcho_8p0.25x0.31_20050101.he5")
+    keylist=['gridentries','VC_OMI','VC_GC','AMF_GC','AMF_OMI','latitude','longitude']
+    filename="omhchorp/BeforeFireRemoved/omhcho_8p0.25x0.31_20050101.he5"
+    if oneday:
+        filename="omhchorp/BeforeFireRemoved/omhcho_1p0.25x0.31_20050101.he5"
+    pre = fio.read_omhchorp(day, oneday=oneday, filename=filename, keylist=keylist)
     
     # read 8 day average post toast
     #
-    post = fio.read_omhchorp(day,oneday=False)
+    post = fio.read_omhchorp(day,oneday=oneday, keylist=keylist)
+    prelats,prelons=pre['latitude'],pre['longitude']
+    postlats,postlons=post['latitude'],post['longitude']
     
     # compare and beware
     #
+    f, axes = plt.subplots(3,2,num=0,figsize=(18,14))
+    # Plot olt AMF, new AMF
+    #      old VC,  new VC 
     
+    # set currently active axis from [2,3] axes array
+    vmins,vmaxs=[0.5,0.5,1e14,1e14],[6,20,1e17,1e17]
+    for i,arr in enumerate(['AMF_OMI', 'AMF_GC', 'VC_OMI']):
+        plt.sca(axes[i,0])
+        m,cs,cb = [linearmap,ausmap][int(np.floor(i/2))](pre[arr],prelats,prelons,vmin=vmins[i],vmax=vmaxs[i])
+        plt.title("%s (no fire exclusion)"%arr)
+        plt.sca(axes[i,1])
+        m,cs,cb = [linearmap,ausmap][int(np.floor(i/2))](post[arr],postlats,postlons,vmin=vmins[i],vmax=vmaxs[i])
+        plt.title("%s (fires excluded)"%arr)
+    pname='pictures/fire_exclusion_results_%s.png'%['8d','1d'][oneday]
+    f.savefig(pname)
+    print("%s saved"%pname)
+    plt.close(f)
+    # plot just Australia, zoomed in on one day.
+    f, axes=plt.subplots(1,2,num=1,figsize=(16,10))
+    for i,arr in enumerate([pre['VC_GC'],post['VC_GC']]):
+        plt.sca(axes[i])
+        title=['$\Omega_{GEOS}$ before fire exclusion','after fire exclusion'][i]
+        ausmap(arr,prelats,prelons,vmin=vmins[3],vmax=vmaxs[3])
+        plt.title(title)
+    plt.suptitle("%s average $\Omega_{GEOS}$ for Jan 1, 2005"%(['Eight day','One day'][oneday]), fontsize=36)
+    plt.tight_layout()
+    pname='pictures/fire_exclusion_aus_%s.png'%['8d','1d'][oneday]
+    f.savefig(pname)
+    print("%s saved"%pname)
+    plt.close(f)
+    glats=(prelats < 50) * (prelats > -50)
+    prenans=np.sum(np.isnan(pre['AMF_OMI'][ glats ]))
+    postnans=np.sum(np.isnan(post['AMF_OMI'][ glats ]))
+    print("%d / %d  gridentries after fire and latitude exclusion"%(np.sum(post['gridentries']),np.sum(pre['gridentries'])))
+    print("%d / %d nan entries before and after fire exclusion within 50 degrees of equator"%(prenans,postnans))
 
 def test_gchcho():
     '''
@@ -841,17 +882,23 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     #test_fires_fio()
-    test_amf_calculation() # Check the AMF stuff
+    #test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
-    dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 80] ]
+    # check some days (or one or no days)
+    #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 80] ]
+    #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [80] ]
+    dates=[]
     for day in dates:
         for oneday in [True, False]:
             test_reprocess_corrected(date=day, oneday=oneday)
             test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
-    test_amf_over_australia()
+    # to be updated:
+    #test_amf_over_australia()
     check_timeline()
     reprocessed_amf_correlations()
+    test_fires_removed()
     
+    # other tests
     #check_high_amfs()
     #test_hchorp_apriori()
     #test_gchcho()

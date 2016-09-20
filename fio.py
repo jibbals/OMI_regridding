@@ -398,7 +398,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     if keylist is None:
         keylist=['AMF_GC','AMF_GCz','AMF_OMI','SC','VC_GC','VC_OMI','VCC','gridentries',
                  'latitude','longitude','RSC','RSC_latitude','RSC_GC','RSC_region',
-                 'col_uncertainty_OMI']
+                 'col_uncertainty_OMI','fires']
     retstruct=dict.fromkeys(keylist)
     if filename is None:
         fpath=determine_filepath(date,oneday=oneday,latres=latres,lonres=lonres,reprocessed=True)
@@ -408,7 +408,11 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     with h5py.File(fpath,'r') as in_f:
         #print('reading from file '+fpath)
         for key in keylist:
-            retstruct[key]=in_f[key].value
+            try:
+                retstruct[key]=in_f[key].value
+            except KeyError as ke: # if there is no matching key then print an error and continue
+                print("Key Error in %s"%fpath)
+                print(ke)
     return (retstruct)
 
 def read_gchcho(date):

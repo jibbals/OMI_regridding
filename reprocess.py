@@ -407,6 +407,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     outd['AMF_GC']              = AMF_gc
     outd['AMF_GCz']             = AMF_gcz
     outd['AMF_OMI']             = AMF_omi
+    outd['fires']               = fire_filter
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True,oneday=True)
     
     if __VERBOSE__:
@@ -435,7 +436,7 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
         files8.append(filename)
     
     # normal stuff will be identical between days
-    normallist=['latitude','longitude','RSC_latitude','RSC_region']
+    normallist=['latitude','longitude','RSC_latitude','RSC_region','fires']
     # list of things we need to add together and average
     sumlist=['AMF_GC','AMF_GCz','AMF_OMI','SC','VC_GC','VC_OMI','VCC','col_uncertainty_OMI']
     # other things need to be handled seperately

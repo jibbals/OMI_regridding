@@ -363,10 +363,11 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     for i in range(ny):
         for j in range(nx):
             # don't calculate if there's fires
-            if remove_fires:
-                localfire=fire_filter[i,j]
-                if localfire:
-                    continue
+            # update: Still calculate, just keep the fire mask for later usage.
+            #if remove_fires:
+            #    localfire=fire_filter[i,j]
+            #    if localfire:
+            #        continue
             
             # how many pixels within this grid box
             matches=(omi_lats >= lat_bounds[i]) & (omi_lats < lat_bounds[i+1]) & (omi_lons >= lon_bounds[j]) & (omi_lons < lon_bounds[j+1])

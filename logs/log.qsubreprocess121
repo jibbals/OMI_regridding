@@ -1,15 +1,14 @@
-/jobfs/local/pbs/mom_priv/jobs/8740230.r-man2.SC: line 22: 31354 Segmentation fault      python3 runreprocess.py --start=$START &>logs/log.reprocess$START
-Finished job 8740230.r-man2
+Finished job 8853019.r-man2
 
 ======================================================================================
-                  Resource Usage on 2016-09-14 18:02:11:
-   Job Id:             8740230.r-man2
+                  Resource Usage on 2016-09-20 14:00:41:
+   Job Id:             8853019.r-man2
    Project:            m19
    Exit Status:        0
-   Service Units:      8.64
+   Service Units:      5.57
    NCPUs Requested:    8                      NCPUs Used: 8               
-                                           CPU Time Used: 08:06:08                                   
-   Memory Requested:   19.53GB               Memory Used: 3.37GB          
-   Walltime requested: 04:00:00            Walltime Used: 01:04:50        
+                                           CPU Time Used: 05:05:08                                   
+   Memory Requested:   19.53GB               Memory Used: 2.97GB          
+   Walltime requested: 04:00:00            Walltime Used: 00:41:45        
    JobFS requested:    100.0MB                JobFS used: 0B              
 ======================================================================================

@@ -8,6 +8,7 @@ matplotlib.use('Agg') # don't actually display any plots, just create them
 # my file reading and writing module
 import fio
 import reprocess
+from omhchorp import omhchorp
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -504,37 +505,39 @@ def test_fires_fio():
 def test_fires_removed(day=datetime(2005,1,1),oneday=False):
     '''
     Check that fire affected pixels are actually removed
-    TODO: implement
+    TODO: try using the omhchorp class.
     '''
     # read 8 day average prior to fi-or
     #
-    keylist=['gridentries','VC_OMI','VC_GC','AMF_GC','AMF_OMI','latitude','longitude']
+    keylist=['gridentries','VC_OMI','VC_GC','AMF_GC','AMF_OMI','latitude','longitude','fires']
     filename="omhchorp/BeforeFireRemoved/omhcho_8p0.25x0.31_20050101.he5"
     if oneday:
         filename="omhchorp/BeforeFireRemoved/omhcho_1p0.25x0.31_20050101.he5"
-    pre = fio.read_omhchorp(day, oneday=oneday, filename=filename, keylist=keylist)
+    pre = omhchorp(day, oneday=oneday, filename=filename, keylist=keylist)
     
     # read 8 day average post toast
     #
-    post = fio.read_omhchorp(day,oneday=oneday, keylist=keylist)
-    prelats,prelons=pre['latitude'],pre['longitude']
-    postlats,postlons=post['latitude'],post['longitude']
+    post = omhchorp(day,oneday=oneday, keylist=keylist)
+    lats,lons=pre.latitude,pre.longitude
     
     # compare and beware
     #
-    f, axes = plt.subplots(3,2,num=0,figsize=(18,14))
+    f = plt.figure(num=0,figsize=(18,14))
     # Plot olt AMF, new AMF
     #      old VC,  new VC 
+    #        Fires Counts
     
     # set currently active axis from [2,3] axes array
-    vmins,vmaxs=[0.5,0.5,1e14,1e14],[6,20,1e17,1e17]
-    for i,arr in enumerate(['AMF_OMI', 'AMF_GC', 'VC_OMI']):
-        plt.sca(axes[i,0])
-        m,cs,cb = [linearmap,ausmap][int(np.floor(i/2))](pre[arr],prelats,prelons,vmin=vmins[i],vmax=vmaxs[i])
-        plt.title("%s (no fire exclusion)"%arr)
-        plt.sca(axes[i,1])
-        m,cs,cb = [linearmap,ausmap][int(np.floor(i/2))](post[arr],postlats,postlons,vmin=vmins[i],vmax=vmaxs[i])
-        plt.title("%s (fires excluded)"%arr)
+    vmins,vmaxs=[0.5,0.5,1e14,1e14],[6,6,1e17,1e17]
+    for i,arr in enumerate([pre.AMF_OMI,post.AMF_OMI,pre.VC_OMI,post.VC_OMI]):
+        plt.subplot(321+i)
+        i0=int(np.floor(i/2))
+        m,cs,cb = [linearmap,ausmap][i0](arr,lats,lons,vmin=vmins[i],vmax=vmaxs[i])
+        plt.title("%s (%sfires excluded)"%(['AMF$_{OMI}$','\$Omega_{OMI}$'][i0],['no ',''][i%2]))
+    plt.subplot(313)
+    linearmap(post.fires, lats,lons,vmin=1,vmax=20)
+    plt.title('Fires')
+    plt.tight_layout()
     pname='pictures/fire_exclusion_results_%s.png'%['8d','1d'][oneday]
     f.savefig(pname)
     print("%s saved"%pname)
@@ -544,7 +547,7 @@ def test_fires_removed(day=datetime(2005,1,1),oneday=False):
     for i,arr in enumerate([pre['VC_GC'],post['VC_GC']]):
         plt.sca(axes[i])
         title=['$\Omega_{GEOS}$ before fire exclusion','after fire exclusion'][i]
-        ausmap(arr,prelats,prelons,vmin=vmins[3],vmax=vmaxs[3])
+        ausmap(arr,lats,lons,vmin=vmins[3],vmax=vmaxs[3])
         plt.title(title)
     plt.suptitle("%s average $\Omega_{GEOS}$ for Jan 1, 2005"%(['Eight day','One day'][oneday]), fontsize=36)
     plt.tight_layout()
@@ -552,11 +555,11 @@ def test_fires_removed(day=datetime(2005,1,1),oneday=False):
     f.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
-    glats=(prelats < 50) * (prelats > -50)
+    glats=(lats < 60) * (lats > -60)
     prenans=np.sum(np.isnan(pre['AMF_OMI'][ glats ]))
     postnans=np.sum(np.isnan(post['AMF_OMI'][ glats ]))
     print("%d / %d  gridentries after fire and latitude exclusion"%(np.sum(post['gridentries']),np.sum(pre['gridentries'])))
-    print("%d / %d nan entries before and after fire exclusion within 50 degrees of equator"%(prenans,postnans))
+    print("%d / %d nan entries before and after fire exclusion within 60 degrees of equator"%(prenans,postnans))
 
 def test_gchcho():
     '''

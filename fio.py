@@ -413,7 +413,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
             except KeyError as ke: # if there is no matching key then print an error and continue
                 print("Key Error in %s"%fpath)
                 print(ke)
-    return (retstruct)
+    return retstruct
 
 def read_gchcho(date):
     '''

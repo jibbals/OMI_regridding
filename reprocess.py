@@ -21,7 +21,7 @@ from datetime import timedelta, datetime
 
 # GLOBALS
 __VERBOSE__=True # set to true for more print statements
-__DEBUG__=False # set to true for even more print statements
+__DEBUG__=True # set to true for even more print statements
 
 # interpolate linearly to 500 points
 ref_lat_bins=np.arange(-90,90,0.36)+0.18
@@ -303,9 +303,6 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
         nans=np.isnan(track_correction)
         latnans=np.isnan(lats)
         
-        # if they're all nans we should skip.
-        #assert np.sum(nans) >= len(track_correction)-1, 'track_corrections are all nan!'
-        #assert np.sum(latnans) >= len(lats)-1, 'lats are all nans in rsc_function call'
         if nans.all() or latnans.all():
             return np.repeat(np.NaN,len(lats))
         
@@ -349,6 +346,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     cloud_filter = omi_clouds < 0.4 # This is a list of booleans for the pixels
     # Filter for removing fire affected squares(from current and prior 8 days)
     # filter is booleans matching lat/lon grid. True for fires
+    fire_count, _flats, _flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
     fire_filter = get_16day_fires_mask(date,latres=latres,lonres=lonres)
     
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -408,15 +406,17 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     outd['AMF_GC']              = AMF_gc
     outd['AMF_GCz']             = AMF_gcz
     outd['AMF_OMI']             = AMF_omi
-    outd['fires']               = fire_filter
+    outd['fire_mask']           = fire_filter.astype(np.int16)
+    outd['fires']               = fire_count.astype(np.int16)
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True,oneday=True)
     
     if __VERBOSE__:
         print("sending day average to be saved: "+outfilename)
     if __DEBUG__:
         print(("keys: ",outd.keys()))
-    fio.save_to_hdf5(outfilename, outd)
-    
+    fio.save_to_hdf5(outfilename, outd,verbose=verbose)
+    if __DEBUG__:
+        print("File should be saved now...")
     ## 5.1)
     ## TODO: Save analysis metadata like SSDs or other metrics
     #
@@ -437,7 +437,7 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
         files8.append(filename)
     
     # normal stuff will be identical between days
-    normallist=['latitude','longitude','RSC_latitude','RSC_region','fires']
+    normallist=['latitude','longitude','RSC_latitude','RSC_region','fires','fire_mask']
     # list of things we need to add together and average
     sumlist=['AMF_GC','AMF_GCz','AMF_OMI','SC','VC_GC','VC_OMI','VCC','col_uncertainty_OMI']
     # other things need to be handled seperately
@@ -522,7 +522,6 @@ def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remo
     if __VERBOSE__:
         elapsed = timeit.default_timer() - start_time
         print ("Took %6.2f minutes to reprocess %3d days using %2d processes"%(elapsed/60.0,days,processes))
-
 
 def get_8day_fires_mask(date=datetime(2005,1,1), latres=0.25, lonres=0.3125):
     '''

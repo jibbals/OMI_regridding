@@ -22,7 +22,7 @@ fi
 python3 << END
 from datetime import datetime
 import reprocess
-reprocess.create_omhchorp_1(datetime(2005,1,20),verbose=True)
+reprocess.create_omhchorp_1(datetime(2005,1,18),verbose=True)
 END
 
 #------------------

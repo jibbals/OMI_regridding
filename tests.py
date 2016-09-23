@@ -885,18 +885,18 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     #test_fires_fio()
-    #test_amf_calculation() # Check the AMF stuff
+    test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
     # check some days (or one or no days)
-    #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 80] ]
+    dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 80] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [80] ]
-    dates=[]
+    #dates=[]
     for day in dates:
         for oneday in [True, False]:
             test_reprocess_corrected(date=day, oneday=oneday)
             test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
     # to be updated:
-    #test_amf_over_australia()
+    test_amf_over_australia()
     check_timeline()
     reprocessed_amf_correlations()
     test_fires_removed()
@@ -910,4 +910,4 @@ if __name__ == '__main__':
     #compare_cloudy_map()
     
     # check the ref sector correction is not weird.
-    #check_RSC(track_corrections=True)
+    check_RSC(track_corrections=True)

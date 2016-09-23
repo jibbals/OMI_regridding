@@ -29,7 +29,7 @@ geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
-def save_to_hdf5(outfilename, arraydict, fillvalue=0.0, verbose=False):
+def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, verbose=False):
     '''
     Takes a bunch of arrays, named in the arraydict parameter, and saves 
     to outfilename as hdf5 using h5py with fillvalue=0, gzip compression
@@ -63,8 +63,11 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=0.0, verbose=False):
             # for VC items and RSC, note the units in the file.
             if ('VC' in name) or ('RSC' == name) or ('SC' == name) or ('col_uncertainty' in name):
                 dset.attrs["Units"] = "Molecules/cm2"
+            if 'fire_mask' == name:
+                dset.attrs["description"] = "1 if > 1 fire in this or adjacent gridbox over the past 16 days"
         # force h5py to flush buffers to disk
         f.flush()
+        print("end of fio.save_to_hdf5()")
 
 def combine_dicts(d1,d2):
     '''
@@ -398,7 +401,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     if keylist is None:
         keylist=['AMF_GC','AMF_GCz','AMF_OMI','SC','VC_GC','VC_OMI','VCC','gridentries',
                  'latitude','longitude','RSC','RSC_latitude','RSC_GC','RSC_region',
-                 'col_uncertainty_OMI','fires']
+                 'col_uncertainty_OMI','fires','fire_mask']
     retstruct=dict.fromkeys(keylist)
     if filename is None:
         fpath=determine_filepath(date,oneday=oneday,latres=latres,lonres=lonres,reprocessed=True)

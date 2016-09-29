@@ -226,13 +226,12 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     plt.close()
     print(outfig+" Saved.")
 
-def test_amf_over_australia(day=datetime(2005,1,1), oneday=False):
+def test_calculation_over_australia(day=datetime(2005,1,1), oneday=False):
     '''
     Look closely at AMFs over Australia, specifically over land
     and see how our values compare against the model and OMI swaths.
     '''
-    print("To Be Implemented")
-    
+    ymdstr=day.strftime('%Y%m%d')
     # read in omhchorp
     omhchorp=fio.read_omhchorp(day,oneday=oneday)
     AMF_GC=omhchorp['AMF_GC']
@@ -241,6 +240,7 @@ def test_amf_over_australia(day=datetime(2005,1,1), oneday=False):
     VC_OMI=omhchorp['VC_OMI']
     lats=omhchorp['latitude']
     lons=omhchorp['longitude']
+    unc = omhchorp['col_uncertainty_OMI']
     mlons0,mlats0=np.meshgrid(lons,lats)
     # read in pixel list? or omhcho swaths
     # or not
@@ -255,25 +255,67 @@ def test_amf_over_australia(day=datetime(2005,1,1), oneday=False):
     ausvcomi=VC_OMI[lllati:urlati,llloni:urloni]
     ausamfgc=AMF_GC[lllati:urlati,llloni:urloni]
     ausamfomi=AMF_OMI[lllati:urlati,llloni:urloni]
-    print(AMF_GC.shape)
-    print(ausamfgc.shape)
-    print(mlons.shape)
-    print(("lats ",lats.shape))
-    print(("lons ",lons.shape))
-    print(("VC_GC ",VC_GC.shape))
-    # Mask out the ocean
-    landvcgc=maskoceans(mlons,mlats,ausvcgc,inlands=False)
+    ausunc = unc[lllati:urlati,llloni:urloni]
     
-    # show plot with and without ocean mask
-    f=plt.figure(figsize=(12,8))
-    ax=plt.subplot(121)
-    # ocean masked array
-    m,cs,cb = ausmap(landvcgc,mlats,mlons)
-    ax=plt.subplot(122)
-    # full array
-    m,cs,cb = ausmap(VC_GC,mlats0,mlons0)
-    # show corellations with and without ocean mask
-    plt.savefig('austest.png')
+    # Mask out the ocean
+    landvcgc  = maskoceans(mlons,mlats,ausvcgc,inlands=False)
+    landvcomi = maskoceans(mlons,mlats,ausvcomi,inlands=False)
+    landunc   = maskoceans(mlons,mlats,ausunc,inlands=False)
+    
+    print(("Mean AUS land VC_GC: %5.3e"%np.nanmean(landvcgc)))
+    print(("Mean AUS land VC_OMI: %5.3e"%np.nanmean(landvcomi)))
+    print(("Min AUS land VC_GC: %5.3e"%np.nanmin(landvcgc)))
+    print(("Min AUS land VC_OMI: %5.3e"%np.nanmin(landvcomi)))
+    
+    # Plot the histogram of VC entries over australia
+    plt.hist(landvcgc)
+    plt.title('Australia land $\Omega_{GC}$')
+    plt.ylabel('frequency'); plt.xlabel('molec cm$^{-2}$')
+    pname='pictures/AUS_landVC_GC_hist.png'
+    plt.savefig(pname)
+    print("%s saved"%pname)
+    plt.close()
+    
+    # Plot the maps:
+    #
+    # GC aus columns
+    f=plt.figure(figsize=(14,12))
+    ax=plt.subplot(221)
+    lllat=-50; urlat=-5; lllon=100; urlon=170
+    m,cs,cb = createmap(landvcgc,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    Ogc="$\Omega_{GC}$"
+    Oomi="$\Omega_{OMI}$"
+    plt.title("Aus "+Ogc)
+    
+    # omi aus columns
+    ax=plt.subplot(222)
+    m,cs,cb = createmap(landvcomi,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.title("Aus "+Oomi)
+    
+    # omi uncertainty:
+    ax=plt.subplot(224)
+    m,cs,cb = createmap(landunc, mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.title("Aus column uncertainty (OMI)")
+    
+    # show AUS corellations with ocean masked out
+    plt.subplot(223)
+    nans = np.isnan(landvcgc) + (np.isnan(landvcomi)) #+ landvcgc.mask
+    nanscheck=nans + landvcgc.mask
+    print( (np.sum(nans), np.sum(nanscheck)) )
+    plt.scatter(landvcomi, landunc, color='grey',alpha=0.5, label="OMI vs uncertainty")
+    plt.scatter(landvcomi,landvcgc, color='black',label="OMI vs GC")
+    slope,intercept,r,p,sterr = stats.linregress(landvcomi[~nans],landvcgc[~nans])
+    X=np.array([1e10,5e16])
+    plt.plot( X, slope*X+intercept,color='fuchsia',
+            label='Slope=%.5f, r=%.5f'%(slope,r))
+    plt.plot( X, X, 'k--', label='1-1' )
+    plt.legend(loc=0); plt.xlabel(Ogc); plt.ylabel(Oomi)
+    
+    # save plot
+    pname='pictures/AUS_%s.png'%ymdstr
+    f.savefig(pname)
+    print("%s saved"%pname)
+    plt.close()
 
 def test_amf_calculation(scount=50):
     '''
@@ -544,7 +586,7 @@ def test_fires_removed(day=datetime(2005,1,1),oneday=False):
     plt.close(f)
     # plot just Australia, zoomed in on one day.
     f, axes=plt.subplots(1,2,num=1,figsize=(16,10))
-    for i,arr in enumerate([pre['VC_GC'],post['VC_GC']]):
+    for i,arr in enumerate([pre.VC_GC, post.VC_GC]):
         plt.sca(axes[i])
         title=['$\Omega_{GEOS}$ before fire exclusion','after fire exclusion'][i]
         ausmap(arr,lats,lons,vmin=vmins[3],vmax=vmaxs[3])
@@ -556,9 +598,9 @@ def test_fires_removed(day=datetime(2005,1,1),oneday=False):
     print("%s saved"%pname)
     plt.close(f)
     glats=(lats < 60) * (lats > -60)
-    prenans=np.sum(np.isnan(pre['AMF_OMI'][ glats ]))
-    postnans=np.sum(np.isnan(post['AMF_OMI'][ glats ]))
-    print("%d / %d  gridentries after fire and latitude exclusion"%(np.sum(post['gridentries']),np.sum(pre['gridentries'])))
+    prenans=np.sum(np.isnan(pre.AMF_OMI[ glats ]))
+    postnans=np.sum(np.isnan(post.AMF_OMI[ glats ]))
+    print("%d / %d  gridentries after fire and latitude exclusion"%(np.sum(post.gridentries),np.sum(pre.gridentries)))
     print("%d / %d nan entries before and after fire exclusion within 60 degrees of equator"%(prenans,postnans))
 
 def test_gchcho():
@@ -885,21 +927,21 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     #test_fires_fio()
-    test_amf_calculation() # Check the AMF stuff
+    #test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
     # check some days (or one or no days)
-    dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 80] ]
-    #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [80] ]
-    #dates=[]
+    #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
+    #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
+    dates=[]
     for day in dates:
         for oneday in [True, False]:
             test_reprocess_corrected(date=day, oneday=oneday)
             test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
     # to be updated:
-    test_amf_over_australia()
-    check_timeline()
-    reprocessed_amf_correlations()
-    test_fires_removed()
+    test_calculation_over_australia()
+    #check_timeline()
+    #reprocessed_amf_correlations()
+    #test_fires_removed()
     
     # other tests
     #check_high_amfs()
@@ -910,4 +952,4 @@ if __name__ == '__main__':
     #compare_cloudy_map()
     
     # check the ref sector correction is not weird.
-    check_RSC(track_corrections=True)
+    #check_RSC(track_corrections=True)

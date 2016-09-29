@@ -29,7 +29,7 @@ geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
-def save_to_hdf5(outfilename, arraydict, fillvalue=0.0, verbose=False):
+def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, verbose=False):
     '''
     Takes a bunch of arrays, named in the arraydict parameter, and saves 
     to outfilename as hdf5 using h5py with fillvalue=0, gzip compression
@@ -63,8 +63,11 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=0.0, verbose=False):
             # for VC items and RSC, note the units in the file.
             if ('VC' in name) or ('RSC' == name) or ('SC' == name) or ('col_uncertainty' in name):
                 dset.attrs["Units"] = "Molecules/cm2"
+            if 'fire_mask' == name:
+                dset.attrs["description"] = "1 if > 1 fire in this or adjacent gridbox over the past 16 days"
         # force h5py to flush buffers to disk
         f.flush()
+        print("end of fio.save_to_hdf5()")
 
 def combine_dicts(d1,d2):
     '''
@@ -107,9 +110,7 @@ def read_8dayfire(date=datetime(2005,1,1,0)):
     
     # only every 8 days matches a file
     # this will give us a multiple of 8 which matches our DOY
-    daymatch= int(np.floor(tt.tm_yday/8)*8) 
-    if daymatch == 0:
-        daymatch = 1
+    daymatch= int(np.floor(tt.tm_yday/8)*8) +1 
     filepath='MYD14C8H/MYD14C8H.%4d%03d.h5' % (tt.tm_year, daymatch)
     return read_8dayfire_path(filepath)
 
@@ -147,15 +148,14 @@ def read_8dayfire_interpolated(date,latres,lonres):
     newlats= np.arange(-90,90, latres) + latres/2.0
     newlons= np.arange(-180,180, lonres) + lonres/2.0
 
-    mlons,mlats = np.meshgrid(lons,lats) # this order keeps the lats/lons dimension order
+    mlons,mlats = np.meshgrid(lons,lats)
     mnewlons,mnewlats = np.meshgrid(newlons,newlats)    
     
     fires = read_8dayfire(date)[0]
-    interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons),
-method='nearest')
+    interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons), method='nearest')
     return interp, newlats, newlons
 
-def read_omhcho(path):
+def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=False):
     '''
     Read info from a single swath file
     NANify entries with main quality flag not equal to zero
@@ -179,6 +179,7 @@ def read_omhcho(path):
     field_xqf   = geofields +'XtrackQualityFlags'
     field_lon   = geofields +'Longitude'
     field_lat   = geofields +'Latitude'
+    field_sza   = geofields +'SolarZenithAngle'
     # uncertainty flags
     field_colUnc    = datafields+'ColumnUncertainty' # also molecules/cm2
     field_fitflag   = datafields+'FitConvergenceFlag'
@@ -196,6 +197,7 @@ def read_omhcho(path):
         clouds  = in_f[field_clouds].value  # cloud fraction
         qf      = in_f[field_qf].value      #
         xqf     = in_f[field_xqf].value     # cross track flag
+        sza     = in_f[field_sza].value     # solar zenith angle
         # uncertainty arrays                #
         cunc    = in_f[field_colUnc].value  # uncertainty
         fcf     = in_f[field_fitflag].value # convergence flag
@@ -208,39 +210,95 @@ def read_omhcho(path):
         #
         ## remove missing values and bad flags: 
         # QF: missing<0, suss=1, bad=2
-        suss = qf != 0
-        hcho[suss]=np.NaN
-        lats[suss]=np.NaN
-        lons[suss]=np.NaN
-        amf[suss] =np.NaN
+        if verbose:
+            print("%d pixels in %s prior to filtering"%(np.sum(~np.isnan(hcho)),path))
+        suss       = qf != 0
+        if verbose:
+            print("%d pixels removed by main quality flag"%np.nansum(suss))
+        hcho[suss] = np.NaN
+        lats[suss] = np.NaN
+        lons[suss] = np.NaN
+        amf[suss]  = np.NaN
         
         # remove xtrack flagged data
-        xsuss = xqf != 0
-        hcho[xsuss]=np.NaN
-        lats[xsuss]=np.NaN
-        lons[xsuss]=np.NaN
-        amf[xsuss] =np.NaN
+        xsuss       = xqf != 0
+        if verbose:
+            removedcount= np.nansum(xsuss+suss) - np.nansum(suss)
+            print("%d further pixels removed by xtrack flag"%removedcount)
+        hcho[xsuss] = np.NaN
+        lats[xsuss] = np.NaN
+        lons[xsuss] = np.NaN
+        amf[xsuss]  = np.NaN
+        
+        # remove pixels polewards of maxlat
+        if maxlat is not None:
+            with np.errstate(invalid='ignore'):
+                rmlat   = np.abs(lats) > maxlat
+            if verbose:
+                removedcount=np.nansum(rmlat+xsuss+suss) - np.nansum(xsuss+suss)
+                print("%d further pixels removed as |latitude| > 60"%removedcount)
+            hcho[rmlat] = np.NaN
+            lats[rmlat] = np.NaN
+            lons[rmlat] = np.NaN
+            amf[rmlat]  = np.NaN
+        
+        # remove solarzenithangle over 60 degrees
+        if szamax is not None:
+            rmsza       = sza > szamax
+            if verbose:
+                removedcount= np.nansum(rmsza+rmlat+xsuss+suss) - np.nansum(rmlat+xsuss+suss)
+                print("%d further pixels removed as sza > 60"%removedcount)
+            hcho[rmsza] = np.NaN
+            lats[rmsza] = np.NaN
+            lons[rmsza] = np.NaN
+            amf[rmsza]  = np.NaN
+        
+        # remove VCs outside screen range
+        if screen is not None:
+            # ignore warnings from comparing NaNs to Values
+            with np.errstate(invalid='ignore'):
+                rmscr   = (hcho<screen[0]) + (hcho>screen[1]) # A or B
+            if verbose:
+                removedcount= np.nansum(rmscr+rmsza+rmlat+xsuss+suss)-np.nansum(rmsza+rmlat+xsuss+suss)
+                print("%d further pixels removed as value is outside of screen"%removedcount)
+            hcho[rmscr] = np.NaN
+            lats[rmscr] = np.NaN
+            lons[rmscr] = np.NaN
+            amf[rmscr]  = np.NaN
     
     #return hcho, lats, lons, amf, amfg, w, apri, plevs
     return {'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
             'omega':w,'apriori':apri,'plevels':plevs, 'cloudfrac':clouds,
-            'qualityflag':qf, 'xtrackflag':xqf,
+            'qualityflag':qf, 'xtrackflag':xqf, 'sza':sza,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
 
-def read_omhcho_day(day=datetime(2005,1,1)):
+def read_omhcho_day(day=datetime(2005,1,1),verbose=False):
     '''
     Read an entire day of omhcho swaths
     '''
     fnames=determine_filepath(day)
-    data=read_omhcho(fnames[0]) # read first swath
+    data=read_omhcho(fnames[0],verbose=verbose) # read first swath
     swths=[]
     for fname in fnames[1:]: # read the rest of the swaths
-        swths.append(read_omhcho(fname))
+        swths.append(read_omhcho(fname),verbose=verbose)
     for swth in swths: # combine into one struct
         for key in swth.keys():
             axis= [0,1][key in ['omega','apriori','plevels']]
             data[key] = np.concatenate( (data[key], swth[key]), axis=axis)
     return data
+
+def read_omhcho_8days(day=datetime(2005,1,1)):
+    '''
+    Read in 8 days all at once
+    '''
+    data8=read_omhcho_day(day)
+    for date in [ day + timedelta(days=d) for d in range(1,8) ]:
+        data=read_omhcho_day(date) 
+        for key in data.keys():
+            axis= [0,1][key in ['omega','apriori','plevels']]
+            data8[key] = np.concatenate( (data8[key], data[key]), axis=axis)
+    return data8
+        
 
 def read_omhchog(date, eightdays=False, verbose=False):
     '''
@@ -343,7 +401,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     if keylist is None:
         keylist=['AMF_GC','AMF_GCz','AMF_OMI','SC','VC_GC','VC_OMI','VCC','gridentries',
                  'latitude','longitude','RSC','RSC_latitude','RSC_GC','RSC_region',
-                 'col_uncertainty_OMI']
+                 'col_uncertainty_OMI','fires','fire_mask']
     retstruct=dict.fromkeys(keylist)
     if filename is None:
         fpath=determine_filepath(date,oneday=oneday,latres=latres,lonres=lonres,reprocessed=True)
@@ -353,16 +411,12 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     with h5py.File(fpath,'r') as in_f:
         #print('reading from file '+fpath)
         for key in keylist:
-            # AMFs are not stored as they can be recreated using the VC and SC
-            # right now they are stored just in case
-            #if 'AMF_GC' == key:
-            #    retstruct[key]=in_f['SC'].value / in_f['VC_GC'].value
-            #elif 'AMF_OMI' == key:
-            #    retstruct[key]=in_f['SC'].value / in_f['VC_OMI'].value
-            #else:
-            #    retstruct[key]=in_f[key].value
-            retstruct[key]=in_f[key].value
-    return (retstruct)
+            try:
+                retstruct[key]=in_f[key].value
+            except KeyError as ke: # if there is no matching key then print an error and continue
+                print("Key Error in %s"%fpath)
+                print(ke)
+    return retstruct
 
 def read_gchcho(date):
     '''

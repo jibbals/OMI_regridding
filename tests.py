@@ -8,12 +8,13 @@ matplotlib.use('Agg') # don't actually display any plots, just create them
 # my file reading and writing module
 import fio
 import reprocess
+from omhchorp import omhchorp
 
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy import stats
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from mpl_toolkits.basemap import Basemap, maskoceans
 import matplotlib.pyplot as plt
@@ -49,8 +50,10 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
           llcrnrlon=lllon, urcrnrlon=urlon,
           resolution='i',projection='merc')
     if len(lats.shape) == 1:
-        latsnew=regularbounds(lats)
-        lonsnew=regularbounds(lons)
+        #latnew=regularbounds(lats)
+        #lonnew=regularbounds(lons)
+        #lonsnew,latsnew=np.meshgrid(lonnew,latnew)
+        lonsnew,latsnew=np.meshgrid(lons,lats)
     else:
         latsnew,lonsnew=(lats,lons)
     cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon, 
@@ -67,9 +70,9 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
     
     return m, cs, cb
 def globalmap(data,lats,lons):
-    return createmap(data,lats,lons,-80,80,-179,179)
-def ausmap(data,lats,lons):
-    return createmap(data,lats,lons,-52,-5,100,160)
+    return createmap(data,lats,lons,lllat=-80,urlat=80,lllon=-179,urlon=179)
+def ausmap(data,lats,lons,vmin=None,vmax=None):
+    return createmap(data,lats,lons,lllat=-50,urlat=-5,lllon=100,urlon=160, vmin=vmin, vmax=vmax)
 def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True, 
               lllat=-80, urlat=80, lllon=-179, urlon=179):
     
@@ -113,12 +116,22 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
-def test_reprocess_corrected(oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179,pltname=""):
+def  reprocessed_amf_correlations(date=datetime(2005,1,1), oneday=True):
     '''
-    Run and time reprocess method
-    Plot some of the outputs
     '''
-    date=datetime(2005,1,1)
+    print("Reprocessed_amf_correlations To Be Implemented")
+
+def check_timeline():
+    '''
+    '''
+    print("Check Timeline test to be implemented")
+
+def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179,pltname=""):
+    '''
+    Test a day or 8-day reprocessed HCHO map
+    Plot VCs, both OMI and Reprocessed, 
+        as well as AMFs and comparison against GEOS-Chem model.
+    '''
     
     # Grab one day of reprocessed OMI data
     omhchorp=fio.read_omhchorp(date,oneday=oneday)
@@ -134,7 +147,7 @@ def test_reprocess_corrected(oneday=True, lllat=-80, lllon=-179, urlat=80, urlon
     # SC, VC_omi, AMF_omi
     # VCC, VC_gc, AMF_GC
     # VC_OMI-GC, VC_GC-GC, GC_map 
-    # cuncs, AMF_GCz
+    # cuncs, AMF-correlation, AMF_GCz
     
     f, axes = plt.subplots(4,3,num=0,figsize=(16,20))
     # Plot OMI, old, new AMF map
@@ -182,14 +195,24 @@ def test_reprocess_corrected(oneday=True, lllat=-80, lllon=-179, urlat=80, urlon
     m,cs,cb = createmap(omhchorp['col_uncertainty_OMI'], lats, lons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('col uncertainty (VC$_{OMI} \pm 1 \sigma$)')
     plt.sca(axes[3,1])
-    plt.scatter(omhchorp['VC_GC'],omhchorp['VC_OMI'])
+    vc_gc,vc_omi=omhchorp['VC_GC'],omhchorp['VC_OMI']
+    plt.scatter(vc_gc,vc_omi)
     plt.xlabel('VC_GC')
     plt.ylabel('VC_OMI')
-    plt.yscale('log'); plt.ylim([1e13, 5e17])
-    plt.xscale('log'); plt.xlim([1e13, 5e17])
+    scatlims=[1e12,2e17]
+    plt.yscale('log'); plt.ylim(scatlims)
+    plt.xscale('log'); plt.xlim(scatlims)
+    plt.plot(scatlims,scatlims,'k--',label='1-1') # plot the 1-1 line for comparison
+    vc_gc_nans,vc_omi_nans=np.isnan(vc_gc),np.isnan(vc_omi) # where are nans
+    allnans=vc_gc_nans+vc_omi_nans 
+    vc_gc_reg,vc_omi_reg=vc_gc[~allnans],vc_omi[~allnans] # remove all nans
+    slp,intrcpt,r,p,sterr=stats.linregress(vc_gc_reg,vc_omi_reg) # get regression
+    plt.plot(scatlims, slp*np.array(scatlims)+intrcpt,color='red',
+            label='slope=%4.2f, r=%4.2f'%(slp,r))
+    plt.legend(title='lines',loc=0)
     plt.title("VC_GC vs VC_OMI")
     plt.sca(axes[3,2])
-    m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = linearmap(omhchorp['AMF_GCz'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF_GCz')
     
     # save plots
@@ -202,6 +225,97 @@ def test_reprocess_corrected(oneday=True, lllat=-80, lllon=-179, urlat=80, urlon
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
+
+def test_calculation_over_australia(day=datetime(2005,1,1), oneday=False):
+    '''
+    Look closely at AMFs over Australia, specifically over land
+    and see how our values compare against the model and OMI swaths.
+    '''
+    ymdstr=day.strftime('%Y%m%d')
+    # read in omhchorp
+    omhchorp=fio.read_omhchorp(day,oneday=oneday)
+    AMF_GC=omhchorp['AMF_GC']
+    AMF_OMI=omhchorp['AMF_OMI']
+    VC_GC=omhchorp['VC_GC']
+    VC_OMI=omhchorp['VC_OMI']
+    lats=omhchorp['latitude']
+    lons=omhchorp['longitude']
+    unc = omhchorp['col_uncertainty_OMI']
+    mlons0,mlats0=np.meshgrid(lons,lats)
+    # read in pixel list? or omhcho swaths
+    # or not
+    
+    # filter to just Australia rectangle [.,.,.,.]
+    lllat,lllon,urlat,urlon=-50,105,-10,155
+    lllati,urlati=158, 320
+    llloni,urloni=927, 1075
+    mlons,mlats=np.meshgrid(lons,lats)
+    mlons,mlats=mlons[lllati:urlati,llloni:urloni], mlats[lllati:urlati,llloni:urloni]
+    ausvcgc=VC_GC[lllati:urlati,llloni:urloni]
+    ausvcomi=VC_OMI[lllati:urlati,llloni:urloni]
+    ausamfgc=AMF_GC[lllati:urlati,llloni:urloni]
+    ausamfomi=AMF_OMI[lllati:urlati,llloni:urloni]
+    ausunc = unc[lllati:urlati,llloni:urloni]
+    
+    # Mask out the ocean
+    landvcgc  = maskoceans(mlons,mlats,ausvcgc,inlands=False)
+    landvcomi = maskoceans(mlons,mlats,ausvcomi,inlands=False)
+    landunc   = maskoceans(mlons,mlats,ausunc,inlands=False)
+    
+    print(("Mean AUS land VC_GC: %5.3e"%np.nanmean(landvcgc)))
+    print(("Mean AUS land VC_OMI: %5.3e"%np.nanmean(landvcomi)))
+    print(("Min AUS land VC_GC: %5.3e"%np.nanmin(landvcgc)))
+    print(("Min AUS land VC_OMI: %5.3e"%np.nanmin(landvcomi)))
+    
+    # Plot the histogram of VC entries over australia
+    plt.hist(landvcgc)
+    plt.title('Australia land $\Omega_{GC}$')
+    plt.ylabel('frequency'); plt.xlabel('molec cm$^{-2}$')
+    pname='pictures/AUS_landVC_GC_hist.png'
+    plt.savefig(pname)
+    print("%s saved"%pname)
+    plt.close()
+    
+    # Plot the maps:
+    #
+    # GC aus columns
+    f=plt.figure(figsize=(14,12))
+    ax=plt.subplot(221)
+    lllat=-50; urlat=-5; lllon=100; urlon=170
+    m,cs,cb = createmap(landvcgc,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    Ogc="$\Omega_{GC}$"
+    Oomi="$\Omega_{OMI}$"
+    plt.title("Aus "+Ogc)
+    
+    # omi aus columns
+    ax=plt.subplot(222)
+    m,cs,cb = createmap(landvcomi,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.title("Aus "+Oomi)
+    
+    # omi uncertainty:
+    ax=plt.subplot(224)
+    m,cs,cb = createmap(landunc, mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.title("Aus column uncertainty (OMI)")
+    
+    # show AUS corellations with ocean masked out
+    plt.subplot(223)
+    nans = np.isnan(landvcgc) + (np.isnan(landvcomi)) #+ landvcgc.mask
+    nanscheck=nans + landvcgc.mask
+    print( (np.sum(nans), np.sum(nanscheck)) )
+    plt.scatter(landvcomi, landunc, color='grey',alpha=0.5, label="OMI vs uncertainty")
+    plt.scatter(landvcomi,landvcgc, color='black',label="OMI vs GC")
+    slope,intercept,r,p,sterr = stats.linregress(landvcomi[~nans],landvcgc[~nans])
+    X=np.array([1e10,5e16])
+    plt.plot( X, slope*X+intercept,color='fuchsia',
+            label='Slope=%.5f, r=%.5f'%(slope,r))
+    plt.plot( X, X, 'k--', label='1-1' )
+    plt.legend(loc=0); plt.ylabel(Ogc); plt.xlabel(Oomi)
+    
+    # save plot
+    pname='pictures/AUS_%s.png'%ymdstr
+    f.savefig(pname)
+    print("%s saved"%pname)
+    plt.close()
 
 def test_amf_calculation(scount=50):
     '''
@@ -229,28 +343,30 @@ def test_amf_calculation(scount=50):
         AMF_old.append(pixels['AMF_OMI'][jj])
         w_pmids=pixels['omega_pmids'][:,jj]
         # rerun the AMF calculation and plot the shampoo
-        innerplot='pictures/AMF_test_innerplot%d.png'%i
-        AMFS,AMFZ = gchcho.calculate_AMF(omega, w_pmids, AMF_G, lat, lon, plotname=innerplot)
+        innerplot='pictures/AMF_test/AMF_test_innerplot%d.png'%i
+        AMFS,AMFZ = gchcho.calculate_AMF(omega, w_pmids, AMF_G, lat, lon, plotname=innerplot,debug_levels=True)
         AMF_s.append(AMFS)
         AMF_z.append(AMFZ)
-    print( "AMF_s=", AMF_s[:] )
-    print( "AMF_z=", AMF_z[:] )
-    print( "AMF_o=", AMF_old[:] )
+    #print( "AMF_s=", AMF_s[:] )
+    #print( "AMF_z=", AMF_z[:] )
+    #print( "AMF_o=", AMF_old[:] )
     
     # Also make a plot of the regression new vs old AMFs
     f=plt.figure(figsize=(12,12))
-    amfs=pixels['AMF_GC']
-    amfo=pixels['AMF_OMI']
+    amfs=np.array(pixels['AMF_GC'])
+    amfo=np.array(pixels['AMF_OMI'])
     plt.scatter(amfs, amfo, color='k', label='pixel AMFs')
     # line of best fit
-    slope,intercept,r,p,sterr=stats.linregress(amfs,amfo)
-    plt.plot([1,75], slope*np.array([1,75])+intercept,color='red',
-            label='slope=%.5f, r=%.5f'%(slope,r))
+    isnans= np.isnan(amfs) + np.isnan(amfo)
+    slp,intrcpt,r,p,sterr=stats.linregress(amfs[~isnans],amfo[~isnans])
+    # straight line on log-log plot is 10^(slope*log(X) + Yintercept)
+    plt.plot([1,75], 10**(slp*np.log(np.array([1,75]))+intrcpt),color='red',
+            label='slope=%.5f, r=%.5f'%(slp,r))
     plt.xlabel('AMF_GC')
     plt.ylabel('AMF_OMI')
     plt.legend(loc=0)
     plt.title('AMF correlation')
-    f.savefig('pictures/AMF_test_corr.png')
+    f.savefig('pictures/AMF_test/AMF_test_corr.png')
     plt.close(f)
     
     # Post regridding, check the AMFs within 50 degrees of the equator, and color by land/sea 
@@ -281,8 +397,8 @@ def test_amf_calculation(scount=50):
     plt.close(f)
     # Check slopes and regressions of ocean/non ocean AMFs
     f=plt.figure(figsize=(14,14))
-    plt.scatter(amf[ocean], amfo[ocean], color='cyan')
-    plt.scatter(amf[~ocean],amfo[~ocean], color='fuchsia', alpha=0.6)
+    plt.scatter(amf[ocean], amfo[ocean], color='cyan', alpha=0.5)
+    plt.scatter(amf[~ocean],amfo[~ocean], color='fuchsia', alpha=0.5)
     slopeo,intercepto,ro,p,sterr = stats.linregress(amf[ocean], amfo[ocean])
     slopel,interceptl,rl,p,sterr = stats.linregress(amf[~ocean],amfo[~ocean])
     plt.plot([1,60], slopel*np.array([1,60])+interceptl,color='fuchsia',
@@ -293,8 +409,7 @@ def test_amf_calculation(scount=50):
     plt.ylabel('AMF_OMI')
     plt.legend(loc=0)
     plt.title('AMF correlation')
-    f.savefig('pictures/AMF_test_corr_masked.png')
-    
+    f.savefig('pictures/AMF_test/AMF_test_corr_masked.png')
     
     #amfland=maskoceans(mlons,mlats,amf,inlands=False)
     #amfoland=maskoceans(mlons,mlats,amfo,inlands=False)
@@ -429,6 +544,65 @@ def test_fires_fio():
     plt.savefig('pictures/AQUA2005001.png')
     plt.close()
 
+def test_fires_removed(day=datetime(2005,1,1),oneday=False):
+    '''
+    Check that fire affected pixels are actually removed
+    TODO: try using the omhchorp class.
+    '''
+    # read 8 day average prior to fi-or
+    #
+    keylist=['gridentries','VC_OMI','VC_GC','AMF_GC','AMF_OMI','latitude','longitude','fires']
+    filename="omhchorp/BeforeFireRemoved/omhcho_8p0.25x0.31_20050101.he5"
+    if oneday:
+        filename="omhchorp/BeforeFireRemoved/omhcho_1p0.25x0.31_20050101.he5"
+    pre = omhchorp(day, oneday=oneday, filename=filename, keylist=keylist)
+    
+    # read 8 day average post toast
+    #
+    post = omhchorp(day,oneday=oneday, keylist=keylist)
+    lats,lons=pre.latitude,pre.longitude
+    
+    # compare and beware
+    #
+    f = plt.figure(num=0,figsize=(18,14))
+    # Plot olt AMF, new AMF
+    #      old VC,  new VC 
+    #        Fires Counts
+    
+    # set currently active axis from [2,3] axes array
+    vmins,vmaxs=[0.5,0.5,1e14,1e14],[6,6,1e17,1e17]
+    for i,arr in enumerate([pre.AMF_OMI,post.AMF_OMI,pre.VC_OMI,post.VC_OMI]):
+        plt.subplot(321+i)
+        i0=int(np.floor(i/2))
+        m,cs,cb = [linearmap,ausmap][i0](arr,lats,lons,vmin=vmins[i],vmax=vmaxs[i])
+        plt.title("%s (%sfires excluded)"%(['AMF$_{OMI}$','\$Omega_{OMI}$'][i0],['no ',''][i%2]))
+    plt.subplot(313)
+    linearmap(post.fires, lats,lons,vmin=1,vmax=20)
+    plt.title('Fires')
+    plt.tight_layout()
+    pname='pictures/fire_exclusion_results_%s.png'%['8d','1d'][oneday]
+    f.savefig(pname)
+    print("%s saved"%pname)
+    plt.close(f)
+    # plot just Australia, zoomed in on one day.
+    f, axes=plt.subplots(1,2,num=1,figsize=(16,10))
+    for i,arr in enumerate([pre.VC_GC, post.VC_GC]):
+        plt.sca(axes[i])
+        title=['$\Omega_{GEOS}$ before fire exclusion','after fire exclusion'][i]
+        ausmap(arr,lats,lons,vmin=vmins[3],vmax=vmaxs[3])
+        plt.title(title)
+    plt.suptitle("%s average $\Omega_{GEOS}$ for Jan 1, 2005"%(['Eight day','One day'][oneday]), fontsize=36)
+    plt.tight_layout()
+    pname='pictures/fire_exclusion_aus_%s.png'%['8d','1d'][oneday]
+    f.savefig(pname)
+    print("%s saved"%pname)
+    plt.close(f)
+    glats=(lats < 60) * (lats > -60)
+    prenans=np.sum(np.isnan(pre.AMF_OMI[ glats ]))
+    postnans=np.sum(np.isnan(post.AMF_OMI[ glats ]))
+    print("%d / %d  gridentries after fire and latitude exclusion"%(np.sum(post.gridentries),np.sum(pre.gridentries)))
+    print("%d / %d nan entries before and after fire exclusion within 60 degrees of equator"%(prenans,postnans))
+
 def test_gchcho():
     '''
     Function tests gchcho output file created by create_column.pro
@@ -439,65 +613,30 @@ def test_gchcho():
     ## Files to be read based on date
     day0 = datetime(2005,1,1)
     ymstr= day0.strftime('%Y %b')
+    ymdstr=day0.strftime('%Y%m%d')
     print("Testing GCHCHO stuff on "+ymstr)
     
     # grab stuff from gchcho file
     gchcho= fio.read_gchcho(day0)
     
-    # check class structure
-    print(vars(gchcho).keys())
-    
-    print ("Total of a sample of normalized columns")
-    ii=random.sample(range(0,91),10)
-    jj=random.sample(range(144),10)
-    S_s=gchcho.Shape_s
-    for i in range(10):
-        print ("sum(S_s[:,%d,%d]): %f"%(ii[i],jj[i],np.sum(S_s[:,ii[i],jj[i]])))
-        
     plt.figure(figsize=(14,12))
     m,cs,cb=gchcho.PlotVC()
-    plt.savefig('pictures/GC_Vertical_Columns.png')
+    plt.savefig('pictures/GCHCHO_Vertical_Columns%s.png'%ymdstr)
     plt.clf()
     
     plt.figure(figsize=(12,12))
     gchcho.PlotProfile()
-    plt.savefig('pictures/GC_Profile.png')
+    plt.savefig('pictures/GCHCHO_EGProfile%s.png'%ymdstr)
     plt.clf()
-    
-    # Check that structure's get_apriori function works:
-    loncheck, latcheck = 130, -30
-    lats, lons = gchcho.lats, gchcho.lons
-    xi=np.searchsorted(lons,loncheck)
-    yi=np.searchsorted(lats,latcheck)
-    z = gchcho.pmids[:,yi,xi]
-    new_S, new_lats, new_lons = gchcho.get_apriori(latres=0.25,lonres=0.3125)
-    new_xi=np.searchsorted(new_lons,loncheck)
-    new_yi=np.searchsorted(new_lats,latcheck)
-    print ("sum(new_S[:,%d,%d]): %f"%(new_yi,new_xi, np.sum(new_S[:,new_yi,new_xi])))
-    # Old Shape Factor
-    plt.figure(figsize=(12,12))
-    
-    plt.plot(S_s[:,yi,xi], z, label='on 2x2.5 grid', linewidth=3, color='black')
-    # set to y log scale
-    plt.yscale('log')
-    plt.ylim([1e3, 1e-1])
-    plt.title('Apriori Shape at lat=%d, lon=%d '%(latcheck,loncheck))
-    plt.xlabel('S_s')
-    plt.ylabel('hPa')
-    
-    # new grid shape factor
-    plt.plot(new_S[:,new_yi,new_xi], z, label='on .25x.3125 grid', linewidth=2, color='pink')
-    plt.legend()
-    plt.savefig('pictures/GC_apriori_interpolation.png')
-    plt.clf()
-    
-    return()
 
 def test_hchorp_apriori():
     '''
     Check the apriori saved into reprocessed file looks as it should.
     (Compares omhchorp against gchcho, and omhchorg)
     Currently looks ok(11/4/16 monday)
+    UPDATE: 20160906
+        omhchorp no longer contains the aprioris and omegas - testing that stuff is done in amf tests.
+        now this test just looks at the gchcho vs omhcho aprioris
     '''
     ## Files to be read based on date
     day0 = datetime(2005,1,1)
@@ -505,70 +644,44 @@ def test_hchorp_apriori():
     #yyyymm= day0.strftime('%Y%m')
     print("Testing GCHCHO apriori stuff on "+ymstr)
     
-    ## grab shape factors and aprioris from reprocessed file ( one day average for now )
-    #
-    keylist= ['latitude','longitude','ShapeFactor_GC','ShapeFactor_OMI','Sigma_GC', 'Sigma_OMI']
-    omhchorp = fio.read_omhchorp(day0, oneday=True, keylist=keylist)
-    lats, lons = omhchorp['latitude'], omhchorp['longitude']
-    mlons, mlats = np.meshgrid(lons,lats)
-    
-    ## CHECK Shape factors from OMI interpolated to the new grid OK
-    #
-    S_omi = omhchorp['ShapeFactor_OMI'] # [ 720, 1152, 47 ]
-    sigma_omi = omhchorp['Sigma_OMI']   # [ 720, 1152, 47 ]
-    S_gc  = omhchorp['ShapeFactor_GC']  # [ 72, 720, 1152 ]
-    sigma_gc = omhchorp['Sigma_GC']     # [ 72, 720, 1152 ]
-    
-    # OMHCHORG: (data, lats, lons, count, amf, omega, shape)
-    # rg shape = [ 720, 1152, 47 ]
-    latres, lonres = 0.25, 0.3125
-    rgdata, rglats, rglons, rgcount, rgamf, rgomega, rgshape = fio.read_omhchorg(day0, latres=latres,lonres=lonres)
-    
     # grab stuff from gchcho file
-    gchcho= fio.read_gchcho(day0)
-    sgc_pre, lats_pre, lons_pre, sigma_pre = gchcho.get_apriori() # [ 72, 720, 1152 ]
+    gchcho= fio.read_gchcho(day0) 
     
-    print ("shape of shape factors for OMI, OMI pre, GEOS-Chem, GEOS-Chem pre:")
-    print ([arr.shape for arr in [S_omi, rgshape, S_gc, sgc_pre]])
+    # Read omhcho day of swaths:
+    omhcho = fio.read_omhcho_day(day0) # [ plevs, ~24k rows, 60 cols ]
+    omishape = omhcho['apriori']
+    omilats, omilons = omhcho['lats'],omhcho['lons']
+    omiplevs=omhcho['plevels']
     
     # Sample of normalized columns
-    scount=10
-    ii=random.sample(range(-90,91), scount) # lat samples
-    jj=random.sample(range(-180,181),scount) # lon samples
-    f, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4, sharey=True, figsize=(13,9))
+    scount=15 # expect around 7 columns which aren't on nan pixels
+    ii=random.sample(range(len(omilats[:,0])), scount)
+    jj=random.sample(range(len(omilats[0,:])), scount)
+    f, (ax1, ax2) = plt.subplots(1, 2, figsize=(13,9))
     for i in range(scount):
         # indices of random lat/lon pair
-        lati=np.searchsorted(lats,ii[i])
-        loni=np.searchsorted(lons,jj[i])
-        
-        # plot OMI in black
-        # GEOS-Chem in purple
-        vomi=sigma_omi[lati,loni,:]
-        somi=S_omi[lati,loni,:]
-        somirg=rgshape[lati,loni,:]
-        vgc =sigma_gc[:,lati,loni]
-        sgc =S_gc[:,lati,loni]
-        sgc_prei = sgc_pre[:,lati,loni]
-        ax2.plot(somi, vomi, color='black',  linewidth=2)
-        ax1.plot(somirg, vomi, color='brown', linewidth=2)
-        ax4.plot(sgc, vgc,  color='purple', linewidth=2)
-        ax3.plot(sgc_prei, vgc, color='pink', linewidth=2)
-    ax1.set_ylim(1,0)
-    ax1.set_ylabel('Sigma')
+        rowi,coli=ii[i],jj[i]
+        lat=omilats[rowi,coli]
+        if np.isnan(lat): 
+            continue
+        lon=omilons[rowi,coli]
+        omiS=omishape[:,rowi,coli]
+        omiP=omiplevs[:,rowi,coli]
+        ax1.plot(omiS,omiP, label="%-7.2f,%-7.2f"%(lat,lon))
+        gcShape,gcSig=gchcho.get_single_apriori(lat,lon,z=False)
+        ax2.plot(gcShape,gcSig)
     ax1.set_xlabel('Molecules/cm2')
-    ax1.set_title('OMI S_s (Pre)')
-    ax2.set_title('OMI S_s (Post)')
-    ax3.set_xlabel('unitless')
-    ax3.set_title('GC S_s (Pre)')
-    ax4.set_title('GC S_s (Post)')
-    #black_patch = mpatches.Patch(color='black', label='S_s[x,y,:]')
-    #chart_patch = mpatches.Patch(color='purple', label='S_s[xnew,ynew,:]')
-    #plt.legend(handles=[black_patch, chart_patch])
-    
-    plt.savefig('pictures/Shape_Factor_Examples.png')
-    print("Shape_Factor_Examples.png saved!")
-
-    
+    ax1.set_ylabel('Pressure (hPa)')
+    ax1.set_title('OMI apriori')
+    ax1.set_ylim([1050, 0.05])
+    ax1.set_yscale('log')
+    ax2.set_ylim([1.04,-0.04])
+    ax2.set_ylabel('Sigma')
+    ax2.set_title('GEOS-Chem S$_\sigma$')
+    ax2.set_xlabel('unitless')
+    ax1.legend(title='    lat,  lon ',loc=0)
+    pltname='pictures/Shape_Factor_Examples.png'
+    plt.savefig(pltname); print("%s saved!"%pltname)
 
 def check_high_amfs(day=datetime(2005,1,1)):
     '''
@@ -814,12 +927,23 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     #test_fires_fio()
-    test_amf_calculation() # Check the AMF stuff
+    #test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
-    for oneday in [True, False]:
-        test_reprocess_corrected(oneday=oneday)
-        test_reprocess_corrected(oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+    # check some days (or one or no days)
+    #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
+    #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
+    dates=[]
+    for day in dates:
+        for oneday in [True, False]:
+            test_reprocess_corrected(date=day, oneday=oneday)
+            test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+    # to be updated:
+    test_calculation_over_australia()
+    #check_timeline()
+    #reprocessed_amf_correlations()
+    #test_fires_removed()
     
+    # other tests
     #check_high_amfs()
     #test_hchorp_apriori()
     #test_gchcho()

@@ -5,7 +5,7 @@ import sys, getopt
 # module I created to reprocess OMI swath data
 import reprocess
 # datetime to reprocess
-from datetime import datetime
+from datetime import datetime, timedelta
 
 def main(argv):
     startday=0
@@ -38,14 +38,14 @@ def main(argv):
     if startday % 8 != 1:
         print("start day needs to be N * 8 + 1 for some N")
         sys.exit(2)
-    start=datetime(2005,1,startday)
+    start=datetime(2005,1,1)+timedelta(days=startday-1)
     
     ####################################
     ## CALL REPROCESSING METHODS HERE ##
     ####################################
     ymd=start.strftime('%Y%m%d')
     print('Reprocessing from %s'%ymd)
-    reprocess.Reprocess_N_days(start, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True)
+    reprocess.Reprocess_N_days(start, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True, remove_fires=True)
     print("Combining the 8 days from %s"%ymd)
     reprocess.create_omhchorp_8(start,latres=0.25,lonres=0.3125)
 

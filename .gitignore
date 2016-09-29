@@ -2,6 +2,10 @@
 # ignore data files
 **/*.h5
 **/*.he5
+omhchorp/BeforeFireRemoved
+
+# ignore log files
+logs/*
 
 # unignore some data files
 !omhchorp/*20050101.he5

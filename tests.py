@@ -309,7 +309,7 @@ def test_calculation_over_australia(day=datetime(2005,1,1), oneday=False):
     plt.plot( X, slope*X+intercept,color='fuchsia',
             label='Slope=%.5f, r=%.5f'%(slope,r))
     plt.plot( X, X, 'k--', label='1-1' )
-    plt.legend(loc=0); plt.xlabel(Ogc); plt.ylabel(Oomi)
+    plt.legend(loc=0); plt.ylabel(Ogc); plt.xlabel(Oomi)
     
     # save plot
     pname='pictures/AUS_%s.png'%ymdstr

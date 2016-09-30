@@ -63,7 +63,8 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
     # Stuff from OMI
     lats=list()
     lons=list()
-    slants=list()       # Slant columns from (molecs/cm2)
+    slants=list()       # Slant columns from (molec/cm2)
+    ref_column=list()   # Median remote pacific reference radiance column (molec/cm2)
     AMFos=list()        # AMFs from OMI
     AMFGs=list()        # Geometric AMFs from OMI
     cloudfracs=list()   # cloud fraction
@@ -107,6 +108,16 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
         plevs=(omiswath['plevels'])[:,goods]
         omegas=(omiswath['omega'])[:,goods]
         
+        # Each track has a radiance reference column amount for each swath
+        # taken from the median over the remote pacific
+        f_ref_col=omiswath['rad_ref_col'] # array of 60, units: molec/cm2
+        
+        # We also store the track position for reference sector correction later
+        swathtrack=np.where(goods==True)[1]
+        track.extend(list(swathtrack))
+        # so each pixel has it's tracks radiance reference sector correction:
+        ref_column.extend(list(f_ref_col[swathtrack])) 
+        
         # SCs are VCs * AMFs
         fslants=omiswath['HCHO']*omiswath['AMF'] # In molecules/cm2
         
@@ -119,20 +130,6 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
         cloudfracs.extend(list((omiswath['cloudfrac'])[goods]))
         cunc.extend(list((omiswath['coluncertainty'])[goods]))
         
-        # we still need to work out Geos Chem based AMFs for our pixels
-        # for which we need pressures, sigmas, and omegas
-        #
-        
-        # Determine sigma coordinates from pressure levels
-        # use level 0 as psurf and top level as TOA
-        #om_surf_alt = om_plevs[0,:,:] ** 2 / om_plevs[1,:,:]        
-        om_sigma = np.zeros(plevs.shape)
-        om_toa = plevs[-1, :]
-        om_surf = plevs[0,:] 
-        om_diff = om_surf-om_toa
-        for ss in range(47):
-            om_sigma[ss,:] = (plevs[ss,:] - om_toa)/om_diff
-        
         if getExtras:
             flags.extend(list((omiswath['qualityflag'])[goods])) # should all be zeros
             xflags.extend(list((omiswath['xtrackflag'])[goods])) # also zeros
@@ -143,12 +140,10 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
             if apris is None:
                 apris=aprioris
                 ws=omegas
-                sigmas=om_sigma
                 w_pmids=plevs
             else: # turn these into arrays of 47xentries
                 apris=np.append(apris, aprioris,axis=1)
                 ws=np.append(ws, omegas,axis=1)
-                sigmas=np.append(sigmas, om_sigma,axis=1)
                 w_pmids=np.append(w_pmids, plevs, axis=1)
         
         # Create new AMF for each good entry...
@@ -160,18 +155,9 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
             # AMF_GC does (using this one)
             # We can do some sort of test here if required.
         
-        # We also store the track position for reference sector correction later
-        swathtrack=np.where(goods==True)[1]
-        track.extend(list(swathtrack))
-        # TODO:? maybe I should add VCC correction stuff here
-    
-    # TODO:maybe read and remove fire affected pixels here
-    # Using the AQUA/TERRA day/night fires
-    
-    
     # after all the swaths are read in: send the lists back in a single 
     # dictionary structure
-    return({'lat':lats, 'lon':lons, 'SC':slants,
+    return({'lat':lats, 'lon':lons, 'SC':slants, 'rad_ref_col':ref_column,
             'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 'AMF_GCz':AMFgczs, 'AMF_G':AMFGs,
             'cloudfrac':cloudfracs, 'track':track,
             'qualityflag':flags, 'xtrackflag':xflags,
@@ -347,7 +333,8 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     # Filter for removing fire affected squares(from current and prior 8 days)
     # filter is booleans matching lat/lon grid. True for fires
     fire_count, _flats, _flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
-    fire_filter = get_16day_fires_mask(date,latres=latres,lonres=lonres)
+    fire_filter_16 = get_16day_fires_mask(date,latres=latres,lonres=lonres)
+    fire_filter_8  = get_8day_fires_mask(date,latres=latres,lonres=lonres)
     
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -363,7 +350,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
             # don't calculate if there's fires
             # update: Still calculate, just keep the fire mask for later usage.
             #if remove_fires:
-            #    localfire=fire_filter[i,j]
+            #    localfire=fire_filter_16[i,j]
             #    if localfire:
             #        continue
             
@@ -406,7 +393,8 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     outd['AMF_GC']              = AMF_gc
     outd['AMF_GCz']             = AMF_gcz
     outd['AMF_OMI']             = AMF_omi
-    outd['fire_mask']           = fire_filter.astype(np.int16)
+    outd['fire_mask_16']        = fire_filter_16.astype(np.int16)
+    outd['fire_mask_8']        = fire_filter_8.astype(np.int16)
     outd['fires']               = fire_count.astype(np.int16)
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True,oneday=True)
     
@@ -437,9 +425,11 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
         files8.append(filename)
     
     # normal stuff will be identical between days
-    normallist=['latitude','longitude','RSC_latitude','RSC_region','fires','fire_mask']
+    normallist=['latitude', 'longitude', 'RSC_latitude', 'RSC_region', 
+                'fires', 'fire_mask_8', 'fire_mask_16']
     # list of things we need to add together and average
-    sumlist=['AMF_GC','AMF_GCz','AMF_OMI','SC','VC_GC','VC_OMI','VCC','col_uncertainty_OMI']
+    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI',
+             'VCC', 'col_uncertainty_OMI']
     # other things need to be handled seperately
     otherlist=['gridentries','RSC', 'RSC_GC']
     

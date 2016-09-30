@@ -48,10 +48,7 @@ class omhchorp:
         Output:
             Structure containing omhchorp dataset
         '''
-        fullkeylist=['AMF_GC','AMF_GCz','AMF_OMI','SC','VC_GC','VC_OMI','VCC',
-                     'gridentries','latitude','longitude',
-                     'RSC','RSC_latitude','RSC_GC','RSC_region',
-                     'col_uncertainty_OMI','fires']
+        fullkeylist=fio._omhchorp_keylist
         # read in all the requested information:
         if keylist is None:
             keylist=fullkeylist
@@ -92,10 +89,13 @@ class omhchorp:
         self.VCC=struct['VCC']
         self.col_uncertainty_OMI=struct['col_uncertainty_OMI']
         self.fires=struct['fires']
+        self.fire_mask_8=struct['fire_mask_8']
+        self.fire_mask_16=struct['fire_mask_16']
     
-    def apply_fire_mask(self):
+    def apply_fire_mask(self, use_8day_mask=False):
         ''' nanify arrays which are fire affected. '''
+        mask = [self.fire_mask_16, self.fire_mask_8][use_8day_mask]
         for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,self.VC_OMI,self.VCC,self.col_uncertainty_OMI]:
-            arr[fires>0]=np.NaN
+            arr[mask]=np.NaN
         
     

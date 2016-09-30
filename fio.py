@@ -29,6 +29,13 @@ geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
+# keylist for omhchorp datafiles
+_omhchorp_keylist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI',
+                   'VCC', 'gridentries', 'latitude', 'longitude', 'RSC',
+                   'RSC_latitude', 'RSC_GC', 'RSC_region', 'col_uncertainty_OMI',
+                   'fires', 'fire_mask_8', 'fire_mask_16']
+
+
 def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, verbose=False):
     '''
     Takes a bunch of arrays, named in the arraydict parameter, and saves 
@@ -63,8 +70,10 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, verbose=False):
             # for VC items and RSC, note the units in the file.
             if ('VC' in name) or ('RSC' == name) or ('SC' == name) or ('col_uncertainty' in name):
                 dset.attrs["Units"] = "Molecules/cm2"
-            if 'fire_mask' == name:
-                dset.attrs["description"] = "1 if > 1 fire in this or adjacent gridbox over the past 16 days"
+            if 'fire_mask_16' == name:
+                dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day blocks"
+            if 'fire_mask_8' == name:
+                dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"
         # force h5py to flush buffers to disk
         f.flush()
         print("end of fio.save_to_hdf5()")
@@ -162,12 +171,14 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
     NANify entries where xtrackqualityflags aren't zero
     Returns:{'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
             'omega':w,'apriori':apri,'plevels':plevs, 'cloudfrac':clouds,
+            'rad_ref_col',
             'qualityflag':qf, 'xtrackflag':xqf,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
     '''
     
     # Total column amounts are in molecules/cm2
     field_hcho  = datafields+'ColumnAmount' 
+    field_ref_c = datafields+'RadianceReferenceColumnAmount'
     # other useful fields
     field_amf   = datafields+'AirMassFactor'
     field_amfg  = datafields+'AirMassFactorGeometric'
@@ -206,6 +217,8 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
         w       = in_f[field_w].value       # scattering weights
         apri    = in_f[field_apri].value    # apriori
         plevs   = in_f[field_plevs].value   # pressure dim
+        #                                   # [ 60 ]
+        ref_c   = in_f[field_ref_c].value   # reference radiance col for swath tracks
         
         #
         ## remove missing values and bad flags: 
@@ -266,9 +279,10 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
             lons[rmscr] = np.NaN
             amf[rmscr]  = np.NaN
     
-    #return hcho, lats, lons, amf, amfg, w, apri, plevs
+    #return everything in a structure
     return {'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
             'omega':w,'apriori':apri,'plevels':plevs, 'cloudfrac':clouds,
+            'rad_ref_col':ref_c,
             'qualityflag':qf, 'xtrackflag':xqf, 'sza':sza,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
 
@@ -399,9 +413,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     '''
     
     if keylist is None:
-        keylist=['AMF_GC','AMF_GCz','AMF_OMI','SC','VC_GC','VC_OMI','VCC','gridentries',
-                 'latitude','longitude','RSC','RSC_latitude','RSC_GC','RSC_region',
-                 'col_uncertainty_OMI','fires','fire_mask']
+        keylist=_omhchorp_keylist
     retstruct=dict.fromkeys(keylist)
     if filename is None:
         fpath=determine_filepath(date,oneday=oneday,latres=latres,lonres=lonres,reprocessed=True)

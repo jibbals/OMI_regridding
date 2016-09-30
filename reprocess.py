@@ -171,6 +171,7 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
         interpolated from 90S to 90N linearly at 500 points(0.36 deg resolution)
         for each of the 60 omi tracks
         Array has units of molecules/cm2
+    THIS IS FROM GONZALEZ ABAD 2015 UPDATED SAO PAPER 
     '''
     
     ## Grab GEOS-Chem monthly average:
@@ -260,7 +261,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     ## 1) 
     # 
     ymdstr=date.strftime("%Y%m%d")
-    if __VERBOSE__: 
+    if __VERBOSE__ or verbose: 
         print("create_omhchorp_1 called for %s"%ymdstr)
     goodpixels=get_good_pixel_list(date, verbose=verbose)
     omi_lons=np.array(goodpixels['lon'])

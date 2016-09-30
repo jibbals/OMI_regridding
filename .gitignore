@@ -4,6 +4,9 @@
 **/*.he5
 omhchorp/BeforeFireRemoved
 
+# ignore python compile files
+**/*.pyc
+
 # ignore some images
 pictures/levels_debug
 

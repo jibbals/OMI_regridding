@@ -8,9 +8,10 @@ matplotlib.use('Agg') # don't actually display any plots, just create them
 # my file reading and writing module
 import fio
 import reprocess
-from omhchorp import omhchorp
+from omhchorp import omhchorp as omrp
 
 import numpy as np
+from numpy.ma import MaskedArray as ma
 from scipy.interpolate import interp1d
 from scipy import stats
 
@@ -233,45 +234,43 @@ def test_calculation_over_australia(day=datetime(2005,1,1), oneday=False):
     '''
     ymdstr=day.strftime('%Y%m%d')
     # read in omhchorp
-    omhchorp=fio.read_omhchorp(day,oneday=oneday)
-    AMF_GC=omhchorp['AMF_GC']
-    AMF_OMI=omhchorp['AMF_OMI']
-    VC_GC=omhchorp['VC_GC']
-    VC_OMI=omhchorp['VC_OMI']
-    lats=omhchorp['latitude']
-    lons=omhchorp['longitude']
-    unc = omhchorp['col_uncertainty_OMI']
-    mlons0,mlats0=np.meshgrid(lons,lats)
-    # read in pixel list? or omhcho swaths
-    # or not
+    om=omrp(day,oneday=oneday)
+    AMF_GC=om.AMF_GC
+    AMF_OMI=om.AMF_OMI
+    VC_GC=om.VC_GC
+    VC_OMI=om.VC_OMI
+    lats=om.latitude
+    lons=om.longitude
+    unc = om.col_uncertainty_OMI
+    mlons,mlats=np.meshgrid(lons,lats)
     
     # filter to just Australia rectangle [.,.,.,.]
-    lllat,lllon,urlat,urlon=-50,105,-10,155
-    lllati,urlati=158, 320
-    llloni,urloni=927, 1075
-    mlons,mlats=np.meshgrid(lons,lats)
-    mlons,mlats=mlons[lllati:urlati,llloni:urloni], mlats[lllati:urlati,llloni:urloni]
-    ausvcgc=VC_GC[lllati:urlati,llloni:urloni]
-    ausvcomi=VC_OMI[lllati:urlati,llloni:urloni]
-    ausamfgc=AMF_GC[lllati:urlati,llloni:urloni]
-    ausamfomi=AMF_OMI[lllati:urlati,llloni:urloni]
-    ausunc = unc[lllati:urlati,llloni:urloni]
+    ausinds=om.inds_aus(maskocean=True)
+    landinds=om.inds_subset(maskocean=True)
     
-    # Mask out the ocean
-    landvcgc  = maskoceans(mlons,mlats,ausvcgc,inlands=False)
-    landvcomi = maskoceans(mlons,mlats,ausvcomi,inlands=False)
-    landunc   = maskoceans(mlons,mlats,ausunc,inlands=False)
+    ausvcgc= ma(VC_GC,mask=~ausinds)
+    ausvcomi=ma(VC_OMI,mask=~ausinds)
+    ausamfgc=ma(AMF_GC,mask=~ausinds)
+    ausamfomi=ma(AMF_OMI,mask=~ausinds)
+    ausunc = ma(unc,mask=~ausinds)
     
-    print(("Mean AUS land VC_GC: %5.3e"%np.nanmean(landvcgc)))
-    print(("Mean AUS land VC_OMI: %5.3e"%np.nanmean(landvcomi)))
-    print(("Min AUS land VC_GC: %5.3e"%np.nanmin(landvcgc)))
-    print(("Min AUS land VC_OMI: %5.3e"%np.nanmin(landvcomi)))
+    
+    print(("Mean AUS land VC_GC: %5.3e"%np.nanmean(ausvcgc)))
+    print(("Mean AUS land VC_OMI: %5.3e"%np.nanmean(ausvcomi)))
+    print(("Min AUS land VC_GC: %5.3e"%np.nanmin(ausvcgc)))
+    print(("Min AUS land VC_OMI: %5.3e"%np.nanmin(ausvcomi)))
     
     # Plot the histogram of VC entries over australia
-    plt.hist(landvcgc)
-    plt.title('Australia land $\Omega_{GC}$')
+    land_data=np.transpose([VC_GC[landinds],VC_OMI[landinds]])
+    aus_data=np.transpose([VC_GC[ausinds],VC_OMI[ausinds]])
+    plt.hist(land_data, bins=np.logspace(13, 17, 30), color=['darkgrey','lightgrey'], label=['Global GC','Global OMI'])
+    plt.hist(aus_data, bins=np.logspace(13, 17, 30), color=['darkcyan','lightcyan'], label=['Aus GC','Aus OMI'])
+    plt.xscale("log")
+    plt.yscale('log',nonposy='clip')
+    plt.title('Gridded Land $\Omega_{HCHO}$')
     plt.ylabel('frequency'); plt.xlabel('molec cm$^{-2}$')
-    pname='pictures/AUS_landVC_GC_hist.png'
+    plt.legend(loc=0)
+    pname='pictures/AUS_landVC_hist.png'
     plt.savefig(pname)
     print("%s saved"%pname)
     plt.close()
@@ -280,31 +279,31 @@ def test_calculation_over_australia(day=datetime(2005,1,1), oneday=False):
     #
     # GC aus columns
     f=plt.figure(figsize=(14,12))
-    ax=plt.subplot(221)
+    plt.subplot(221)
     lllat=-50; urlat=-5; lllon=100; urlon=170
-    m,cs,cb = createmap(landvcgc,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    m,cs,cb = createmap(ausvcgc,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
     Ogc="$\Omega_{GC}$"
     Oomi="$\Omega_{OMI}$"
     plt.title("Aus "+Ogc)
     
     # omi aus columns
-    ax=plt.subplot(222)
-    m,cs,cb = createmap(landvcomi,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.subplot(222)
+    m,cs,cb = createmap(ausvcomi,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
     plt.title("Aus "+Oomi)
     
     # omi uncertainty:
-    ax=plt.subplot(224)
-    m,cs,cb = createmap(landunc, mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.subplot(224)
+    m,cs,cb = createmap(ausunc, mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
     plt.title("Aus column uncertainty (OMI)")
     
     # show AUS corellations with ocean masked out
     plt.subplot(223)
-    nans = np.isnan(landvcgc) + (np.isnan(landvcomi)) #+ landvcgc.mask
-    nanscheck=nans + landvcgc.mask
+    nans = np.isnan(ausvcgc) + (np.isnan(ausvcomi)) #+ ausvcgc.mask
+    nanscheck=nans + ausvcgc.mask
     print( (np.sum(nans), np.sum(nanscheck)) )
-    plt.scatter(landvcomi, landunc, color='grey',alpha=0.5, label="OMI vs uncertainty")
-    plt.scatter(landvcomi,landvcgc, color='black',label="OMI vs GC")
-    slope,intercept,r,p,sterr = stats.linregress(landvcomi[~nans],landvcgc[~nans])
+    plt.scatter(ausvcomi, ausunc, color='grey',alpha=0.5, label="OMI vs uncertainty")
+    plt.scatter(ausvcomi,ausvcgc, color='black',label="OMI vs GC")
+    slope,intercept,r,p,sterr = stats.linregress(ausvcomi[~nans],ausvcgc[~nans])
     X=np.array([1e10,5e16])
     plt.plot( X, slope*X+intercept,color='fuchsia',
             label='Slope=%.5f, r=%.5f'%(slope,r))
@@ -316,6 +315,7 @@ def test_calculation_over_australia(day=datetime(2005,1,1), oneday=False):
     f.savefig(pname)
     print("%s saved"%pname)
     plt.close()
+    
 
 def test_amf_calculation(scount=50):
     '''

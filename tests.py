@@ -267,7 +267,7 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     # Print the land and ocean averages for each product
     print("%s land averages (oceans are global):"%(['Global','Australian']))
     for arrl,arro,arrstr in zip([vcomi_l, vcgc_l, vcc_l],[vcomi_o,vcgc_o,vcc_o],['OMI','GEOS-Chem','Corrected GEOS-Chem']):
-        print("%21s   land,   ocean"%'')
+        print("%25s   land,   ocean"%'')
         print("%21s: %5.3e,  %5.3e "%(arrstr, np.nanmean(arrl),np.nanmean(arro)))
     
     f=plt.figure(figsize=(14,10))
@@ -276,8 +276,8 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     ocean_data=np.transpose([VC_GC[oceaninds],VCC[oceaninds],VC_OMI[oceaninds]])
     olabel=['ocean '+thing for thing in [Ogc,Ovcc,Oomi]]
     llabel=['land ' +thing for thing in [Ogc,Ovcc,Oomi]]
-    plt.hist(ocean_data, bins=np.logspace(13, 18, 25), color=['darkblue','blue','lightblue'], label=olabel)
-    plt.hist(land_data, bins=np.logspace(13, 18, 25), color=['orange','gold','yellow'], alpha=.5, label=llabel)
+    plt.hist(ocean_data, bins=np.logspace(13, 17, 20), color=['darkblue','blue','lightblue'], label=olabel)
+    plt.hist(land_data, bins=np.logspace(13, 17, 20), color=['orange','gold','yellow'], label=llabel)
     plt.xscale("log")
     plt.yscale('log',nonposy='clip') # logarithmic y scale handling zero
     plt.title('Vertical column distributions ($\Omega_{HCHO}$)',fontsize=26)
@@ -967,8 +967,8 @@ if __name__ == '__main__':
     dates=[ datetime(2005,1,1) ]
     for day in dates:
         for oneday in [True, False]:
-            #test_reprocess_corrected(date=day, oneday=oneday)
-            #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+            test_reprocess_corrected(date=day, oneday=oneday)
+            test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
             for aus_only in [True, False]:
                 test_calculation_corellation(day=day, oneday=oneday, aus_only=aus_only)
     # to be updated:

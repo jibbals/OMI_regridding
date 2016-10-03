@@ -227,16 +227,20 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     plt.close()
     print(outfig+" Saved.")
 
-def test_calculation_over_australia(day=datetime(2005,1,1), oneday=False):
+def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=False):
     '''
     Look closely at AMFs over Australia, specifically over land
     and see how our values compare against the model and OMI swaths.
     '''
+    # useful strings
     ymdstr=day.strftime('%Y%m%d')
+    Ovcc='$\Omega_{CGC}$'
+    Ogc="$\Omega_{GC}$"
+    Oomi="$\Omega_{OMI}$"
+    
     # read in omhchorp
     om=omrp(day,oneday=oneday)
-    AMF_GC=om.AMF_GC
-    AMF_OMI=om.AMF_OMI
+    VCC=om.VCC
     VC_GC=om.VC_GC
     VC_OMI=om.VC_OMI
     lats=om.latitude
@@ -244,79 +248,107 @@ def test_calculation_over_australia(day=datetime(2005,1,1), oneday=False):
     unc = om.col_uncertainty_OMI
     mlons,mlats=np.meshgrid(lons,lats)
     
-    # filter to just Australia rectangle [.,.,.,.]
-    ausinds=om.inds_aus(maskocean=True)
-    landinds=om.inds_subset(maskocean=True)
+    if aus_only:
+        # filter to just Australia rectangle [.,.,.,.]
+        landinds=om.inds_aus(maskocean=True)
+    else:
+        landinds=om.inds_subset(maskocean=True)
+    oceaninds=om.inds_subset(maskocean=False,maskland=True)
     
-    ausvcgc= ma(VC_GC,mask=~ausinds)
-    ausvcomi=ma(VC_OMI,mask=~ausinds)
-    ausamfgc=ma(AMF_GC,mask=~ausinds)
-    ausamfomi=ma(AMF_OMI,mask=~ausinds)
-    ausunc = ma(unc,mask=~ausinds)
+    # the datasets with nans and land or ocean masked
+    vcomi_l     = ma(VC_OMI,mask=~landinds)
+    vcgc_l      = ma(VC_GC,mask=~landinds)
+    vcc_l       = ma(VCC,mask=~landinds)
+    vcomi_o     = ma(VC_OMI,mask=~oceaninds)
+    vcgc_o      = ma(VC_GC,mask=~oceaninds)
+    vcc_o       = ma(VCC,mask=~oceaninds)
+    landunc     = ma(unc,mask=~landinds)
     
+    # Print the land and ocean averages for each product
+    print("%s land averages (oceans are global):"%(['Global','Australian']))
+    for arrl,arro,arrstr in zip([vcomi_l, vcgc_l, vcc_l],[vcomi_o,vcgc_o,vcc_o],['OMI','GEOS-Chem','Corrected GEOS-Chem']):
+        print("%21s   land,   ocean"%'')
+        print("%21s: %5.3e,  %5.3e "%(arrstr, np.nanmean(arrl),np.nanmean(arro)))
     
-    print(("Mean AUS land VC_GC: %5.3e"%np.nanmean(ausvcgc)))
-    print(("Mean AUS land VC_OMI: %5.3e"%np.nanmean(ausvcomi)))
-    print(("Min AUS land VC_GC: %5.3e"%np.nanmin(ausvcgc)))
-    print(("Min AUS land VC_OMI: %5.3e"%np.nanmin(ausvcomi)))
-    
-    # Plot the histogram of VC entries over australia
-    land_data=np.transpose([VC_GC[landinds],VC_OMI[landinds]])
-    aus_data=np.transpose([VC_GC[ausinds],VC_OMI[ausinds]])
-    plt.hist(land_data, bins=np.logspace(13, 17, 30), color=['darkgrey','lightgrey'], label=['Global GC','Global OMI'])
-    plt.hist(aus_data, bins=np.logspace(13, 17, 30), color=['darkcyan','lightcyan'], label=['Aus GC','Aus OMI'])
+    f=plt.figure(figsize=(14,10))
+    # Plot the histogram of VC entries land and sea
+    land_data=np.transpose([VC_GC[landinds],VCC[landinds],VC_OMI[landinds]])
+    ocean_data=np.transpose([VC_GC[oceaninds],VCC[oceaninds],VC_OMI[oceaninds]])
+    olabel=['ocean '+thing for thing in [Ogc,Ovcc,Oomi]]
+    llabel=['land ' +thing for thing in [Ogc,Ovcc,Oomi]]
+    plt.hist(ocean_data, bins=np.logspace(13, 18, 25), color=['darkblue','blue','lightblue'], label=olabel)
+    plt.hist(land_data, bins=np.logspace(13, 18, 25), color=['orange','gold','yellow'], alpha=.5, label=llabel)
     plt.xscale("log")
-    plt.yscale('log',nonposy='clip')
-    plt.title('Gridded Land $\Omega_{HCHO}$')
+    plt.yscale('log',nonposy='clip') # logarithmic y scale handling zero
+    plt.title('Vertical column distributions ($\Omega_{HCHO}$)',fontsize=26)
     plt.ylabel('frequency'); plt.xlabel('molec cm$^{-2}$')
     plt.legend(loc=0)
-    pname='pictures/AUS_landVC_hist.png'
+    ausstr=['','_AUS'][aus_only]
+    eightstr=['_8day_',''][oneday]
+    pname='pictures/land_VC_hist%s%s_%s.png'%(eightstr,ausstr,ymdstr)
     plt.savefig(pname)
     print("%s saved"%pname)
-    plt.close()
+    plt.close(f)
     
     # Plot the maps:
     #
-    # GC aus columns
-    f=plt.figure(figsize=(14,12))
-    plt.subplot(221)
-    lllat=-50; urlat=-5; lllon=100; urlon=170
-    m,cs,cb = createmap(ausvcgc,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
-    Ogc="$\Omega_{GC}$"
-    Oomi="$\Omega_{OMI}$"
-    plt.title("Aus "+Ogc)
     
-    # omi aus columns
-    plt.subplot(222)
-    m,cs,cb = createmap(ausvcomi,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
-    plt.title("Aus "+Oomi)
+    f=plt.figure(figsize=(16,13))
+    plt.subplot(231)
+    lllat=-80; urlat=80; lllon=-175; urlon=175
+    if aus_only:
+        lllat=-50; urlat=-5; lllon=100; urlon=170
+    
+    # GC map
+    m,cs,cb = createmap(vcgc_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.title(Ogc,fontsize=20)
+    
+    # omi map
+    plt.subplot(232)
+    m,cs,cb = createmap(vcomi_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.title(Oomi,fontsize=20)
+    
+    # VCC map
+    plt.subplot(233)
+    m,cs,cb = createmap(vcomi_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.title(Ovcc,fontsize=20)
     
     # omi uncertainty:
-    plt.subplot(224)
-    m,cs,cb = createmap(ausunc, mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
-    plt.title("Aus column uncertainty (OMI)")
+    plt.subplot(234)
+    m,cs,cb = createmap(landunc, mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.title("Column uncertainty (OMI)",fontsize=20)
     
-    # show AUS corellations with ocean masked out
-    plt.subplot(223)
-    nans = np.isnan(ausvcgc) + (np.isnan(ausvcomi)) #+ ausvcgc.mask
-    nanscheck=nans + ausvcgc.mask
-    print( (np.sum(nans), np.sum(nanscheck)) )
-    plt.scatter(ausvcomi, ausunc, color='grey',alpha=0.5, label="OMI vs uncertainty")
-    plt.scatter(ausvcomi,ausvcgc, color='black',label="OMI vs GC")
-    slope,intercept,r,p,sterr = stats.linregress(ausvcomi[~nans],ausvcgc[~nans])
+    # show corellations for OMI- VCGC
+    nans=np.isnan(vcgc_l) + np.isnan(vcomi_l)
+    plt.subplot(235)
+    plt.scatter(vcomi_o, vcgc_o, color='blue', label="Ocean", alpha=0.4)
+    plt.scatter(vcomi_l, vcgc_l, color='gold', label="Land")
+    slope,intercept,r,p,sterr = stats.linregress(vcomi_l[~nans], vcgc_l[~nans])
     X=np.array([1e10,5e16])
     plt.plot( X, slope*X+intercept,color='fuchsia',
-            label='Slope=%.5f, r=%.5f'%(slope,r))
+            label='Land: slope=%.5f, r=%.5f'%(slope,r))
     plt.plot( X, X, 'k--', label='1-1' )
     plt.legend(loc=0); plt.ylabel(Ogc); plt.xlabel(Oomi)
     
+    # show corellations for OMI- VCC
+    plt.subplot(236)
+    nans=np.isnan(vcc_l) + np.isnan(vcomi_l)
+    plt.scatter(vcomi_o, vcc_o, color='blue', label="Ocean", alpha=0.4)
+    plt.scatter(vcomi_l, vcc_l, color='gold', label="Land")
+    slope,intercept,r,p,sterr = stats.linregress(vcomi_l[~nans],vcc_l[~nans])
+    X=np.array([1e10,5e16])
+    plt.plot( X, slope*X+intercept,color='fuchsia',
+            label='Land: m=%4.2f, r=%.2f'%(slope,r))
+    plt.plot( X, X, 'k--', label='1-1' )
+    plt.legend(loc=0); plt.ylabel(Ovcc); plt.xlabel(Oomi)
+    
     # save plot
-    pname='pictures/AUS_%s.png'%ymdstr
+    pname='pictures/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
+    f.suptitle("Product comparison for %s"%ymdstr,fontsize=28)
     f.savefig(pname)
     print("%s saved"%pname)
-    plt.close()
+    plt.close(f)
     
-
 def test_amf_calculation(scount=50):
     '''
     Grab input argument(=50) columns and the apriori and omega values and check the AMF calculation on them
@@ -932,13 +964,14 @@ if __name__ == '__main__':
     # check some days (or one or no days)
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
-    dates=[]
+    dates=[ datetime(2005,1,1) ]
     for day in dates:
         for oneday in [True, False]:
-            test_reprocess_corrected(date=day, oneday=oneday)
-            test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+            #test_reprocess_corrected(date=day, oneday=oneday)
+            #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+            for aus_only in [True, False]:
+                test_calculation_corellation(day=day, oneday=oneday, aus_only=aus_only)
     # to be updated:
-    test_calculation_over_australia()
     #check_timeline()
     #reprocessed_amf_correlations()
     #test_fires_removed()

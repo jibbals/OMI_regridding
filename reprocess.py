@@ -64,7 +64,8 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
     lats=list()
     lons=list()
     slants=list()       # Slant columns from (molec/cm2)
-    ref_column=list()   # Median remote pacific reference radiance column (molec/cm2)
+    RSC_OMI=list()      # RSC vertical columns (molec/cm2) from abad15
+    ref_column=list()   # Median remote pacific reference radiance column (molec/cm2) # todo:remove- abad says this is not what I thought
     AMFos=list()        # AMFs from OMI
     AMFGs=list()        # Geometric AMFs from OMI
     cloudfracs=list()   # cloud fraction
@@ -123,6 +124,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
         
         # add this file's lats,lons,SCs,AMFs to our lists
         slants.extend(list(fslants[goods]))
+        RSC_OMI.extend(list(omiswath['RSC_OMI'][goods]))
         lats.extend(flats)
         lons.extend(flons)
         AMFos.extend(list((omiswath['AMF'])[goods]))
@@ -159,6 +161,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
     # dictionary structure
     return({'lat':lats, 'lon':lons, 'SC':slants, 'rad_ref_col':ref_column,
             'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 'AMF_GCz':AMFgczs, 'AMF_G':AMFGs,
+            'RSC_OMI':RSC_OMI,
             'cloudfrac':cloudfracs, 'track':track,
             'qualityflag':flags, 'xtrackflag':xflags,
             'omega':ws, 'omega_pmids':w_pmids, 'apriori':apris, 'sigma':sigmas,
@@ -268,6 +271,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     omi_lats=np.array(goodpixels['lat'])
     # SC UNITS: Molecs/cm2
     omi_SC=np.array(goodpixels['SC'])
+    omi_RSC=np.array(goodpixels['RSC_OMI'])
     omi_AMF_gc=np.array(goodpixels['AMF_GC'])
     omi_AMF_gcz=np.array(goodpixels['AMF_GCz'])
     omi_AMF_omi=np.array(goodpixels['AMF_OMI'])
@@ -341,6 +345,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_omi  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VCC     = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    RSC_OMI = np.zeros([ny,nx],dtype=np.double)+np.NaN
     cunc_omi= np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_gc  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_gcz = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -348,12 +353,6 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     counts  = np.zeros([ny,nx],dtype=np.int)
     for i in range(ny):
         for j in range(nx):
-            # don't calculate if there's fires
-            # update: Still calculate, just keep the fire mask for later usage.
-            #if remove_fires:
-            #    localfire=fire_filter_16[i,j]
-            #    if localfire:
-            #        continue
             
             # how many pixels within this grid box
             matches=(omi_lats >= lat_bounds[i]) & (omi_lats < lat_bounds[i+1]) & (omi_lons >= lon_bounds[j]) & (omi_lons < lon_bounds[j+1])
@@ -370,6 +369,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
             VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
             VC_omi[i,j]     = np.mean(omi_VC_omi[matches])
             VCC[i,j]        = np.mean(omi_VCC[matches])
+            RSC_OMI[i,j]    = np.mean(omi_RSC[matches])
             # TODO: store analysis data for saving, when we decide what we want analysed
             cunc_omi[i,j]   = np.mean(omi_cunc[matches])
             AMF_gc[i,j]     = np.mean(omi_AMF_gc[matches])
@@ -383,6 +383,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     outd['VC_GC']               = VC_gc
     outd['SC']                  = SC
     outd['VCC']                 = VCC
+    outd['VC_OMI_RSC']          = RSC_OMI # omi's RSC column amount
     outd['gridentries']         = counts
     outd['latitude']            = lats
     outd['longitude']           = lons
@@ -395,7 +396,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     outd['AMF_GCz']             = AMF_gcz
     outd['AMF_OMI']             = AMF_omi
     outd['fire_mask_16']        = fire_filter_16.astype(np.int16)
-    outd['fire_mask_8']        = fire_filter_8.astype(np.int16)
+    outd['fire_mask_8']         = fire_filter_8.astype(np.int16)
     outd['fires']               = fire_count.astype(np.int16)
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True,oneday=True)
     
@@ -429,7 +430,7 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
     normallist=['latitude', 'longitude', 'RSC_latitude', 'RSC_region', 
                 'fires', 'fire_mask_8', 'fire_mask_16']
     # list of things we need to add together and average
-    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI',
+    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
              'VCC', 'col_uncertainty_OMI']
     # other things need to be handled seperately
     otherlist=['gridentries','RSC', 'RSC_GC']

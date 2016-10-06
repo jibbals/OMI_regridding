@@ -71,6 +71,7 @@ class omhchorp:
         self.SC=struct['SC']
         self.VC_GC=struct['VC_GC']
         self.VC_OMI=struct['VC_OMI']
+        self.VC_OMI_RSC=struct['VC_OMI_RSC']
         self.VCC=struct['VCC']
         self.col_uncertainty_OMI=struct['col_uncertainty_OMI']
         self.fires=struct['fires']
@@ -80,7 +81,7 @@ class omhchorp:
     def apply_fire_mask(self, use_8day_mask=False):
         ''' nanify arrays which are fire affected. '''
         mask = [self.fire_mask_16, self.fire_mask_8][use_8day_mask]
-        for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,self.VC_OMI,self.VCC,self.col_uncertainty_OMI]:
+        for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,self.VC_OMI,self.VC_OMI_RSC,self.VCC,self.col_uncertainty_OMI]:
             arr[mask]=np.NaN
     
     def inds_subset(self, lat0=None,lat1=None,lon0=None,lon1=None, maskocean=True, maskland=False):

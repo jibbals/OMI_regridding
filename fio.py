@@ -30,7 +30,7 @@ datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
 # keylist for omhchorp datafiles
-_omhchorp_keylist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI',
+_omhchorp_keylist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
                    'VCC', 'gridentries', 'latitude', 'longitude', 'RSC',
                    'RSC_latitude', 'RSC_GC', 'RSC_region', 'col_uncertainty_OMI',
                    'fires', 'fire_mask_8', 'fire_mask_16']
@@ -187,12 +187,13 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
     field_w     = datafields+'ScatteringWeights'
     field_qf    = datafields+'MainDataQualityFlag'
     field_clouds= datafields+'AMFCloudFraction'
+    field_rsc   = datafields+'ReferenceSectorCorrectedVerticalColumn' # molec/cm2
     field_xqf   = geofields +'XtrackQualityFlags'
     field_lon   = geofields +'Longitude'
     field_lat   = geofields +'Latitude'
     field_sza   = geofields +'SolarZenithAngle'
     # uncertainty flags
-    field_colUnc    = datafields+'ColumnUncertainty' # also molecules/cm2
+    field_colUnc    = datafields+'ColumnUncertainty' # also molec/cm2
     field_fitflag   = datafields+'FitConvergenceFlag'
     field_fitRMS    = datafields+'FittingRMS'
     
@@ -203,6 +204,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
         lats    = in_f[field_lat].value     #[ 1644, 60 ]
         lons    = in_f[field_lon].value     #
         hcho    = in_f[field_hcho].value    #
+        rsc_omi = in_f[field_rsc].value     # ref sector corrected vc
         amf     = in_f[field_amf].value     # 
         amfg    = in_f[field_amfg].value    # geometric amf
         clouds  = in_f[field_clouds].value  # cloud fraction
@@ -282,7 +284,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
     #return everything in a structure
     return {'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
             'omega':w,'apriori':apri,'plevels':plevs, 'cloudfrac':clouds,
-            'rad_ref_col':ref_c,
+            'rad_ref_col':ref_c, 'RSC_OMI':rsc_omi,
             'qualityflag':qf, 'xtrackflag':xqf, 'sza':sza,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
 

@@ -117,7 +117,7 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
-def  reprocessed_amf_correlations(date=datetime(2005,1,1), oneday=True):
+def reprocessed_amf_correlations(date=datetime(2005,1,1), oneday=True):
     '''
     '''
     print("Reprocessed_amf_correlations To Be Implemented")
@@ -234,14 +234,14 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     '''
     # useful strings
     ymdstr=day.strftime('%Y%m%d')
-    Ovcc='$\Omega_{CGC}$'
-    Ogc="$\Omega_{GC}$"
+    Ovcc='$\Omega_{OMI_{GCC}}$'
+    Oomic="$\Omega_{OMI_{RSC}}$"
     Oomi="$\Omega_{OMI}$"
     
     # read in omhchorp
     om=omrp(day,oneday=oneday)
     VCC=om.VCC
-    VC_GC=om.VC_GC
+    VC_OMI_RSC=om.VC_OMI_RSC
     VC_OMI=om.VC_OMI
     lats=om.latitude
     lons=om.longitude
@@ -257,34 +257,39 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     
     # the datasets with nans and land or ocean masked
     vcomi_l     = ma(VC_OMI,mask=~landinds)
-    vcgc_l      = ma(VC_GC,mask=~landinds)
+    vcomic_l      = ma(VC_OMI_RSC,mask=~landinds)
     vcc_l       = ma(VCC,mask=~landinds)
     vcomi_o     = ma(VC_OMI,mask=~oceaninds)
-    vcgc_o      = ma(VC_GC,mask=~oceaninds)
+    vcomic_o      = ma(VC_OMI_RSC,mask=~oceaninds)
     vcc_o       = ma(VCC,mask=~oceaninds)
     landunc     = ma(unc,mask=~landinds)
     
     # Print the land and ocean averages for each product
-    print("%s land averages (oceans are global):"%(['Global','Australian']))
-    for arrl,arro,arrstr in zip([vcomi_l, vcgc_l, vcc_l],[vcomi_o,vcgc_o,vcc_o],['OMI','GEOS-Chem','Corrected GEOS-Chem']):
-        print("%25s   land,   ocean"%'')
+    print("%s land averages (oceans are global):"%(['Global','Australian'][aus_only]))
+    print("%25s   land,   ocean"%'')
+    for arrl,arro,arrstr in zip([vcomi_l, vcomic_l, vcc_l],[vcomi_o,vcomic_o,vcc_o],['OMI','OMI_RSC','OMI_GCC']):
         print("%21s: %5.3e,  %5.3e "%(arrstr, np.nanmean(arrl),np.nanmean(arro)))
     
     f=plt.figure(figsize=(14,10))
     # Plot the histogram of VC entries land and sea
-    land_data=np.transpose([VC_GC[landinds],VCC[landinds],VC_OMI[landinds]])
-    ocean_data=np.transpose([VC_GC[oceaninds],VCC[oceaninds],VC_OMI[oceaninds]])
-    olabel=['ocean '+thing for thing in [Ogc,Ovcc,Oomi]]
-    llabel=['land ' +thing for thing in [Ogc,Ovcc,Oomi]]
-    plt.hist(ocean_data, bins=np.logspace(13, 17, 20), color=['darkblue','blue','lightblue'], label=olabel)
-    plt.hist(land_data, bins=np.logspace(13, 17, 20), color=['orange','gold','yellow'], label=llabel)
+    land_data=np.transpose([VC_OMI_RSC[landinds],VCC[landinds]])
+    ocean_data=np.transpose([VC_OMI_RSC[oceaninds],VCC[oceaninds]])
+    olabel=['ocean '+thing for thing in [Oomic,Ovcc]]
+    llabel=['land ' +thing for thing in [Oomic,Ovcc]]
+    plt.hist(ocean_data, bins=np.logspace(13, 17, 20), color=['darkblue','lightblue'], label=olabel)
+    plt.hist(land_data, bins=np.logspace(13, 17, 20), color=['orange','yellow'], label=llabel)
     plt.xscale("log")
     plt.yscale('log',nonposy='clip') # logarithmic y scale handling zero
     plt.title('Vertical column distributions ($\Omega_{HCHO}$)',fontsize=26)
     plt.ylabel('frequency'); plt.xlabel('molec cm$^{-2}$')
     plt.legend(loc=0)
+    ta=plt.gca().transAxes
+    plt.text(0.05,.95, 'land count=%d'%np.sum(landinds),transform=ta)
+    plt.text(.05,.90, 'ocean count=%d'%np.sum(oceaninds),transform=ta)
+    plt.text(.05,.86, '%s mean(land)=%5.3e'%(Ovcc,np.nanmean(vcc_l)),transform=ta)
+    plt.text(.05,.82, '%s mean(land)=%5.3e'%(Oomic,np.nanmean(vcomic_l)),transform=ta)
     ausstr=['','_AUS'][aus_only]
-    eightstr=['_8day_',''][oneday]
+    eightstr=['_8day',''][oneday]
     pname='pictures/land_VC_hist%s%s_%s.png'%(eightstr,ausstr,ymdstr)
     plt.savefig(pname)
     print("%s saved"%pname)
@@ -299,48 +304,48 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     if aus_only:
         lllat=-50; urlat=-5; lllon=100; urlon=170
     
-    # GC map
-    m,cs,cb = createmap(vcgc_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
-    plt.title(Ogc,fontsize=20)
-    
-    # omi map
-    plt.subplot(232)
-    m,cs,cb = createmap(vcomi_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
-    plt.title(Oomi,fontsize=20)
+    # OMI_RSC map
+    m,cs,cb = createmap(vcomic_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.title(Oomic,fontsize=20)
     
     # VCC map
-    plt.subplot(233)
-    m,cs,cb = createmap(vcomi_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    plt.subplot(232)
+    m,cs,cb = createmap(vcc_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
     plt.title(Ovcc,fontsize=20)
+    
+    # (VCC- OMI_RSC)/OMI_RSC*100 map
+    plt.subplot(233)
+    m,cs,cb = linearmap((vcc_l-vcomic_l)*100/vcomic_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=-200,vmax=200)
+    plt.title('(%s - %s)*100/%s'%(Ovcc,Oomic,Oomic),fontsize=20)
     
     # omi uncertainty:
     plt.subplot(234)
     m,cs,cb = createmap(landunc, mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
     plt.title("Column uncertainty (OMI)",fontsize=20)
     
-    # show corellations for OMI- VCGC
-    nans=np.isnan(vcgc_l) + np.isnan(vcomi_l)
+    # show corellations for OMI_RSC- VCC
+    nans=np.isnan(vcc_l) + np.isnan(vcomic_l) + vcomic_l.mask # all the nans we won't fit
     plt.subplot(235)
-    plt.scatter(vcomi_o, vcgc_o, color='blue', label="Ocean", alpha=0.4)
-    plt.scatter(vcomi_l, vcgc_l, color='gold', label="Land")
-    slope,intercept,r,p,sterr = stats.linregress(vcomi_l[~nans], vcgc_l[~nans])
+    plt.scatter(vcomic_o, vcc_o, color='blue', label="Ocean", alpha=0.4)
+    plt.scatter(vcomic_l, vcc_l, color='gold', label="Land")
+    m,x0,r,p,sterr = stats.linregress(VC_OMI_RSC[~nans], VCC[~nans])
     X=np.array([1e10,5e16])
-    plt.plot( X, slope*X+intercept,color='fuchsia',
-            label='Land: slope=%.5f, r=%.5f'%(slope,r))
+    plt.plot( X, m*X+x0,color='fuchsia',
+            label='Land: m=%.5f, r=%.5f'%(m,r))
     plt.plot( X, X, 'k--', label='1-1' )
-    plt.legend(loc=0); plt.ylabel(Ogc); plt.xlabel(Oomi)
+    plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False); plt.ylabel(Ovcc); plt.xlabel(Oomic)
     
-    # show corellations for OMI- VCC
+    # show corellations for OMI - VCC
     plt.subplot(236)
-    nans=np.isnan(vcc_l) + np.isnan(vcomi_l)
+    nans=np.isnan(vcc_l) + np.isnan(vcomi_l) + vcc_l.mask # all the nans we won't fit
     plt.scatter(vcomi_o, vcc_o, color='blue', label="Ocean", alpha=0.4)
     plt.scatter(vcomi_l, vcc_l, color='gold', label="Land")
-    slope,intercept,r,p,sterr = stats.linregress(vcomi_l[~nans],vcc_l[~nans])
+    m,x0,r,p,sterr = stats.linregress(vcomi_l[~nans],vcc_l[~nans])
     X=np.array([1e10,5e16])
-    plt.plot( X, slope*X+intercept,color='fuchsia',
-            label='Land: m=%4.2f, r=%.2f'%(slope,r))
+    plt.plot( X, m*X+x0,color='fuchsia',
+            label='Land: m=%4.2f, r=%.2f'%(m,r))
     plt.plot( X, X, 'k--', label='1-1' )
-    plt.legend(loc=0); plt.ylabel(Ovcc); plt.xlabel(Oomi)
+    plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False); plt.ylabel(Ovcc); plt.xlabel(Oomi)
     
     # save plot
     pname='pictures/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
@@ -967,8 +972,8 @@ if __name__ == '__main__':
     dates=[ datetime(2005,1,1) ]
     for day in dates:
         for oneday in [True, False]:
-            test_reprocess_corrected(date=day, oneday=oneday)
-            test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+            #test_reprocess_corrected(date=day, oneday=oneday)
+            #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
             for aus_only in [True, False]:
                 test_calculation_corellation(day=day, oneday=oneday, aus_only=aus_only)
     # to be updated:

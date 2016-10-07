@@ -12,10 +12,9 @@ from omhchorp import omhchorp as omrp
 
 import numpy as np
 from numpy.ma import MaskedArray as ma
-from scipy.interpolate import interp1d
 from scipy import stats
 
-from datetime import datetime, timedelta
+from datetime import datetime#, timedelta
 
 from mpl_toolkits.basemap import Basemap, maskoceans
 import matplotlib.pyplot as plt
@@ -592,11 +591,11 @@ def test_fires_removed(day=datetime(2005,1,1),oneday=False):
     filename="omhchorp/BeforeFireRemoved/omhcho_8p0.25x0.31_20050101.he5"
     if oneday:
         filename="omhchorp/BeforeFireRemoved/omhcho_1p0.25x0.31_20050101.he5"
-    pre = omhchorp(day, oneday=oneday, filename=filename, keylist=keylist)
+    pre = omrp(day, oneday=oneday, filename=filename, keylist=keylist)
     
     # read 8 day average post toast
     #
-    post = omhchorp(day,oneday=oneday, keylist=keylist)
+    post = omrp(day,oneday=oneday, keylist=keylist)
     lats,lons=pre.latitude,pre.longitude
     
     # compare and beware

@@ -296,7 +296,7 @@ def read_omhcho_day(day=datetime(2005,1,1),verbose=False):
     data=read_omhcho(fnames[0],verbose=verbose) # read first swath
     swths=[]
     for fname in fnames[1:]: # read the rest of the swaths
-        swths.append(read_omhcho(fname),verbose=verbose)
+        swths.append(read_omhcho(fname,verbose=verbose))
     for swth in swths: # combine into one struct
         for key in swth.keys():
             axis= [0,1][key in ['omega','apriori','plevels']]

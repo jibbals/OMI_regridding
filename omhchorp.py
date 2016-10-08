@@ -63,6 +63,8 @@ class omhchorp:
         self.RSC_GC=struct['RSC_GC'] 
         # [rsc_lats, 60]  - the rsc for this time period
         self.RSC=struct['RSC']
+        # The vertical column corrected using the RSC
+        self.VCC=struct['VCC']
         
         # Arrays [ lats, lons ]
         self.AMF_GC=struct['AMF_GC']
@@ -72,7 +74,6 @@ class omhchorp:
         self.VC_GC=struct['VC_GC']
         self.VC_OMI=struct['VC_OMI']
         self.VC_OMI_RSC=struct['VC_OMI_RSC']
-        self.VCC=struct['VCC']
         self.col_uncertainty_OMI=struct['col_uncertainty_OMI']
         self.fires=struct['fires']
         self.fire_mask_8=struct['fire_mask_8']

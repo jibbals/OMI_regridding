@@ -20,7 +20,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm # for lognormal colour bar
 from glob import glob
 
-import omhchorp as omrp
+from omhchorp import omhchorp as omrp
+
 
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
@@ -143,18 +144,17 @@ def read_omhcho_8days(day=datetime(2005,1,1)):
             data8[key] = np.concatenate( (data8[key], data[key]), axis=axis)
     return data8
 
-def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True, 
+def createmap(data,lats,lons, vmin=5e13, vmax=1e17, 
               lllat=-50,  urlat=20, lllon=0, urlon=165):
     # Create a basemap map with 
     m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
           llcrnrlon=lllon, urcrnrlon=urlon,
-          resolution='i',projection='merc')
-    if len(lats.shape) == 1:
-        lonsnew,latsnew=np.meshgrid(lons,lats)
-    else:
-        latsnew,lonsnew=(lats,lons)
-    cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon, 
-                vmin=vmin,vmax=vmax,norm = LogNorm(), clim=(vmin,vmax))
+          resolution='l',projection='merc')
+    mlons,mlats=np.meshgrid(lons,lats)
+    x,y=m(mlons,mlats)
+    
+    cs=m.pcolormesh(x, y, data, vmin=vmin,vmax=vmax,
+                    norm = LogNorm(), clim=(vmin,vmax))
     cs.cmap.set_under('white')
     cs.cmap.set_over('pink')
     cs.set_clim(vmin,vmax)
@@ -163,7 +163,7 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
     
     m.drawcoastlines()
     m.drawparallels([0],labels=[0,0,0,0]) # draw equator, no label
-    cb.set_label('Molecules/cm2')
+    cb.set_label('Molec/cm2')
     
     return m, cs, cb
 
@@ -194,190 +194,75 @@ def ausmap(data,lats,lons,vmin=None,vmax=None, linear=False):
 ######################       videos                 #########################
 #############################################################################
 
-def swath_video(days=20, seconds=None):
-    ''' Create one and 8day averaged swath videos - for X years worth of data at Y seconds per frame '''
-
-    ## Files to be read:
-    #all the omhcho files...
-    dates= [datetime(2005,1,1) + timedelta(days=d) for d in range(days)]
-    daystrs = [day.strftime("%Y %m %d") for day in dates]
-    
-    daylist=[]
-    for day in dates:
-        daylist.append(read_omhcho_day())
-    
-    ## Plotting
-    fig = plt.figure(figsize=(14,11))
-    
-    lats=daylist[0]['lats']
-    lons=daylist[0]['lons']
-    data=daylist[0]['RSC_OMI']
-    m,cs,cb=createmap(data,lats,lons)
-    
-    cb.set_label('Molec/cm2')
-    Ohcho='$\Omega_{HCHO}$ '
-    txt=plt.title(Ohcho+daystrs[0])
-    
-    plt.savefig('checkvideo.png')
-    
-    # millisecond frame interval
-    interval= 500
-    if seconds is not None: interval=seconds*1000
-    
-    # animate 
-    def updatefig(i):
-        #global cs
-        #for c in cs.collections: c.remove()
-        #cs.remove()
-        m,cs,cb = createmap(daylist[i]['RSC_OMI'],daylist[i]['lats'],daylist[i]['lons'])
-        txt.set_text(Ohcho+daystrs[i])
-        
-    ani = funcAni(fig, updatefig, frames=len(dates), interval=interval)
-    
-    ani.save('Swaths_1day_Movie.mp4')
-    print("Did it do it?")
-
-def product_video(days=20,millisecs=250):
+def product_video(days=5,millisecs=600,save_pics=False,swaths=False, oneday=True):
     ''' create video of RSC product '''
-    # should just be able to read in the days from fio.read_omhchorp
-    dates= [datetime(2005,1,1) + timedelta(days=d) for d in range(days)]
+    
+    fs=36
+    fs2=28
+    dates = [datetime(2005,1,1) + timedelta(days=d) for d in range(days)]
+    if not oneday:
+        dates = [datetime(2005,1,1) + timedelta(days=d*8) for d in range(int(np.floor(days/8)))]
+    
     daystrs = [day.strftime("%Y %m %d") for day in dates]
-    
-    daylist=[]
+    daylist = []
     for day in dates:
-        daylist.append(omrp(day,oneday=True))
+        daylist.append(omrp(day,oneday=oneday))
     
-    ## Plotting
+    prefix    = ['vcc','swath'][swaths]
+    postfix   = ['8d','1d'][oneday]
+    datalist  = [ [d.VCC, d.VC_OMI][swaths] for d in daylist]
+    
+    # lat lon edges
+    lats,lons = daylist[0].latlon_bounds()
+    Ohcho     = '$\Omega_{HCHO}$ '
+    
+    # if we're saving all the pictures, loop through, save, return
+    if save_pics:
+        fig = plt.figure(figsize=(14,11))
+        for i,day in enumerate(daylist):
+            # Create the figure
+            m,cs,cb=createmap(datalist[i],lats,lons)
+            cb.set_label('Molec/cm2',fontsize=fs2)
+            plt.title(Ohcho+daystrs[i],fontsize=fs)
+            # save and clear the figure:
+            pname='pictures/video/%s_%s_%03d.png'%(prefix,postfix,i)
+            plt.tight_layout()
+            plt.savefig(pname)
+            plt.clf()
+            print('saved '+pname)
+        plt.close(fig)
+        return
+    
+    ## initial plot for video
     fig = plt.figure(figsize=(14,11))
     
-    lats=daylist[0].latitude
-    lons=daylist[0].longitude
-    #mlons,mlats = np.meshgrid(lons,lats)
-    data=daylist[0].VCC
-    m,cs,cb=createmap(data,lats,lons)
-    
-    cb.set_label('Molec/cm2')
-    Ohcho='$\Omega_{HCHO}$ '
-    txt=plt.title(Ohcho+daystrs[0])
-    
-    plt.savefig('checkvideo.png')
-    
-    # animate 
+    m,cs,cb=createmap(datalist[0],lats,lons)
+    cb.set_label('Molec/cm2',fontsize=fs2)
+    plt.title(Ohcho+daystrs[0],fontsize=fs)
+    plt.tight_layout()
+    # animate update function
     def updatefig(i):
-        #global cs
-        #for c in cs.collections: c.remove()
-        #cs.remove()
-        m,cs,cb = createmap(daylist[i]['RSC_OMI'],daylist[i]['lats'],daylist[i]['lons'])
-        txt.set_text(Ohcho+daystrs[i])
+        plt.clf()
+        m,cs,cb = createmap(datalist[i],lats,lons)
+        plt.title(Ohcho+daystrs[i])
+        cb.set_label('Molec/cm2')
+        plt.tight_layout()
+        print('Plotting '+daystrs[i])
         
     ani = funcAni(fig, updatefig, frames=len(dates), interval=millisecs)
     
-    ani.save('VCC_1day_Movie.mp4')
-    print("Did it do it?")
+    vname='%s_%say_Movie.mp4'%(prefix,postfix)
+    ani.save(vname)
+    print("saved "+vname)
 
 
-def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=False):
-    '''
-    Look closely at AMFs over Australia, specifically over land
-    and see how our values compare against the model and OMI swaths.
-    '''
-    # useful strings
-    ymdstr=day.strftime('%Y%m%d')
-    Ovcc='$\Omega_{OMI_{GCC}}$'
-    Oomic="$\Omega_{OMI_{RSC}}$"
-    Oomi="$\Omega_{OMI}$"
-    
-    # read in omhchorp
-    om=omrp(day,oneday=oneday)
-    VCC=om.VCC
-    VC_OMI_RSC=om.VC_OMI_RSC
-    VC_OMI=om.VC_OMI
-    lats=om.latitude
-    lons=om.longitude
-    unc = om.col_uncertainty_OMI
-    mlons,mlats=np.meshgrid(lons,lats)
-    
-    if aus_only:
-        # filter to just Australia rectangle [.,.,.,.]
-        landinds=om.inds_aus(maskocean=True)
-    else:
-        landinds=om.inds_subset(maskocean=True)
-    oceaninds=om.inds_subset(maskocean=False,maskland=True)
-    
-    # the datasets with nans and land or ocean masked
-    vcomi_l     = ma(VC_OMI,mask=~landinds)
-    vcomic_l      = ma(VC_OMI_RSC,mask=~landinds)
-    vcc_l       = ma(VCC,mask=~landinds)
-    vcomi_o     = ma(VC_OMI,mask=~oceaninds)
-    vcomic_o      = ma(VC_OMI_RSC,mask=~oceaninds)
-    vcc_o       = ma(VCC,mask=~oceaninds)
-    landunc     = ma(unc,mask=~landinds)
-    
-    # Print the land and ocean averages for each product
-    print("%s land averages (oceans are global):"%(['Global','Australian'][aus_only]))
-    print("%25s   land,   ocean"%'')
-    for arrl,arro,arrstr in zip([vcomi_l, vcomic_l, vcc_l],[vcomi_o,vcomic_o,vcc_o],['OMI','OMI_RSC','OMI_GCC']):
-        print("%21s: %5.3e,  %5.3e "%(arrstr, np.nanmean(arrl),np.nanmean(arro)))
-    
-    f=plt.figure(figsize=(14,10))
-    # Plot the histogram of VC entries land and sea
-    land_data=np.transpose([VC_OMI_RSC[landinds],VCC[landinds]])
-    ocean_data=np.transpose([VC_OMI_RSC[oceaninds],VCC[oceaninds]])
-    olabel=['ocean '+thing for thing in [Oomic,Ovcc]]
-    llabel=['land ' +thing for thing in [Oomic,Ovcc]]
-    plt.hist(ocean_data, bins=np.logspace(13, 17, 20), color=['darkblue','lightblue'], label=olabel)
-    plt.hist(land_data, bins=np.logspace(13, 17, 20), color=['orange','yellow'], label=llabel)
-    plt.xscale("log")
-    plt.yscale('log',nonposy='clip') # logarithmic y scale handling zero
-    plt.title('Vertical column distributions ($\Omega_{HCHO}$)',fontsize=26)
-    plt.ylabel('frequency'); plt.xlabel('molec cm$^{-2}$')
-    plt.legend(loc=0)
-    ta=plt.gca().transAxes
-    plt.text(0.05,.95, 'land count=%d'%np.sum(landinds),transform=ta)
-    plt.text(.05,.90, 'ocean count=%d'%np.sum(oceaninds),transform=ta)
-    plt.text(.05,.86, '%s mean(land)=%5.3e'%(Ovcc,np.nanmean(vcc_l)),transform=ta)
-    plt.text(.05,.82, '%s mean(land)=%5.3e'%(Oomic,np.nanmean(vcomic_l)),transform=ta)
-    ausstr=['','_AUS'][aus_only]
-    eightstr=['_8day',''][oneday]
-    pname='pictures/land_VC_hist%s%s_%s.png'%(eightstr,ausstr,ymdstr)
-    plt.savefig(pname)
-    print("%s saved"%pname)
-    plt.close(f)
-    
-    # Plot the maps:
-    #
-    
-    f=plt.figure(figsize=(16,13))
-    plt.subplot(231)
-    lllat=-80; urlat=80; lllon=-175; urlon=175
-    if aus_only:
-        lllat=-50; urlat=-5; lllon=100; urlon=170
-    
-    # OMI_RSC map
-    m,cs,cb = createmap(vcomic_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
-    plt.title(Oomic,fontsize=20)
-    
-    # VCC map
-    plt.subplot(232)
-    m,cs,cb = createmap(vcc_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
-    plt.title(Ovcc,fontsize=20)
-    
-    # (VCC- OMI_RSC)/OMI_RSC*100 map
-    plt.subplot(233)
-    m,cs,cb = linearmap((vcc_l-vcomic_l)*100/vcomic_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=-200,vmax=200)
-    plt.title('(%s - %s)*100/%s'%(Ovcc,Oomic,Oomic),fontsize=20)
-    
-    # save plot
-    pname='pictures/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
-    f.suptitle("Product comparison for %s"%ymdstr,fontsize=28)
-    f.savefig(pname)
-    print("%s saved"%pname)
-    plt.close(f)
-
-    
 ##############################
 ########## IF CALLED #########
 ##############################
 if __name__ == '__main__':
     print("Running videos.py")
-    swath_video()
+    for save_pics in [True,False]:
+        product_video(days=80, oneday=True, millisecs=750, save_pics=save_pics)
+        product_video(days=80, oneday=False, millisecs=800, save_pics=save_pics)
+    #product_video(days=8, oneday=True, millisecs=750, save_pics=True)
+        

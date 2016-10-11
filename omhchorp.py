@@ -111,6 +111,20 @@ class omhchorp:
             
         return inds
     
+    def latlon_bounds(self):
+        ''' Return latedges and lonedges arrays '''
+        dy=self.latitude[1]-self.latitude[0]
+        dx=self.longitude[1]-self.longitude[0]
+        y0=self.latitude[0]-dy/2.0
+        x0=self.longitude[0]-dx/2.0
+        y1=self.latitude[-1]+dy/2.0
+        x1=self.longitude[-1]+dx/2.0
+        y=np.arange(y0,y1+0.00001,dy)
+        x=np.arange(x0,x1+0.00001,dx)
+        if y[0]<-90: y[0]=-89.999
+        if y[-1]>90: y[-1]=89.999
+        return y,x
+    
     def inds_aus(self, maskocean=True,maskland=False):
         ''' return indices of Australia, with or without(default) ocean squares '''
         return self.inds_subset(lat0=-57,lat1=-6,lon0=101,lon1=160,maskocean=maskocean,maskland=maskland)

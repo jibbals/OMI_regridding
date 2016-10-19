@@ -13,6 +13,7 @@ from omhchorp import omhchorp as omrp
 import numpy as np
 from numpy.ma import MaskedArray as ma
 from scipy import stats
+from copy import deepcopy as dcopy
 
 from datetime import datetime#, timedelta
 
@@ -27,6 +28,17 @@ import random
 ##############################
 ########## FUNCTIONS #########
 ##############################
+
+def InitMatplotlib():
+    """set some Matplotlib stuff."""
+    matplotlib.rcParams["text.usetex"]      = True      # make sure latex reads
+    matplotlib.rcParams["legend.numpoints"] = 1         # one point for marker legends
+    matplotlib.rcParams["figure.figsize"]   = (12, 10)  #
+    matplotlib.rcParams["font.size"]        = 18        # font sizes:
+    matplotlib.rcParams["axes.titlesize"]   = 26        # title font size
+    matplotlib.rcParams["axes.labelsize"]   = 20        #
+    matplotlib.rcParams["xtick.labelsize"]  = 16        #
+    matplotlib.rcParams["ytick.labelsize"]  = 16        #
 
 def regularbounds(x,fix=False):
     # Take a lat or lon array input and return the grid edges
@@ -44,7 +56,7 @@ def regularbounds(x,fix=False):
     return newx
 
 def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True, 
-              lllat=-80, urlat=80, lllon=-179, urlon=179):
+              lllat=-80, urlat=80, lllon=-179, urlon=179, colorbar=True):
     # Create a basemap map with 
     m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
           llcrnrlon=lllon, urcrnrlon=urlon,
@@ -61,18 +73,18 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
     cs.cmap.set_under('white')
     cs.cmap.set_over('pink')
     cs.set_clim(vmin,vmax)
-    
-    cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
-    
     m.drawcoastlines()
     m.drawparallels([0],labels=[0,0,0,0]) # draw equator, no label
+    if not colorbar:
+        return m,cs
+    cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
     cb.set_label('Molecules/cm2')
     
     return m, cs, cb
 def globalmap(data,lats,lons):
     return createmap(data,lats,lons,lllat=-80,urlat=80,lllon=-179,urlon=179)
-def ausmap(data,lats,lons,vmin=None,vmax=None):
-    return createmap(data,lats,lons,lllat=-50,urlat=-5,lllon=100,urlon=160, vmin=vmin, vmax=vmax)
+def ausmap(data,lats,lons,vmin=None,vmax=None,colorbar=True):
+    return createmap(data,lats,lons,lllat=-50,urlat=-5,lllon=100,urlon=160, vmin=vmin, vmax=vmax, colorbar=colorbar)
 def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True, 
               lllat=-80, urlat=80, lllon=-179, urlon=179):
     
@@ -580,64 +592,52 @@ def test_fires_fio():
     plt.savefig('pictures/AQUA2005001.png')
     plt.close()
 
-def test_fires_removed(day=datetime(2005,1,1),oneday=False):
+def test_fires_removed(day=datetime(2005,1,25),oneday=False):
     '''
     Check that fire affected pixels are actually removed
-    TODO: try using the omhchorp class.
     '''
-    # read 8 day average prior to fi-or
+    # Read one or 8 day average:
     #
-    keylist=['gridentries','VC_OMI','VC_GC','AMF_GC','AMF_OMI','latitude','longitude','fires']
-    filename="omhchorp/BeforeFireRemoved/omhcho_8p0.25x0.31_20050101.he5"
-    if oneday:
-        filename="omhchorp/BeforeFireRemoved/omhcho_1p0.25x0.31_20050101.he5"
-    pre = omrp(day, oneday=oneday, filename=filename, keylist=keylist)
+    omhchorp= omrp(day, oneday=oneday)
+    pre     = omhchorp.VCC
+    count   = omhchorp.gridentries
+    lats,lons=omhchorp.latitude,omhchorp.longitude
+    pre_n   = np.nansum(count)
+    ymdstr=day.strftime(" %Y%m%d")
+    # apply fire masks
+    #
+    fire8           = omhchorp.fire_mask_8 == 1
+    fire16          = omhchorp.fire_mask_16 == 1
+    post8           = dcopy(pre)
+    post8[fire8]    = np.NaN
+    post16          = dcopy(pre)
+    post16[fire16]  = np.NaN
+    post8_n         = np.nansum(count[~fire8])
+    post16_n        = np.nansum(count[~fire16])
     
-    # read 8 day average post toast
-    #
-    post = omrp(day,oneday=oneday, keylist=keylist)
-    lats,lons=pre.latitude,pre.longitude
+    # print the sums
+    print("%1e entries, %1e after 8day fire removal, %1e after 16 day fire removal"%(pre_n,post8_n,post16_n))
     
     # compare and beware
     #
-    f = plt.figure(num=0,figsize=(18,14))
-    # Plot olt AMF, new AMF
-    #      old VC,  new VC 
-    #        Fires Counts
+    f = plt.figure(num=0,figsize=(16,6))
+    # Plot pre, post8, post16
+    # Fires Counts?
     
-    # set currently active axis from [2,3] axes array
-    vmins,vmaxs=[0.5,0.5,1e14,1e14],[6,6,1e17,1e17]
-    for i,arr in enumerate([pre.AMF_OMI,post.AMF_OMI,pre.VC_OMI,post.VC_OMI]):
-        plt.subplot(321+i)
-        i0=int(np.floor(i/2))
-        m,cs,cb = [linearmap,ausmap][i0](arr,lats,lons,vmin=vmins[i],vmax=vmaxs[i])
-        plt.title("%s (%sfires excluded)"%(['AMF$_{OMI}$','\$Omega_{OMI}$'][i0],['no ',''][i%2]))
-    plt.subplot(313)
-    linearmap(post.fires, lats,lons,vmin=1,vmax=20)
-    plt.title('Fires')
+    vmin,vmax=1e14,1e17
+    Ovcc='$\Omega_{VCC}$'
+    titles= [ Ovcc+s for s in ['',' - 8 days of fires', ' - 16 days of fires'] ]
+    for i,arr in enumerate([pre,post8,post16]):
+        plt.subplot(131+i)
+        m,cs = ausmap(arr,lats,lons,vmin=vmin,vmax=vmax,colorbar=False)
+        plt.title(titles[i])
+    pname='pictures/fire_exclusion_%s.png'%['8d','1d'][oneday]
+    plt.suptitle("Effects of Fire masks"+ymdstr,fontsize=28)
     plt.tight_layout()
-    pname='pictures/fire_exclusion_results_%s.png'%['8d','1d'][oneday]
+    #plt.subplots_adjust(top=0.92)
     f.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
-    # plot just Australia, zoomed in on one day.
-    f, axes=plt.subplots(1,2,num=1,figsize=(16,10))
-    for i,arr in enumerate([pre.VC_GC, post.VC_GC]):
-        plt.sca(axes[i])
-        title=['$\Omega_{GEOS}$ before fire exclusion','after fire exclusion'][i]
-        ausmap(arr,lats,lons,vmin=vmins[3],vmax=vmaxs[3])
-        plt.title(title)
-    plt.suptitle("%s average $\Omega_{GEOS}$ for Jan 1, 2005"%(['Eight day','One day'][oneday]), fontsize=36)
-    plt.tight_layout()
-    pname='pictures/fire_exclusion_aus_%s.png'%['8d','1d'][oneday]
-    f.savefig(pname)
-    print("%s saved"%pname)
-    plt.close(f)
-    glats=(lats < 60) * (lats > -60)
-    prenans=np.sum(np.isnan(pre.AMF_OMI[ glats ]))
-    postnans=np.sum(np.isnan(post.AMF_OMI[ glats ]))
-    print("%d / %d  gridentries after fire and latitude exclusion"%(np.sum(post.gridentries),np.sum(pre.gridentries)))
-    print("%d / %d nan entries before and after fire exclusion within 60 degrees of equator"%(prenans,postnans))
 
 def test_gchcho():
     '''
@@ -962,13 +962,16 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 ##############################
 if __name__ == '__main__':
     print("Running tests.py")
+    InitMatplotlib()
     #test_fires_fio()
+    test_fires_removed()
     #test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
     # check some days (or one or no days)
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
-    dates=[ datetime(2005,1,1) ]
+    #dates=[ datetime(2005,1,1) ]
+    dates=[ ]
     for day in dates:
         for oneday in [True, False]:
             #test_reprocess_corrected(date=day, oneday=oneday)
@@ -978,7 +981,6 @@ if __name__ == '__main__':
     # to be updated:
     #check_timeline()
     #reprocessed_amf_correlations()
-    #test_fires_removed()
     
     # other tests
     #check_high_amfs()

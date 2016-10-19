@@ -76,8 +76,8 @@ class omhchorp:
         self.VC_OMI_RSC=struct['VC_OMI_RSC']
         self.col_uncertainty_OMI=struct['col_uncertainty_OMI']
         self.fires=struct['fires']
-        self.fire_mask_8=struct['fire_mask_8']
-        self.fire_mask_16=struct['fire_mask_16']
+        self.fire_mask_8=struct['fire_mask_8']      # true where fires occurred over last 8 days
+        self.fire_mask_16=struct['fire_mask_16']    # true where fires occurred over last 16 days
     
     def apply_fire_mask(self, use_8day_mask=False):
         ''' nanify arrays which are fire affected. '''

@@ -8,6 +8,7 @@ matplotlib.use('Agg') # don't actually display any plots, just create them
 # my file reading and writing module
 import fio
 import reprocess
+from JesseRegression import RMA
 from omhchorp import omhchorp as omrp
 
 import numpy as np
@@ -181,7 +182,7 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     plt.title('VC GC')
     plt.sca(axes[1,2])
     m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    plt.title('AMF_GC')
+    plt.title('AMF$_{GC}$')
     
     # Plot third row the GEOS-Chem map divergences
     
@@ -209,23 +210,20 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     plt.sca(axes[3,1])
     vc_gc,vc_omi=omhchorp['VC_GC'],omhchorp['VC_OMI']
     plt.scatter(vc_gc,vc_omi)
-    plt.xlabel('VC_GC')
-    plt.ylabel('VC_OMI')
+    plt.xlabel('VC$_{GC}$')
+    plt.ylabel('VC$_{OMI}$')
     scatlims=[1e12,2e17]
     plt.yscale('log'); plt.ylim(scatlims)
     plt.xscale('log'); plt.xlim(scatlims)
     plt.plot(scatlims,scatlims,'k--',label='1-1') # plot the 1-1 line for comparison
-    vc_gc_nans,vc_omi_nans=np.isnan(vc_gc),np.isnan(vc_omi) # where are nans
-    allnans=vc_gc_nans+vc_omi_nans 
-    vc_gc_reg,vc_omi_reg=vc_gc[~allnans],vc_omi[~allnans] # remove all nans
-    slp,intrcpt,r,p,sterr=stats.linregress(vc_gc_reg,vc_omi_reg) # get regression
+    slp,intrcpt,r,CI1,CI2=RMA(vc_gc,vc_omi) # get regression
     plt.plot(scatlims, slp*np.array(scatlims)+intrcpt,color='red',
             label='slope=%4.2f, r=%4.2f'%(slp,r))
     plt.legend(title='lines',loc=0)
-    plt.title("VC_GC vs VC_OMI")
+    plt.title("VC$_{GC}$ vs VC$_{OMI}$")
     plt.sca(axes[3,2])
     m,cs,cb = linearmap(omhchorp['AMF_GCz'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    plt.title('AMF_GCz')
+    plt.title('AMF$_{GCz}$')
     
     # save plots
     yyyymmdd = date.strftime("%Y%m%d")
@@ -293,7 +291,7 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     plt.yscale('log',nonposy='clip') # logarithmic y scale handling zero
     plt.title('Vertical column distributions ($\Omega_{HCHO}$)',fontsize=26)
     plt.ylabel('frequency'); plt.xlabel('molec cm$^{-2}$')
-    plt.legend(loc=0)
+    plt.legend(loc='center left')
     ta=plt.gca().transAxes
     plt.text(0.05,.95, 'land count=%d'%np.sum(landinds),transform=ta)
     plt.text(.05,.90, 'ocean count=%d'%np.sum(oceaninds),transform=ta)
@@ -339,24 +337,26 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     plt.subplot(235)
     plt.scatter(vcomic_o, vcc_o, color='blue', label="Ocean", alpha=0.4)
     plt.scatter(vcomic_l, vcc_l, color='gold', label="Land")
-    m,x0,r,p,sterr = stats.linregress(VC_OMI_RSC[~nans], VCC[~nans])
+    m,x0,r,ci1,ci2 = RMA(VC_OMI_RSC[~nans], VCC[~nans])
     X=np.array([1e10,5e16])
     plt.plot( X, m*X+x0,color='fuchsia',
             label='Land: m=%.5f, r=%.5f'%(m,r))
     plt.plot( X, X, 'k--', label='1-1' )
-    plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False); plt.ylabel(Ovcc); plt.xlabel(Oomic)
+    plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False)
+    plt.ylabel(Ovcc); plt.xlabel(Oomic)
     
     # show corellations for OMI - VCC
     plt.subplot(236)
     nans=np.isnan(vcc_l) + np.isnan(vcomi_l) + vcc_l.mask # all the nans we won't fit
     plt.scatter(vcomi_o, vcc_o, color='blue', label="Ocean", alpha=0.4)
     plt.scatter(vcomi_l, vcc_l, color='gold', label="Land")
-    m,x0,r,p,sterr = stats.linregress(vcomi_l[~nans],vcc_l[~nans])
+    m,x0,r,ci1,ci2 = RMA(vcomi_l[~nans],vcc_l[~nans])
     X=np.array([1e10,5e16])
     plt.plot( X, m*X+x0,color='fuchsia',
             label='Land: m=%4.2f, r=%.2f'%(m,r))
     plt.plot( X, X, 'k--', label='1-1' )
-    plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False); plt.ylabel(Ovcc); plt.xlabel(Oomi)
+    plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False)
+    plt.ylabel(Ovcc); plt.xlabel(Oomi)
     
     # save plot
     pname='pictures/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
@@ -964,14 +964,14 @@ if __name__ == '__main__':
     print("Running tests.py")
     InitMatplotlib()
     #test_fires_fio()
-    test_fires_removed()
+    #test_fires_removed()
     #test_amf_calculation() # Check the AMF stuff
     #check_flags_and_entries() # check how many entries are filtered etc...
     # check some days (or one or no days)
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
-    #dates=[ datetime(2005,1,1) ]
-    dates=[ ]
+    dates=[ datetime(2005,1,1) ]
+    #dates=[ ]
     for day in dates:
         for oneday in [True, False]:
             #test_reprocess_corrected(date=day, oneday=oneday)

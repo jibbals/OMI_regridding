@@ -26,13 +26,19 @@ from matplotlib.colors import LogNorm # for lognormal colour bar
 import timeit
 import random
 
+Ohcho='$\Omega_{HCHO}$'
+Ovc='$\Omega_{VC}$'
+Ovcc='$\Omega_{VCC}$'
+Oomi='$\Omega_{OMI}$'
+Ogc='$\Omega_{GC}$'
+
 ##############################
 ########## FUNCTIONS #########
 ##############################
 
 def InitMatplotlib():
     """set some Matplotlib stuff."""
-    matplotlib.rcParams["text.usetex"]      = True      # make sure latex reads
+    matplotlib.rcParams["text.usetex"]      = False     # 
     matplotlib.rcParams["legend.numpoints"] = 1         # one point for marker legends
     matplotlib.rcParams["figure.figsize"]   = (12, 10)  #
     matplotlib.rcParams["font.size"]        = 18        # font sizes:
@@ -109,6 +115,33 @@ def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True,
     m.drawparallels([0],labels=[0,0,0,0]) # draw equator, no label
     return m, cs, cb
 
+def plot_rec(bmap, inlimits, color=None, linewidth=None):
+    '''
+    Plot rectangle on basemap(arg 0) using [lat0,lon0,lat1,lon1](arg 1)
+    '''
+    # lat lon pairs for each corner
+    limits=inlimits
+    if limits[0]==-90:
+        limits[0]=-89
+    if limits[2]==90:
+        limits[2]=89
+    ll = [ limits[0], limits[1]]
+    ul = [ limits[2], limits[1]]
+    ur = [ limits[2], limits[3]]
+    lr = [ limits[0], limits[3]]
+    # shape to draw lats(y) and lons(x)
+    ys = np.array([ll[0], ul[0],
+                  ul[0], ur[0],
+                  ur[0], lr[0],
+                  lr[0], ll[0]])
+    xs = np.array([ll[1], ul[1],
+                  ul[1], ur[1],
+                  ur[1], lr[1],
+                  lr[1], ll[1]])
+    print(xs,ys)
+    x,y=bmap(xs,ys)
+    bmap.plot(x, y, latlon=False, color=color, linewidth=linewidth)
+    
 def mmm(arr):
     print("%1.5e, %1.5e, %1.5e"%(np.nanmin(arr),np.nanmean(arr),np.nanmax(arr)))
 
@@ -129,10 +162,55 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
-def reprocessed_amf_correlations(date=datetime(2005,1,1), oneday=True):
+def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     '''
+    Print and plot a summary of the effect of our remote sector correction
+    Plot 1: Reference Correction
+        showing VCs before and after correction, with rectangle around region
+    
+    Plot 2: OMI Sensors difference from apriori over RSC
+        Contourf of RSC correction function [sensor(X) vs latitude(Y)]
     '''
-    print("Reprocessed_amf_correlations To Be Implemented")
+    
+    ymdstr=date.strftime('%Y%m%d')
+    # read reprocessed data 
+    dat=omrp(date,oneday=oneday)
+    lats,lons=dat.latitude,dat.longitude
+    # read geos chem data
+    gcdat=fio.read_gchcho(date)
+    gclats,gclons=gcdat.lats,gcdat.lons
+    # plot 1) showing VCs before and after correction
+    vmin,vmax=1e14,1e17
+    f=plt.figure(0,figsize=(17,16))
+    titles=[Ovc,Ovcc,Ogc]
+    sbplots=[221,222,212]
+    lims=[(-60,30,45,160),(-60,30,45,160),(-75,-170,75,160)]
+    for i,arr in enumerate([dat.VC_GC,dat.VCC,gcdat.VC_HCHO*1e-4]):
+        plt.subplot(sbplots[i])
+        ilats=[lats,gclats][i==2]
+        ilons=[lons,gclons][i==2]
+        m,cs=createmap(arr,ilats,ilons,colorbar=False,vmin=vmin,vmax=vmax,
+                       lllat=lims[i][0],lllon=lims[i][1],urlat=lims[i][2],urlon=lims[i][3])
+        plt.title(titles[i],fontsize=25)
+        if i==2:
+            # rectangle around RSC
+            plot_rec(m,dat.RSC_region,color='k',linewidth=4)
+    
+    plt.suptitle('Reference Sector Correction '+ymdstr,fontsize=30)
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.95)
+    f.subplots_adjust(right=0.8)
+    cbar_ax = f.add_axes([0.85, 0.20, 0.05, 0.6])
+    cb=f.colorbar(cs,cax=cbar_ax)
+    cb.set_ticks(np.logspace(13,17,5))
+    cb.set_label('molec/cm$^2$',fontsize=24)
+    
+    pltname='pictures/Summary_RSC_Effect_%s.png'%ymdstr
+    f.savefig(pltname)
+    print ('%s saved'%pltname)
+    plt.close(f)
+    # plot 2:
+    print("RSC_Summary() plot two to be implemented")
 
 def check_timeline():
     '''
@@ -963,6 +1041,7 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     InitMatplotlib()
+    Summary_RSC()
     #test_fires_fio()
     #test_fires_removed()
     #test_amf_calculation() # Check the AMF stuff
@@ -970,8 +1049,8 @@ if __name__ == '__main__':
     # check some days (or one or no days)
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
-    dates=[ datetime(2005,1,1) ]
-    #dates=[ ]
+    #dates=[ datetime(2005,1,1) ]
+    dates=[ ]
     for day in dates:
         for oneday in [True, False]:
             #test_reprocess_corrected(date=day, oneday=oneday)

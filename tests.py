@@ -76,7 +76,7 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
     else:
         latsnew,lonsnew=(lats,lons)
     cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon, 
-                vmin=vmin,vmax=vmax,norm = LogNorm(), clim=(vmin,vmax))
+                    vmin=vmin,vmax=vmax,norm = LogNorm(), clim=(vmin,vmax))
     cs.cmap.set_under('white')
     cs.cmap.set_over('pink')
     cs.set_clim(vmin,vmax)
@@ -138,7 +138,6 @@ def plot_rec(bmap, inlimits, color=None, linewidth=None):
                   ul[1], ur[1],
                   ur[1], lr[1],
                   lr[1], ll[1]])
-    print(xs,ys)
     x,y=bmap(xs,ys)
     bmap.plot(x, y, latlon=False, color=color, linewidth=linewidth)
     
@@ -178,39 +177,62 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     lats,lons=dat.latitude,dat.longitude
     # read geos chem data
     gcdat=fio.read_gchcho(date)
+    gchcho=gcdat.VC_HCHO*1e-4
     gclats,gclons=gcdat.lats,gcdat.lons
     # plot 1) showing VCs before and after correction
     vmin,vmax=1e14,1e17
     f=plt.figure(0,figsize=(17,16))
-    titles=[Ovc,Ovcc,Ogc]
-    sbplots=[221,222,212]
-    lims=[(-60,30,45,160),(-60,30,45,160),(-75,-170,75,160)]
-    for i,arr in enumerate([dat.VC_GC,dat.VCC,gcdat.VC_HCHO*1e-4]):
-        plt.subplot(sbplots[i])
-        ilats=[lats,gclats][i==2]
-        ilons=[lons,gclons][i==2]
-        m,cs=createmap(arr,ilats,ilons,colorbar=False,vmin=vmin,vmax=vmax,
-                       lllat=lims[i][0],lllon=lims[i][1],urlat=lims[i][2],urlon=lims[i][3])
-        plt.title(titles[i],fontsize=25)
-        if i==2:
-            # rectangle around RSC
-            plot_rec(m,dat.RSC_region,color='k',linewidth=4)
+    lims=(-60,30,45,160)
+    lim2=(-65,-185,65,-115)
+    for i,arr in enumerate([dat.VC_GC,dat.VCC]):
+        #plt.subplot(221+i)
+        plt.subplot2grid((2, 6), (0, 3*i), colspan=3)
+        m,cs=createmap(arr,lats,lons,colorbar=False,vmin=vmin,vmax=vmax,
+                       lllat=lims[0],lllon=lims[1],urlat=lims[2],urlon=lims[3])
+        plt.title([Ovc,Ovcc][i],fontsize=25)
+        m.drawparallels([-40,0,40],labels=[1-i,0,0,0],linewidth=1.0)
+        
     
-    plt.suptitle('Reference Sector Correction '+ymdstr,fontsize=30)
-    plt.tight_layout()
-    plt.subplots_adjust(top=0.95)
-    f.subplots_adjust(right=0.8)
-    cbar_ax = f.add_axes([0.85, 0.20, 0.05, 0.6])
+    # plot c) RSC by sensor and latitude
+    plt.subplot2grid((2, 6), (1, 0), colspan=2)
+    cp=plt.contourf(np.arange(1,60.1,1),dat.RSC_latitude,dat.RSC)
+    plt.colorbar(cp)
+    plt.xlabel('sensor'); plt.ylabel('latitude')
+    plt.title('OMI corrections')
+    plt.xlim([-1,61]);plt.ylim([-70,70])
+    plt.yticks(np.arange(-60,61,15))
+    # plt.imshow(dat.RSC, extent=(0,60,-65,65), interpolation='nearest', cmap=cm.jet, aspect="auto")
+    
+    # plot d,e) RSC effect
+    for i,arr in enumerate([gchcho, dat.VCC]):
+        plt.subplot2grid((2, 6), (1, 2*i+2), colspan=2)
+        m,cs=createmap(arr,[gclats,lats][i],[gclons,lons][i],colorbar=False,vmin=vmin,vmax=vmax,
+                       lllat=lim2[0],lllon=lim2[1],urlat=lim2[2],urlon=lim2[3])
+        plt.title([Ogc,Ovcc][i],fontsize=25)
+        # rectangle around RSC
+        #plot_rec(m,dat.RSC_region,color='k',linewidth=4)
+        meridians=m.drawmeridians([-160,-140],labels=[0,0,0,1], linewidth=4.0, dashes=(None,None))
+        m.drawparallels([-60,0,60],labels=[1,0,0,0],linewidth=0.0)
+        for m in meridians:
+            try:
+                meridians[m][1][0].set_rotation(45)
+            except:
+                pass
+    
+    f.suptitle('Reference Sector Correction '+ymdstr,fontsize=30)
+    f.tight_layout()
+    f.subplots_adjust(top=0.95)
+    f.subplots_adjust(right=0.84)
+    cbar_ax = f.add_axes([0.87, 0.20, 0.04, 0.6])
     cb=f.colorbar(cs,cax=cbar_ax)
     cb.set_ticks(np.logspace(13,17,5))
     cb.set_label('molec/cm$^2$',fontsize=24)
     
-    pltname='pictures/Summary_RSC_Effect_%s.png'%ymdstr
+    pltname='pictures/Summary_RSC_Effect%s_%s.png'%(['8d',''][oneday],ymdstr)
     f.savefig(pltname)
     print ('%s saved'%pltname)
     plt.close(f)
-    # plot 2:
-    print("RSC_Summary() plot two to be implemented")
+
 
 def check_timeline():
     '''
@@ -1041,7 +1063,6 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     InitMatplotlib()
-    Summary_RSC()
     #test_fires_fio()
     #test_fires_removed()
     #test_amf_calculation() # Check the AMF stuff
@@ -1051,8 +1072,9 @@ if __name__ == '__main__':
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
     #dates=[ datetime(2005,1,1) ]
     dates=[ ]
-    for day in dates:
-        for oneday in [True, False]:
+    for oneday in [True, False]:
+        Summary_RSC(oneday=oneday)
+        for day in dates:
             #test_reprocess_corrected(date=day, oneday=oneday)
             #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
             for aus_only in [True, False]:

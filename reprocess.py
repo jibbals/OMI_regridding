@@ -21,7 +21,7 @@ from datetime import timedelta, datetime
 
 # GLOBALS
 __VERBOSE__=True # set to true for more print statements
-__DEBUG__=True # set to true for even more print statements
+__DEBUG__=False # set to true for even more print statements
 
 # interpolate linearly to 500 points
 ref_lat_bins=np.arange(-90,90,0.36)+0.18

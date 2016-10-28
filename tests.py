@@ -279,6 +279,7 @@ def Summary_Single_Profile():
     plt.ylabel('hPa')
     ax=plt.twiny()
     plt.plot(gcapri, gc_pmids,'--rx',linewidth=2,markersize=20)
+    plt.plot(omega, w_pmids, '--',linewidth=2,color='fuchsia')
     plt.title('Old vs new Apriori (%4.1fN, %4.1fE)'%(lat,lon),y=1.06)
     ax.tick_params(axis='x', colors='red')
     plt.ylim([1015, .04])
@@ -291,10 +292,11 @@ def Summary_Single_Profile():
     vcc=omhchorp.VCC[omlati,omloni]
     
     ta=plt.gca().transAxes
-    plt.text(.65,.94, 'AMF$_{OMI}$=%5.2f'%AMF_OMI,transform=ta)
-    plt.text(.65,.88, 'AMF$_{GC}$=%5.2f'%AMFS,transform=ta)
-    plt.text(.65,.82, '$\Omega_{OMI}$=%4.2e'%(SC/AMF_OMI),transform=ta)
-    plt.text(.65,.76, '$\Omega_{VCC}$=%4.2e'%vcc,transform=ta)
+    fs=32
+    plt.text(.3,.95, 'AMF$_{OMI}$=%5.2f'%AMF_OMI,transform=ta, fontsize=fs)
+    plt.text(.3,.86, 'AMF$_{GC}$=%5.2f'%AMFS,transform=ta, fontsize=fs)
+    plt.text(.3,.77, '$\Omega_{OMI}$=%4.2e'%(SC/AMF_OMI),transform=ta, fontsize=fs)
+    plt.text(.3,.68, '$\Omega_{VCC}$=%4.2e'%vcc,transform=ta, fontsize=fs)
     
     fname='pictures/SummarySinglePixel.png'
     f.savefig(fname)

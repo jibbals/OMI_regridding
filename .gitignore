@@ -16,7 +16,7 @@ logs/*
 # unignore some data files
 !omhchorp/*2005010*.he5
 !omhcho/OMI-Aura_L2-OMHCHO_2005m010[1]*.he5
-!gchcho/hcho_200501*
+!gchcho/*hcho*_200501*
 !MYD14C8H/MYD14C8H.20050[0-3]*
 
 # ignore qsub output files

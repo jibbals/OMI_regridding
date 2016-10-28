@@ -234,6 +234,73 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     plt.close(f)
 
 
+def Summary_Single_Profile():
+    '''
+    Get a single good pixel and show all the crap it needs to go through
+    '''
+    # plot left to right:
+    # OMI Apriori, GC Apriori, Omega, AMF, AMF_new, VC_OMI, VCC
+    day=datetime(2005,1,1)
+    
+    # Read OMHCHO data ( using reprocess get_good_pixels function )
+    pixels=reprocess.get_good_pixel_list(day, getExtras=True)
+    N = len(pixels['lat']) # how many pixels do we have
+    
+    #i=random.sample(range(N),1)[0]
+    i=350923
+    lat,lon=pixels['lat'][i],pixels['lon'][i]
+    omega=pixels['omega'][:,i]
+    AMF_G=pixels['AMF_G'][i]
+    AMF_OMI=pixels['AMF_OMI'][i]
+    w_pmids=pixels['omega_pmids'][:,i]
+    apri=pixels['apriori'][:,i]
+    SC=pixels['SC'][i]
+    
+    
+    # read gchcho 
+    #lat,lon=0,0
+    gchcho = fio.read_gchcho(day)
+    gcapri, gc_smids = gchcho.get_single_apriori(lat,lon)
+    gc_pmids    = gchcho.get_single_pmid(lat,lon)
+    
+    # rerun the AMF calculation and plot the shampoo
+    #innerplot='pictures/AMF_test/AMF_test_innerplot%d.png'%i
+    AMFS,AMFZ = gchcho.calculate_AMF(omega, w_pmids, AMF_G, lat, lon)
+    
+    print( "AMF_s=", AMFS )
+    print( "AMF_z=", AMFZ )
+    print( "AMF_o=", AMF_OMI )
+    
+    # Also make a plot of the regression new vs old AMFs
+    f=plt.figure(figsize=(9,12))
+    
+    plt.plot(apri,w_pmids,'--kx',linewidth=2,markersize=20)
+    plt.xlabel('Molecules cm$^{-2}$')
+    plt.ylabel('hPa')
+    ax=plt.twiny()
+    plt.plot(gcapri, gc_pmids,'--rx',linewidth=2,markersize=20)
+    plt.title('Old vs new Apriori (%4.1fN, %4.1fE)'%(lat,lon),y=1.06)
+    ax.tick_params(axis='x', colors='red')
+    plt.ylim([1015, .04])
+    plt.yscale('log')
+    
+    # omhchorp final vert column
+    omhchorp=omrp(day,oneday=True)
+    omlat,omlon=omhchorp.latitude, omhchorp.longitude
+    omlati,omloni= (np.abs(omlat-lat)).argmin(),(np.abs(omlon-lon)).argmin()
+    vcc=omhchorp.VCC[omlati,omloni]
+    
+    ta=plt.gca().transAxes
+    plt.text(.65,.94, 'AMF$_{OMI}$=%5.2f'%AMF_OMI,transform=ta)
+    plt.text(.65,.88, 'AMF$_{GC}$=%5.2f'%AMFS,transform=ta)
+    plt.text(.65,.82, '$\Omega_{OMI}$=%4.2e'%(SC/AMF_OMI),transform=ta)
+    plt.text(.65,.76, '$\Omega_{VCC}$=%4.2e'%vcc,transform=ta)
+    
+    fname='pictures/SummarySinglePixel.png'
+    f.savefig(fname)
+    print("Saved "+fname)
+    plt.close(f)
+    
 def check_timeline():
     '''
     '''
@@ -1063,6 +1130,7 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     InitMatplotlib()
+    Summary_Single_Profile()
     #test_fires_fio()
     #test_fires_removed()
     #test_amf_calculation() # Check the AMF stuff
@@ -1073,7 +1141,7 @@ if __name__ == '__main__':
     #dates=[ datetime(2005,1,1) ]
     dates=[ ]
     for oneday in [True, False]:
-        Summary_RSC(oneday=oneday)
+        #Summary_RSC(oneday=oneday)
         for day in dates:
             #test_reprocess_corrected(date=day, oneday=oneday)
             #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")

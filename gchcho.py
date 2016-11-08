@@ -38,8 +38,9 @@ class gchcho:
     boxH = 0    # (m) [ 72, 91, 144 ]
     zmids = 0   # (m) [ 72, 91, 144 ]
     
-    def __init__(self):
-        self.date=datetime(2005,1,1)
+    def __init__(self,date):
+        #self.date=datetime(2005,1,1)
+        self.ReadFile(date)
     
     def ReadFile(self, date):
         fpath=glob('gchcho/hcho_%4d%02d.he5' % ( date.year, date.month ) )[0]

@@ -315,90 +315,90 @@ def read_omhcho_8days(day=datetime(2005,1,1)):
             data8[key] = np.concatenate( (data8[key], data[key]), axis=axis)
     return data8
         
-
-def read_omhchog(date, eightdays=False, verbose=False):
-    '''
-    Function to read provided lvl 2 gridded product omhchog
-    '''
-    def getdata(date, verbose=False):
-        ## File to be read:
-        fname=determine_filepath(date, gridded=True)
-        if verbose: print ("reading "+fname)
-        
-        # Total column amounts are in molecules/cm2
-        # total vertical columns
-        field_hcho  = datafieldsg+'ColumnAmountHCHO' 
-        # other useful fields
-        field_amf   = datafieldsg+'AirMassFactor'
-        field_qf    = datafieldsg+'MainDataQualityFlag'
-        field_xf    = datafieldsg+'' # todo: cross track flags
-        field_lon   = datafieldsg+'Longitude'
-        field_lat   = datafieldsg+'Latitude'
-        
-        ## read in file:
-        with h5py.File(fname,'r') as in_f:        
-            ## get data arrays
-            lats    = in_f[field_lat].value
-            lons    = in_f[field_lon].value
-            hcho    = in_f[field_hcho].value
-            amf     = in_f[field_amf].value
-            qf      = in_f[field_qf].value
-            #xf      = in_f[field_xf].value
-        
-        ## remove missing values and bad flags: 
-        # QF: missing<0, suss=1, bad=2
-        suss = qf != 0
-        amf[suss] =np.NaN
-        hcho[suss]=np.NaN
-        lats[suss]=np.NaN
-        lons[suss]=np.NaN
-        
-        # TODO: Remove row anomaly
-        # TODO: Cloud frac removal?
-        # TODO: Make function to remove post processed AAOD>thresh data
-        
-        return (hcho, lats, lons, amf)#, xf)
-    
-    # Return our day if that's all we want
-    if not eightdays:
-        return getdata(date,verbose=verbose)
-    
-    # our 8 days in a list
-    days8 = [ date + timedelta(days=dd) for dd in range(8)]
-    lats=np.arange(-90,90,0.25)+0.25/2.0
-    lons=np.arange(-180,180,0.25)+0.25/2.0
-    hchos=np.zeros([len(lats),len(lons)])
-    amfs=np.zeros([len(lats),len(lons)])
-    counts=0
-    for day in days8:
-        hcho, daylats, daylons, amf = getdata(day,verbose=verbose)
-        count=1-np.isnan(hcho)
-        counts=np.nansum(count,axis=0)+counts
-        hchos=np.nansum(hcho,axis=0) + hchos
-        amfs=np.nansum(amf,axis=0)+amfs
-    amfs=amfs/counts
-    hchos=hchos/counts
-    return (hchos, lats, lons, amfs, counts)
-
-def read_omhchorg(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None):
-    '''
-    Function to read the data from one of my regreeded files
-    Inputs:
-        date = datetime(y,m,d,0) of desired day file
-        oneday  = False : set to True to read a single day, leave as False to read 8-day avg
-        latres=0.25 : latitude resolution
-        lonres=0.3125 : lon resolution
-        keylist=None : list of arrays to return( default is all data )
-    '''
-    
-    if keylist is None:
-        keylist= ['AMF_G','AMF','ColumnAmountHCHO','GridEntries','Latitude','Longitude','ScatteringWeight','ShapeFactor','PressureLevels']
-    retstruct=dict.fromkeys(keylist)
-    fpath=determine_filepath(date, oneday=oneday, latres=latres, lonres=lonres, regridded=True)
-    with h5py.File(fpath,'r') as in_f:
-        for key in keylist:
-            retstruct[key]=in_f[key].value
-    return (retstruct)
+#
+#def read_omhchog(date, eightdays=False, verbose=False):
+#    '''
+#    Function to read provided lvl 2 gridded product omhchog
+#    '''
+#    def getdata(date, verbose=False):
+#        ## File to be read:
+#        fname=determine_filepath(date, gridded=True)
+#        if verbose: print ("reading "+fname)
+#        
+#        # Total column amounts are in molecules/cm2
+#        # total vertical columns
+#        field_hcho  = datafieldsg+'ColumnAmountHCHO' 
+#        # other useful fields
+#        field_amf   = datafieldsg+'AirMassFactor'
+#        field_qf    = datafieldsg+'MainDataQualityFlag'
+#        field_xf    = datafieldsg+'' # todo: cross track flags
+#        field_lon   = datafieldsg+'Longitude'
+#        field_lat   = datafieldsg+'Latitude'
+#        
+#        ## read in file:
+#        with h5py.File(fname,'r') as in_f:        
+#            ## get data arrays
+#            lats    = in_f[field_lat].value
+#            lons    = in_f[field_lon].value
+#            hcho    = in_f[field_hcho].value
+#            amf     = in_f[field_amf].value
+#            qf      = in_f[field_qf].value
+#            #xf      = in_f[field_xf].value
+#        
+#        ## remove missing values and bad flags: 
+#        # QF: missing<0, suss=1, bad=2
+#        suss = qf != 0
+#        amf[suss] =np.NaN
+#        hcho[suss]=np.NaN
+#        lats[suss]=np.NaN
+#        lons[suss]=np.NaN
+#        
+#        # TODO: Remove row anomaly
+#        # TODO: Cloud frac removal?
+#        # TODO: Make function to remove post processed AAOD>thresh data
+#        
+#        return (hcho, lats, lons, amf)#, xf)
+#    
+#    # Return our day if that's all we want
+#    if not eightdays:
+#        return getdata(date,verbose=verbose)
+#    
+#    # our 8 days in a list
+#    days8 = [ date + timedelta(days=dd) for dd in range(8)]
+#    lats=np.arange(-90,90,0.25)+0.25/2.0
+#    lons=np.arange(-180,180,0.25)+0.25/2.0
+#    hchos=np.zeros([len(lats),len(lons)])
+#    amfs=np.zeros([len(lats),len(lons)])
+#    counts=0
+#    for day in days8:
+#        hcho, daylats, daylons, amf = getdata(day,verbose=verbose)
+#        count=1-np.isnan(hcho)
+#        counts=np.nansum(count,axis=0)+counts
+#        hchos=np.nansum(hcho,axis=0) + hchos
+#        amfs=np.nansum(amf,axis=0)+amfs
+#    amfs=amfs/counts
+#    hchos=hchos/counts
+#    return (hchos, lats, lons, amfs, counts)
+#
+#def read_omhchorg(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None):
+#    '''
+#    Function to read the data from one of my regreeded files
+#    Inputs:
+#        date = datetime(y,m,d,0) of desired day file
+#        oneday  = False : set to True to read a single day, leave as False to read 8-day avg
+#        latres=0.25 : latitude resolution
+#        lonres=0.3125 : lon resolution
+#        keylist=None : list of arrays to return( default is all data )
+#    '''
+#    
+#    if keylist is None:
+#        keylist= ['AMF_G','AMF','ColumnAmountHCHO','GridEntries','Latitude','Longitude','ScatteringWeight','ShapeFactor','PressureLevels']
+#    retstruct=dict.fromkeys(keylist)
+#    fpath=determine_filepath(date, oneday=oneday, latres=latres, lonres=lonres, regridded=True)
+#    with h5py.File(fpath,'r') as in_f:
+#        for key in keylist:
+#            retstruct[key]=in_f[key].value
+#    return (retstruct)
 
 def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, filename=None):
     '''
@@ -437,8 +437,8 @@ def read_gchcho(date):
     Read the geos chem hcho column data into a class and return the class
     this is actually just a wrapper, class method does all the work.
     '''
-    dataset = gchcho()
-    dataset.ReadFile(date)
+    dataset = gchcho(date)
+    #dataset.ReadFile(date)
     return(dataset)
 
 def filter_high_latitudes(array, latres=0.25, lonres=0.3125, highest_lat=60.0):

@@ -161,6 +161,20 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
+def Check_AMF_relevelling():
+    '''
+    Create a few example arrays and relevel the pressures and see what happens
+    '''
+    p0=[1000,800,600,400,100,10]
+    a0=[10,9,8,7,6,5]
+    p1=[1100, 1050, 950, 500, 200, 80, 5]
+    a1=[9,8.5,8,7,6,5,4]
+    p2=[810, 650, 450, 250, 20, 1]
+    a2=[11,8,7,5,4,3]
+
+    # look at 0vs1 and 1vs2
+
+
 def Check_OMI_AMF():
     '''
     See if the AMF_G is used to form the AMF in the OMI dataset
@@ -184,6 +198,7 @@ def Check_OMI_AMF():
     dp=np.zeros([47,len(amf)])
     dp[-1,:]=p[-1,:]
     dp[0:46,:]=p[1:47,:]-p[0:46,:]
+    dp[-1,:]=0.01 # top level pressure edge defined as 0.01hPa
     chris=np.sum(s*dp*w,axis=0) / np.sum(s*dp,axis=0)
     plt.scatter(chris,amf)
     plt.title('AMF calculation check on one OMI swath')
@@ -1173,6 +1188,7 @@ if __name__ == '__main__':
     InitMatplotlib()
     #Summary_Single_Profile()
     Check_OMI_AMF()
+    Check_AMF_relevelling()
     #test_fires_fio()
     #test_fires_removed()
     #test_amf_calculation() # Check the AMF stuff

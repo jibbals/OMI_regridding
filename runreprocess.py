@@ -14,13 +14,13 @@ def main(argv):
     try:
         opts, args = getopt.getopt(argv,"hs:",["start="])
     except getopt.GetoptError:
-        print('test.py -s <start date offset(multiple of 8, plus 1)>')
+        print('python runreprocess.py -s <start date offset(multiple of 8, plus 1)>')
         sys.exit(2)
     
     # handle each argument
     for opt, arg in opts:
         if opt == '-h':
-            print('example: test.py -s 17')
+            print('example: runreprocess.py -s 17')
             sys.exit()
         elif opt in ("-s","--start"):
             startday=int(arg)
@@ -31,7 +31,7 @@ def main(argv):
     # Check there were enough arguments
     #
     if len(opts) < 1:
-        print('example: test.py -s 17')
+        print('example: runreprocess.py -s 17')
         sys.exit()
     
     # Check sensible startday (1,9,17,25, ...)

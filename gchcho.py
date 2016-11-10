@@ -209,38 +209,37 @@ class gchcho:
 
         # calculate sigma edges
         S_sedges = (S_pedges - S_pedges[-1]) / (S_pedges[0]-S_pedges[-1])
-        S_sedges_new = (S_pedges_new - S_pedges_new[-1]) / (S_pedges_new[0]-S_pedges_new[-1])
         dsigma = S_sedges[0:-1]-S_sedges[1:]  # change in sigma at each level
-        dsigma_new = S_sedges_new[0:-1]-S_sedges_new[1:]
 
         # Default left,right values (now zero)
         lv,rv=0.,0.
 
         # sigma midpoints for interpolation
         w_smids = (w_pmids - S_pedges[-1])/ (S_pedges[0]-S_pedges[-1])
-        w_smids_new = (w_pmids_new - S_pedges_new[-1])/ (S_pedges_new[0]-S_pedges_new[-1])
-        S_smids_new=(S_pmids_new - S_pedges_new[-1]) / (S_pedges_new[0]-S_pedges_new[-1])
 
         # convert w(press) to w(z) and w(s), on GEOS-Chem's grid
         #
         w_zmids = np.interp(w_pmids, S_pmids[::-1], S_zmids[::-1])
         w_z     = np.interp(S_zmids, w_zmids, w,left=lv,right=rv) # w_z does not account for differences between bottom levels of GC vs OMI pixel
         w_s     = np.interp(S_smids, w_smids[::-1], w[::-1],left=lv,right=rv)
-        w_s_new     = np.interp(S_smids_new, w_smids_new[::-1], w_new[::-1], left=lv, right=rv)
         w_s_2   = np.interp(S_smids, w_smids[::-1], w[::-1]) # compare without fixed edges!
 
         # Integrate w(z) * S_z(z) dz using sum(w(z) * S_z(z) * height(z))
         AMF_z = np.sum(w_z * S_z * h)
         AMF_s= np.sum(w_s * S_s * dsigma)
 
-        # Calculations option
+        # Calculations with bottom relevelled
         # match he bottom levels in the pressure midpoints dimension
         w_pmids_new,S_pmids_new,w_new,S_s_new = match_bottom_levels(w_pmids,S_pmids,w,S_s)
         S_pedges_new = S_pedges.copy()
         for i in range(1,len(S_pedges_new)-1):
             S_pedges_new[i]=(S_pmids_new[i-1]*S_pmids_new[i]) ** 0.5
-
-        AMF_s_new = np.sum(w_s_new * S_s_new * dsigma_new) # h has not been fixed for possible new pressure levels...
+        S_sedges_new = (S_pedges_new - S_pedges_new[-1]) / (S_pedges_new[0]-S_pedges_new[-1])
+        dsigma_new = S_sedges_new[0:-1]-S_sedges_new[1:]
+        w_smids_new = (w_pmids_new - S_pedges_new[-1])/ (S_pedges_new[0]-S_pedges_new[-1])
+        S_smids_new=(S_pmids_new - S_pedges_new[-1]) / (S_pedges_new[0]-S_pedges_new[-1])
+        w_s_new     = np.interp(S_smids_new, w_smids_new[::-1], w_new[::-1], left=lv, right=rv)
+        AMF_s_new = np.sum(w_s_new * S_s_new * dsigma_new)
 
         if plotname is not None:
             integral_s_old=np.sum(w_s_2 * S_s * dsigma)

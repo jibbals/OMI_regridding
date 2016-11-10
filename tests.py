@@ -10,6 +10,7 @@ import fio
 import reprocess
 from JesseRegression import RMA
 from omhchorp import omhchorp as omrp
+from gchcho import match_bottom_levels
 
 import numpy as np
 from numpy.ma import MaskedArray as ma
@@ -165,15 +166,47 @@ def Check_AMF_relevelling():
     '''
     Create a few example arrays and relevel the pressures and see what happens
     '''
-    p0=[1000,800,600,400,100,10]
-    a0=[10,9,8,7,6,5]
-    p1=[1100, 1050, 950, 500, 200, 80, 5]
-    a1=[9,8.5,8,7,6,5,4]
-    p2=[810, 650, 450, 250, 20, 1]
-    a2=[11,8,7,5,4,3]
+    p0=np.array([1000,800,600,400,100,10])
+    a0=np.array([10,9,8,7,6,5])
+    p1=np.array([1100, 1050, 950, 500, 200, 80, 5])
+    a1=np.array([9,8.5,8,7,6,5,4])
+    p2=np.array([810, 650, 450, 250, 20, 1])
+    a2=np.array([11,8,7,5,4,3])
+    p3=np.array([1250, 1100, 900, 400, 100])
+    a3=np.array([11,8,9,4,2.3])
+    xlims=[2,12]
+    ylims=[1300,.5]
 
-    # look at 0vs1 and 1vs2
+    p00,p10,a00,a10=match_bottom_levels(p0.copy(),p1.copy(),a0.copy(),a1.copy())
+    #print((p1,p10,a1,a10))
+    assert p1[0]!=p10[0] and a1[0]!=a10[0], 'Err: No change in lowest level!'
+    assert (a0 == a00).all() and (p0 == p00).all(), 'Err: Higher levels changed!'
+    p1c=p1.copy() # make sure arguments aren't edited?
+    p00,p10,a00,a10=match_bottom_levels(p0,p1c,a0,a1)
+    assert (p1c==p1).all(), 'Err: Argument changed!'
+    p11,p21,a11,a21=match_bottom_levels(p1,p2,a1,a2)
+    p12,p32,a12,a32=match_bottom_levels(p1,p3,a1,a3)
 
+    # look at 0vs1, 1vs2, 1vs3
+    f,axes=plt.subplots(1,3,sharey=True,sharex=True,squeeze=True)
+
+    # loop over comparisons
+    for i, arrs in enumerate(((a0,p0,a1,p1,a10,p10),(a1,p1,a2,p2,a11,p11),(a1,p1,a3,p3,a32,p32))):
+        aa,pa,ab,pb,an,pn = arrs
+        plt.sca(axes[i])
+        plt.plot(aa,pa, 'mo--',label='aa')
+        plt.plot(ab,pb, 'b^--',label='ab')
+        plt.plot(an,pn, 'r*',label='new ab')
+        plt.plot(xlims,[pn[0],pn[0]],'k--', alpha=0.4) # horizontal line for examination
+
+    plt.yscale('log')
+    plt.ylim(ylims); plt.xlim([2,12])
+    plt.legend(loc='best')
+
+    plt.suptitle('Surface relevelling check')
+    pname='pictures/SurfaceRelevelCheck.png'
+    plt.savefig(pname)
+    print(pname+' Saved')
 
 def Check_OMI_AMF():
     '''
@@ -1187,11 +1220,16 @@ if __name__ == '__main__':
     print("Running tests.py")
     InitMatplotlib()
     #Summary_Single_Profile()
-    Check_OMI_AMF()
-    Check_AMF_relevelling()
+
+    # AMF tests
+    #Check_OMI_AMF()
+    #Check_AMF_relevelling()
+    test_amf_calculation()
+
+    # fires things
     #test_fires_fio()
     #test_fires_removed()
-    #test_amf_calculation() # Check the AMF stuff
+
     #check_flags_and_entries() # check how many entries are filtered etc...
     # check some days (or one or no days)
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]

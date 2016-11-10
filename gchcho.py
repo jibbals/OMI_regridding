@@ -13,7 +13,7 @@ from scipy.interpolate import griddata
 from scipy.interpolate import RectBivariateSpline as RBS
 import h5py
 
-def match_bottom_levels(p1,p2, arr1, arr2):
+def match_bottom_levels(p1i,p2i, arr1i, arr2i):
     '''
     Takes two arrays of pressure (from surface to some altitude)
     Returns the same two arrays with the lowest levels set to the same pressure
@@ -23,31 +23,34 @@ def match_bottom_levels(p1,p2, arr1, arr2):
     # update:20160905, 20161109
     # one array will have a lower bottom level than the other
     #
+    p1,p2=np.array(p1i.copy()),np.array(p2i.copy())
+    arr1,arr2=np.array(arr1i.copy()),np.array(arr2i.copy())
     if p1[0] > p2[0]:
         plow=p1
         phigh=p2
         alow=arr1
-        ahigh=arr2
     elif p1[0] == p2[0]:
         return p1,p2,arr1,arr2
     else:
         plow=p2
         phigh=p1
         alow=arr2
-        ahigh=arr1
-    alow_orig=alow.copy()
     plow_orig=plow.copy()
 
     # now lower has a lower surface altitude(higher surface pressure)
-    movers=np.where(plow > phigh[0])[0] # index of pressure edges below higher surface pressure
+    movers=np.where(plow+0.05*plow[0] > phigh[0])[0] # index of pressure edges below higher surface pressure
     above_ind = movers[-1]+1
     above = plow[above_ind] # pressure edge above the ones we need to move upwards
-    for ii in movers[::-1]:
-        plow[ii]=(plow[ii]+above) / 2
+    rmovers=movers[::-1] # highest to lowest list of pmids to relevel
+    # for all but the lowest pmid, increase above lowest pmid in other pressure array
+    for ii in rmovers[0:-1]:
+        plow[ii]=(phigh[0]*above)**0.5
+        above=plow[ii]
+    # for the lowest pmid, raise to match other array's lowest pmid
+    plow[0]=phigh[0]
 
     # now interpolate the changed array ( reversed as interp wants increasing array xp)
-    alow=np.interp(plow,plow_orig[::-1],alow[::-1])
-    assert alow[0] != alow_orig[0], 'lowest pressure level did not change associated array'
+    alow[:]=np.interp(plow,plow_orig[::-1],alow[::-1])
 
     return p1,p2,arr1,arr2
 
@@ -167,129 +170,77 @@ class gchcho:
         Return AMF calculated using normalized shape factors
         uses both S_z and S_sigma integrations
 
-        Determine AMF_z using AMF_G * \int_0^{\infty} { w(z) S_z(z) dz }
+        Determines
+            AMF_z = \int_0^{\infty} { w(z) S_z(z) dz }
+            AMF_s = \int_0^1 { w(s) S_s(s) ds } # this one uses sigma dimension
+            AMF_Chris = \Sigma_i (Shape(P_i) * \omega(P_i) * \Delta P_i) /  \Sigma_i (Shape(P_i) * \omega(P_i) )
 
-        Determine AMF_sigma using AMF_G * \int_0^1 { w(s) S_s(s) ds }
-
-        update:20160829
-            LEFT AND RIGHT NOW SET TO 0 ()
+        update:20161109
+            Chris AMF calculated, along with normal calculation without AMF_G
+            lowest level fix now moved to a function to make this method more readable
         update:20160905
             Fix lowest level of both GC box and OMI pixel to match the pressure
             of the least low of the two levels, and remove any level which is
             entirely below the other column's lowest level.
-        update:20161109
-            Chris AMF calculated, along with normal calculation without AMF_G
-            lowest level fix now moved to a function to make this method more readable
+        update:20160829
+            LEFT AND RIGHT NOW SET TO 0 ()
+        OLD:
+            Determine AMF_z using AMF_G * \int_0^{\infty} { w(z) S_z(z) dz }
+            Determine AMF_sigma using AMF_G * \int_0^1 { w(s) S_s(s) ds }
+
         '''
         # column index, pressures, altitudes, sigmas:
         #
         lati, loni=self.get_latlon_inds(lat,lon)
         S_pmids=self.pmids[:,lati,loni].copy()  # Pressures (hPa)
-        S_pmids_init=S_pmids.copy()
+
         S_zmids=self.zmids[:,lati,loni]         # Altitudes (m)
         S_smids=self.sigmas[:,lati,loni]        # Sigmas
         h=self.boxH[:,lati,loni]                # box heights (m)
         S_pedges=self.pedges[:,lati,loni].copy()# Pressure edges(hPa)
-        S_pedges_init=S_pedges.copy()
-        w_pmids_init=w_pmids.copy()             # copy of unaltered weights pressuremids
-        # copy is used as I don't want to change the GC data
-        # I just want to alter some things before applying the AMF formula
 
         # The shape factors!
         S_z=self.Shape_z[:,lati,loni].copy()
         S_s=self.Shape_s[:,lati,loni].copy()
 
-        # update:20160905
-        # if OMI pmid0 < GC pmid0 : # ie omi has higher lowest level
-        if w_pmids[0] < S_pmids[0]:
-            # in this case move the lowest level of GC column up.
-            # interpolate pressures up to OMI pixel base
-            S_pmids[0]=w_pmids[0]
-            # move up any pressure levels which are now below the lowest level
-            # then interpolate the shape factors
-            movers=np.where(S_pmids > w_pmids[0])[0]
-            if len(movers) > 0:
-                above_ind=movers[-1]+1
-                above=S_pmids[above_ind]
-                for ii in movers[::-1]:
-                    S_pmids[ii]=(S_pmids[0]+above) / 2.0
-                    above=S_pmids[ii]
-            # set the new pressure edges geometrically: starting with the surface extrapolation
-            S_pedges[0] = 2*S_pmids[0] - (S_pmids[0]*S_pmids[1])**.5
-            S_pedges[1:-1] = (S_pmids[0:-1]*S_pmids[1:]) ** 0.5
-            S_pedges[-1] = 0.0
-
-            # Interpolate the shape factors to these new pressure levels:
-            S_s=np.interp(S_pmids, S_pmids_init[::-1], S_s[::-1])
-            # also do S_z? currently I'm leaving this for comparison. AMF_z will be sanity check
-            # this is for testing the update:20160905
-            if debug_levels:
-                f=plt.figure(figsize=(15,10))
-                # plot the init vs new coords
-                ax=plt.subplot(131)
-                plt.scatter(w_pmids_init[0:10],w_pmids[0:10],color='k', label='OMI coords')
-                plt.scatter(S_pmids_init[0:10],S_pmids[0:10],color='cyan', label='GEOS-Chem coords')
-                plt.xlabel('p')
-                plt.ylabel('p$_{new}$')
-                plt.title('hPa')
-                plt.legend(loc=0)
-
-                # plot the old and new scattering weights
-                ax=plt.subplot(132)
-                plt.plot(w, w_pmids_init, '.k', label='$\omega$(p$_0$)')
-                plt.plot(np.interp(w_pmids,w_pmids_init[::-1],w[::-1]), w_pmids, 'xk', label='$\omega$(p)')
-                plt.ylabel('Press (hPa)')
-                plt.ylim([1050, 700])
-                plt.title('$\omega$')
-                plt.legend(loc=0)
-
-                # plot the old and new shape factor(sigma)
-                ax=plt.subplot(133)
-                S_s_init = self.Shape_s[:,lati,loni]
-                S_smids_init = self.sigmas[:,lati,loni]
-                plt.plot(S_s_init, S_smids_init, '.k', label='S$_\sigma_0$($\sigma_0$)')
-                plt.plot(S_s, S_smids, 'xk', label='S$_\sigma$($\sigma$)')
-                plt.ylabel('$\sigma$')
-                plt.ylim([1.01, 0.85])
-                plt.title('Shape Factor ($\sigma$ normalised)')
-                debugname='pictures/levels_debug/latlonrecord_%07.2f_%07.2f.png'%(lat,lon)
-                f.savefig(debugname)
-                print("%s saved"%debugname)
-                plt.close(f)
-
-        else: # Otherwise GC has higher lowest level
-            # in this case we move the OMI bottom level up, and the omega is interpolated from these new pmids
-            w_pmids[0] = S_pmids[0]
-            movers=np.where(w_pmids > w_pmids[0])[0]
-            if len(movers) > 0:
-                above_ind=movers[-1]+1
-                above=w_pmids[above_ind]
-                for ii in movers[::-1]:
-                    w_pmids[ii] = (S_pmids[0]+above) / 2.0
-                    above=w_pmids[ii]
+        # Interpolate the shape factors to these new pressure levels:
+        # S_s=np.interp(S_pmids, S_pmids_init[::-1], S_s[::-1])
+        # also do S_z? currently I'm leaving this for comparison. AMF_z will be sanity check
 
         # calculate sigma edges
-        S_sedges= (S_pedges - S_pedges[-1]) / (S_pedges[0]-S_pedges[-1])
-        dsigma=S_sedges[0:-1]-S_sedges[1:]  # change in sigma at each level
+        S_sedges = (S_pedges - S_pedges[-1]) / (S_pedges[0]-S_pedges[-1])
+        S_sedges_new = (S_pedges_new - S_pedges_new[-1]) / (S_pedges_new[0]-S_pedges_new[-1])
+        dsigma = S_sedges[0:-1]-S_sedges[1:]  # change in sigma at each level
+        dsigma_new = S_sedges_new[0:-1]-S_sedges_new[1:]
 
         # Default left,right values (now zero)
         lv,rv=0.,0.
 
+        # sigma midpoints for interpolation
+        w_smids = (w_pmids - S_pedges[-1])/ (S_pedges[0]-S_pedges[-1])
+        w_smids_new = (w_pmids_new - S_pedges_new[-1])/ (S_pedges_new[0]-S_pedges_new[-1])
+        S_smids_new=(S_pmids_new - S_pedges_new[-1]) / (S_pedges_new[0]-S_pedges_new[-1])
+
         # convert w(press) to w(z) and w(s), on GEOS-Chem's grid
         #
-        w_zmids = np.interp(w_pmids_init, S_pmids_init[::-1], S_zmids[::-1])
+        w_zmids = np.interp(w_pmids, S_pmids[::-1], S_zmids[::-1])
         w_z     = np.interp(S_zmids, w_zmids, w,left=lv,right=rv) # w_z does not account for differences between bottom levels of GC vs OMI pixel
-        w_smids = (w_pmids - S_pedges[-1])/ (S_pedges[0]-S_pedges[-1])
         w_s     = np.interp(S_smids, w_smids[::-1], w[::-1],left=lv,right=rv)
-        w_s_2   = np.interp(S_smids, w_smids[::-1], w[::-1]) # compare without fixed edges! # these should be identical after update:20160905
-        # TODO: Maybe interpolate using logarithms?
+        w_s_new     = np.interp(S_smids_new, w_smids_new[::-1], w_new[::-1], left=lv, right=rv)
+        w_s_2   = np.interp(S_smids, w_smids[::-1], w[::-1]) # compare without fixed edges!
 
-        # Integrate w(z) * S_z(z) dz using summation
-        # done over w(z) * S_z(z) * height(z)
-        integral_z = np.sum(w_z * S_z * h)
-        AMF_z = AMF_G * integral_z
-        integral_s = np.sum(w_s * S_s * dsigma)
-        AMF_s = AMF_G * integral_s
+        # Integrate w(z) * S_z(z) dz using sum(w(z) * S_z(z) * height(z))
+        AMF_z = np.sum(w_z * S_z * h)
+        AMF_s= np.sum(w_s * S_s * dsigma)
+
+        # Calculations option
+        # match he bottom levels in the pressure midpoints dimension
+        w_pmids_new,S_pmids_new,w_new,S_s_new = match_bottom_levels(w_pmids,S_pmids,w,S_s)
+        S_pedges_new = S_pedges.copy()
+        for i in range(1,len(S_pedges_new)-1):
+            S_pedges_new[i]=(S_pmids_new[i-1]*S_pmids_new[i]) ** 0.5
+
+        AMF_s_new = np.sum(w_s_new * S_s_new * dsigma_new) # h has not been fixed for possible new pressure levels...
 
         if plotname is not None:
             integral_s_old=np.sum(w_s_2 * S_s * dsigma)
@@ -304,7 +255,7 @@ class gchcho:
             ax=plt.twinx(); ax.set_ylabel('z(m)'); plt.sca(ax)
             plt.plot(w_z, S_zmids, linestyle='-',marker='x', label='$\omega$(z)',color='fuchsia')
             # add legend from both axes
-            h1, l1 = axes[0,0].get_legend_handles_labels()
+            h1,l1 = axes[0,0].get_legend_handles_labels()
             h2,l2 = ax.get_legend_handles_labels()
             ax.legend(h1+h2, l1+l2,loc=0)
 
@@ -318,7 +269,7 @@ class gchcho:
             axes[0,1].yaxis.tick_right()
             axes[0,1].yaxis.set_label_position("right")
             # add AMF value to plot
-            for yy,lbl in zip([0.7, 0.8, 0.9],['AMF$_z$=%5.2f'%AMF_z,'AMF$_{\sigma}$=%5.2f'%AMF_s,'AMF$_{\sigma}$(pre-fix)=%5.2f'%AMF_s_old]):
+            for yy,lbl in zip([0.6, 0.7, 0.8, 0.9], ['AMF$_z$=%5.2f'%AMF_z, 'AMF$_{\sigma}$=%5.2f'%AMF_s, 'AMF$_{\sigma}$(pre-fix)=%5.2f'%AMF_s_old, 'AMF_{\sigma relevelled}=%5.2f'%AMF_s_new]):
                 plt.text(.1,yy,lbl,transform=axes[0,1].transAxes,fontsize=16)
 
             # shape factor z plots
@@ -343,7 +294,8 @@ class gchcho:
             plt.title('Shape$_\sigma$')
             plt.plot(S_s, S_smids, label='S$_\sigma$', color='k')
             plt.plot(S_s*w_s, S_smids, label='S$_\sigma * \omega_\sigma$', color='fuchsia')
-            plt.plot(S_s*w_s_2, S_smids, '--', label='product pre-fix', color='cyan')
+            plt.plot(S_s_new*w_s_new, S_smids_new, label='new S$_\sigma * \omega_\sigma$', color='orange')
+            plt.plot(S_s*w_s_2, S_smids, '--', label='old product', color='cyan')
             plt.legend(loc=0)
             plt.ylim([1.05,-0.05])
             plt.ylabel('$\sigma$')
@@ -352,6 +304,7 @@ class gchcho:
             plt.suptitle('amf calculation factors')
             f.savefig(plotname)
             print('%s saved'%plotname)
+            plt.close(f)
         return (AMF_s, AMF_z)
 
     def interp_to_grid(self, newlats, newlons):

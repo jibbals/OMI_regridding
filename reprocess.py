@@ -22,7 +22,7 @@ from datetime import timedelta, datetime
 
 # GLOBALS
 __VERBOSE__=True # set to true for more print statements
-__DEBUG__=True # set to true for even more print statements
+__DEBUG__=False # set to true for even more print statements
 
 # interpolate linearly to 500 points
 ref_lat_bins=np.arange(-90,90,0.36)+0.18
@@ -263,7 +263,8 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     5) Save as netcdf
     '''
     ## set stdout to parent process
-    #sys.stdout = open(str(os.getpid()) + ".out", "w")
+    if verbose or __DEBUG__:
+        sys.stdout = open("create_omhchorp.%s.out"%str(os.getpid()), "w")
 
     ## 1)
     #

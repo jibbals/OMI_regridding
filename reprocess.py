@@ -270,7 +270,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     ymdstr=date.strftime("%Y%m%d")
     if __VERBOSE__ or verbose:
         print("create_omhchorp_1 called for %s"%ymdstr)
-    goodpixels=get_good_pixel_list(date, verbose=verbose)
+    goodpixels=get_good_pixel_list(date, verbose=(verbose or __DEBUG__))
     omi_lons=np.array(goodpixels['lon'])
     omi_lats=np.array(goodpixels['lat'])
     # SC UNITS: Molecs/cm2

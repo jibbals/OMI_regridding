@@ -664,8 +664,8 @@ def test_amf_calculation(scount=50):
     isnans= np.isnan(amfs) + np.isnan(amfo)
     slp,intrcpt,r,p,sterr=stats.linregress(amfs[~isnans],amfo[~isnans])
     # straight line on log-log plot is 10^(slope*log(X) + Yintercept)
-    plt.plot([1,75], 10**(slp*np.log(np.array([1,75]))+intrcpt),color='red',
-            label='slope=%.5f, r=%.5f'%(slp,r))
+    Xarr=np.array([1,6])
+    plt.plot(Xarr,slp*Xarr+intrcpt, color='red', label='slope=%.5f, r=%.5f'%(slp,r))
     plt.xlabel('AMF_GC')
     plt.ylabel('AMF_OMI')
     plt.legend(loc=0)
@@ -705,9 +705,9 @@ def test_amf_calculation(scount=50):
     plt.scatter(amf[~ocean],amfo[~ocean], color='fuchsia', alpha=0.5)
     slopeo,intercepto,ro,p,sterr = stats.linregress(amf[ocean], amfo[ocean])
     slopel,interceptl,rl,p,sterr = stats.linregress(amf[~ocean],amfo[~ocean])
-    plt.plot([1,60], slopel*np.array([1,60])+interceptl,color='fuchsia',
+    plt.plot(Xarr, slopel*Xarr+interceptl,color='fuchsia',
             label='Land: slope=%.5f, r=%.5f'%(slopel,rl))
-    plt.plot([1,60], slopeo*np.array([1,60])+intercepto, color='cyan',
+    plt.plot(Xarr, slopeo*Xarr+intercepto, color='cyan',
             label='Ocean: slope=%.5f, r=%.5f'%(slopeo,ro))
     plt.xlabel('AMF_GC')
     plt.ylabel('AMF_OMI')
@@ -1224,7 +1224,7 @@ if __name__ == '__main__':
     # AMF tests
     #Check_OMI_AMF()
     #Check_AMF_relevelling()
-    test_amf_calculation()
+    test_amf_calculation(scount=5)
 
     # fires things
     #test_fires_fio()
@@ -1234,13 +1234,13 @@ if __name__ == '__main__':
     # check some days (or one or no days)
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
-    #dates=[ datetime(2005,1,1) ]
-    dates=[ ]
+    dates=[ datetime(2005,1,1) ]
+    #dates=[ ]
     for oneday in [True, False]:
-        #Summary_RSC(oneday=oneday)
+        Summary_RSC(oneday=oneday)
         for day in dates:
-            #test_reprocess_corrected(date=day, oneday=oneday)
-            #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+            test_reprocess_corrected(date=day, oneday=oneday)
+            test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
             for aus_only in [True, False]:
                 test_calculation_corellation(day=day, oneday=oneday, aus_only=aus_only)
     # to be updated:

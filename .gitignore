@@ -12,6 +12,7 @@ pictures/levels_debug
 
 # ignore log files
 logs/*
+*.out
 
 # unignore some data files
 !omhchorp/*2005010*.he5

@@ -697,7 +697,7 @@ def test_amf_calculation(scount=50):
     for arrr in [oceanamf, oceanamfo, oceanmlats, oceanmlons]:
         arrr[~ocean]=np.NaN
     m,cs,cb=linearmap(landmlats,landmlons,landamfo)
-    f.savefig('oceancheck.png')
+    f.savefig('pictures/oceancheck.png')
     plt.close(f)
     # Check slopes and regressions of ocean/non ocean AMFs
     f=plt.figure(figsize=(14,14))

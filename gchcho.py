@@ -268,7 +268,7 @@ class gchcho:
             axes[0,1].yaxis.tick_right()
             axes[0,1].yaxis.set_label_position("right")
             # add AMF value to plot
-            for yy,lbl in zip([0.6, 0.7, 0.8, 0.9], ['AMF$_z$=%5.2f'%AMF_z, 'AMF$_{\sigma}$=%5.2f'%AMF_s, 'AMF$_{\sigma}$(pre-fix)=%5.2f'%AMF_s_old, 'AMF_{\sigma relevelled}=%5.2f'%AMF_s_new]):
+            for yy,lbl in zip([0.6, 0.7, 0.8, 0.9], ['AMF$_z$=%5.2f'%AMF_z, 'AMF$_{\sigma}$=%5.2f'%AMF_s, 'AMF$_{\sigma}$(pre-fix)=%5.2f'%AMF_s_old, 'AMF$_{\sigma relevelled}$=%5.2f'%AMF_s_new]):
                 plt.text(.1,yy,lbl,transform=axes[0,1].transAxes,fontsize=16)
 
             # shape factor z plots

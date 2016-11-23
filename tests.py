@@ -565,7 +565,7 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
 
     f=plt.figure(figsize=(16,13))
     plt.subplot(231)
-    lllat=-80; urlat=80; lllon=-175; urlon=175
+    lllat=-65; urlat=65; lllon=-175; urlon=175
     if aus_only:
         lllat=-50; urlat=-5; lllon=100; urlon=170
 
@@ -583,14 +583,15 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     m,cs,cb = linearmap((vcc_l-vcomic_l)*100/vcomic_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=-200,vmax=200)
     plt.title('(%s - %s)*100/%s'%(Ovcc,Oomic,Oomic),fontsize=20)
 
-    # omi uncertainty:
-    plt.subplot(234)
-    m,cs,cb = createmap(landunc, mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
-    plt.title("Column uncertainty (OMI)",fontsize=20)
+
+    # omi uncertainty: TODO: fix this in it's own function
+    #plt.subplot(234)
+    #m,cs,cb = createmap(landunc, mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    #plt.title("Column uncertainty (OMI)",fontsize=20)
 
     # show corellations for OMI_RSC- VCC
     nans=np.isnan(vcc_l) + np.isnan(vcomic_l) + vcomic_l.mask # all the nans we won't fit
-    plt.subplot(235)
+    plt.subplot(223)
     plt.scatter(vcomic_o, vcc_o, color='blue', label="Ocean", alpha=0.4)
     plt.scatter(vcomic_l, vcc_l, color='gold', label="Land")
     m,x0,r,ci1,ci2 = RMA(VC_OMI_RSC[~nans], VCC[~nans])
@@ -602,7 +603,7 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     plt.ylabel(Ovcc); plt.xlabel(Oomic)
 
     # show corellations for OMI - VCC
-    plt.subplot(236)
+    plt.subplot(224)
     nans=np.isnan(vcc_l) + np.isnan(vcomi_l) + vcc_l.mask # all the nans we won't fit
     plt.scatter(vcomi_o, vcc_o, color='blue', label="Ocean", alpha=0.4)
     plt.scatter(vcomi_l, vcc_l, color='gold', label="Land")
@@ -1221,10 +1222,12 @@ if __name__ == '__main__':
     InitMatplotlib()
     #Summary_Single_Profile()
 
-    # AMF tests
+    # AMF tests and correlations
     #Check_OMI_AMF()
     #Check_AMF_relevelling()
-    test_amf_calculation(scount=5)
+    #test_amf_calculation(scount=5)
+    for aus_only in [True, False]:
+        test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=aus_only)
 
     # fires things
     #test_fires_fio()
@@ -1234,15 +1237,13 @@ if __name__ == '__main__':
     # check some days (or one or no days)
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
-    dates=[ datetime(2005,1,1) ]
-    #dates=[ ]
+    #dates=[ datetime(2005,1,1) ]
+    dates=[ ]
     for oneday in [True, False]:
         Summary_RSC(oneday=oneday)
         for day in dates:
             test_reprocess_corrected(date=day, oneday=oneday)
             test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
-            for aus_only in [True, False]:
-                test_calculation_corellation(day=day, oneday=oneday, aus_only=aus_only)
     # to be updated:
     #check_timeline()
     #reprocessed_amf_correlations()

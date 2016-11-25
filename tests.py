@@ -8,9 +8,11 @@ matplotlib.use('Agg') # don't actually display any plots, just create them
 # my file reading and writing module
 import fio
 import reprocess
+import plotting as pp
 from JesseRegression import RMA
 from omhchorp import omhchorp as omrp
 from gchcho import match_bottom_levels
+
 
 import numpy as np
 from numpy.ma import MaskedArray as ma
@@ -37,111 +39,6 @@ Ogc='$\Omega_{GC}$'
 ########## FUNCTIONS #########
 ##############################
 
-def InitMatplotlib():
-    """set some Matplotlib stuff."""
-    matplotlib.rcParams["text.usetex"]      = False     #
-    matplotlib.rcParams["legend.numpoints"] = 1         # one point for marker legends
-    matplotlib.rcParams["figure.figsize"]   = (12, 10)  #
-    matplotlib.rcParams["font.size"]        = 18        # font sizes:
-    matplotlib.rcParams["axes.titlesize"]   = 26        # title font size
-    matplotlib.rcParams["axes.labelsize"]   = 20        #
-    matplotlib.rcParams["xtick.labelsize"]  = 16        #
-    matplotlib.rcParams["ytick.labelsize"]  = 16        #
-
-def regularbounds(x,fix=False):
-    # Take a lat or lon array input and return the grid edges
-
-    newx=np.zeros(len(x)+1)
-    xres=x[1]-x[0]
-    newx[0:-1]=np.array(x) - xres/2.0
-    newx[-1]=newx[-2]+xres
-    # If the ends are outside 90N/S or 180E/W then bring them back
-    if fix:
-        if newx[-1] >= 90: newx[-1]=89.99
-        if newx[0] <= -90: newx[0]=-89.99
-        if newx[-1] >= 180: newx[-1]=179.99
-        if newx[0] <= -180: newx[0]=-179.99
-    return newx
-
-def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
-              lllat=-80, urlat=80, lllon=-179, urlon=179, colorbar=True):
-    # Create a basemap map with
-    m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
-          llcrnrlon=lllon, urcrnrlon=urlon,
-          resolution='i',projection='merc')
-    if len(lats.shape) == 1:
-        #latnew=regularbounds(lats)
-        #lonnew=regularbounds(lons)
-        #lonsnew,latsnew=np.meshgrid(lonnew,latnew)
-        lonsnew,latsnew=np.meshgrid(lons,lats)
-    else:
-        latsnew,lonsnew=(lats,lons)
-    cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon,
-                    vmin=vmin,vmax=vmax,norm = LogNorm(), clim=(vmin,vmax))
-    cs.cmap.set_under('white')
-    cs.cmap.set_over('pink')
-    cs.set_clim(vmin,vmax)
-    m.drawcoastlines()
-    m.drawparallels([0],labels=[0,0,0,0]) # draw equator, no label
-    if not colorbar:
-        return m,cs
-    cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
-    cb.set_label('Molecules/cm2')
-
-    return m, cs, cb
-def globalmap(data,lats,lons):
-    return createmap(data,lats,lons,lllat=-80,urlat=80,lllon=-179,urlon=179)
-def ausmap(data,lats,lons,vmin=None,vmax=None,colorbar=True):
-    return createmap(data,lats,lons,lllat=-50,urlat=-5,lllon=100,urlon=160, vmin=vmin, vmax=vmax, colorbar=colorbar)
-def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True,
-              lllat=-80, urlat=80, lllon=-179, urlon=179):
-
-    m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
-          llcrnrlon=lllon, urcrnrlon=urlon,
-          resolution='l',projection='merc')
-
-    if len(lats.shape) == 1:
-        latsnew=regularbounds(lats)
-        lonsnew=regularbounds(lons)
-        lonsnew,latsnew=np.meshgrid(lonsnew,latsnew)
-    else:
-        latsnew,lonsnew=(lats,lons)
-    cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon, vmin=vmin, vmax=vmax)
-    if vmin is not None:
-        cs.cmap.set_under('white')
-        cs.cmap.set_over('pink')
-        cs.set_clim(vmin,vmax)
-    cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
-    m.drawcoastlines()
-    m.drawparallels([0],labels=[0,0,0,0]) # draw equator, no label
-    return m, cs, cb
-
-def plot_rec(bmap, inlimits, color=None, linewidth=None):
-    '''
-    Plot rectangle on basemap(arg 0) using [lat0,lon0,lat1,lon1](arg 1)
-    '''
-    # lat lon pairs for each corner
-    limits=inlimits
-    if limits[0]==-90:
-        limits[0]=-89
-    if limits[2]==90:
-        limits[2]=89
-    ll = [ limits[0], limits[1]]
-    ul = [ limits[2], limits[1]]
-    ur = [ limits[2], limits[3]]
-    lr = [ limits[0], limits[3]]
-    # shape to draw lats(y) and lons(x)
-    ys = np.array([ll[0], ul[0],
-                  ul[0], ur[0],
-                  ur[0], lr[0],
-                  lr[0], ll[0]])
-    xs = np.array([ll[1], ul[1],
-                  ul[1], ur[1],
-                  ur[1], lr[1],
-                  lr[1], ll[1]])
-    x,y=bmap(xs,ys)
-    bmap.plot(x, y, latlon=False, color=color, linewidth=linewidth)
-
 def mmm(arr):
     print("%1.5e, %1.5e, %1.5e"%(np.nanmin(arr),np.nanmean(arr),np.nanmax(arr)))
 
@@ -161,6 +58,72 @@ def check_array(array, nonzero=False):
 #############################################################################
 ######################       TESTS                  #########################
 #############################################################################
+
+def Test_Uncertainty(date=datetime(2005,1,1)):
+    '''
+        Effect on provided uncertainty with 8 day averaging
+        Also calculate uncertainty as in DeSmedt2012
+        First plot:
+        Row1: 1 and 8 day uncertainty for 2005,1,1
+        Row2: Timeseries of average uncertainty over australia (one and 8 day (and desmedt?))
+        Second plot:
+        Row1: 8 day unc vs DeSmedt calculated
+        Row2: relative difference of top two,
+    '''
+    daystr=date.strftime("%Y %m %d")
+    lllat=-50; lllon=110; urlat=-10; urlon=155
+    # omi uncertainty: TODO: fix this in it's own function
+    #plt.subplot(234)
+
+    # Grab one day of reprocessed OMI data
+    omrp1 = omrp(date,oneday=True)
+    #sub1  = omrp1.inds_subset(lat0=lllat,lat1=urlat,lon0=lllon,lon1=urlon, maskocean=False, maskland=False)
+    unc1  = omrp1.col_uncertainty_OMI
+    omrp8 = omrp(date,oneday=False)
+    #sub8  = omrp8.inds_subset(lat0=lllat,lat1=urlat,lon0=lllon,lon1=urlon, maskocean=False, maskland=False)
+    count = omrp8.gridentries
+
+    # divide avg uncertainty by 1 on sqrt count
+    with np.errstate(divide='ignore', invalid='ignore'):
+        unc8 = omrp8.col_uncertainty_OMI / np.sqrt(count)
+        unc8[ ~ np.isfinite( unc8 )] = np.NaN
+
+    #lats,lons = omrp1.latlon_bounds()
+    lons, lats=np.meshgrid(omrp1.longitude,omrp1.latitude)
+
+    # Plot1:
+    #    Row1: 1 and 8 day uncertainty for 2005,1,1, and reduction map
+    #    Row2: Timeseries of average uncertainty over australia (one and 8 day (and desmedt?))
+    f = plt.figure(num=0,figsize=(16,12))
+    ax=plt.subplot(231)
+    m,cs,cb = pp.createmap(unc1,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('One day')
+    ax=plt.subplot(232)
+    m,cs,cb = pp.createmap(unc8,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('Eight days')
+    ax=plt.subplot(233)
+    m,cs,cb = pp.linearmap(count,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon, vmin=1, vmax=24)
+    cb.set_ticks([1,5,10,15,20,24])
+    #cb.set_xticklabels()
+    plt.title('Pixel count')
+    ax=plt.subplot(212)
+    plt.plot(np.arange(5),np.square(np.arange(5)-2.5))
+    plt.title('Time series(TODO)')
+
+    # save plot
+    yyyymmdd = date.strftime("%Y%m%d")
+    f.suptitle('Uncertainty from %s'%daystr, fontsize=20)
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.90)
+    outfig="pictures/Uncertainty.png"
+    plt.savefig(outfig)
+    plt.close()
+    print(outfig+" Saved.")
+
+    #Second plot:
+    #    Row1: 8 day unc vs DeSmedt calculated
+    #    Row2: relative difference of top two,
+    # First calculate the DeSmedt method
 
 def Check_AMF_relevelling():
     '''
@@ -271,7 +234,7 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     for i,arr in enumerate([dat.VC_GC,dat.VCC]):
         #plt.subplot(221+i)
         plt.subplot2grid((2, 6), (0, 3*i), colspan=3)
-        m,cs=createmap(arr,lats,lons,colorbar=False,vmin=vmin,vmax=vmax,
+        m,cs=pp.createmap(arr,lats,lons,colorbar=False,vmin=vmin,vmax=vmax,
                        lllat=lims[0],lllon=lims[1],urlat=lims[2],urlon=lims[3])
         plt.title([Ovc,Ovcc][i],fontsize=25)
         m.drawparallels([-40,0,40],labels=[1-i,0,0,0],linewidth=1.0)
@@ -290,7 +253,7 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     # plot d,e) RSC effect
     for i,arr in enumerate([gchcho, dat.VCC]):
         plt.subplot2grid((2, 6), (1, 2*i+2), colspan=2)
-        m,cs=createmap(arr,[gclats,lats][i],[gclons,lons][i],colorbar=False,vmin=vmin,vmax=vmax,
+        m,cs=pp.createmap(arr,[gclats,lats][i],[gclons,lons][i],colorbar=False,vmin=vmin,vmax=vmax,
                        lllat=lim2[0],lllon=lim2[1],urlat=lim2[2],urlon=lim2[3])
         plt.title([Ogc,Ovcc][i],fontsize=25)
         # rectangle around RSC
@@ -422,22 +385,22 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     # Plot OMI, old, new AMF map
     # set currently active axis from [2,3] axes array
     plt.sca(axes[0,0])
-    m,cs,cb = createmap(omhchorp['SC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.createmap(omhchorp['SC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('SC')
     plt.sca(axes[0,1])
-    m,cs,cb = createmap(omhchorp['VC_OMI'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.createmap(omhchorp['VC_OMI'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VC OMI ($\Omega_{OMI}$)')
     plt.sca(axes[0,2])
-    m,cs,cb = linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF OMI')
     plt.sca(axes[1,0])
-    m,cs,cb = createmap(omhchorp['VCC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.createmap(omhchorp['VCC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VCC')
     plt.sca(axes[1,1])
-    m,cs,cb = createmap(omhchorp['VC_GC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.createmap(omhchorp['VC_GC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VC GC')
     plt.sca(axes[1,2])
-    m,cs,cb = linearmap(omhchorp['AMF_GC'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.linearmap(omhchorp['AMF_GC'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF$_{GC}$')
 
     # Plot third row the GEOS-Chem map divergences
@@ -448,20 +411,20 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     GCdiff=100*(omhchorp['VCC'] - fineHCHO) / fineHCHO
     plt.sca(axes[2,0])
     vmin,vmax = -150, 150
-    m,cs,cb = linearmap(OMIdiff, lats,lons,vmin=vmin,vmax=vmax,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    #m,cs,cb = createmap(gc.VC_HCHO*1e-4, glats,glons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.linearmap(OMIdiff, lats,lons,vmin=vmin,vmax=vmax,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    #m,cs,cb = pp.createmap(gc.VC_HCHO*1e-4, glats,glons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('100($\Omega_{OMI}$-GEOSChem)/GEOSChem')
     plt.sca(axes[2,1])
-    m,cs,cb = linearmap(GCdiff, lats,lons,vmin=vmin,vmax=vmax,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.linearmap(GCdiff, lats,lons,vmin=vmin,vmax=vmax,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('100(VCC-GEOSChem)/GEOSChem')
     plt.sca(axes[2,2])
-    m,cs,cb = createmap(fineHCHO, lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.createmap(fineHCHO, lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('GEOS-Chem $\Omega_{HCHO}$')
 
     # plot fourth row: uncertainties and AMF_GCz
     #
     plt.sca(axes[3,0])
-    m,cs,cb = createmap(omhchorp['col_uncertainty_OMI'], lats, lons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.createmap(omhchorp['col_uncertainty_OMI'], lats, lons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('col uncertainty (VC$_{OMI} \pm 1 \sigma$)')
     plt.sca(axes[3,1])
     vc_gc,vc_omi=omhchorp['VC_GC'],omhchorp['VC_OMI']
@@ -478,7 +441,7 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     plt.legend(title='lines',loc=0)
     plt.title("VC$_{GC}$ vs VC$_{OMI}$")
     plt.sca(axes[3,2])
-    m,cs,cb = linearmap(omhchorp['AMF_GCz'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.linearmap(omhchorp['AMF_GCz'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF$_{GCz}$')
 
     # save plots
@@ -570,24 +533,18 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
         lllat=-50; urlat=-5; lllon=100; urlon=170
 
     # OMI_RSC map
-    m,cs,cb = createmap(vcomic_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    m,cs,cb = pp.createmap(vcomic_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
     plt.title(Oomic,fontsize=20)
 
     # VCC map
     plt.subplot(232)
-    m,cs,cb = createmap(vcc_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    m,cs,cb = pp.createmap(vcc_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
     plt.title(Ovcc,fontsize=20)
 
     # (VCC- OMI_RSC)/OMI_RSC*100 map
     plt.subplot(233)
-    m,cs,cb = linearmap((vcc_l-vcomic_l)*100/vcomic_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=-200,vmax=200)
+    m,cs,cb = pp.linearmap((vcc_l-vcomic_l)*100/vcomic_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=-200,vmax=200)
     plt.title('(%s - %s)*100/%s'%(Ovcc,Oomic,Oomic),fontsize=20)
-
-
-    # omi uncertainty: TODO: fix this in it's own function
-    #plt.subplot(234)
-    #m,cs,cb = createmap(landunc, mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
-    #plt.title("Column uncertainty (OMI)",fontsize=20)
 
     # show corellations for OMI_RSC- VCC
     nans=np.isnan(vcc_l) + np.isnan(vcomic_l) + vcomic_l.mask # all the nans we won't fit
@@ -697,7 +654,7 @@ def test_amf_calculation(scount=50):
         arrr[ocean]=np.NaN
     for arrr in [oceanamf, oceanamfo, oceanmlats, oceanmlons]:
         arrr[~ocean]=np.NaN
-    m,cs,cb=linearmap(landmlats,landmlons,landamfo)
+    m,cs,cb=pp.linearmap(landmlats,landmlons,landamfo)
     f.savefig('pictures/oceancheck.png')
     plt.close(f)
     # Check slopes and regressions of ocean/non ocean AMFs
@@ -767,13 +724,13 @@ def compare_cloudy_map():
     i=0
     for d in [cloudydata, data]:
         plt.sca(axes[i,0])
-        m,cs,cb = createmap(d['VC_OMI'],latmids,lonmids)
+        m,cs,cb = pp.createmap(d['VC_OMI'],latmids,lonmids)
         plt.title('VC Regridded')
         plt.sca(axes[i,1])
-        m,cs,cb = createmap(d['VC_GC'],latmids,lonmids)
+        m,cs,cb = pp.createmap(d['VC_GC'],latmids,lonmids)
         plt.title('VC Reprocessed')
         plt.sca(axes[i,2])
-        m,cs,cb = linearmap(d['AMF_GC'],latmids,lonmids,vmin=1.0,vmax=6.0)
+        m,cs,cb = pp.linearmap(d['AMF_GC'],latmids,lonmids,vmin=1.0,vmax=6.0)
         plt.title('AMF reprocessed')
         i=1
 
@@ -834,10 +791,10 @@ def test_fires_fio():
               'regridded to %1.4fx%1.4f (latxlon)' % (latres,lonres)]
 
     ax1=plt.subplot(121)
-    m1,cs1, cb1 = linearmap(orig,mlats,mlons, vmin=1, vmax=10,
+    m1,cs1, cb1 = pp.linearmap(orig,mlats,mlons, vmin=1, vmax=10,
         lllat=-57, urlat=1, lllon=110, urlon=170)
     ax2=plt.subplot(122)
-    m2,cs2, cb2 = linearmap(regr,mlats2,mlons2, vmin=1, vmax=10,
+    m2,cs2, cb2 = pp.linearmap(regr,mlats2,mlons2, vmin=1, vmax=10,
         lllat=-57, urlat=1, lllon=110, urlon=170)
 
     for i in range(2):
@@ -886,7 +843,7 @@ def test_fires_removed(day=datetime(2005,1,25),oneday=False):
     titles= [ Ovcc+s for s in ['',' - 8 days of fires', ' - 16 days of fires'] ]
     for i,arr in enumerate([pre,post8,post16]):
         plt.subplot(131+i)
-        m,cs = ausmap(arr,lats,lons,vmin=vmin,vmax=vmax,colorbar=False)
+        m,cs = pp.ausmap(arr,lats,lons,vmin=vmin,vmax=vmax,colorbar=False)
         plt.title(titles[i])
     pname='pictures/fire_exclusion_%s.png'%['8d','1d'][oneday]
     plt.suptitle("Effects of Fire masks"+ymdstr,fontsize=28)
@@ -1133,8 +1090,8 @@ def check_RSC(day=datetime(2005,1,1), track_corrections=False):
     lats_rp=omhchorp1['latitude']
     lons_rp=omhchorp1['longitude']
     rsc_lons= (lons_rp > -160) * (lons_rp < -140)
-    newlons=regularbounds(lons_rp[rsc_lons])
-    newlats=regularbounds(lats_rp)
+    newlons=pp.regularbounds(lons_rp[rsc_lons])
+    newlats=pp.regularbounds(lats_rp)
     newlons,newlats = np.meshgrid(newlons,newlats)
     # new map with OMI SC data
     plt.subplot(142)
@@ -1219,15 +1176,16 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 ##############################
 if __name__ == '__main__':
     print("Running tests.py")
-    InitMatplotlib()
+    pp.InitMatplotlib()
     #Summary_Single_Profile()
 
     # AMF tests and correlations
     #Check_OMI_AMF()
     #Check_AMF_relevelling()
     #test_amf_calculation(scount=5)
-    for aus_only in [True, False]:
-        test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=aus_only)
+    #for aus_only in [True, False]:
+    #    test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=aus_only)
+    Test_Uncertainty()
 
     # fires things
     #test_fires_fio()
@@ -1239,11 +1197,11 @@ if __name__ == '__main__':
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
     #dates=[ datetime(2005,1,1) ]
     dates=[ ]
-    for oneday in [True, False]:
-        Summary_RSC(oneday=oneday)
-        for day in dates:
-            test_reprocess_corrected(date=day, oneday=oneday)
-            test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+    #for oneday in [True, False]:
+    #    Summary_RSC(oneday=oneday)
+    #    for day in dates:
+    #        test_reprocess_corrected(date=day, oneday=oneday)
+    #        test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
     # to be updated:
     #check_timeline()
     #reprocessed_amf_correlations()

@@ -2,10 +2,11 @@
 # ignore data files
 **/*.h5
 **/*.he5
-omhchorp/BeforeFireRemoved
+/Data/*
 
 # ignore python compile files
 **/*.pyc
+__pycache__/
 
 # ignore some images
 pictures/levels_debug
@@ -15,13 +16,11 @@ logs/*
 *.out
 
 # unignore some data files
-!omhchorp/*2005010*.he5
-!omhcho/OMI-Aura_L2-OMHCHO_2005m010[1]*.he5
-!gchcho/*hcho*_200501*
-!MYD14C8H/MYD14C8H.20050[0-3]*
+!Data/omhchorp/*2005010*.he5
+!Data/omhcho/OMI-Aura_L2-OMHCHO_2005m010[1]*.he5
+!Data/gchcho/*hcho*_200501*
+!Data/MYD14C8H/MYD14C8H.20050[0-3]*
 
 # ignore qsub output files
 *.o[0-9][0-9][0-9][0-9][0-9][0-9][0-9]
 
-# ignore the cached python stuff
-__pycache__/

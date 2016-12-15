@@ -115,7 +115,7 @@ def Test_Uncertainty(date=datetime(2005,1,1)):
     f.suptitle('Uncertainty from %s'%daystr, fontsize=20)
     plt.tight_layout()
     plt.subplots_adjust(top=0.90)
-    outfig="pictures/Uncertainty.png"
+    outfig="Figs/Uncertainty.png"
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
@@ -167,7 +167,7 @@ def Check_AMF_relevelling():
     plt.legend(loc='best')
 
     plt.suptitle('Surface relevelling check')
-    pname='pictures/SurfaceRelevelCheck.png'
+    pname='Figs/SurfaceRelevelCheck.png'
     plt.savefig(pname)
     print(pname+' Saved')
 
@@ -204,7 +204,7 @@ def Check_OMI_AMF():
     plt.text(-0.5,3.4,"Chris AMF = $\Sigma_i (Shape(P_i) * \omega(P_i) * \Delta P_i) /  \Sigma_i (Shape(P_i) * \omega(P_i) )$")
     plt.text(-0.5,1.5,"mean AMF_G = %4.2f"%np.mean(amfg))
     plt.legend(loc=0)
-    pname='pictures/Chris_AMF_Check.png'
+    pname='Figs/Chris_AMF_Check.png'
     plt.savefig(pname)
     print('saved %s'%pname)
 
@@ -275,7 +275,7 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     cb.set_ticks(np.logspace(13,17,5))
     cb.set_label('molec/cm$^2$',fontsize=24)
 
-    pltname='pictures/Summary_RSC_Effect%s_%s.png'%(['8d',''][oneday],ymdstr)
+    pltname='Figs/Summary_RSC_Effect%s_%s.png'%(['8d',''][oneday],ymdstr)
     f.savefig(pltname)
     print ('%s saved'%pltname)
     plt.close(f)
@@ -311,7 +311,7 @@ def Summary_Single_Profile():
     gc_pmids    = gchcho.get_single_pmid(lat,lon)
 
     # rerun the AMF calculation and plot the shampoo
-    #innerplot='pictures/AMF_test/AMF_test_innerplot%d.png'%i
+    #innerplot='Figs/AMF_test/AMF_test_innerplot%d.png'%i
     AMFS,AMFZ = gchcho.calculate_AMF(omega, w_pmids, AMF_G, lat, lon)
 
     print( "AMF_s=", AMFS )
@@ -348,7 +348,7 @@ def Summary_Single_Profile():
     plt.text(.3,.41, 'New',color='r',transform=ta, fontsize=fs)
     plt.text(.3,.34, '$\omega$',color='fuchsia',transform=ta, fontsize=fs)
 
-    fname='pictures/SummarySinglePixel.png'
+    fname='Figs/SummarySinglePixel.png'
     f.savefig(fname)
     print("Saved "+fname)
     plt.close(f)
@@ -450,7 +450,7 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     plt.tight_layout()
     plt.subplots_adjust(top=0.95)
     onedaystr= [ 'eight_day_','one_day_' ][oneday]
-    outfig="pictures/%scorrected%s%s.png"%(onedaystr, yyyymmdd, pltname)
+    outfig="Figs/%scorrected%s%s.png"%(onedaystr, yyyymmdd, pltname)
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
@@ -518,7 +518,7 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     plt.text(.05,.82, '%s mean(land)=%5.3e'%(Oomic,np.nanmean(vcomic_l)),transform=ta)
     ausstr=['','_AUS'][aus_only]
     eightstr=['_8day',''][oneday]
-    pname='pictures/land_VC_hist%s%s_%s.png'%(eightstr,ausstr,ymdstr)
+    pname='Figs/land_VC_hist%s%s_%s.png'%(eightstr,ausstr,ymdstr)
     plt.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
@@ -573,7 +573,7 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     plt.ylabel(Ovcc); plt.xlabel(Oomi)
 
     # save plot
-    pname='pictures/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
+    pname='Figs/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
     f.suptitle("Product comparison for %s"%ymdstr,fontsize=28)
     f.savefig(pname)
     print("%s saved"%pname)
@@ -605,7 +605,7 @@ def test_amf_calculation(scount=50):
         AMF_old.append(pixels['AMF_OMI'][jj])
         w_pmids=pixels['omega_pmids'][:,jj]
         # rerun the AMF calculation and plot the shampoo
-        innerplot='pictures/AMF_test/AMF_test_innerplot%d.png'%i
+        innerplot='Figs/AMF_test/AMF_test_innerplot%d.png'%i
         AMFS,AMFZ = gchcho.calculate_AMF(omega, w_pmids, AMF_G, lat, lon, plotname=innerplot,debug_levels=True)
         AMF_s.append(AMFS)
         AMF_z.append(AMFZ)
@@ -628,7 +628,7 @@ def test_amf_calculation(scount=50):
     plt.ylabel('AMF_OMI')
     plt.legend(loc=0)
     plt.title('AMF correlation')
-    f.savefig('pictures/AMF_test/AMF_test_corr.png')
+    f.savefig('Figs/AMF_test/AMF_test_corr.png')
     plt.close(f)
 
     # Post regridding, check the AMFs within 50 degrees of the equator, and color by land/sea
@@ -655,7 +655,7 @@ def test_amf_calculation(scount=50):
     for arrr in [oceanamf, oceanamfo, oceanmlats, oceanmlons]:
         arrr[~ocean]=np.NaN
     m,cs,cb=pp.linearmap(landmlats,landmlons,landamfo)
-    f.savefig('pictures/oceancheck.png')
+    f.savefig('Figs/oceancheck.png')
     plt.close(f)
     # Check slopes and regressions of ocean/non ocean AMFs
     f=plt.figure(figsize=(14,14))
@@ -671,7 +671,7 @@ def test_amf_calculation(scount=50):
     plt.ylabel('AMF_OMI')
     plt.legend(loc=0)
     plt.title('AMF correlation')
-    f.savefig('pictures/AMF_test/AMF_test_corr_masked.png')
+    f.savefig('Figs/AMF_test/AMF_test_corr_masked.png')
 
     #amfland=maskoceans(mlons,mlats,amf,inlands=False)
     #amfoland=maskoceans(mlons,mlats,amfo,inlands=False)
@@ -736,7 +736,7 @@ def compare_cloudy_map():
 
     # save plots
     plt.tight_layout()
-    plt.savefig("pictures/cloud_filter_effects.png")
+    plt.savefig("Figs/cloud_filter_effects.png")
     plt.close()
 
 def test_fires_fio():
@@ -777,7 +777,7 @@ def test_fires_fio():
     m0.drawparallels(lats2-latres/2.0, color='brown', dashes=d)
     m0.drawmeridians(lons2-lonres/2.0, color='brown', dashes=d)
     plt.title('Original grid(black) vs new grid(red)')
-    plt.savefig('pictures/AQUAgrids.png')
+    plt.savefig('Figs/AQUAgrids.png')
     plt.close()
     ## Regridded Data plot comparison
     # plot on two subplots
@@ -803,7 +803,7 @@ def test_fires_fio():
 
     plt.suptitle('AQUA 2005001',fontsize=20)
     plt.tight_layout()
-    plt.savefig('pictures/AQUA2005001.png')
+    plt.savefig('Figs/AQUA2005001.png')
     plt.close()
 
 def test_fires_removed(day=datetime(2005,1,25),oneday=False):
@@ -845,7 +845,7 @@ def test_fires_removed(day=datetime(2005,1,25),oneday=False):
         plt.subplot(131+i)
         m,cs = pp.ausmap(arr,lats,lons,vmin=vmin,vmax=vmax,colorbar=False)
         plt.title(titles[i])
-    pname='pictures/fire_exclusion_%s.png'%['8d','1d'][oneday]
+    pname='Figs/fire_exclusion_%s.png'%['8d','1d'][oneday]
     plt.suptitle("Effects of Fire masks"+ymdstr,fontsize=28)
     plt.tight_layout()
     #plt.subplots_adjust(top=0.92)
@@ -871,12 +871,12 @@ def test_gchcho():
 
     plt.figure(figsize=(14,12))
     m,cs,cb=gchcho.PlotVC()
-    plt.savefig('pictures/GCHCHO_Vertical_Columns%s.png'%ymdstr)
+    plt.savefig('Figs/GCHCHO_Vertical_Columns%s.png'%ymdstr)
     plt.clf()
 
     plt.figure(figsize=(12,12))
     gchcho.PlotProfile()
-    plt.savefig('pictures/GCHCHO_EGProfile%s.png'%ymdstr)
+    plt.savefig('Figs/GCHCHO_EGProfile%s.png'%ymdstr)
     plt.clf()
 
 def test_hchorp_apriori():
@@ -930,7 +930,7 @@ def test_hchorp_apriori():
     ax2.set_title('GEOS-Chem S$_\sigma$')
     ax2.set_xlabel('unitless')
     ax1.legend(title='    lat,  lon ',loc=0)
-    pltname='pictures/Shape_Factor_Examples.png'
+    pltname='Figs/Shape_Factor_Examples.png'
     plt.savefig(pltname); print("%s saved!"%pltname)
 
 def check_high_amfs(day=datetime(2005,1,1)):
@@ -1015,7 +1015,7 @@ def check_high_amfs(day=datetime(2005,1,1)):
     plt.setp(a3, xticks=np.arange(-90,91,30)) # set xticks for histograms
     plt.xlabel('Latitude')
     plt.suptitle('Scattering weights ($\omega$)')
-    outpic='pictures/high_AMF_omegas.png'
+    outpic='Figs/high_AMF_omegas.png'
     plt.savefig(outpic)
     print('saved %s'%outpic)
 
@@ -1048,7 +1048,7 @@ def check_RSC(day=datetime(2005,1,1), track_corrections=False):
         sm._A=[]
         cb=plt.colorbar(sm)
         cb.set_label('track')
-        outfig1='pictures/track_corrections%s.png'%yyyymmdd
+        outfig1='Figs/track_corrections%s.png'%yyyymmdd
         plt.savefig(outfig1)
         print(outfig1+' saved')
         plt.close(f1)
@@ -1116,7 +1116,7 @@ def check_RSC(day=datetime(2005,1,1), track_corrections=False):
 
 
     f2.suptitle('GEOS_Chem VC vs OMI SC over RSC on %s'%yyyymmdd)
-    outfig2='pictures/RSC_GC_%s.png'%yyyymmdd
+    outfig2='Figs/RSC_GC_%s.png'%yyyymmdd
     plt.savefig(outfig2)
     print(outfig2+' saved')
     plt.close(f2)
@@ -1168,7 +1168,7 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
     axes[1,1].set_title('Positive OMI_VC_HCHO')
 
     plt.suptitle("VC distributions for %d day average on %s"%([8,1][oneday],yyyymmdd), fontsize=25)
-    plt.savefig("pictures/distributions%d_%s"%([8,1][oneday], yyyymmdd))
+    plt.savefig("Figs/distributions%d_%s"%([8,1][oneday], yyyymmdd))
     plt.close()
 
 ##############################

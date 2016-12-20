@@ -3,6 +3,8 @@
 **/*.h5
 **/*.he5
 /Data/*
+/Data/GC_Output/tropchem_geos5_2x25_47L/*
+/Data/GC_Output/UCX_geos5_2x25_72L/*
 
 # ignore python compile files
 **/*.pyc
@@ -17,9 +19,12 @@ logs/*
 
 # unignore some data files
 !Data/omhchorp/*2005010*.he5
-!Data/omhcho/OMI-Aura_L2-OMHCHO_2005m010[1]*.he5
+!Data/omhcho/OMI-Aura_L2-OMHCHO_2005m0101*.he5
 !Data/gchcho/*hcho*_200501*
-!Data/MYD14C8H/MYD14C8H.20050[0-3]*
+
+# unignore scripts in the data directories
+!Data/**/*.py
+!Data/**/*.pro
 
 # ignore qsub output files
 *.o[0-9][0-9][0-9][0-9][0-9][0-9][0-9]

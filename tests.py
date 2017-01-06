@@ -125,6 +125,103 @@ def Test_Uncertainty(date=datetime(2005,1,1)):
     #    Row2: relative difference of top two,
     # First calculate the DeSmedt method
 
+def look_at_swaths(date=datetime(2005,1,1), lllat=-80, lllon=-179, urlat=80, urlon=179, pltname=""):
+    '''
+        Plot one swath -> one day -> 8 days .
+    '''
+
+    # Grab OMI data
+    omi_8=fio.read_omhcho_8days(date)
+    omi_1=fio.read_omhcho_day(date)
+    omi_s=fio.read_omhcho(fio.determine_filepath(date))
+    
+    counts= omi_8['counts']
+    print( "at most %d entries "%np.nanmax(counts) )
+    print( "%d entries in total"%np.nansum(counts) )
+    lonmids=omhchorp['longitude']
+    latmids=omhchorp['latitude']
+    lons,lats = np.meshgrid(lonmids,latmids)
+
+    # Plot
+    # SC, VC_omi, AMF_omi
+    # VCC, VC_gc, AMF_GC
+    # VC_OMI-GC, VC_GC-GC, GC_map
+    # cuncs, AMF-correlation, AMF_GCz
+
+    f, axes = plt.subplots(4,3,num=0,figsize=(16,20))
+    # Plot OMI, old, new AMF map
+    # set currently active axis from [2,3] axes array
+    plt.sca(axes[0,0])
+    m,cs,cb = pp.createmap(omhchorp['SC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('SC')
+    plt.sca(axes[0,1])
+    m,cs,cb = pp.createmap(omhchorp['VC_OMI'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('VC OMI ($\Omega_{OMI}$)')
+    plt.sca(axes[0,2])
+    m,cs,cb = pp.linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('AMF OMI')
+    plt.sca(axes[1,0])
+    m,cs,cb = pp.createmap(omhchorp['VCC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('VCC')
+    plt.sca(axes[1,1])
+    m,cs,cb = pp.createmap(omhchorp['VC_GC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('VC GC')
+    plt.sca(axes[1,2])
+    m,cs,cb = pp.linearmap(omhchorp['AMF_GC'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('AMF$_{GC}$')
+
+    # Plot third row the GEOS-Chem map divergences
+
+    gc=fio.read_gchcho(date) # read the GC data
+    fineHCHO=gc.interp_to_grid(latmids,lonmids) * 1e-4 # molecules/m2 -> molecules/cm2
+    OMIdiff=100*(omhchorp['VC_OMI'] - fineHCHO) / fineHCHO
+    GCdiff=100*(omhchorp['VCC'] - fineHCHO) / fineHCHO
+    plt.sca(axes[2,0])
+    vmin,vmax = -150, 150
+    m,cs,cb = pp.linearmap(OMIdiff, lats,lons,vmin=vmin,vmax=vmax,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    #m,cs,cb = pp.createmap(gc.VC_HCHO*1e-4, glats,glons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('100($\Omega_{OMI}$-GEOSChem)/GEOSChem')
+    plt.sca(axes[2,1])
+    m,cs,cb = pp.linearmap(GCdiff, lats,lons,vmin=vmin,vmax=vmax,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('100(VCC-GEOSChem)/GEOSChem')
+    plt.sca(axes[2,2])
+    m,cs,cb = pp.createmap(fineHCHO, lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('GEOS-Chem $\Omega_{HCHO}$')
+
+    # plot fourth row: uncertainties and AMF_GCz
+    #
+    plt.sca(axes[3,0])
+    m,cs,cb = pp.createmap(omhchorp['col_uncertainty_OMI'], lats, lons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('col uncertainty (VC$_{OMI} \pm 1 \sigma$)')
+    plt.sca(axes[3,1])
+    vc_gc,vc_omi=omhchorp['VC_GC'],omhchorp['VC_OMI']
+    plt.scatter(vc_gc,vc_omi)
+    plt.xlabel('VC$_{GC}$')
+    plt.ylabel('VC$_{OMI}$')
+    scatlims=[1e12,2e17]
+    plt.yscale('log'); plt.ylim(scatlims)
+    plt.xscale('log'); plt.xlim(scatlims)
+    plt.plot(scatlims,scatlims,'k--',label='1-1') # plot the 1-1 line for comparison
+    slp,intrcpt,r,CI1,CI2=RMA(vc_gc,vc_omi) # get regression
+    plt.plot(scatlims, slp*np.array(scatlims)+intrcpt,color='red',
+            label='slope=%4.2f, r=%4.2f'%(slp,r))
+    plt.legend(title='lines',loc=0)
+    plt.title("VC$_{GC}$ vs VC$_{OMI}$")
+    plt.sca(axes[3,2])
+    m,cs,cb = pp.linearmap(omhchorp['AMF_GCz'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title('AMF$_{GCz}$')
+
+    # save plots
+    yyyymmdd = date.strftime("%Y%m%d")
+    f.suptitle(yyyymmdd, fontsize=20)
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.95)
+    onedaystr= [ 'eight_day_','one_day_' ][oneday]
+    outfig="Figs/%scorrected%s%s.png"%(onedaystr, yyyymmdd, pltname)
+    plt.savefig(outfig)
+    plt.close()
+    print(outfig+" Saved.")
+    
 def Check_AMF_relevelling():
     '''
     Create a few example arrays and relevel the pressures and see what happens
@@ -357,7 +454,7 @@ def check_timeline():
     '''
     '''
     print("Check Timeline test to be implemented")
-
+    
 def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179,pltname=""):
     '''
     Test a day or 8-day reprocessed HCHO map

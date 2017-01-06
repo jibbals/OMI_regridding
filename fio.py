@@ -91,21 +91,21 @@ def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded
     
     # if not created by me just return the filepath(s) using date variable and glob
     if gridded:
-        return glob('omhchog/OMI-Aura*%4dm%02d%02d*.he5'%(date.year, date.month, date.day))[0]
+        return glob('Data/omhchog/OMI-Aura*%4dm%02d%02d*.he5'%(date.year, date.month, date.day))[0]
     if metaData:
-        return ('omhchorp/metadata/metadata_%s.he5'%(date.strftime('%Y%m%d')))
+        return ('Data/omhchorp/metadata/metadata_%s.he5'%(date.strftime('%Y%m%d')))
     if not (regridded or reprocessed):
-        return glob('omhcho/OMI-Aura*%4dm%02d%02d*'%(date.year, date.month, date.day))
+        return glob('Data/omhcho/OMI-Aura*%4dm%02d%02d*'%(date.year, date.month, date.day))
     
     # geos chem output created via idl scripts match the following
     if geoschem:
-        return ('gchcho/hcho_%4d%2d.he5'%(date.year,date.month))
+        return ('Data/gchcho/hcho_%4d%2d.he5'%(date.year,date.month))
     
     # reprocessed and regridded match the following:
     avg=['8','1'][oneday] # one or 8 day average when applicable
     typ=['p','g'][regridded] # reprocessed or regridded
     res='%1.2fx%1.2f'%(latres,lonres) # resolution string
-    d = 'omhchor'+typ+'/' # directory
+    d = 'Data/omhchor'+typ+'/' # directory
     fpath=d+"omhcho_%s_%4d%02d%02d.he5" %(avg+typ+res,date.year,date.month,date.day)
     return(fpath)
 

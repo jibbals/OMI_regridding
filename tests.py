@@ -59,6 +59,101 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
+def compare_products(date=datetime(2005,1,1), oneday=True, positiveonly=False,
+                     lllat=-60, lllon=-179, urlat=50, urlon=179,pltname=""):
+    '''
+    Test a day or 8-day reprocessed HCHO map
+    Plot VCs, both OMI and Reprocessed, and the RMA corellations
+    '''
+
+    # Grab reprocessed OMI data
+    om=omrp(date,oneday=oneday)
+    
+    lons,lats =np.meshgrid(om.longitude,om.latitude)
+    oceanmask=om.oceanmask  # true for ocean squares
+    omi=om.VC_OMI
+    vcc=om.VCC
+    sgc='$\Omega_{OMIGCC}$'
+    somi='$\Omega_{OMI}$'
+    
+    # Plot
+    # VC_omi, VC_rp
+    # diffs, Corellations
+
+    f = plt.figure(num=0,figsize=(16,18))
+    
+    # Plot OMI, OMRP
+    # set currently active axis from [2,2] axes array
+    plt.subplot(221)
+    m,cs,cb = pp.createmap(omi,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title(somi)
+    plt.subplot(222)
+    m,cs,cb = pp.createmap(vcc,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    plt.title(sgc)
+    #ax=plt.subplot(223)
+    #m,cs,cb = pp.linearmap(100.0*(omi-vcc)/omi, lats, lons, 
+    #                       vmin=-120, vmax=120,
+    #                       lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    #plt.title('100(%s-%s)/%s'%(somi,sgc,somi))
+    plt.subplot(212)
+    if positiveonly: 
+        omi[omi<0]=np.NaN
+        vcc[vcc<0]=np.NaN
+    pp.plot_corellation(omi, vcc, oceanmask=oceanmask,verbose=True)
+    plt.title('RMA corellation')
+    plt.xlabel(somi)
+    plt.ylabel(sgc)
+
+    # save plots
+    yyyymmdd = date.strftime("%Y%m%d")
+    f.suptitle(yyyymmdd, fontsize=30)
+    plt.tight_layout()
+    onedaystr= [ 'eight_day_','one_day_' ][oneday]
+    outfig="Figs/%sproducts%s%s.png"%(onedaystr, yyyymmdd, pltname)
+    plt.savefig(outfig)
+    plt.close()
+    print(outfig+" Saved.")
+
+def check_products(date=datetime(2005,1,1), oneday=True, pltname='',
+                   lllat=-60, lllon=-179, urlat=50, urlon=179):
+    '''
+    Test a day or 8-day reprocessed HCHO map
+    Plot VCs, both OMI and Reprocessed, and the RMA corellations
+    '''
+
+    # Grab reprocessed OMI data
+    om=omrp(date,oneday=oneday)
+
+    counts = om.gridentries
+    print( "at most %d entries "%np.nanmax(counts) )
+    print( "%d entries in total"%np.nansum(counts) )
+    lons,lats =np.meshgrid(om.longitude,om.latitude)
+    oceanmask=om.oceanmask  # true for ocean squares
+    omi=om.VC_OMI
+    vcc=om.VCC
+    sgc='$\Omega_{OMIGCC}$'
+    somi='$\Omega_{OMI}$'
+    
+    # Plot
+    # VC_omi, VC_rp
+    # diffs, Corellations
+
+    plt.figure(num=0,figsize=(16,18))
+    
+    pp.plot_corellation(omi, vcc, oceanmask=oceanmask, verbose=True, logscale=False, lims=[-1e16,1.01e17])
+    plt.title('RMA corellation')
+    plt.xlabel(somi)
+    plt.ylabel(sgc)
+
+    # save plot
+    yyyymmdd = date.strftime("%Y%m%d")
+    plt.title(yyyymmdd, fontsize=30)
+    onedaystr= [ 'eight_day_','one_day_' ][oneday]
+    outfig="Figs/%sregress%s%s.png"%(onedaystr, yyyymmdd, pltname)
+    plt.savefig(outfig)
+    plt.close()
+    print(outfig+" Saved.")
+    
 def Test_Uncertainty(date=datetime(2005,1,1)):
     '''
         Effect on provided uncertainty with 8 day averaging
@@ -138,8 +233,8 @@ def look_at_swaths(date=datetime(2005,1,1), lllat=-80, lllon=-179, urlat=80, url
     counts= omi_8['counts']
     print( "at most %d entries "%np.nanmax(counts) )
     print( "%d entries in total"%np.nansum(counts) )
-    lonmids=omhchorp['longitude']
-    latmids=omhchorp['latitude']
+    lonmids=omrp['longitude']
+    latmids=omrp['latitude']
     lons,lats = np.meshgrid(lonmids,latmids)
 
     # Plot
@@ -152,30 +247,30 @@ def look_at_swaths(date=datetime(2005,1,1), lllat=-80, lllon=-179, urlat=80, url
     # Plot OMI, old, new AMF map
     # set currently active axis from [2,3] axes array
     plt.sca(axes[0,0])
-    m,cs,cb = pp.createmap(omhchorp['SC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.createmap(omrp['SC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('SC')
     plt.sca(axes[0,1])
-    m,cs,cb = pp.createmap(omhchorp['VC_OMI'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.createmap(omrp['VC_OMI'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VC OMI ($\Omega_{OMI}$)')
     plt.sca(axes[0,2])
-    m,cs,cb = pp.linearmap(omhchorp['AMF_OMI'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.linearmap(omrp['AMF_OMI'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF OMI')
     plt.sca(axes[1,0])
-    m,cs,cb = pp.createmap(omhchorp['VCC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.createmap(omrp['VCC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VCC')
     plt.sca(axes[1,1])
-    m,cs,cb = pp.createmap(omhchorp['VC_GC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.createmap(omrp['VC_GC'],lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('VC GC')
     plt.sca(axes[1,2])
-    m,cs,cb = pp.linearmap(omhchorp['AMF_GC'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.linearmap(omrp['AMF_GC'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF$_{GC}$')
 
     # Plot third row the GEOS-Chem map divergences
 
     gc=fio.read_gchcho(date) # read the GC data
     fineHCHO=gc.interp_to_grid(latmids,lonmids) * 1e-4 # molecules/m2 -> molecules/cm2
-    OMIdiff=100*(omhchorp['VC_OMI'] - fineHCHO) / fineHCHO
-    GCdiff=100*(omhchorp['VCC'] - fineHCHO) / fineHCHO
+    OMIdiff=100*(omrp['VC_OMI'] - fineHCHO) / fineHCHO
+    GCdiff=100*(omrp['VCC'] - fineHCHO) / fineHCHO
     plt.sca(axes[2,0])
     vmin,vmax = -150, 150
     m,cs,cb = pp.linearmap(OMIdiff, lats,lons,vmin=vmin,vmax=vmax,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
@@ -191,10 +286,10 @@ def look_at_swaths(date=datetime(2005,1,1), lllat=-80, lllon=-179, urlat=80, url
     # plot fourth row: uncertainties and AMF_GCz
     #
     plt.sca(axes[3,0])
-    m,cs,cb = pp.createmap(omhchorp['col_uncertainty_OMI'], lats, lons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.createmap(omrp['col_uncertainty_OMI'], lats, lons, lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('col uncertainty (VC$_{OMI} \pm 1 \sigma$)')
     plt.sca(axes[3,1])
-    vc_gc,vc_omi=omhchorp['VC_GC'],omhchorp['VC_OMI']
+    vc_gc,vc_omi=omrp['VC_GC'],omrp['VC_OMI']
     plt.scatter(vc_gc,vc_omi)
     plt.xlabel('VC$_{GC}$')
     plt.ylabel('VC$_{OMI}$')
@@ -208,7 +303,7 @@ def look_at_swaths(date=datetime(2005,1,1), lllat=-80, lllon=-179, urlat=80, url
     plt.legend(title='lines',loc=0)
     plt.title("VC$_{GC}$ vs VC$_{OMI}$")
     plt.sca(axes[3,2])
-    m,cs,cb = pp.linearmap(omhchorp['AMF_GCz'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
+    m,cs,cb = pp.linearmap(omrp['AMF_GCz'],lats,lons,vmin=0.6,vmax=6.0,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title('AMF$_{GCz}$')
 
     # save plots
@@ -430,10 +525,10 @@ def Summary_Single_Profile():
     plt.yscale('log')
 
     # omhchorp final vert column
-    omhchorp=omrp(day,oneday=True)
-    omlat,omlon=omhchorp.latitude, omhchorp.longitude
+    om=omrp(day,oneday=True)
+    omlat,omlon=om.latitude, om.longitude
     omlati,omloni= (np.abs(omlat-lat)).argmin(),(np.abs(omlon-lon)).argmin()
-    vcc=omhchorp.VCC[omlati,omloni]
+    vcc=om.VCC[omlati,omloni]
 
     ta=plt.gca().transAxes
     fs=32
@@ -1274,7 +1369,7 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     pp.InitMatplotlib()
-    #Summary_Single_Profile()
+    Summary_Single_Profile()
 
     # AMF tests and correlations
     #Check_OMI_AMF()
@@ -1282,7 +1377,7 @@ if __name__ == '__main__':
     #test_amf_calculation(scount=5)
     #for aus_only in [True, False]:
     #    test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=aus_only)
-    Test_Uncertainty()
+    #Test_Uncertainty()
 
     # fires things
     #test_fires_fio()
@@ -1292,13 +1387,17 @@ if __name__ == '__main__':
     # check some days (or one or no days)
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
-    #dates=[ datetime(2005,1,1) ]
-    dates=[ ]
+    dates=[ datetime(2005,1,1) ]
+    #dates=[ ]
     #for oneday in [True, False]:
     #    Summary_RSC(oneday=oneday)
-    #    for day in dates:
-    #        test_reprocess_corrected(date=day, oneday=oneday)
-    #        test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+    #for day in dates:
+        #test_reprocess_corrected(date=day, oneday=oneday)
+        #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
+        #compare_products(date=day,oneday=True)
+        #compare_products(date=day,oneday=True,positiveonly=True,pltname="positive")
+        #check_products(date=day,oneday=True)
+        #compare_products(date=day,oneday=True, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
     # to be updated:
     #check_timeline()
     #reprocessed_amf_correlations()

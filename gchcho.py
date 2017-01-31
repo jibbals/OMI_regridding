@@ -83,7 +83,7 @@ class gchcho:
         self.ReadFile(date)
 
     def ReadFile(self, date):
-        fpath=glob('gchcho/hcho_%4d%02d.he5' % ( date.year, date.month ) )[0]
+        fpath=glob('Data/gchcho/hcho_%4d%02d.he5' % ( date.year, date.month ) )[0]
         with h5py.File(fpath, 'r') as in_f:
             dsetname='GC_UCX_HCHOColumns'
             dset=in_f[dsetname]

@@ -78,6 +78,8 @@ class omhchorp:
         self.fires=struct['fires']
         self.fire_mask_8=struct['fire_mask_8']      # true where fires occurred over last 8 days
         self.fire_mask_16=struct['fire_mask_16']    # true where fires occurred over last 16 days
+        mlons,mlats=np.meshgrid(self.longitude,self.latitude)
+        self.oceanmask=maskoceans(mlons,mlats,self.AMF_OMI,inlands=False).mask
     
     def apply_fire_mask(self, use_8day_mask=False):
         ''' nanify arrays which are fire affected. '''

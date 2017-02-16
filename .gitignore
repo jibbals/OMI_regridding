@@ -24,7 +24,9 @@ logs/*
 
 # unignore scripts in the data directories
 !Data/**/*.py
+!Data/*.py
 !Data/**/*.pro
+!Data/*.pro
 
 # ignore qsub output files
 *.o[0-9][0-9][0-9][0-9][0-9][0-9][0-9]

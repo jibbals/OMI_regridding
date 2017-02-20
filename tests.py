@@ -32,8 +32,10 @@ import random
 Ohcho='$\Omega_{HCHO}$'
 Ovc='$\Omega_{VC}$'
 Ovcc='$\Omega_{VCC}$'
+Ovccrm='$\Omega_{VCC-RM}$' # randal martin VCC
 Oomi='$\Omega_{OMI}$'
 Ogc='$\Omega_{GC}$'
+
 
 ##############################
 ########## FUNCTIONS #########
@@ -64,6 +66,7 @@ def compare_products(date=datetime(2005,1,1), oneday=True, positiveonly=False,
     '''
     Test a day or 8-day reprocessed HCHO map
     Plot VCs, both OMI and Reprocessed, and the RMA corellations
+    TODO: Update to look only at corrected, including RandalMartin calculated
     '''
 
     # Grab reprocessed OMI data
@@ -400,6 +403,30 @@ def Check_OMI_AMF():
     plt.savefig(pname)
     print('saved %s'%pname)
 
+def Check_AMF():
+    '''
+    Check the various AMF's against eachother
+    '''
+    # get one day of pixels
+    gps=reprocess.get_good_pixel_list(datetime(2005,1,1))
+    amf=gps['AMF_OMI']
+    amf_rm=gps['AMF_RM']
+    amf_gc=gps['AMF_GC']
+    lims=[0,4]
+    plt.figure(0,figsize=[26,10])
+    plt.subplot(131)
+    pp.plot_corellation(amf,amf_gc,lims=lims,logscale=False)
+    plt.xlabel('OMI AMF'); plt.ylabel('GC AMF')
+    plt.subplot(132)
+    pp.plot_corellation(amf,amf_rm,lims=lims,logscale=False)
+    plt.xlabel('OMI AMF'); plt.ylabel('RM AMF')
+    plt.subplot(133)
+    pp.plot_corellation(amf_gc,amf_rm,lims=lims,logscale=False)
+    plt.xlabel('GC AMF'); plt.ylabel('RM AMF')
+    pname='Figs/Compare_AMFs.png'
+    plt.savefig(pname)
+    print('saved %s'%pname)
+    
 def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     '''
     Print and plot a summary of the effect of our remote sector correction
@@ -1369,10 +1396,11 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     pp.InitMatplotlib()
-    Summary_Single_Profile()
-
+    #Summary_Single_Profile()
+    
     # AMF tests and correlations
     #Check_OMI_AMF()
+    Check_AMF()
     #Check_AMF_relevelling()
     #test_amf_calculation(scount=5)
     #for aus_only in [True, False]:

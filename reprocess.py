@@ -79,6 +79,13 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
     cunc=list()         # Uncertainties (molecs/cm2)
     fcf=list()
     frms=list()
+    # specifically for randal martin AMF code:
+    sza=list()          # solar zenith angle
+    vza=list()          # viewing zenith angle
+    scan=list()         # row from swath
+    ctp=list()          # cloud top pressure
+    AMFrm=list()      # AMFs calculated using lidort and randal martin code
+    
     # Stuff created using GEOS-Chem info
     sigmas=None
     AMFgcs=list()       # AMFs using S_s
@@ -87,11 +94,11 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
     ## grab our GEOS-Chem apriori info (dimension: [ levs, lats, lons ])
     gchcho = fio.read_gchcho(date)
     # GCHCHO UNITS ARE GENERALLY m AND hPa
-
+    
     ## 1) read in the good pixels for a particular date,
     ##  create and store the GEOS-Chem AMF along with the SC
     #
-
+    
     # loop through swaths
     files = fio.determine_filepath(date)
     for ff in files:
@@ -115,8 +122,12 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
         f_ref_col=omiswath['rad_ref_col'] # array of 60, units: molec/cm2
 
         # We also store the track position for reference sector correction later
-        swathtrack=np.where(goods==True)[1]
+        goodwhere=np.where(goods==True)
+        swathtrack=goodwhere[1]
+        swathscan=goodwhere[0]
         track.extend(list(swathtrack))
+        scan.extend(list(swathscan))
+        
         # so each pixel has it's tracks radiance reference sector correction:
         ref_column.extend(list(f_ref_col[swathtrack]))
 
@@ -131,6 +142,9 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
         AMFos.extend(list((omiswath['AMF'])[goods]))
         AMFGs.extend(omamfgs)
         cloudfracs.extend(list((omiswath['cloudfrac'])[goods]))
+        ctp.extend(list((omiswath['ctp'])[goods]))
+        sza.extend(list((omiswath['sza'])[goods]))
+        vza.extend(list((omiswath['vza'])[goods]))
         cunc.extend(list((omiswath['coluncertainty'])[goods]))
 
         if getExtras:
@@ -157,13 +171,22 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
             # AMF_GCz does not relevel to the highest surface pressure between pixel and gridbox
             # AMF_GC does (using this one)
             # We can do some sort of test here if required.
-
+    
+    AMFrm=np.zeros(len(lats))+np.NaN
+    rm_inds, rm_amf = fio.read_AMF_full(date)
+    rm_inds=np.array(rm_inds); rm_amf=np.array(rm_amf)
+    if rm_inds is not None:
+        AMFrm[rm_inds]=rm_amf
+    AMFrm=list(AMFrm)
+    
     # after all the swaths are read in: send the lists back in a single
     # dictionary structure
+    
     return({'lat':lats, 'lon':lons, 'SC':slants, 'rad_ref_col':ref_column,
             'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 'AMF_GCz':AMFgczs, 'AMF_G':AMFGs,
-            'RSC_OMI':RSC_OMI,
-            'cloudfrac':cloudfracs, 'track':track,
+            'RSC_OMI':RSC_OMI, 'AMF_RM':AMFrm,
+            'sza':sza, 'vza':vza, 'ctp':ctp,
+            'cloudfrac':cloudfracs, 'track':track, 'scan':scan,
             'qualityflag':flags, 'xtrackflag':xflags,
             'omega':ws, 'omega_pmids':w_pmids, 'apriori':apris, 'sigma':sigmas,
             'columnuncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms})
@@ -213,7 +236,7 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
     #OMI SCs in molecules/cm2
     omi_SC=np.array(goodpixels['SC'])
     omi_track=np.array(goodpixels['track']) # list of track indexes
-    omi_AMF=np.array(goodpixels['AMF_GC'])
+    omi_AMF=np.array(goodpixels['AMF_OMI']) # Old AMF seen by OMI
 
     ## Get indices of ref sector pixels
     #
@@ -226,7 +249,7 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
     ref_amf=omi_AMF[ref_inds]
 
     ## Reference corrections for each reference sector pixel
-    # correction[lats] = OMI_refSC - GEOS_chem_Ref_VCs * AMF
+    # correction[lats] = OMI_refSC - GEOS_chem_Ref_VCs * AMF_omi
     # NB: ref_SC=molecs/cm2, gc=molecs/cm2 (converted from m2 above)
     # ref_corrections are in molecs/cm2
     ref_corrections = ref_SC - gc_VC_ref_func(ref_lats) * ref_amf
@@ -280,6 +303,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     omi_AMF_gc=np.array(goodpixels['AMF_GC'])
     omi_AMF_gcz=np.array(goodpixels['AMF_GCz'])
     omi_AMF_omi=np.array(goodpixels['AMF_OMI'])
+    omi_AMF_rm=np.array(goodpixels['AMF_RM'])
     omi_tracks=np.array(goodpixels['track'])
     omi_clouds=np.array(goodpixels['cloudfrac'])
     omi_cunc=np.array(goodpixels['columnuncertainty'])
@@ -315,21 +339,28 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     # Calculate VCs:
     omi_VC_gc   = omi_SC / omi_AMF_gc
     omi_VC_omi  = omi_SC / omi_AMF_omi
+    # omi_VC_rm   = omi_SC / omi_AMF_rm # just look at corrected for now...
     # Calculate GC Ref corrected VC (called VCC by me)
     omi_VCC = np.zeros(omi_VC_gc.shape)+np.NaN
+    omi_VCC_rm=np.zeros(omi_VC_gc.shape)+np.NaN
+    # TODO: also here calculate the full VCC from RM code where the AMF exists
+    
     for track in range(60):
         track_inds= omi_tracks==track
         # for each track VCC = (SC - correction) / AMF_GC
         # If track has one or less non-nan values then skip
         if np.isnan(omi_lats[track_inds]).all():
             continue
-        omi_VCC[track_inds]= (omi_SC[track_inds] - rsc_function(omi_lats[track_inds],track)) / omi_AMF_gc[track_inds]
+        track_rsc=rsc_function(omi_lats[track_inds],track)
+        track_sc=omi_SC[track_inds]
+        omi_VCC[track_inds]= (track_sc - track_rsc) / omi_AMF_gc[track_inds]
+        omi_VCC_rm[track_inds]=(track_sc - track_rsc) / omi_AMF_rm[track_inds]
     # that should cover all good pixels - except if we had a completely bad track some day
     #assert np.sum(np.isnan(omi_VCC))==0, "VCC not created at every pixel!"
     if __VERBOSE__ and np.isnan(omi_VCC).any():
         vccnans=np.sum(np.isnan(omi_VCC))
         print ("Warning %d nan vcc entries from %d on %s"%(vccnans, len(omi_VCC),ymdstr))
-
+    
     ## 4)
     # take list and turn into gridded product...
     # majority of processing time in here ( 75 minutes? )
@@ -345,16 +376,19 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     fire_count, _flats, _flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
     fire_filter_16 = get_16day_fires_mask(date,latres=latres,lonres=lonres)
     fire_filter_8  = get_8day_fires_mask(date,latres=latres,lonres=lonres)
-
+    
+    ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_omi  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VCC     = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    VCC_rm  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     RSC_OMI = np.zeros([ny,nx],dtype=np.double)+np.NaN
     cunc_omi= np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_gc  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_gcz = np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_omi = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    AMF_rm  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     counts  = np.zeros([ny,nx],dtype=np.int)
     for i in range(ny):
         for j in range(nx):
@@ -374,12 +408,14 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
             VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
             VC_omi[i,j]     = np.mean(omi_VC_omi[matches])
             VCC[i,j]        = np.mean(omi_VCC[matches])
-            RSC_OMI[i,j]    = np.mean(omi_RSC[matches])
+            VCC_rm[i,j]     = np.mean(omi_VCC_rm[matches])
+            RSC_OMI[i,j]    = np.mean(omi_RSC[matches]) # the correction amount
             # TODO: store analysis data for saving, when we decide what we want analysed
             cunc_omi[i,j]   = np.mean(omi_cunc[matches])
             AMF_gc[i,j]     = np.mean(omi_AMF_gc[matches])
             AMF_gcz[i,j]    = np.mean(omi_AMF_gcz[matches])
             AMF_omi[i,j]    = np.mean(omi_AMF_omi[matches])
+            AMF_rm[i,j]     = np.mean(omi_AMF_rm[matches])
 
     ## 5)
     # Save one day averages to file
@@ -388,6 +424,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     outd['VC_GC']               = VC_gc
     outd['SC']                  = SC
     outd['VCC']                 = VCC
+    outd['VCC_RM']              = VCC_rm
     outd['VC_OMI_RSC']          = RSC_OMI # omi's RSC column amount
     outd['gridentries']         = counts
     outd['latitude']            = lats
@@ -400,6 +437,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     outd['AMF_GC']              = AMF_gc
     outd['AMF_GCz']             = AMF_gcz
     outd['AMF_OMI']             = AMF_omi
+    outd['AMF_RM']              = AMF_rm
     outd['fire_mask_16']        = fire_filter_16.astype(np.int16)
     outd['fire_mask_8']         = fire_filter_8.astype(np.int16)
     outd['fires']               = fire_count.astype(np.int16)

@@ -19,9 +19,10 @@ from JesseRegression import RMA
 
 def Background(H):
     '''
-        Determine background HCHO as a function of latitude and time, based on the average over the remote pacific ocean
+        Determine background HCHO as a function of latitude and time, 
+        based on the average over the remote pacific ocean
         Remote pacific = lon0 to lon1, lat+-5 degrees (TODO:)
-
+        
         Assume H[lat,lon,time]
         Return B[lat,time]
     '''

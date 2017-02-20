@@ -30,8 +30,8 @@ datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
 # keylist for omhchorp datafiles
-_omhchorp_keylist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
-                   'VCC', 'gridentries', 'latitude', 'longitude', 'RSC',
+_omhchorp_keylist=['AMF_GC', 'AMF_GCz', 'AMF_OMI','AMF_RM', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
+                   'VCC', 'VCC_RM', 'gridentries', 'latitude', 'longitude', 'RSC',
                    'RSC_latitude', 'RSC_GC', 'RSC_region', 'col_uncertainty_OMI',
                    'fires', 'fire_mask_8', 'fire_mask_16']
 
@@ -187,11 +187,13 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
     field_w     = datafields+'ScatteringWeights'
     field_qf    = datafields+'MainDataQualityFlag'
     field_clouds= datafields+'AMFCloudFraction'
+    field_ctp   = datafields+'AMFCloudPressure'
     field_rsc   = datafields+'ReferenceSectorCorrectedVerticalColumn' # molec/cm2
     field_xqf   = geofields +'XtrackQualityFlags'
     field_lon   = geofields +'Longitude'
     field_lat   = geofields +'Latitude'
     field_sza   = geofields +'SolarZenithAngle'
+    field_vza   = geofields +'ViewingZenithAngle'
     # uncertainty flags
     field_colUnc    = datafields+'ColumnUncertainty' # also molec/cm2
     field_fitflag   = datafields+'FitConvergenceFlag'
@@ -208,9 +210,12 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
         amf     = in_f[field_amf].value     # 
         amfg    = in_f[field_amfg].value    # geometric amf
         clouds  = in_f[field_clouds].value  # cloud fraction
+        ctp     = in_f[field_ctp].value     # cloud top pressure
         qf      = in_f[field_qf].value      #
         xqf     = in_f[field_xqf].value     # cross track flag
         sza     = in_f[field_sza].value     # solar zenith angle
+        vza     = in_f[field_vza].value     # viewing zenith angle
+        
         # uncertainty arrays                #
         cunc    = in_f[field_colUnc].value  # uncertainty
         fcf     = in_f[field_fitflag].value # convergence flag
@@ -284,8 +289,8 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
     #return everything in a structure
     return {'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
             'omega':w,'apriori':apri,'plevels':plevs, 'cloudfrac':clouds,
-            'rad_ref_col':ref_c, 'RSC_OMI':rsc_omi,
-            'qualityflag':qf, 'xtrackflag':xqf, 'sza':sza,
+            'rad_ref_col':ref_c, 'RSC_OMI':rsc_omi, 'ctp':ctp,
+            'qualityflag':qf, 'xtrackflag':xqf, 'sza':sza, 'vza':vza,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
 
 def read_omhcho_day(day=datetime(2005,1,1),verbose=False):
@@ -452,6 +457,22 @@ def filter_high_latitudes(array, latres=0.25, lonres=0.3125, highest_lat=60.0):
     newarr=np.array(array)
     newarr[highlats, :] = np.NaN
     return (newarr)
-    
 
-    
+def read_AMF_full(date=datetime(2005,1,1),modelrun='troprun'):
+    '''
+    Read AMF created by randal martin code for this day 
+    along with pixel index for adding data to the good pixel list
+    '''
+    import os.path
+    fname='Data/rmamf/%s/amf_%s.csv'%(modelrun,date.strftime('%Y%m%d'))
+    if not os.path.isfile(fname):
+        return None,None
+    inds=[]
+    amfs=[]
+    with open(fname,'r') as f:
+        for line in f.readlines():
+            s=line.split(',')
+            inds.append(int(s[1]))
+            amfs.append(float(s[2]))
+    #print("mean AMF from %s = %f"%(fname,np.mean(amfs)))
+    return inds, amfs

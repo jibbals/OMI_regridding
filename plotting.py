@@ -119,14 +119,16 @@ def plot_rec(bmap, inlimits, color=None, linewidth=None):
 def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True, 
                      colour='k',linecolour='r', diag=True, oceanmask=None,
                      verbose=False):
+    X=np.array(X)
+    Y=np.array(Y)
     nans=np.isnan(X) + np.isnan(Y)
     lims0=np.array(lims); lims=np.array(lims)
     
     if oceanmask is None:
-        plt.scatter(X[~nans], X[~nans])
-        m,b,r,CI1,CI2=RMA(X[~nans], X[~nans]) # get regression
+        plt.scatter(X[~nans], Y[~nans])
+        m,b,r,CI1,CI2=RMA(X[~nans], Y[~nans]) # get regression
         plt.plot(lims, m*np.array(lims)+b,color=linecolour,
-                 label='m=%4.2f, r=%4.2f'%(m,r))
+                 label='Y = %.5fX + %.2e, r=%.5f, n=%d'%(m,b,r,np.sum(~nans)))
     else:
         omask=~(nans+~oceanmask ) # true where not nan or land
         lmask=~(nans+oceanmask ) # true where not nan or ocean

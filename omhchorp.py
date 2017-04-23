@@ -65,11 +65,13 @@ class omhchorp:
         self.RSC=struct['RSC']
         # The vertical column corrected using the RSC
         self.VCC=struct['VCC']
+        self.VCC_PP=struct['VCC_PP'] # Corrected Paul Palmer VC
         
         # Arrays [ lats, lons ]
         self.AMF_GC=struct['AMF_GC']
         self.AMF_OMI=struct['AMF_OMI']
         self.AMF_GCz=struct['AMF_GCz']
+        self.AMF_PP=struct['AMF_PP'] # AMF calculated using Paul palmers code
         self.SC=struct['SC']
         self.VC_GC=struct['VC_GC']
         self.VC_OMI=struct['VC_OMI']

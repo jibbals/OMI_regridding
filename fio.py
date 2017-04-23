@@ -30,8 +30,8 @@ datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
 # keylist for omhchorp datafiles
-_omhchorp_keylist=['AMF_GC', 'AMF_GCz', 'AMF_OMI','AMF_RM', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
-                   'VCC', 'VCC_RM', 'gridentries', 'latitude', 'longitude', 'RSC',
+_omhchorp_keylist=['AMF_GC', 'AMF_GCz', 'AMF_OMI','AMF_PP', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
+                   'VCC', 'VCC_PP', 'gridentries', 'latitude', 'longitude', 'RSC',
                    'RSC_latitude', 'RSC_GC', 'RSC_region', 'col_uncertainty_OMI',
                    'fires', 'fire_mask_8', 'fire_mask_16']
 
@@ -151,8 +151,9 @@ def read_8dayfire_interpolated(date,latres,lonres):
     Read the date, interpolate data to match lat/lon resolution, return data
     '''
     ##original lat/lons:
-    lats = np.arange(90,-90,-0.5) - 0.25
-    lons = np.arange(-180,180, 0.5) + 0.25
+    fires, lats, lons = read_8dayfire(date)
+    #lats = np.arange(90,-90,-0.5) - 0.25
+    #lons = np.arange(-180,180, 0.5) + 0.25
     
     newlats= np.arange(-90,90, latres) + latres/2.0
     newlons= np.arange(-180,180, lonres) + lonres/2.0
@@ -160,7 +161,6 @@ def read_8dayfire_interpolated(date,latres,lonres):
     mlons,mlats = np.meshgrid(lons,lats)
     mnewlons,mnewlats = np.meshgrid(newlons,newlats)    
     
-    fires = read_8dayfire(date)[0]
     interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons), method='nearest')
     return interp, newlats, newlons
 

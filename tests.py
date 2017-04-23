@@ -32,8 +32,9 @@ import random
 Ohcho='$\Omega_{HCHO}$'
 Ovc='$\Omega_{VC}$'
 Ovcc='$\Omega_{VCC}$'
-Ovccrm='$\Omega_{VCC-RM}$' # randal martin VCC
+Ovccpp='$\Omega_{VCC-PP}$' # Paul Palmer VCC
 Oomi='$\Omega_{OMI}$'
+Oomic="$\Omega_{OMI_{RSC}}$" #corrected original product
 Ogc='$\Omega_{GC}$'
 
 
@@ -674,6 +675,149 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     plt.close()
     print(outfig+" Saved.")
 
+def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, aus_only=True):
+    '''
+    Look closely at AMFs over Australia, specifically over land
+    and see how our values compare against the model and OMI swaths.and Paul Palmers code
+    '''
+    # useful strings
+    ymdstr=day.strftime('%Y%m%d')
+    
+    # read in omhchorp
+    om=omrp(day,oneday=oneday)
+    
+    lats=om.latitude
+    lons=om.longitude
+    unc = om.col_uncertainty_OMI
+    mlons,mlats=np.meshgrid(lons,lats)
+
+    if aus_only:
+        # filter to just Australia rectangle [.,.,.,.]
+        landinds=om.inds_aus(maskocean=True)
+    else:
+        landinds=om.inds_subset(maskocean=True)
+    oceaninds=om.inds_subset(maskocean=False,maskland=True)
+
+    # the datasets with nans and land or ocean masked
+    OMP_l = [] # OMI, My, Paul palmer
+    OMP_o = [] # OMI, My, Paul palmer
+    OMP_str = ['OMI_RSC','VCC', 'VCC_PP']
+    OMP_col = ['k','r','m']
+    for arr in [om.VC_OMI_RSC, om.VCC, om.VCC_PP]:
+        OMP_l.append(ma(arr), mask=~landinds)
+        OMP_o.append(ma(arr),  mask=~oceaninds)
+
+    # Print the land and ocean averages for each product
+    print("%s land averages (oceans are global):"%(['Global','Australian'][aus_only]))
+    print("%25s   land,   ocean"%'')
+    for arrl, arro, arrstr in zip(OMP_l,OMP_o,OMP_str):
+        print("%21s: %5.3e,  %5.3e "%(arrstr, np.nanmean(arrl),np.nanmean(arro)))
+    
+    # Plot the histogram of VC entries land and sea
+    f=plt.figure(figsize=(14,10))
+    land_data=np.transpose([OMP_l[ii][landinds] for ii in range(3)])
+    ocean_data=np.transpose([OMP_o[ii][oceaninds] for ii in range(3)])
+    olabel=['ocean '+thing for thing in OMP_str]
+    llabel=['land ' +thing for thing in OMP_str]
+    plt.hist(ocean_data, bins=np.logspace(13, 17, 20), color=['k','darkblue','lightblue'], label=olabel)
+    plt.hist(land_data, bins=np.logspace(13, 17, 20), color=['grey','orange','yellow'], label=llabel)
+    plt.xscale("log")
+    plt.yscale('log',nonposy='clip') # logarithmic y scale handling zero
+    plt.title('Vertical column distributions ($\Omega_{HCHO}$)',fontsize=26)
+    plt.ylabel('frequency'); plt.xlabel('molec cm$^{-2}$')
+    plt.legend(loc='center left')
+    ta=plt.gca().transAxes
+    plt.text(0.05,.95, 'land count=%d'%np.sum(landinds),transform=ta)
+    plt.text(.05,.90, 'ocean count=%d'%np.sum(oceaninds),transform=ta)
+    for ii in range (3):
+        plt.text(.05,.85-0.05*ii, '%s mean(land)=%5.3e'%(OMP_str[ii],np.nanmean(OMP_l[ii])), transform=ta)
+    ausstr=['','_AUS'][aus_only]
+    eightstr=['_8day',''][oneday]
+    pname='Figs/hist%s%s_%s.png'%(eightstr,ausstr,ymdstr)
+    plt.savefig(pname)
+    print("%s saved"%pname)
+    plt.close(f)
+
+def CompareMaps(day=datetime(2005,1,1), oneday=False, aus_only=True):
+    '''
+    '''
+    #useful strings
+    ymdstr=day.strftime('%Y%m%d')
+    
+    # read in omhchorp
+    om=omrp(day,oneday=oneday)
+    
+    lats=om.latitude
+    lons=om.longitude
+    unc = om.col_uncertainty_OMI
+    mlons,mlats=np.meshgrid(lons,lats)
+    
+    # the datasets with nans and land or ocean masked
+    OMP = [om.VC_OMI_RSC, om.VCC, om.VCC_PP] # OMI, My, Paul palmer
+    OMP_str = ['OMI_RSC','VCC', 'VCC_PP']
+    OMP_col = ['k','r','m']
+    
+    # Plot the maps:
+    #
+    f=plt.figure(figsize=(16,13))
+    lllat=-65; urlat=65; lllon=-175; urlon=175
+    if aus_only:
+        lllat=-50; urlat=-5; lllon=100; urlon=170
+    
+    for ii, in range(3):
+        arr=OMP[ii]
+        # Maps
+        plt.subplot(231+ii)
+        m,cs,cb = pp.createmap(OMP[ii],mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+        plt.title(OMP_str[ii],fontsize=20)
+        
+        # Difference maps
+        diff=(OMP[ii]-OMP[ii-1]) * 100.0 / OMP[ii-1]
+        plt.subplot(234+ii)
+        m,cs,cb = pp.linearmap(diff,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=-200,vmax=200)
+        plt.title('(%s - %s)*100/%s'%(OMP_str[ii],OMP_str[ii-1],OMP_str[ii-1]),fontsize=20)
+
+def VCC_Correlations(day=datetime(2005,1,1), oneday=False, aus_only=True):
+    
+    #useful strings
+    ymdstr=day.strftime('%Y%m%d')
+    
+    # read in omhchorp
+    om=omrp(day,oneday=oneday)
+    
+    # show corellations for OMI_RSC- VCC
+    nans=np.isnan(vcc_l) + np.isnan(vcomic_l) + vcomic_l.mask # all the nans we won't fit
+    plt.subplot(223)
+    plt.scatter(vcomic_o, vcc_o, color='blue', label="Ocean", alpha=0.4)
+    plt.scatter(vcomic_l, vcc_l, color='gold', label="Land")
+    m,x0,r,ci1,ci2 = RMA(VC_OMI_RSC[~nans], VCC[~nans])
+    X=np.array([1e10,5e16])
+    plt.plot( X, m*X+x0,color='fuchsia',
+            label='Land: m=%.5f, r=%.5f'%(m,r))
+    plt.plot( X, X, 'k--', label='1-1' )
+    plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False)
+    plt.ylabel(Ovcc); plt.xlabel(Oomic)
+
+    # show corellations for OMI - VCC
+    plt.subplot(224)
+    nans=np.isnan(vcc_l) + np.isnan(vcomi_l) + vcc_l.mask # all the nans we won't fit
+    plt.scatter(vcomi_o, vcc_o, color='blue', label="Ocean", alpha=0.4)
+    plt.scatter(vcomi_l, vcc_l, color='gold', label="Land")
+    m,x0,r,ci1,ci2 = RMA(vcomi_l[~nans],vcc_l[~nans])
+    X=np.array([1e10,5e16])
+    plt.plot( X, m*X+x0,color='fuchsia',
+            label='Land: m=%4.2f, r=%.2f'%(m,r))
+    plt.plot( X, X, 'k--', label='1-1' )
+    plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False)
+    plt.ylabel(Ovcc); plt.xlabel(Oomi)
+
+    # save plot
+    pname='Figs/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
+    f.suptitle("Product comparison for %s"%ymdstr,fontsize=28)
+    f.savefig(pname)
+    print("%s saved"%pname)
+    plt.close(f)
+    
 def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=False):
     '''
     Look closely at AMFs over Australia, specifically over land
@@ -681,15 +825,14 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     '''
     # useful strings
     ymdstr=day.strftime('%Y%m%d')
-    Ovcc='$\Omega_{OMI_{GCC}}$'
-    Oomic="$\Omega_{OMI_{RSC}}$"
-    Oomi="$\Omega_{OMI}$"
-
+    
     # read in omhchorp
     om=omrp(day,oneday=oneday)
     VCC=om.VCC
+    VCC_PP=om.VCC_PP
     VC_OMI_RSC=om.VC_OMI_RSC
     VC_OMI=om.VC_OMI
+    
     lats=om.latitude
     lons=om.longitude
     unc = om.col_uncertainty_OMI
@@ -706,15 +849,17 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     vcomi_l     = ma(VC_OMI,mask=~landinds)
     vcomic_l      = ma(VC_OMI_RSC,mask=~landinds)
     vcc_l       = ma(VCC,mask=~landinds)
+    vcc_pp_l    = ma(VCC_PP, mask=~landinds)
     vcomi_o     = ma(VC_OMI,mask=~oceaninds)
     vcomic_o      = ma(VC_OMI_RSC,mask=~oceaninds)
     vcc_o       = ma(VCC,mask=~oceaninds)
+    vcc_pp_o    = ma(VCC_PP, mask=~oceaninds)
     landunc     = ma(unc,mask=~landinds)
 
     # Print the land and ocean averages for each product
     print("%s land averages (oceans are global):"%(['Global','Australian'][aus_only]))
     print("%25s   land,   ocean"%'')
-    for arrl,arro,arrstr in zip([vcomi_l, vcomic_l, vcc_l],[vcomi_o,vcomic_o,vcc_o],['OMI','OMI_RSC','OMI_GCC']):
+    for arrl,arro,arrstr in zip([vcomi_l, vcomic_l, vcc_l, vcc_pp_l],[vcomi_o,vcomic_o,vcc_o, vcc_pp_o],['OMI','OMI_RSC','OMI_GCC', 'VCC_PP']):
         print("%21s: %5.3e,  %5.3e "%(arrstr, np.nanmean(arrl),np.nanmean(arro)))
 
     f=plt.figure(figsize=(14,10))

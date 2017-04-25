@@ -675,7 +675,7 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     plt.close()
     print(outfig+" Saved.")
 
-def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, aus_only=True):
+def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
     '''
     Look closely at AMFs over Australia, specifically over land
     and see how our values compare against the model and OMI swaths.and Paul Palmers code
@@ -691,7 +691,7 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, aus_only=True):
     unc = om.col_uncertainty_OMI
     mlons,mlats=np.meshgrid(lons,lats)
 
-    if aus_only:
+    if ausonly:
         # filter to just Australia rectangle [.,.,.,.]
         landinds=om.inds_aus(maskocean=True)
     else:
@@ -704,8 +704,9 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, aus_only=True):
     OMP_str = ['OMI_RSC','VCC', 'VCC_PP']
     OMP_col = ['k','r','m']
     for arr in [om.VC_OMI_RSC, om.VCC, om.VCC_PP]:
-        OMP_l.append(ma(arr), mask=~landinds)
-        OMP_o.append(ma(arr),  mask=~oceaninds)
+        print(arr.shape)
+        OMP_l.append(ma(arr, mask=~landinds))
+        OMP_o.append(ma(arr,  mask=~oceaninds))
 
     # Print the land and ocean averages for each product
     print("%s land averages (oceans are global):"%(['Global','Australian'][aus_only]))
@@ -731,14 +732,42 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, aus_only=True):
     plt.text(.05,.90, 'ocean count=%d'%np.sum(oceaninds),transform=ta)
     for ii in range (3):
         plt.text(.05,.85-0.05*ii, '%s mean(land)=%5.3e'%(OMP_str[ii],np.nanmean(OMP_l[ii])), transform=ta)
-    ausstr=['','_AUS'][aus_only]
+    ausstr=['','_AUS'][ausonly]
     eightstr=['_8day',''][oneday]
     pname='Figs/hist%s%s_%s.png'%(eightstr,ausstr,ymdstr)
     plt.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
+    
+    # show corellations for OMI_RSC- VCC
+    f=plt.figure(figsize=(18,7))
+    nans_l=True
+    nans_o=True
+    for ii in range(3):
+        nans_l=nans_l+np.isnan(OMP_l[ii]) + OMP_l[ii].mask # all the nans we won't fit
+        nans_o=nans_o+np.isnan(OMP_o[ii]) + OMP_o[ii].mask
+    
+    for ii in range(3):
+        plt.subplot(131+ii)
+        plt.scatter(OMP_o[ii], OMP_o[ii-1], color='blue', label="Ocean", alpha=0.4)
+        plt.scatter(OMP_l[ii], OMP_l[ii-1], color='gold', label="Land")
+        m,x0,r,ci1,ci2 = RMA(OMP_l[ii][~nans_l], OMP_l[ii-1][~nans_l])
+        X=np.array([1e10,5e16])
+        plt.plot( X, m*X+x0,color='fuchsia',
+            label='Land: m=%.5f, r=%.5f'%(m,r))
+        plt.plot( X, X, 'k--', label='1-1' )
+        plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False)
+        plt.ylabel(OMP_str[ii-1]); plt.xlabel(OMP_str[ii])
+    
+    # save plot
+    pname='Figs/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
+    f.suptitle("Product comparison for %s"%ymdstr,fontsize=28)
+    f.savefig(pname)
+    print("%s saved"%pname)
+    plt.close(f)
+    
 
-def CompareMaps(day=datetime(2005,1,1), oneday=False, aus_only=True):
+def CompareMaps(day=datetime(2005,1,1), oneday=False, ausonly=True):
     '''
     '''
     #useful strings
@@ -761,7 +790,7 @@ def CompareMaps(day=datetime(2005,1,1), oneday=False, aus_only=True):
     #
     f=plt.figure(figsize=(16,13))
     lllat=-65; urlat=65; lllon=-175; urlon=175
-    if aus_only:
+    if ausonly:
         lllat=-50; urlat=-5; lllon=100; urlon=170
     
     for ii, in range(3):
@@ -776,47 +805,17 @@ def CompareMaps(day=datetime(2005,1,1), oneday=False, aus_only=True):
         plt.subplot(234+ii)
         m,cs,cb = pp.linearmap(diff,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=-200,vmax=200)
         plt.title('(%s - %s)*100/%s'%(OMP_str[ii],OMP_str[ii-1],OMP_str[ii-1]),fontsize=20)
-
-def VCC_Correlations(day=datetime(2005,1,1), oneday=False, aus_only=True):
+    plt.suptitle("Maps of HCHO on %s"%ymdstr)
     
-    #useful strings
-    ymdstr=day.strftime('%Y%m%d')
-    
-    # read in omhchorp
-    om=omrp(day,oneday=oneday)
-    
-    # show corellations for OMI_RSC- VCC
-    nans=np.isnan(vcc_l) + np.isnan(vcomic_l) + vcomic_l.mask # all the nans we won't fit
-    plt.subplot(223)
-    plt.scatter(vcomic_o, vcc_o, color='blue', label="Ocean", alpha=0.4)
-    plt.scatter(vcomic_l, vcc_l, color='gold', label="Land")
-    m,x0,r,ci1,ci2 = RMA(VC_OMI_RSC[~nans], VCC[~nans])
-    X=np.array([1e10,5e16])
-    plt.plot( X, m*X+x0,color='fuchsia',
-            label='Land: m=%.5f, r=%.5f'%(m,r))
-    plt.plot( X, X, 'k--', label='1-1' )
-    plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False)
-    plt.ylabel(Ovcc); plt.xlabel(Oomic)
-
-    # show corellations for OMI - VCC
-    plt.subplot(224)
-    nans=np.isnan(vcc_l) + np.isnan(vcomi_l) + vcc_l.mask # all the nans we won't fit
-    plt.scatter(vcomi_o, vcc_o, color='blue', label="Ocean", alpha=0.4)
-    plt.scatter(vcomi_l, vcc_l, color='gold', label="Land")
-    m,x0,r,ci1,ci2 = RMA(vcomi_l[~nans],vcc_l[~nans])
-    X=np.array([1e10,5e16])
-    plt.plot( X, m*X+x0,color='fuchsia',
-            label='Land: m=%4.2f, r=%.2f'%(m,r))
-    plt.plot( X, X, 'k--', label='1-1' )
-    plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False)
-    plt.ylabel(Ovcc); plt.xlabel(Oomi)
-
-    # save plot
-    pname='Figs/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
-    f.suptitle("Product comparison for %s"%ymdstr,fontsize=28)
+    ausstr=['','_AUS'][ausonly]
+    eightstr=['_8day',''][oneday]
+    pname='Figs/maps%s%s_%s.png'%(eightstr,ausstr,ymdstr)
     f.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
+
+    
+    
     
 def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=False):
     '''
@@ -1545,7 +1544,7 @@ if __name__ == '__main__':
     
     # AMF tests and correlations
     #Check_OMI_AMF()
-    Check_AMF()
+    #Check_AMF()
     #Check_AMF_relevelling()
     #test_amf_calculation(scount=5)
     #for aus_only in [True, False]:
@@ -1561,6 +1560,8 @@ if __name__ == '__main__':
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
     dates=[ datetime(2005,1,1) ]
+    test_pp_against_mine(day=dates[0],oneday=True)
+    CompareMaps(day=dates[0],oneday=True,ausonly=True)
     #dates=[ ]
     #for oneday in [True, False]:
     #    Summary_RSC(oneday=oneday)

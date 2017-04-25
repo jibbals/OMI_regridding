@@ -458,13 +458,15 @@ def filter_high_latitudes(array, latres=0.25, lonres=0.3125, highest_lat=60.0):
     newarr[highlats, :] = np.NaN
     return (newarr)
 
-def read_AMF_full(date=datetime(2005,1,1),modelrun='troprun'):
+def read_AMF_pp(date=datetime(2005,1,1),troprun=True):
     '''
     Read AMF created by randal martin code for this day 
     along with pixel index for adding data to the good pixel list
     '''
     import os.path
-    fname='Data/rmamf/%s/amf_%s.csv'%(modelrun,date.strftime('%Y%m%d'))
+    runstr=['ucxrunpathgoeshere','tropchem_geos5_2x25_47L'][troprun]
+    #path="/Data/GC_Output/tropchem_geos5_2x25_47L/pp_amf/amf_20050101.csv"
+    fname='Data/GC_Output/%s/pp_amf/amf_%s.csv'%(runstr,date.strftime('%Y%m%d'))
     if not os.path.isfile(fname):
         return None,None
     inds=[]

@@ -709,7 +709,7 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
         OMP_o.append(ma(arr,  mask=~oceaninds))
 
     # Print the land and ocean averages for each product
-    print("%s land averages (oceans are global):"%(['Global','Australian'][aus_only]))
+    print("%s land averages (oceans are global):"%(['Global','Australian'][ausonly]))
     print("%25s   land,   ocean"%'')
     for arrl, arro, arrstr in zip(OMP_l,OMP_o,OMP_str):
         print("%21s: %5.3e,  %5.3e "%(arrstr, np.nanmean(arrl),np.nanmean(arro)))

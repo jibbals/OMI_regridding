@@ -51,7 +51,7 @@ def create_lat_lon_grid(latres=0.25,lonres=0.3125):
     return(lats,lons,lat_bounds,lon_bounds)
 
 
-def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=False, verbose=False):
+def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True, verbose=False):
     '''
     Create a long list of 'good' pixels
     Also calculate new AMF for each good pixel
@@ -84,7 +84,8 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=False, verbo
     vza=list()          # viewing zenith angle
     scan=list()         # row from swath
     ctp=list()          # cloud top pressure
-    AMFpp=list()      # AMFs calculated using lidort and randal martin code
+    AMFpp=list()        # AMFs calculated using lidort and randal martin code
+                        # Data/GC_Output/tropchem_geos5_2x25_47L/pp_amf
     
     # Stuff created using GEOS-Chem info
     sigmas=None
@@ -175,9 +176,9 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=False, verbo
     # If we want the PP list of AMFs
     AMFpp=np.zeros(len(lats))+np.NaN
     if PalmerAMF:
-        pp_inds, pp_amf = fio.read_AMF_full(date)
-        pp_inds=np.array(pp_inds); pp_amf=np.array(pp_amf)
+        pp_inds, pp_amf = fio.read_AMF_pp(date)
         if pp_inds is not None:
+            pp_inds=np.array(pp_inds); pp_amf=np.array(pp_amf)
             AMFpp[pp_inds]=pp_amf
     AMFpp=list(AMFpp)
     
@@ -341,10 +342,10 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     # Calculate VCs:
     omi_VC_gc   = omi_SC / omi_AMF_gc
     omi_VC_omi  = omi_SC / omi_AMF_omi
-    # omi_VC_rm   = omi_SC / omi_AMF_pp # just look at corrected for now...
+    # omi_VC_pp   = omi_SC / omi_AMF_pp # just look at corrected for now...
     # Calculate GC Ref corrected VC (called VCC by me)
     omi_VCC = np.zeros(omi_VC_gc.shape)+np.NaN
-    omi_VCC_rm=np.zeros(omi_VC_gc.shape)+np.NaN
+    omi_VCC_pp=np.zeros(omi_VC_gc.shape)+np.NaN
     # TODO: also here calculate the full VCC from RM code where the AMF exists
     
     for track in range(60):
@@ -356,7 +357,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
         track_rsc=rsc_function(omi_lats[track_inds],track)
         track_sc=omi_SC[track_inds]
         omi_VCC[track_inds]= (track_sc - track_rsc) / omi_AMF_gc[track_inds]
-        omi_VCC_rm[track_inds]=(track_sc - track_rsc) / omi_AMF_pp[track_inds]
+        omi_VCC_pp[track_inds]=(track_sc - track_rsc) / omi_AMF_pp[track_inds]
     # that should cover all good pixels - except if we had a completely bad track some day
     #assert np.sum(np.isnan(omi_VCC))==0, "VCC not created at every pixel!"
     if __VERBOSE__ and np.isnan(omi_VCC).any():
@@ -384,7 +385,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_omi  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VCC     = np.zeros([ny,nx],dtype=np.double)+np.NaN
-    VCC_rm  = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    VCC_pp  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     RSC_OMI = np.zeros([ny,nx],dtype=np.double)+np.NaN
     cunc_omi= np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_gc  = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -410,7 +411,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
             VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
             VC_omi[i,j]     = np.mean(omi_VC_omi[matches])
             VCC[i,j]        = np.mean(omi_VCC[matches])
-            VCC_rm[i,j]     = np.mean(omi_VCC_rm[matches])
+            VCC_pp[i,j]     = np.mean(omi_VCC_pp[matches])
             RSC_OMI[i,j]    = np.mean(omi_RSC[matches]) # the correction amount
             # TODO: store analysis data for saving, when we decide what we want analysed
             cunc_omi[i,j]   = np.mean(omi_cunc[matches])
@@ -426,7 +427,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     outd['VC_GC']               = VC_gc
     outd['SC']                  = SC
     outd['VCC']                 = VCC
-    outd['VCC_RM']              = VCC_rm
+    outd['VCC_PP']              = VCC_pp
     outd['VC_OMI_RSC']          = RSC_OMI # omi's RSC column amount
     outd['gridentries']         = counts
     outd['latitude']            = lats

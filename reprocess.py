@@ -51,7 +51,7 @@ def create_lat_lon_grid(latres=0.25,lonres=0.3125):
     return(lats,lons,lat_bounds,lon_bounds)
 
 
-def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
+def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=False, verbose=False):
     '''
     Create a long list of 'good' pixels
     Also calculate new AMF for each good pixel
@@ -84,7 +84,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
     vza=list()          # viewing zenith angle
     scan=list()         # row from swath
     ctp=list()          # cloud top pressure
-    AMFrm=list()      # AMFs calculated using lidort and randal martin code
+    AMFpp=list()      # AMFs calculated using lidort and randal martin code
     
     # Stuff created using GEOS-Chem info
     sigmas=None
@@ -172,19 +172,21 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, verbose=False):
             # AMF_GC does (using this one)
             # We can do some sort of test here if required.
     
-    AMFrm=np.zeros(len(lats))+np.NaN
-    rm_inds, rm_amf = fio.read_AMF_full(date)
-    rm_inds=np.array(rm_inds); rm_amf=np.array(rm_amf)
-    if rm_inds is not None:
-        AMFrm[rm_inds]=rm_amf
-    AMFrm=list(AMFrm)
+    # If we want the PP list of AMFs
+    AMFpp=np.zeros(len(lats))+np.NaN
+    if PalmerAMF:
+        pp_inds, pp_amf = fio.read_AMF_full(date)
+        pp_inds=np.array(pp_inds); pp_amf=np.array(pp_amf)
+        if pp_inds is not None:
+            AMFpp[pp_inds]=pp_amf
+    AMFpp=list(AMFpp)
     
     # after all the swaths are read in: send the lists back in a single
     # dictionary structure
     
     return({'lat':lats, 'lon':lons, 'SC':slants, 'rad_ref_col':ref_column,
             'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 'AMF_GCz':AMFgczs, 'AMF_G':AMFGs,
-            'RSC_OMI':RSC_OMI, 'AMF_RM':AMFrm,
+            'RSC_OMI':RSC_OMI, 'AMF_PP':AMFpp,
             'sza':sza, 'vza':vza, 'ctp':ctp,
             'cloudfrac':cloudfracs, 'track':track, 'scan':scan,
             'qualityflag':flags, 'xtrackflag':xflags,
@@ -303,7 +305,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     omi_AMF_gc=np.array(goodpixels['AMF_GC'])
     omi_AMF_gcz=np.array(goodpixels['AMF_GCz'])
     omi_AMF_omi=np.array(goodpixels['AMF_OMI'])
-    omi_AMF_rm=np.array(goodpixels['AMF_RM'])
+    omi_AMF_pp=np.array(goodpixels['AMF_PP'])
     omi_tracks=np.array(goodpixels['track'])
     omi_clouds=np.array(goodpixels['cloudfrac'])
     omi_cunc=np.array(goodpixels['columnuncertainty'])
@@ -339,7 +341,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     # Calculate VCs:
     omi_VC_gc   = omi_SC / omi_AMF_gc
     omi_VC_omi  = omi_SC / omi_AMF_omi
-    # omi_VC_rm   = omi_SC / omi_AMF_rm # just look at corrected for now...
+    # omi_VC_rm   = omi_SC / omi_AMF_pp # just look at corrected for now...
     # Calculate GC Ref corrected VC (called VCC by me)
     omi_VCC = np.zeros(omi_VC_gc.shape)+np.NaN
     omi_VCC_rm=np.zeros(omi_VC_gc.shape)+np.NaN
@@ -354,7 +356,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
         track_rsc=rsc_function(omi_lats[track_inds],track)
         track_sc=omi_SC[track_inds]
         omi_VCC[track_inds]= (track_sc - track_rsc) / omi_AMF_gc[track_inds]
-        omi_VCC_rm[track_inds]=(track_sc - track_rsc) / omi_AMF_rm[track_inds]
+        omi_VCC_rm[track_inds]=(track_sc - track_rsc) / omi_AMF_pp[track_inds]
     # that should cover all good pixels - except if we had a completely bad track some day
     #assert np.sum(np.isnan(omi_VCC))==0, "VCC not created at every pixel!"
     if __VERBOSE__ and np.isnan(omi_VCC).any():
@@ -388,7 +390,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     AMF_gc  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_gcz = np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_omi = np.zeros([ny,nx],dtype=np.double)+np.NaN
-    AMF_rm  = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    AMF_pp  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     counts  = np.zeros([ny,nx],dtype=np.int)
     for i in range(ny):
         for j in range(nx):
@@ -415,7 +417,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
             AMF_gc[i,j]     = np.mean(omi_AMF_gc[matches])
             AMF_gcz[i,j]    = np.mean(omi_AMF_gcz[matches])
             AMF_omi[i,j]    = np.mean(omi_AMF_omi[matches])
-            AMF_rm[i,j]     = np.mean(omi_AMF_rm[matches])
+            AMF_pp[i,j]     = np.mean(omi_AMF_pp[matches])
 
     ## 5)
     # Save one day averages to file
@@ -437,7 +439,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     outd['AMF_GC']              = AMF_gc
     outd['AMF_GCz']             = AMF_gcz
     outd['AMF_OMI']             = AMF_omi
-    outd['AMF_RM']              = AMF_rm
+    outd['AMF_PP']              = AMF_pp
     outd['fire_mask_16']        = fire_filter_16.astype(np.int16)
     outd['fire_mask_8']         = fire_filter_8.astype(np.int16)
     outd['fires']               = fire_count.astype(np.int16)

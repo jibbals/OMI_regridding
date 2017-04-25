@@ -32,7 +32,7 @@ def pixel_list_to_csv(date=datetime(2005,1,1),nesw=None):
     fname='Data/omhcho/%s_for_AMF.csv'%date.strftime('%Y-%m-%d')
     csv_params=['scan','track', 'lat', 'lon', 'sza','vza','cloudfrac','ctp' ]
     # list of good pixels
-    gp=reprocess.get_good_pixel_list(date)
+    gp=reprocess.get_good_pixel_list(date, PalmerAMF=False) # We are going to create the Palmer AMFs
     
     # cut the pixel list down to a desired region:
     lats=np.array(gp['lat'])

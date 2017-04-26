@@ -14,7 +14,7 @@ def main(argv):
     try:
         opts, args = getopt.getopt(argv,"hs:",["start="])
     except getopt.GetoptError:
-        print('python runreprocess.py -s <start date offset(multiple of 8, plus 1)>')
+        print('python3 runreprocess.py -s <start date offset(multiple of 8, plus 1)>')
         sys.exit(2)
     
     # handle each argument

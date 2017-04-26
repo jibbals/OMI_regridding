@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -P m19
-#PBS -q normal
+#PBS -q express
 #PBS -N ReprocessCorrected
 #PBS -l walltime=04:00:00
 #PBS -l mem=20000MB

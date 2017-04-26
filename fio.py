@@ -120,7 +120,7 @@ def read_8dayfire(date=datetime(2005,1,1,0)):
     # only every 8 days matches a file
     # this will give us a multiple of 8 which matches our DOY
     daymatch= int(np.floor(tt.tm_yday/8)*8) +1 
-    filepath='MYD14C8H/MYD14C8H.%4d%03d.h5' % (tt.tm_year, daymatch)
+    filepath='Data/MYD14C8H/MYD14C8H.%4d%03d.h5' % (tt.tm_year, daymatch)
     return read_8dayfire_path(filepath)
 
 def read_8dayfire_path(path):

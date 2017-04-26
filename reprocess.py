@@ -280,7 +280,7 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
     # ref_sec_correction [500, 60] is done
     return(ref_sec_correction, gc_VC_ref_func(ref_lat_mids))
 
-def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remove_fires=True, verbose=False):
+def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remove_fires=True, verbose=True):
     '''
     1) get good pixels list from OMI swath files
     2) determine reference sector correction
@@ -476,8 +476,8 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
     normallist=['latitude', 'longitude', 'RSC_latitude', 'RSC_region',
                 'fires', 'fire_mask_8', 'fire_mask_16']
     # list of things we need to add together and average
-    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
-             'VCC', 'col_uncertainty_OMI']
+    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'AMF_PP', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
+             'VCC', 'VCC_PP', 'col_uncertainty_OMI']
     # other things need to be handled seperately
     otherlist=['gridentries','RSC', 'RSC_GC']
 

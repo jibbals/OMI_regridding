@@ -72,20 +72,20 @@ def compare_products(date=datetime(2005,1,1), oneday=True, positiveonly=False,
 
     # Grab reprocessed OMI data
     om=omrp(date,oneday=oneday)
-    
+
     lons,lats =np.meshgrid(om.longitude,om.latitude)
     oceanmask=om.oceanmask  # true for ocean squares
     omi=om.VC_OMI
     vcc=om.VCC
     sgc='$\Omega_{OMIGCC}$'
     somi='$\Omega_{OMI}$'
-    
+
     # Plot
     # VC_omi, VC_rp
     # diffs, Corellations
 
     f = plt.figure(num=0,figsize=(16,18))
-    
+
     # Plot OMI, OMRP
     # set currently active axis from [2,2] axes array
     plt.subplot(221)
@@ -95,12 +95,12 @@ def compare_products(date=datetime(2005,1,1), oneday=True, positiveonly=False,
     m,cs,cb = pp.createmap(vcc,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     plt.title(sgc)
     #ax=plt.subplot(223)
-    #m,cs,cb = pp.linearmap(100.0*(omi-vcc)/omi, lats, lons, 
+    #m,cs,cb = pp.linearmap(100.0*(omi-vcc)/omi, lats, lons,
     #                       vmin=-120, vmax=120,
     #                       lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     #plt.title('100(%s-%s)/%s'%(somi,sgc,somi))
     plt.subplot(212)
-    if positiveonly: 
+    if positiveonly:
         omi[omi<0]=np.NaN
         vcc[vcc<0]=np.NaN
     pp.plot_corellation(omi, vcc, oceanmask=oceanmask,verbose=True)
@@ -137,13 +137,13 @@ def check_products(date=datetime(2005,1,1), oneday=True, pltname='',
     vcc=om.VCC
     sgc='$\Omega_{OMIGCC}$'
     somi='$\Omega_{OMI}$'
-    
+
     # Plot
     # VC_omi, VC_rp
     # diffs, Corellations
 
     plt.figure(num=0,figsize=(16,18))
-    
+
     pp.plot_corellation(omi, vcc, oceanmask=oceanmask, verbose=True, logscale=False, lims=[-1e16,1.01e17])
     plt.title('RMA corellation')
     plt.xlabel(somi)
@@ -157,7 +157,7 @@ def check_products(date=datetime(2005,1,1), oneday=True, pltname='',
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
-    
+
 def Test_Uncertainty(date=datetime(2005,1,1)):
     '''
         Effect on provided uncertainty with 8 day averaging
@@ -233,7 +233,7 @@ def look_at_swaths(date=datetime(2005,1,1), lllat=-80, lllon=-179, urlat=80, url
     omi_8=fio.read_omhcho_8days(date)
     omi_1=fio.read_omhcho_day(date)
     omi_s=fio.read_omhcho(fio.determine_filepath(date))
-    
+
     counts= omi_8['counts']
     print( "at most %d entries "%np.nanmax(counts) )
     print( "%d entries in total"%np.nansum(counts) )
@@ -320,7 +320,7 @@ def look_at_swaths(date=datetime(2005,1,1), lllat=-80, lllon=-179, urlat=80, url
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
-    
+
 def Check_AMF_relevelling():
     '''
     Create a few example arrays and relevel the pressures and see what happens
@@ -427,7 +427,7 @@ def Check_AMF():
     pname='Figs/Compare_AMFs.png'
     plt.savefig(pname)
     print('saved %s'%pname)
-    
+
 def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     '''
     Print and plot a summary of the effect of our remote sector correction
@@ -577,7 +577,7 @@ def check_timeline():
     '''
     '''
     print("Check Timeline test to be implemented")
-    
+
 def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, lllon=-179, urlat=80, urlon=179,pltname=""):
     '''
     Test a day or 8-day reprocessed HCHO map
@@ -682,10 +682,14 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
     '''
     # useful strings
     ymdstr=day.strftime('%Y%m%d')
-    
+
     # read in omhchorp
     om=omrp(day,oneday=oneday)
-    
+
+    print("AMF mean   : %7.4f, std: %7.4f"%(np.nanmean(om.AMF_OMI),np.nanstd(om.AMF_OMI)))
+    print("AMF_GC mean: %7.4f, std: %7.4f"%(np.nanmean(om.AMF_GC),np.nanstd(om.AMF_GC)))
+    print("AMF_PP mean: %7.4f, std: %7.4f"%(np.nanmean(om.AMF_PP),np.nanstd(om.AMF_PP)))
+
     lats=om.latitude
     lons=om.longitude
     unc = om.col_uncertainty_OMI
@@ -720,12 +724,12 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
     print("%25s   land,   ocean"%'')
     for arrl, arro, arrstr in zip(OMP_l,OMP_o,OMP_str):
         print("%21s: %5.3e,  %5.3e "%(arrstr, np.nanmean(arrl),np.nanmean(arro)))
-    
+
     # Plot the histogram of VC entries land and sea
     f=plt.figure(figsize=(14,10))
     #land_data=np.transpose([OMP_l[ii][landinds] for ii in range(3)])
     #ocean_data=np.transpose([OMP_o[ii][oceaninds] for ii in range(3)])
-    
+
     olabel=['ocean '+thing for thing in OMP_str]
     llabel=['land ' +thing for thing in OMP_str]
     print(np.shape(land_data),np.shape(land_data[0]))
@@ -747,15 +751,17 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
     plt.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
-    
+
     # show corellations for OMI_RSC- VCC
     f=plt.figure(figsize=(18,7))
-    nans_l=True
-    nans_o=True
+    nans_l=np.isnan(OMP_l[0])
+    nans_o=np.isnan(OMP_o[0])
     for ii in range(3):
         nans_l=nans_l+np.isnan(OMP_l[ii]) + OMP_l[ii].mask # all the nans we won't fit
         nans_o=nans_o+np.isnan(OMP_o[ii]) + OMP_o[ii].mask
-    
+    print( "nans_l")
+    print(np.shape(nans_l))
+    print("%d nans in land data "%np.sum(nans_l))
     for ii in range(3):
         plt.subplot(131+ii)
         plt.scatter(OMP_o[ii], OMP_o[ii-1], color='blue', label="Ocean", alpha=0.4)
@@ -767,55 +773,55 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
         plt.plot( X, X, 'k--', label='1-1' )
         plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False)
         plt.ylabel(OMP_str[ii-1]); plt.xlabel(OMP_str[ii])
-    
+
     # save plot
     pname='Figs/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
     f.suptitle("Product comparison for %s"%ymdstr,fontsize=28)
     f.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
-    
+
 
 def CompareMaps(day=datetime(2005,1,1), oneday=False, ausonly=True):
     '''
     '''
     #useful strings
     ymdstr=day.strftime('%Y%m%d')
-    
+
     # read in omhchorp
     om=omrp(day,oneday=oneday)
-    
+
     lats=om.latitude
     lons=om.longitude
     unc = om.col_uncertainty_OMI
     mlons,mlats=np.meshgrid(lons,lats)
-    
+
     # the datasets with nans and land or ocean masked
     OMP = [om.VC_OMI_RSC, om.VCC, om.VCC_PP] # OMI, My, Paul palmer
     OMP_str = ['OMI_RSC','VCC', 'VCC_PP']
     OMP_col = ['k','r','m']
-    
+
     # Plot the maps:
     #
     f=plt.figure(figsize=(16,13))
     lllat=-65; urlat=65; lllon=-175; urlon=175
     if ausonly:
         lllat=-50; urlat=-5; lllon=100; urlon=170
-    
+
     for ii in range(3):
         arr=OMP[ii]
         # Maps
         plt.subplot(231+ii)
         m,cs,cb = pp.createmap(OMP[ii],mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
         plt.title(OMP_str[ii],fontsize=20)
-        
+
         # Difference maps
         diff=(OMP[ii]-OMP[ii-1]) * 100.0 / OMP[ii-1]
         plt.subplot(234+ii)
         m,cs,cb = pp.linearmap(diff,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=-200,vmax=200)
         plt.title('(%s - %s)*100/%s'%(OMP_str[ii],OMP_str[ii-1],OMP_str[ii-1]),fontsize=20)
     plt.suptitle("Maps of HCHO on %s"%ymdstr)
-    
+
     ausstr=['','_AUS'][ausonly]
     eightstr=['_8day',''][oneday]
     pname='Figs/maps%s%s_%s.png'%(eightstr,ausstr,ymdstr)
@@ -823,9 +829,9 @@ def CompareMaps(day=datetime(2005,1,1), oneday=False, ausonly=True):
     print("%s saved"%pname)
     plt.close(f)
 
-    
-    
-    
+
+
+
 def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=False):
     '''
     Look closely at AMFs over Australia, specifically over land
@@ -833,14 +839,14 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     '''
     # useful strings
     ymdstr=day.strftime('%Y%m%d')
-    
+
     # read in omhchorp
     om=omrp(day,oneday=oneday)
     VCC=om.VCC
     VCC_PP=om.VCC_PP
     VC_OMI_RSC=om.VC_OMI_RSC
     VC_OMI=om.VC_OMI
-    
+
     lats=om.latitude
     lons=om.longitude
     unc = om.col_uncertainty_OMI
@@ -1550,7 +1556,7 @@ if __name__ == '__main__':
     print("Running tests.py")
     pp.InitMatplotlib()
     #Summary_Single_Profile()
-    
+
     # AMF tests and correlations
     #Check_OMI_AMF()
     #Check_AMF()
@@ -1569,10 +1575,9 @@ if __name__ == '__main__':
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
     dates=[ datetime(2005,1,1) ]
-    test_pp_against_mine(day=dates[0],oneday=True)
-    CompareMaps(day=dates[0],oneday=True,ausonly=True)
     #dates=[ ]
-    #for oneday in [True, False]:
+    test_pp_against_mine(day=dates[0],oneday=False, ausonly=False)
+    CompareMaps(day=dates[0],oneday=oneday,ausonly=False)
     #    Summary_RSC(oneday=oneday)
     #for day in dates:
         #test_reprocess_corrected(date=day, oneday=oneday)

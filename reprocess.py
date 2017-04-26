@@ -86,7 +86,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True, verbos
     ctp=list()          # cloud top pressure
     AMFpp=list()        # AMFs calculated using lidort and randal martin code
                         # Data/GC_Output/tropchem_geos5_2x25_47L/pp_amf
-    
+
     # Stuff created using GEOS-Chem info
     sigmas=None
     AMFgcs=list()       # AMFs using S_s
@@ -95,11 +95,11 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True, verbos
     ## grab our GEOS-Chem apriori info (dimension: [ levs, lats, lons ])
     gchcho = fio.read_gchcho(date)
     # GCHCHO UNITS ARE GENERALLY m AND hPa
-    
+
     ## 1) read in the good pixels for a particular date,
     ##  create and store the GEOS-Chem AMF along with the SC
     #
-    
+
     # loop through swaths
     files = fio.determine_filepath(date)
     for ff in files:
@@ -128,7 +128,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True, verbos
         swathscan=goodwhere[0]
         track.extend(list(swathtrack))
         scan.extend(list(swathscan))
-        
+
         # so each pixel has it's tracks radiance reference sector correction:
         ref_column.extend(list(f_ref_col[swathtrack]))
 
@@ -172,7 +172,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True, verbos
             # AMF_GCz does not relevel to the highest surface pressure between pixel and gridbox
             # AMF_GC does (using this one)
             # We can do some sort of test here if required.
-    
+
     # If we want the PP list of AMFs
     AMFpp=np.zeros(len(lats))+np.NaN
     if PalmerAMF:
@@ -181,10 +181,10 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True, verbos
             pp_inds=np.array(pp_inds); pp_amf=np.array(pp_amf)
             AMFpp[pp_inds]=pp_amf
     AMFpp=list(AMFpp)
-    
+
     # after all the swaths are read in: send the lists back in a single
     # dictionary structure
-    
+
     return({'lat':lats, 'lon':lons, 'SC':slants, 'rad_ref_col':ref_column,
             'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 'AMF_GCz':AMFgczs, 'AMF_G':AMFGs,
             'RSC_OMI':RSC_OMI, 'AMF_PP':AMFpp,
@@ -347,7 +347,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     omi_VCC = np.zeros(omi_VC_gc.shape)+np.NaN
     omi_VCC_pp=np.zeros(omi_VC_gc.shape)+np.NaN
     # TODO: also here calculate the full VCC from RM code where the AMF exists
-    
+
     for track in range(60):
         track_inds= omi_tracks==track
         # for each track VCC = (SC - correction) / AMF_GC
@@ -363,7 +363,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     if __VERBOSE__ and np.isnan(omi_VCC).any():
         vccnans=np.sum(np.isnan(omi_VCC))
         print ("Warning %d nan vcc entries from %d on %s"%(vccnans, len(omi_VCC),ymdstr))
-    
+
     ## 4)
     # take list and turn into gridded product...
     # majority of processing time in here ( 75 minutes? )
@@ -379,7 +379,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     fire_count, _flats, _flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
     fire_filter_16 = get_16day_fires_mask(date,latres=latres,lonres=lonres)
     fire_filter_8  = get_8day_fires_mask(date,latres=latres,lonres=lonres)
-    
+
     ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -393,6 +393,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     AMF_omi = np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_pp  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     counts  = np.zeros([ny,nx],dtype=np.int)
+    countspp  = np.zeros([ny,nx],dtype=np.int)
     for i in range(ny):
         for j in range(nx):
 
@@ -405,6 +406,8 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
             counts[i,j]= np.sum(matches)
             if counts[i,j] < 1:
                 continue
+            #Different count for PP entries
+            countspp[i,j]= np.sum(~np.isnan(omi_VCC_pp[matches]))
 
             # Save the means of each good grid pixel
             SC[i,j]         = np.mean(omi_SC[matches])
@@ -430,6 +433,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     outd['VCC_PP']              = VCC_pp
     outd['VC_OMI_RSC']          = RSC_OMI # omi's RSC column amount
     outd['gridentries']         = counts
+    outd['ppentries']           = countspp
     outd['latitude']            = lats
     outd['longitude']           = lons
     outd['RSC']                 = ref_sec_correction
@@ -476,10 +480,10 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
     normallist=['latitude', 'longitude', 'RSC_latitude', 'RSC_region',
                 'fires', 'fire_mask_8', 'fire_mask_16']
     # list of things we need to add together and average
-    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'AMF_PP', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
-             'VCC', 'VCC_PP', 'col_uncertainty_OMI']
+    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
+             'VCC', 'col_uncertainty_OMI']
     # other things need to be handled seperately
-    otherlist=['gridentries','RSC', 'RSC_GC']
+    otherlist=['gridentries','RSC', 'RSC_GC','ppentries','AMF_PP','VCC_PP']
 
     # keylist is all keys
     keylist=sumlist.copy()
@@ -502,9 +506,15 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
     for day in days8[1:]:
         data=fio.read_omhchorp(day,latres=latres,lonres=lonres,oneday=True)
         daycount=data['gridentries']
+        daycountpp=data['ppentries']
         sumdict['gridentries'] = addArraysWithNans(sumdict['gridentries'], daycount)
+        sumdict['ppentries'] = addArraysWithNans(sumdict['ppentries'], daycountpp)
         sumdict['RSC'] = addArraysWithNans(sumdict['RSC'], data['RSC'])
         sumdict['RSC_GC'] = sumdict['RSC_GC'] + data['RSC_GC']
+
+        for ppkey in ['AMF_PP','VCC_PP']:
+            y=data[ppkey].astype(np.float64) * daycountpp
+            sumdict[ppkey] = addArraysWithNans(sumdict[ppkey],y)
 
         # for each averaged amount we want to sum together the totals
         for key in sumlist:
@@ -516,13 +526,17 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
     # take the average and save out to netcdf
     avgdict=dict()
     counts=sumdict['gridentries']
+    countspp=sumdict['ppentries']
     for key in sumlist:
         avgdict[key]= sumdict[key] / counts.astype(float)
     for key in normallist:
         avgdict[key]= sumdict[key]
     avgdict['gridentries']=counts.astype(int)
+    avgdict['ppentries']=countspp.astype(int)
     avgdict['RSC']=sumdict['RSC']/8.0
     avgdict['RSC_GC']=sumdict['RSC_GC']/8.0
+    avgdict['AMF_PP']=sumdict['AMF_PP']/countspp.astype(float)
+    avgdict['VCC_PP']=sumdict['VCC_PP']/countspp.astype(float)
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,oneday=False,reprocessed=True)
     fio.save_to_hdf5(outfilename, avgdict)
     print("File Saved: "+outfilename)

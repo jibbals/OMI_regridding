@@ -17,7 +17,6 @@ import plotting
 
 # maths and plotting tihngs
 import numpy as np
-from mpl_
 from datetime import datetime
 
 ##############################
@@ -37,10 +36,11 @@ def test_omhcho():
     entries=np.cumprod(np.shape(h))[-1]
     print('%d entries in first swath'% entries)
     print("%d good entries in first swath"%np.sum(~np.isnan(omhcho['HCHO'])))
-    
+
 def plot_swaths(day):
     '''  Plot a swath/day/8day picture '''
-    
+
+
 
 ##############################
 ########## IF CALLED #########

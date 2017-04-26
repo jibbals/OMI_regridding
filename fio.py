@@ -31,7 +31,7 @@ geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
 # keylist for omhchorp datafiles
 _omhchorp_keylist=['AMF_GC', 'AMF_GCz', 'AMF_OMI','AMF_PP', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
-                   'VCC', 'VCC_PP', 'gridentries', 'latitude', 'longitude', 'RSC',
+                   'VCC', 'VCC_PP', 'gridentries', 'ppentries', 'latitude', 'longitude', 'RSC',
                    'RSC_latitude', 'RSC_GC', 'RSC_region', 'col_uncertainty_OMI',
                    'fires', 'fire_mask_8', 'fire_mask_16']
 

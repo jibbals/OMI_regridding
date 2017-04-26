@@ -703,10 +703,17 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
     OMP_o = [] # OMI, My, Paul palmer
     OMP_str = ['OMI_RSC','VCC', 'VCC_PP']
     OMP_col = ['k','r','m']
+    land_data=[]
+    ocean_data=[]
     for arr in [om.VC_OMI_RSC, om.VCC, om.VCC_PP]:
         print(arr.shape)
+        alsonans=np.isnan(arr)
         OMP_l.append(ma(arr, mask=~landinds))
         OMP_o.append(ma(arr,  mask=~oceaninds))
+        land_data.append(arr[landinds* ~alsonans ])
+        ocean_data.append(arr[oceaninds* ~alsonans])
+    #ocean_data=np.transpose(ocean_data)
+    #land_data=np.transpose(land_data)
 
     # Print the land and ocean averages for each product
     print("%s land averages (oceans are global):"%(['Global','Australian'][ausonly]))
@@ -716,10 +723,12 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
     
     # Plot the histogram of VC entries land and sea
     f=plt.figure(figsize=(14,10))
-    land_data=np.transpose([OMP_l[ii][landinds] for ii in range(3)])
-    ocean_data=np.transpose([OMP_o[ii][oceaninds] for ii in range(3)])
+    #land_data=np.transpose([OMP_l[ii][landinds] for ii in range(3)])
+    #ocean_data=np.transpose([OMP_o[ii][oceaninds] for ii in range(3)])
+    
     olabel=['ocean '+thing for thing in OMP_str]
     llabel=['land ' +thing for thing in OMP_str]
+    print(np.shape(land_data),np.shape(land_data[0]))
     plt.hist(ocean_data, bins=np.logspace(13, 17, 20), color=['k','darkblue','lightblue'], label=olabel)
     plt.hist(land_data, bins=np.logspace(13, 17, 20), color=['grey','orange','yellow'], label=llabel)
     plt.xscale("log")
@@ -793,7 +802,7 @@ def CompareMaps(day=datetime(2005,1,1), oneday=False, ausonly=True):
     if ausonly:
         lllat=-50; urlat=-5; lllon=100; urlon=170
     
-    for ii, in range(3):
+    for ii in range(3):
         arr=OMP[ii]
         # Maps
         plt.subplot(231+ii)

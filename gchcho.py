@@ -61,14 +61,18 @@ class gchcho:
     Units will be in molecules, metres, hPa
     '''
     date = 0
+    
     # total columns     (molecules/m2)
     VC_HCHO = 0 #[91, 144]
+    
     # density profiles  (molecules/m3)
     N_HCHO = 0
     N_Air = 0
+    
     # Shape factors ( Palmer 01 )
     Shape_z = 0 #(1/m) [72, 91, 144]
     Shape_s = 0 # [72, 91, 144]
+    
     # dimensions
     pmids = 0   # (hPa)
     pedges = 0  # (hPa)

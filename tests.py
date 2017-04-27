@@ -62,6 +62,50 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
+def compare_GC_OMI_new(date=datetime(2005,1,1),aus=True):
+    '''
+    '''
+    vmin=1e14; vmax=1e17
+    lllat=-75; urlat=75; lllon=-170; urlon=170
+    austr=''
+    dstr=date.strftime("%Y%m%d")
+    if aus:
+        lllat=-45; urlat=-8; lllon=108; urlon=156
+        austr='AUS_'
+    
+    f=plt.figure(figsize=[13,13])
+    # Figure of OMIcc, VCC, GC, diffs
+    plt.subplot(223)
+    gc=fio.read_gchcho(date)
+    m,cs,cb=gc.PlotVC(lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=vmin, vmax=vmax, cm2=True)
+    #pname="Figs/map_%sGC_%s.png"%(austr,dstr)
+    plt.title(Ogc)
+    
+    om=omrp(date)
+    lats=om.latitude
+    lons=om.longitude
+    VCC_OMI=om.VC_OMI_RSC
+    VCC=om.VCC
+    # plot the regridded OMI and reprocessed maps:
+    for arr,arrstr,i in zip([VCC_OMI,VCC],[Oomi,Ogc],range(2)):
+        plt.subplot(221+i)
+        pp.createmap(arr,lats,lons, vmin=vmin, vmax=vmax, latlon=True,
+              lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, colorbar=False)
+        plt.title(arrstr)
+    
+    # relative differences
+    #plt.subplot(224)
+    #diffs=100.0*(VCC - VCC_OMI) / VCC_OMI
+    #pp.linearmap(diffs,lats,lons,vmin=vmin,vmax=vmax,latlon=True,
+    #          lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
+    #plt.title("%s vs %s relative difference"%(Ogc,Oomi))
+    
+    pname="Figs/map_GOM_%s%s.png"%(austr,dstr)
+    plt.savefig(pname)
+    print("%s saved"%pname)
+    plt.close()
+    
+
 def compare_products(date=datetime(2005,1,1), oneday=True, positiveonly=False,
                      lllat=-60, lllon=-179, urlat=50, urlon=179,pltname=""):
     '''
@@ -1569,7 +1613,7 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     pp.InitMatplotlib()
-    Summary_Single_Profile()
+    #Summary_Single_Profile()
 
     # AMF tests and correlations
     #Check_OMI_AMF()
@@ -1579,7 +1623,9 @@ if __name__ == '__main__':
     #for aus_only in [True, False]:
     #    test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=aus_only)
     #Test_Uncertainty()
-
+    
+    compare_GC_OMI_new()
+    
     # fires things
     #test_fires_fio()
     #test_fires_removed()
@@ -1592,15 +1638,8 @@ if __name__ == '__main__':
     #check_products(date=dates[0],oneday=False)
     #Summary_RSC(date=dates[0], oneday=False)
     #dates=[ ]
-<<<<<<< HEAD
-    test_pp_against_mine(day=dates[0],oneday=False, ausonly=False)
-    #CompareMaps(day=dates[0],oneday=False,ausonly=False)
-
-=======
     #test_pp_against_mine(day=dates[0],oneday=False, ausonly=False)
     #CompareMaps(day=dates[0],oneday=False,ausonly=False)
-    #Summary_RSC(oneday=False)
->>>>>>> 12a65868117c7bb2f4d88c64cedc557993f9f1c2
     #for day in dates:
         #test_reprocess_corrected(date=day, oneday=oneday)
         #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")

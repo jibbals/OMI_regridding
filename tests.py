@@ -444,7 +444,7 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     lats,lons=dat.latitude,dat.longitude
     # read geos chem data
     gcdat=fio.read_gchcho(date)
-    gchcho=gcdat.VC_HCHO*1e-4
+    gchcho=gcdat.VC_HCHO*1e-4 # molec/m2 -> molec/cm2
     gclats,gclons=gcdat.lats,gcdat.lons
     # plot 1) showing VCs before and after correction
     vmin,vmax=1e14,1e17
@@ -459,7 +459,11 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
         plt.title([Ovc,Ovcc][i],fontsize=25)
         m.drawparallels([-40,0,40],labels=[1-i,0,0,0],linewidth=1.0)
 
-
+    # print some stats of changes
+    diffs=dat.VCC-dat.VC_GC
+    print ("Mean difference VC - VCC:%7.5e "%np.nanmean(diffs))
+    print ("std VC - VCC:%7.5e "%np.nanstd(diffs))
+    
     # plot c) RSC by sensor and latitude
     plt.subplot2grid((2, 6), (1, 0), colspan=2)
     cp=plt.contourf(np.arange(1,60.1,1),dat.RSC_latitude,dat.RSC)
@@ -511,10 +515,11 @@ def Summary_Single_Profile():
 
     # Read OMHCHO data ( using reprocess get_good_pixels function )
     pixels=reprocess.get_good_pixel_list(day, getExtras=True)
+    
     #N = len(pixels['lat']) # how many pixels do we have
-
     #i=random.sample(range(N),1)[0]
-    i=350923
+    #print(i)
+    i=153375
     lat,lon=pixels['lat'][i],pixels['lon'][i]
     omega=pixels['omega'][:,i]
     AMF_G=pixels['AMF_G'][i]
@@ -522,8 +527,10 @@ def Summary_Single_Profile():
     w_pmids=pixels['omega_pmids'][:,i]
     apri=pixels['apriori'][:,i]
     SC=pixels['SC'][i]
-
-
+    AMF_GC=pixels['AMF_GC'][i]
+    VC_GC=SC/AMF_GC
+    VC_OMI=SC/AMF_OMI
+    
     # read gchcho
     #lat,lon=0,0
     gchcho = fio.read_gchcho(day)
@@ -557,16 +564,17 @@ def Summary_Single_Profile():
     omlat,omlon=om.latitude, om.longitude
     omlati,omloni= (np.abs(omlat-lat)).argmin(),(np.abs(omlon-lon)).argmin()
     vcc=om.VCC[omlati,omloni]
-
     ta=plt.gca().transAxes
-    fs=32
+    fs=30
+    
     plt.text(.3,.95, 'AMF$_{OMI}$=%5.2f'%AMF_OMI,transform=ta, fontsize=fs)
     plt.text(.3,.86, 'AMF$_{GC}$=%5.2f'%AMFS,transform=ta, fontsize=fs)
-    plt.text(.3,.77, '$\Omega_{OMI}$=%4.2e'%(SC/AMF_OMI),transform=ta, fontsize=fs)
-    plt.text(.3,.68, '$\Omega_{VCC}$=%4.2e'%vcc,transform=ta, fontsize=fs)
-    plt.text(.3,.48, 'Old',color='k',transform=ta, fontsize=fs)
-    plt.text(.3,.41, 'New',color='r',transform=ta, fontsize=fs)
-    plt.text(.3,.34, '$\omega$',color='fuchsia',transform=ta, fontsize=fs)
+    plt.text(.3,.77, '$\Omega_{OMI}$=%4.2e'%VC_OMI,transform=ta, fontsize=fs)
+    plt.text(.3,.68, '$\Omega_{GC}$=%4.2e'%VC_GC, transform=ta, fontsize=fs)
+    plt.text(.3,.60, '$\Omega_{GCC}$=%4.2e'%vcc, transform=ta, fontsize=fs)
+    plt.text(.3,.47, 'OMI a priori',color='k',transform=ta, fontsize=27)
+    plt.text(.3,.41, 'GC a priori',color='r',transform=ta, fontsize=27)
+    plt.text(.3,.35, '$Scattering Weights$',color='fuchsia',transform=ta, fontsize=27)
 
     fname='Figs/SummarySinglePixel.png'
     f.savefig(fname)
@@ -1555,7 +1563,7 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     pp.InitMatplotlib()
-    #Summary_Single_Profile()
+    Summary_Single_Profile()
 
     # AMF tests and correlations
     #Check_OMI_AMF()
@@ -1576,9 +1584,9 @@ if __name__ == '__main__':
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
     dates=[ datetime(2005,1,1) ]
     #dates=[ ]
-    test_pp_against_mine(day=dates[0],oneday=False, ausonly=False)
-    CompareMaps(day=dates[0],oneday=oneday,ausonly=False)
-    #    Summary_RSC(oneday=oneday)
+    #test_pp_against_mine(day=dates[0],oneday=False, ausonly=False)
+    #CompareMaps(day=dates[0],oneday=False,ausonly=False)
+    #Summary_RSC(oneday=False)
     #for day in dates:
         #test_reprocess_corrected(date=day, oneday=oneday)
         #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")

@@ -116,14 +116,14 @@ def plot_rec(bmap, inlimits, color=None, linewidth=None):
     x,y=bmap(xs,ys)
     bmap.plot(x, y, latlon=False, color=color, linewidth=linewidth)
 
-def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True, 
+def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True,
                      colour='k',linecolour='r', diag=True, oceanmask=None,
                      verbose=False):
     X=np.array(X)
     Y=np.array(Y)
     nans=np.isnan(X) + np.isnan(Y)
     lims0=np.array(lims); lims=np.array(lims)
-    
+
     if oceanmask is None:
         plt.scatter(X[~nans], Y[~nans])
         m,b,r,CI1,CI2=RMA(X[~nans], Y[~nans]) # get regression
@@ -135,7 +135,7 @@ def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True,
         # first scatter plot everything not oceanic
         plt.scatter(X[omask], Y[omask], color='blue', alpha=0.4)#, label="Ocean" )
         plt.scatter(X[lmask], Y[lmask], color='gold')#, label="Land")
-        
+
         # Line of best fit and RMA regression:
         lm,lx0,lr,lci1,lci2 = RMA(X[lmask], Y[lmask])
         m,x0,r,ci1,ci2 = RMA(X[omask], Y[omask])
@@ -144,24 +144,24 @@ def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True,
             lims[0] = -x0/m + 100
         if (lm*lims[0] + lx0 < 0) and logscale:
             lims[0] = -lx0/lm + 100
-        
+
         #plot lobf and label
         plt.plot( lims, lm*lims+lx0, color='k', linewidth=2,
                 label='Land: Y = %.5fX + %.2e; r=%.5f'%(lm,lx0,lr))
         plt.plot( lims, m*lims+x0, color='blue',
                 label='Ocean: Y = %.5fX + %.2e, r=%.5f'%(m,x0,r))
-         
+
     if verbose:
         print('Land: Y = %.5fX + %.2e; r=%.5f'%(lm,lx0,lr))
-        print('with CI ranges of slope %2.5f, %2.5f'%(lci1[0][1]-lci1[0][0],lci2[0][1]-lci2[0][0]))
-        print('with CI ranges of intercept %1.5e, %1.5e'%(lci1[1][1]-lci1[1][0],lci2[1][1]-lci2[1][0]))
+        print('with CI ranges of slope %2.5f, %2.5f'%(lci1[0][0],lci1[0][1]))
+        print('with CI ranges of intercept %1.5e, %1.5e'%(lci1[1][0],lci1[1][1]))
         print('min, max land X: %.3e,%.3e'%(np.min(X[lmask]),np.max(X[lmask])) )
         print('min, max land Y: %.3e,%.3e'%(np.min(Y[lmask]),np.max(Y[lmask])) )
-        
-    if legend: 
+
+    if legend:
         plt.legend(loc=2,scatterpoints=1, fontsize=22,frameon=False)
     if logscale:
         plt.yscale('log'); plt.xscale('log')
     plt.ylim(lims0); plt.xlim(lims0)
-    if diag: 
+    if diag:
         plt.plot(lims0,lims0,'--',color=colour,label='1-1') # plot the 1-1 line for comparison

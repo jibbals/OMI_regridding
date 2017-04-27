@@ -142,16 +142,16 @@ def check_products(date=datetime(2005,1,1), oneday=True, pltname='',
     # VC_omi, VC_rp
     # diffs, Corellations
 
-    plt.figure(num=0,figsize=(16,18))
+    plt.figure(num=0,figsize=(14,12))
 
     pp.plot_corellation(omi, vcc, oceanmask=oceanmask, verbose=True, logscale=False, lims=[-1e16,1.01e17])
-    plt.title('RMA corellation')
     plt.xlabel(somi)
     plt.ylabel(sgc)
+    #plt.tick_params(axis='both', which='major', labelsize=24)
 
     # save plot
     yyyymmdd = date.strftime("%Y%m%d")
-    plt.title(yyyymmdd, fontsize=30)
+    plt.title('RMA corellation %s'%yyyymmdd)#, fontsize=30)
     onedaystr= [ 'eight_day_','one_day_' ][oneday]
     outfig="Figs/%sregress%s%s.png"%(onedaystr, yyyymmdd, pltname)
     plt.savefig(outfig)
@@ -557,12 +557,12 @@ def Summary_Single_Profile():
     omlat,omlon=om.latitude, om.longitude
     omlati,omloni= (np.abs(omlat-lat)).argmin(),(np.abs(omlon-lon)).argmin()
     vcc=om.VCC[omlati,omloni]
-
+    vcc_omi=om.VC_OMI_RSC[omlati,omloni]
     ta=plt.gca().transAxes
     fs=32
     plt.text(.3,.95, 'AMF$_{OMI}$=%5.2f'%AMF_OMI,transform=ta, fontsize=fs)
     plt.text(.3,.86, 'AMF$_{GC}$=%5.2f'%AMFS,transform=ta, fontsize=fs)
-    plt.text(.3,.77, '$\Omega_{OMI}$=%4.2e'%(SC/AMF_OMI),transform=ta, fontsize=fs)
+    plt.text(.3,.77, '$\Omega_{OMI}$=%4.2e'%(vcc_omi),transform=ta, fontsize=fs)
     plt.text(.3,.68, '$\Omega_{VCC}$=%4.2e'%vcc,transform=ta, fontsize=fs)
     plt.text(.3,.48, 'Old',color='k',transform=ta, fontsize=fs)
     plt.text(.3,.41, 'New',color='r',transform=ta, fontsize=fs)
@@ -754,6 +754,7 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
 
     # show corellations for OMI_RSC- VCC
     f=plt.figure(figsize=(18,7))
+
     nans_l=np.isnan(OMP_l[0])
     nans_o=np.isnan(OMP_o[0])
     for ii in range(3):
@@ -764,6 +765,7 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
     print("%d nans in land data "%np.sum(nans_l))
     for ii in range(3):
         plt.subplot(131+ii)
+        # pp.plot_corellation()
         plt.scatter(OMP_o[ii], OMP_o[ii-1], color='blue', label="Ocean", alpha=0.4)
         plt.scatter(OMP_l[ii], OMP_l[ii-1], color='gold', label="Land")
         m,x0,r,ci1,ci2 = RMA(OMP_l[ii][~nans_l], OMP_l[ii-1][~nans_l])
@@ -782,7 +784,7 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
     plt.close(f)
 
 
-def CompareMaps(day=datetime(2005,1,1), oneday=False, ausonly=True):
+def CompareMaps(day=datetime(2005,1,1), oneday=False, ausonly=True, PP=False):
     '''
     '''
     #useful strings
@@ -797,9 +799,11 @@ def CompareMaps(day=datetime(2005,1,1), oneday=False, ausonly=True):
     mlons,mlats=np.meshgrid(lons,lats)
 
     # the datasets with nans and land or ocean masked
-    OMP = [om.VC_OMI_RSC, om.VCC, om.VCC_PP] # OMI, My, Paul palmer
-    OMP_str = ['OMI_RSC','VCC', 'VCC_PP']
-    OMP_col = ['k','r','m']
+    OMP = [om.VC_OMI_RSC, om.VCC] # OMI, My, Paul palmer
+    OMP_str = ['OMI_RSC','VCC']
+    if PP:
+        OMP.append(om.VCC_PP)
+        OMP_str.append('VCC_PP')
 
     # Plot the maps:
     #
@@ -808,16 +812,18 @@ def CompareMaps(day=datetime(2005,1,1), oneday=False, ausonly=True):
     if ausonly:
         lllat=-50; urlat=-5; lllon=100; urlon=170
 
-    for ii in range(3):
+    for ii in range([2,3][PP]):
         arr=OMP[ii]
         # Maps
-        plt.subplot(231+ii)
+        spnum=[221,231][PP]
+        plt.subplot(spnum+ii)
         m,cs,cb = pp.createmap(OMP[ii],mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
         plt.title(OMP_str[ii],fontsize=20)
 
         # Difference maps
         diff=(OMP[ii]-OMP[ii-1]) * 100.0 / OMP[ii-1]
-        plt.subplot(234+ii)
+        spnum=[223,234][PP]
+        plt.subplot(spnum+ii)
         m,cs,cb = pp.linearmap(diff,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=-200,vmax=200)
         plt.title('(%s - %s)*100/%s'%(OMP_str[ii],OMP_str[ii-1],OMP_str[ii-1]),fontsize=20)
     plt.suptitle("Maps of HCHO on %s"%ymdstr)
@@ -1575,16 +1581,18 @@ if __name__ == '__main__':
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
     dates=[ datetime(2005,1,1) ]
+    #check_products(date=dates[0],oneday=False)
+    #Summary_RSC(date=dates[0], oneday=False)
     #dates=[ ]
     test_pp_against_mine(day=dates[0],oneday=False, ausonly=False)
-    CompareMaps(day=dates[0],oneday=oneday,ausonly=False)
-    #    Summary_RSC(oneday=oneday)
+    #CompareMaps(day=dates[0],oneday=False,ausonly=False)
+
     #for day in dates:
         #test_reprocess_corrected(date=day, oneday=oneday)
         #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
         #compare_products(date=day,oneday=True)
         #compare_products(date=day,oneday=True,positiveonly=True,pltname="positive")
-        #check_products(date=day,oneday=True)
+
         #compare_products(date=day,oneday=True, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")
     # to be updated:
     #check_timeline()

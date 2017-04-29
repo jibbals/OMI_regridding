@@ -506,6 +506,7 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     # print some stats of changes
     diffs=dat.VCC-dat.VC_GC
     print ("Mean difference VC - VCC:%7.5e "%np.nanmean(diffs))
+    print ("%7.2f%%"%(np.nanmean(diffs)*100/np.nanmean(dat.VC_GC)))
     print ("std VC - VCC:%7.5e "%np.nanstd(diffs))
     
     # plot c) RSC by sensor and latitude
@@ -1636,7 +1637,7 @@ if __name__ == '__main__':
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
     dates=[ datetime(2005,1,1) ]
     #check_products(date=dates[0],oneday=False)
-    #Summary_RSC(date=dates[0], oneday=False)
+    Summary_RSC(date=dates[0], oneday=False)
     #dates=[ ]
     #test_pp_against_mine(day=dates[0],oneday=False, ausonly=False)
     #CompareMaps(day=dates[0],oneday=False,ausonly=False)

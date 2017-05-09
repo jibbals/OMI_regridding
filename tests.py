@@ -1592,15 +1592,9 @@ if __name__ == '__main__':
     #check_products(date=dates[0],oneday=False)
     #Summary_RSC(date=dates[0], oneday=False)
     #dates=[ ]
-<<<<<<< HEAD
-    test_pp_against_mine(day=dates[0],oneday=False, ausonly=False)
-    #CompareMaps(day=dates[0],oneday=False,ausonly=False)
-
-=======
     #test_pp_against_mine(day=dates[0],oneday=False, ausonly=False)
     #CompareMaps(day=dates[0],oneday=False,ausonly=False)
     #Summary_RSC(oneday=False)
->>>>>>> 12a65868117c7bb2f4d88c64cedc557993f9f1c2
     #for day in dates:
         #test_reprocess_corrected(date=day, oneday=oneday)
         #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")

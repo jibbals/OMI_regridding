@@ -71,23 +71,36 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
     return m, cs, cb
 def globalmap(data,lats,lons):
     return createmap(data,lats,lons,lllat=-80,urlat=80,lllon=-179,urlon=179)
-def ausmap(data,lats,lons,vmin=None,vmax=None,colorbar=True):
-    return createmap(data,lats,lons,lllat=-50,urlat=-5,lllon=100,urlon=160, vmin=vmin, vmax=vmax, colorbar=colorbar)
+def ausmap(data,lats,lons,vmin=None,vmax=None,colorbar=True,linear=False,latlon=True):
+    kwargs={'data':data,'lats':lats,'lons':lons,'lllat':-50,'urlat':-5,'lllon':100,
+        'urlon':160,'vmin':vmin,'vmax':vmax,'colorbar':colorbar,'latlon':latlon}
+    if linear:
+        return linearmap(**kwargs)
+    else:
+        return createmap(**kwargs)
 def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True,
-              lllat=-80, urlat=80, lllon=-179, urlon=179):
+              lllat=-80, urlat=80, lllon=-179, urlon=179,colorbar=True):
+    
+    if len(lats.shape) == 1:
+        lonsnew,latsnew=np.meshgrid(lons,lats)
+    else:
+        latsnew,lonsnew=(lats,lons)
 
     m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
           llcrnrlon=lllon, urcrnrlon=urlon,
           resolution='l',projection='merc')
 
-    cs=m.pcolormesh(lons, lats, data, latlon=latlon, vmin=vmin, vmax=vmax)
+    cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon, vmin=vmin, vmax=vmax)
     if vmin is not None:
         cs.cmap.set_under('white')
         cs.cmap.set_over('pink')
         cs.set_clim(vmin,vmax)
-    cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
     m.drawcoastlines()
     m.drawparallels([0],labels=[0,0,0,0]) # draw equator, no label
+    if not colorbar:
+        return m,cs
+    
+    cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
     return m, cs, cb
 
 def plot_rec(bmap, inlimits, color=None, linewidth=None):

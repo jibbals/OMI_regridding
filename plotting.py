@@ -16,6 +16,8 @@ from matplotlib.colors import LogNorm # for lognormal colour bar
 from JesseRegression import RMA
 #import matplotlib.patches as mpatches
 
+# S W N E
+__AUSREGION__=[-50,100,-5,160,]
 
 def InitMatplotlib():
     """set some Matplotlib stuff."""

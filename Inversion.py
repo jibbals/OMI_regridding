@@ -66,7 +66,8 @@ def Emissions(month=datetime(2005,1,1)):
     '''
     ## Read model data for this month
     ##
-
+    model=fio.read_GC_output(date=month,Isop=True,UCX=False,surface=True)
+    
     # Daily trop HCHO
 
     # Daily E_isop

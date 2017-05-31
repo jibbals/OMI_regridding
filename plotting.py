@@ -30,6 +30,32 @@ def InitMatplotlib():
     matplotlib.rcParams["xtick.labelsize"]  = 16        #
     matplotlib.rcParams["ytick.labelsize"]  = 16        #
 
+
+def lat_lon_range(lats,lons,region):
+    '''
+    returns indices of lats, lons which are within region: list=[S,W,N,E]
+    '''
+    S,W,N,E = region
+    lats,lons=np.array(lats),np.array(lons)
+    latinds1=np.where(lats>=S)[0]
+    latinds2=np.where(lats<=N)[0]
+    latinds=np.intersect1d(latinds1,latinds2, assume_unique=True)
+    loninds1=np.where(lons>=W)[0]
+    loninds2=np.where(lons<=E)[0]
+    loninds=np.intersect1d(loninds1,loninds2, assume_unique=True)
+    return latinds, loninds
+
+def findrange(data,lats,lons,region):
+    '''
+    return vmin, vmax of data[lats,lons] within region: list=[SWNE]
+    '''
+    latinds,loninds=lat_lon_range(lats,lons,region)
+    data2=data[latinds,:]
+    data2=data2[:,loninds]
+    vmin=np.nanmin(data2)
+    vmax=np.nanmax(data2)
+    return vmin,vmax
+
 def regularbounds(x,fix=False):
     # Take a lat or lon array input and return the grid edges
 

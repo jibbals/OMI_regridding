@@ -12,6 +12,7 @@ Run from main project directory or else imports will not work
 import netCDF4 as nc
 import numpy as np
 from datetime import datetime, timedelta
+from glob import glob # for file pattern reading
 
 ##################
 #####GLOBALS######
@@ -19,6 +20,8 @@ from datetime import datetime, timedelta
 run_number={"tropchem":0,"UCX":1}
 runs=["geos5_2x25_tropchem","UCX_geos5_2x25"]
 paths=["/home/574/jwg574/OMI_regridding/Data/GC_Output/%s/trac_avg"%rstr for rstr in runs]
+hemcodiag_path="/home/574/jwg574/OMI_regridding/Data/GC_Output/%s/hemco_diags"%runs[run_number['tropchem']]
+
 tropchem_dims=['Tau', 'Pressure', 'latitude', 'longitude']
 tropchem_keys=tropchem_dims+['ANTHSRCENO', 'ANTHSRCECO', 'ANTHSRCEALK4', 
     'ANTHSRCEACET', 'ANTHSRCEMEK', 'ANTHSRCEALD2', 'ANTHSRCEPRPE', 'ANTHSRCEC3H8',
@@ -88,6 +91,29 @@ def index_from_gregorian(gregs, date):
     ind=np.where(gregs==greg)[0]
     return (ind)
 
+def ppbv_to_molecs_per_cm2(ppbv, pedges):
+    '''
+    Inputs:
+        ppbv[levs,lats,lons]
+        pedges[levs]
+    USING http://www.acd.ucar.edu.au/mopitt/avg_krnls_app.pdf
+    NOTE: in pdf the midpoints are used rather than the edges
+        due to how the AK is defined
+    '''
+    dims=np.shape(ppbv)
+    N = dims[0]
+    #P[i] - P[i+1] = pressure differences
+    inds=np.arange(N)
+    #THERE should be N+1 pressure edges since we have the ppbv for each slab
+    diffs= pedges[inds] - pedges[inds+1]
+    t = (2.12e13)*diffs # multiplication factor
+    out=np.zeros(dims)
+    # there's probably a good way to vectorise this, but not worth the time
+    for x in range(dims[1]):
+        for y in range(dims[2]):
+            out[:,x,y] = t*ppbv[:,x,y]
+    return out
+
 def read_UCX():
     ''' Read the UCX netcdf file: '''
     fi=run_number['UCX']
@@ -152,10 +178,44 @@ def get_tropchem_data(date=datetime(2005,1,1), keys=tropchem_HCHO_keys,
         data[key]=tmp
         if __VERBOSE__:
             print("%s has shape: %s"%(key,str(np.shape(data[key]))))
-        
+
     # return the data we want
     tf.close()
     return(data)
+
+def read_HEMCO_diag(date=datetime(2005,1,1)):
+    ''' 
+        Read the HEMCO_diagnostics BIOGENIC ISOP EMISSIONS data 
+        This is for tropchem run only, with output in units 
+        float ISOP_BIOG(time, lat, lon) ;
+            ISOP_BIOG:long_name = "ISOP_BIOG" ;
+            ISOP_BIOG:units = "kg/m2/s" ;
+            ISOP_BIOG:averaging_method = "mean" ;
+            ISOP_BIOG:_FillValue = -1.e-31f ;
+        netcdf hemco_diags.200502
+        dimensions:
+        	lat = 91 ;
+        	lon = 144 ;
+        	time = UNLIMITED ; // (672 currently)
+        	lev = 47 ;
+        variables:
+        	float ISOP_BIOG(time, lat, lon) ;
+        		ISOP_BIOG:long_name = "ISOP_BIOG" ;
+        		ISOP_BIOG:units = "kg/m2/s" ;
+        		ISOP_BIOG:averaging_method = "mean" ;
+        		ISOP_BIOG:_FillValue = -1.e-31f ;
+        	float time(time) ;
+        		time:long_name = "Time" ;
+        		time:units = "hours since 1985-01-01 00:00:00" ;
+                
+            
+    '''
+    # looks like hemco_diags/hemco_diags.200502.nc 
+    dstr=date.strftime("%Y%m")
+    fname="%s/hemco_diag.%s.nc"%(hemcodiag_path,dstr)
+    print("Reading %s"%fname)
+    tropfile=nc.Dataset(fname,'r')
+    return(tropfile)
 
 def get_UCX_data(date=datetime(2005,1,1), keys=UCX_HCHO_keys, surface=False):
     ''' get a month of UCX output '''
@@ -210,49 +270,46 @@ def get_UCX_data(date=datetime(2005,1,1), keys=UCX_HCHO_keys, surface=False):
     uf.close()
     return(data)
 
-def determine_trop_column(ppbv, N_air, boxheight, tplev):
+def determine_trop_column(ppbv, N_air, boxH, tplev):
     '''
         Inputs:
             ppbv[lev,lat,lon]: ppbv of chemical we want the trop column of
             N_air[lev,lat,lon]: number density of air (molec/m3)
-            boxheight[lev]: level heights (m)
+            boxH[lev,lat,lon]: level heights (m)
             tplev[lat,lon]: where is tropopause
         Outputs:
             tropcol[lat,lon]: tropospheric column (molec/cm2)
     '''
     dims=np.shape(ppbv)
-    print(dims)
-    out=np.zeros(dims[[1,2]])
+    
+    # (molec_x/1e9 molec_air) * 1e9 * molec_air/m3 * m * m2/cm2
+    X = ppbv * 1e-9 * N_air * boxH * 1e-4 # molec/cm2
+        
+    out=np.zeros([dims[1],dims[2]])
     for lat in range(dims[1]):
         for lon in range(dims[2]):
-            # (molec_x/1e9 molec_air) * 1e9 * molec_air/m3 * m * m2/cm2
-            X = ppbv[:,lat,lon] * 1e9 * N_air[:,lat,lon] * boxheight * 1e-4 # molec/cm2
-            
-            trop=np.floor(tplev[lat,lon])
-            out[lat,lon]=
-    
-
-def ppbv_to_molecs_per_cm2(ppbv, pedges):
-    '''
-    Inputs:
-        ppbv[levs,lats,lons]
-        pedges[levs]
-    USING http://www.acd.ucar.edu.au/mopitt/avg_krnls_app.pdf
-    NOTE: in pdf the midpoints are used rather than the edges
-        due to how the AK is defined
-    '''
-    dims=np.shape(ppbv)
-    N = dims[0]
-    #P[i] - P[i+1] = pressure differences
-    inds=np.arange(N)
-    #THERE should be N+1 pressure edges since we have the ppbv for each slab
-    diffs= pedges[inds] - pedges[inds+1]
-    t = (2.12e13)*diffs # multiplication factor
-    out=np.zeros(dims)
-    # there's probably a good way to vectorise this, but not worth the time
-    for x in range(dims[1]):
-        for y in range(dims[2]):
-            out[:,x,y] = t*ppbv[:,x,y]
+            trop=int(np.floor(tplev[lat,lon]))
+            extra=tplev[lat,lon] - trop
+            out[lat,lon]= np.sum(X[0:trop,lat,lon]) + extra*X[trop,lat,lon]
     return out
+
     
-    
+def _test_trop_column_calc():
+    '''
+    This tests the trop column calculation with a trivial case
+    '''
+    # lets check for a few dimensions:
+    for dims in [ [10,1,1], [100,100,100]]:
+        ppbv=np.zeros(dims)+100.    # molec/1e9molecA
+        N_air=np.zeros(dims)+1e13   # molecA/m3
+        boxH=np.zeros(dims)+1.      # m
+        tplev=np.zeros([dims[1],dims[2]]) + 4.4
+        # should give 100molec/cm2 per level : tropcol = 440molec/cm2
+        out= determine_trop_column(ppbv, N_air, boxH, tplev)
+        assert out.shape==(dims[1],dims[2]), 'trop column calc shape is wrong'
+        assert np.isclose(out[0,0],440.0), 'trop column calc value is wrong, out=%f'%out[0,0]
+        assert np.isclose(np.min(out), np.max(out)), 'Trop column calc has some problem'
+
+
+if __name__=='__main__':
+    _test_trop_column_calc()

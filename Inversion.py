@@ -12,10 +12,13 @@ Created on Tue Dec  6 09:48:11 2016
 
 @author: jesse
 """
-
+# imports
 import numpy as np
+
+# local imports
 import fio
 from JesseRegression import RMA
+from Data.GC_class import GC_tropchem
 
 def Background(H):
     '''
@@ -66,11 +69,16 @@ def Emissions(month=datetime(2005,1,1)):
     '''
     ## Read model data for this month
     ##
-    model=fio.read_GC_output(date=month,Isop=True,UCX=False,surface=True)
+    GC=GC_tropchem(date=month)#,Isop=True,UCX=False,surface=False)
     
     # Daily trop HCHO
+    trop_hcho=GC.get_trop_columns(key='hcho') # molec/cm2
 
-    # Daily E_isop
+    # Daily E_isop (From Model diag output)
+    E_isop=GC.get_daily_E_isop()
+    
+    # \Omega_{HCHO} = S \times E_{isop} + B
+    #   Determine S from the slope bewteen E_isop and HCHO
 
     # loss rate of HCHO
 

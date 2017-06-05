@@ -74,12 +74,13 @@ __VERBOSE__=False
 def date_from_gregorian(greg):
     ''' 
         gregorian = "hours since 1985-1-1 00:00:0.0"
-        Returns datetime object or list of datetimes
+        Returns list of datetimes
     '''
     d0=datetime(1985,1,1,0,0,0)
-    if isinstance(greg, (list, tuple, np.ndarray)):
-        return([d0+timedelta(hours==hr) for hr in greg])
-    return (d0+timedelta(hours==greg))
+    greg=np.array(greg)
+    #if isinstance(greg, (list, tuple, np.ndarray)):
+    return([d0+timedelta(seconds=int(hr*3600)) for hr in greg])
+    
 def index_from_gregorian(gregs, date):
     '''
         Return index of date within gregs array
@@ -212,7 +213,7 @@ def read_HEMCO_diag(date=datetime(2005,1,1)):
     '''
     # looks like hemco_diags/hemco_diags.200502.nc 
     dstr=date.strftime("%Y%m")
-    fname="%s/hemco_diag.%s.nc"%(hemcodiag_path,dstr)
+    fname="%s/hemco_diags.%s.nc"%(hemcodiag_path,dstr)
     print("Reading %s"%fname)
     tropfile=nc.Dataset(fname,'r')
     return(tropfile)

@@ -9,21 +9,25 @@ Run from main project directory or else imports will not work
 import netCDF4 as nc
 import numpy as np
 from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
+from matplotlib.pyplot import cm
 
 # local modules
 from Data.GC_fio import date_from_gregorian, read_tropchem, read_HEMCO_diag
 import plotting as pp
 from plotting import __AUSREGION__
+from JesseRegression import RMA
 
 ##################
 #####GLOBALS######
 ##################
 # map for gc output names to simple names, and then reversed
-Simplenames={'Tau':'tau','Pressure':'press','latitude':'lat','longitude':'lon', 
+Simplenames={'Tau':'taus','Pressure':'press','latitude':'lats','longitude':'lons', 
     'BXHGHT-$BXHEIGHT':'boxH','BXHGHT-$N(AIR)':'N_air','DXYPDXYP':'area',
     'IJ-AVG-$ISOP':'isop', 'IJ-AVG-$CH2O':'hcho', 'PEDGE-$PSURF':'psurf',
     'TR-PAUSETP-LEVEL':'tplev', 'IJ-AVG-$MVK':'mvk', 'IJ-AVG-$MACR':'macr',
-    'IJ-AVG-$NO2':'no2','ISOP_BIOG':'E_isop'}
+    'IJ-AVG-$NO2':'no2','BIOGSRCEISOP':'E_isop'}
+    #,'ISOP_BIOG':'E_isop'}
 Tracernames={v: k for k, v in Simplenames.items()}
 ################
 ###FUNCTIONS####
@@ -39,55 +43,28 @@ class GC_tropchem:
         self.psurf = pressure surfaces (hPa)
         self.area  = XY grid area (m2)
         self.N_air = air dens (molec_air/m3)
-        self.E_isop= kg/m2/s
+        self.E_isop= "atoms C/cm2/s"
+
     '''
     def __init__(self, date):
         ''' Read data for date into self '''
+        self.dstr=date.strftime("%Y%m")
         tavg_file=read_tropchem(date)
-        diagkey='ISOP_BIOG'
         # Save all keys in Simplenames dict to class using associated simple names:
         for key,val in Simplenames.items():
-            # one tracer is read from combined hemco_diags:
-            if key==diagkey: continue
             setattr(self, val, tavg_file.variables[key][:])
         tavg_file.close()
         
-        # Save the hemco_diag E_isop:
-        diagfile=read_HEMCO_diag(date)
-        e_isop=diagfile.variables[diagkey][:]
-        e_tau=diagfile.variables['time'][:]
-        # move time dimension to the end: making it [lat,lon,time]
-        e_isop=np.rollaxis(e_isop,0,2)
-        setattr(self, 'E_tau', e_time) # emissions are saved hourly (not daily)
-        setattr(self, Simplenames[diagkey], e_isop)
-        diagfile.close()
-        
         # add some peripheral stuff
-        self.n_lats=len(self.lat)
-        self.n_lons=len(self.lon)
+        self.n_lats=len(self.lats)
+        self.n_lons=len(self.lons)
         
         # set dates and E_dates:
-        self.dates=date_from_gregorian(self.tau)
-        self.e_dates=date_from_gregorian(self.E_tau)
+        self.dates=date_from_gregorian(self.taus)
         
         # set tropospheric columns for HCHO:
         # self.trop_hcho=(self.get_trop_columns(keys=['hcho']))['hcho']
         
-    def get_daily_E_isop(self):
-        ''' Return daily averaged E_isop '''
-        print("Test: running daily_E_isop")
-        days= np.array([ d.day for d in self.e_dates ])
-        print(days.shape)
-        lastday=np.max(days)
-        print(lastday)
-        e_isop=np.zeros((n_lats,n_lons,lastday))
-        print(e_isop.shape)
-        
-        for i in range(lastday):
-            dayinds=np.where(days==i+1)[0]
-            print(dayinds.shape)
-            e_isop[:,:,i] = np.mean(self.E_isop[:,:,dayinds],axis=2)
-        return e_isop
     
     def get_trop_columns(self, keys=['hcho'], metres=False):
         ''' Return tropospheric column amounts in molec/cm2 [or molec/m2] '''
@@ -121,22 +98,92 @@ class GC_tropchem:
     
     def month_average(self, keys=['hcho','isop']):
         ''' Average the time dimension '''
-        n_t=len(self.tau)
+        n_t=len(self.taus)
         out={}
         for v in keys:
             attr=getattr(self, v)
             dims=np.shape(attr)
-            if (dims[-1]==n_t) or (dims[-1]==len(self.E_tau)):
+            if (dims[-1]==n_t) or (dims[-1]==len(self.E_taus)):
                 out[v]=np.nanmean(attr, axis=len(dims)-1) # average the last dimension
         
         return out
-    
-    def plot_map_E_isop(self, region=None):
-        ''' basemap plot of E_isop '''
-        
+    def _get_region(self,aus=False, region=None):
+        ''' region for plotting '''
         if region is None:
-            
+            region=[-89,-179,89,179]
+            if aus:
+                region=__AUSREGION__
+        return region
+ 
+    def plot_RMA_isop_hcho(self,pname=None):
+        ''' 
+            compares isop emission [atom_C/cm2/s] against hcho vert_column [molec_hcho/cm2]
+            as done in Palmer et al. 2003
+        '''
         
+        # Retrieve data
+        isop = self.E_isop # atom_C/cm2/s
+        hcho = self.get_trop_columns(keys=['hcho'])['hcho'] # molec/cm2
+        dates= self.dates # datetime list
+        
+        # plot name
+        if pname is None:
+            pname='Figs/GC/GC_E_isop_vs_hcho_%s.png'%self.dstr
+        
+        # subset region
+        region=self._get_region(aus=True, region=None)
+        lati,loni = pp.lat_lon_range(self.lats,self.lons,region)
+        isop_sub=isop[lati,:,:]
+        isop_sub=isop_sub[:,loni,:]
+        hcho_sub=hcho[lati,:,:]
+        hcho_sub=hcho_sub[:,loni,:]
+        
+        f,axes=plt.subplots(2,1,figsize=(10,14))
+        # plot time series (spatially averaged)
+        ts_isop=np.mean(isop_sub,axis=(0,1))
+        ts_hcho=np.mean(hcho_sub,axis=(0,1))
+        plt.sca(axes[0])
+        pp.plot_time_series(dates,ts_isop,ylabel=r'E_{isoprene} [atom_C cm^{-2} s^{-1}]',title='time series', color='r')
+        twinx=axes[0].twinx()
+        plt.sca(twinx)
+        pp.plot_time_series(dates,ts_hcho,ylabel=r'\Omega_{HCHO} [ molec_{HCHO} cm^{-2} ]', xlabel='time', color='m')
+        
+        plt.sca(axes[1])
+        # plot a sample of 6 scatter plots and their regressions
+        ii=0
+        colours=[cm.rainbow(i) for i in np.linspace(0, 0.9, 6)] 
+        for yi in np.random.choice(lati, size=(3,)):
+            for xi in np.random.choice(loni, size=(2,)): # loop over 3 random lats and 2 random lons
+                lat=self.lats[yi]; lon=self.lons[xi]
+                X=isop[yi,xi,:]; Y=hcho[yi,xi,:]
+                lims=np.array([np.min(X),np.max(X)])
+                plt.scatter(X,Y,color=colours[ii])
+                m,b,r,CI1,CI2=RMA(X, Y) # get regression
+                plt.plot(lims, m*np.array(lims)+b,color=colours[ii],
+                    label='Y[%5.1fS,%5.1fE] = %.5fX + %.2e, r=%.5f, n=%d'%(-1*lat,lon,m,b,r,len(X)))
+                ii=ii+1
+        plt.savefig(pname)
+        print("Saved "+pname)
+        plt.close()
+        
+    def plot_series_E_isop(self, aus=False, region=None, pname=None):
+        ''' Plot E_isop time series '''
+        
+        # Average over space lats and lons
+        data=np.mean(self.E_isop,axis=(0,1))
+        print(np.mean(data))
+        pp.plot_time_series(self.E_dates,data, xlabel='time',ylabel=r'E_{isoprene} [atom_C cm^{-2} s^{-1}]', pname=pname, legend=True, title='Emissions of Isoprene')
+        
+    def plot_map_E_isop(self, aus=False, region=None):
+        ''' basemap plot of E_isop 
+            region=[S,W,N,E] boundaries
+        '''
+        region=self._get_region(aus, region)
+        data=np.mean(self.E_isop,axis=2) # average over time
+        
+        pname='Figs/GC/E_isop_%s%s.png'%(['','aus_'][aus], self.dstr)
+        pp.createmap(data,self.lats,self.lons, vmin=1e10,vmax=1e13, ptitle='Emissions of isoprene',
+            clabel='atom_C/cm2/s', pname=pname)
     
 def check_units():
     '''
@@ -164,6 +211,8 @@ def check_units():
     trop_hcho=trop_cols['hcho']
     print("Tropospheric HCHO %s mean = %e molec/cm2"%(str(trop_hcho.shape),np.nanmean(trop_hcho)))
     print("What's expected for this?")
+    
+    # E_isop is atom_C/cm2/s, around 5e12?
 
 def check_diag():
     '''
@@ -176,5 +225,8 @@ def check_diag():
 
 
 if __name__=='__main__':
-    check_diag()
+    #check_diag()
     #check_units()
+    gc=GC_tropchem(datetime(2005,1,1))
+    gc.plot_RMA_isop_hcho()
+    gc.plot_map_E_isop()

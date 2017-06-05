@@ -72,15 +72,13 @@ def regularbounds(x,fix=False):
     return newx
 
 def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
-              lllat=-80, urlat=80, lllon=-179, urlon=179, colorbar=True):
+              lllat=-80, urlat=80, lllon=-179, urlon=179, colorbar=True,
+              clabel=None,pname=None,ptitle=None):
     # Create a basemap map with
     m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
           llcrnrlon=lllon, urcrnrlon=urlon,
           resolution='i',projection='merc')
     if len(lats.shape) == 1:
-        #latnew=regularbounds(lats)
-        #lonnew=regularbounds(lons)
-        #lonsnew,latsnew=np.meshgrid(lonnew,latnew)
         lonsnew,latsnew=np.meshgrid(lons,lats)
     else:
         latsnew,lonsnew=(lats,lons)
@@ -91,6 +89,10 @@ def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
     cs.set_clim(vmin,vmax)
     m.drawcoastlines()
     m.drawparallels([0],labels=[0,0,0,0]) # draw equator, no label
+    
+    if ptitle is not None:
+        plt.title(ptitle)
+
     if not colorbar:
         return m,cs
     cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
@@ -106,8 +108,9 @@ def ausmap(data,lats,lons,vmin=None,vmax=None,colorbar=True,linear=False,latlon=
         return linearmap(**kwargs)
     else:
         return createmap(**kwargs)
-def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True,
-              lllat=-80, urlat=80, lllon=-179, urlon=179,colorbar=True):
+def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True, 
+              lllat=-80, urlat=80, lllon=-179, urlon=179,colorbar=True, 
+              clabel=None,pname=None,ptitle=None):
     
     if len(lats.shape) == 1:
         lonsnew,latsnew=np.meshgrid(lons,lats)
@@ -125,10 +128,20 @@ def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True,
         cs.set_clim(vmin,vmax)
     m.drawcoastlines()
     m.drawparallels([0],labels=[0,0,0,0]) # draw equator, no label
+    if ptitle is not None:
+        plt.title(ptitle)
+    
     if not colorbar:
         return m,cs
     
     cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
+    if clabel is not None:
+        cb.set_label(clabel)
+    if pname is not None:
+        plt.savefig(pname)
+        print("Saved "+pname)
+        plt.close()
+        return 
     return m, cs, cb
 
 def plot_rec(bmap, inlimits, color=None, linewidth=None):
@@ -206,3 +219,22 @@ def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True,
     plt.ylim(lims0); plt.xlim(lims0)
     if diag:
         plt.plot(lims0,lims0,'--',color=colour,label='1-1') # plot the 1-1 line for comparison
+
+def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, **pltargs):
+    ''' plot values over datetimes '''
+    print(pltargs)
+    plt.plot(datetimes, values, **pltargs)
+    if ylabel is not None:
+        plt.ylabel(ylabel)
+    if xlabel is not None:
+        plt.xticks(rotation=70)
+        plt.xlabel(xlabel)
+    if legend:
+        plt.legend() 
+    if title is not None:
+        plt.title(title)
+    if pname is not None:
+        plt.savefig(pname)
+        print('%s saved'%pname)
+        plt.close()
+    

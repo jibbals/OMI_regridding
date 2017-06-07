@@ -80,7 +80,12 @@ def date_from_gregorian(greg):
     greg=np.array(greg)
     #if isinstance(greg, (list, tuple, np.ndarray)):
     return([d0+timedelta(seconds=int(hr*3600)) for hr in greg])
-    
+def gregorian_from_dates(dates):
+    ''' gregorian array from datetime list'''
+    d0=datetime(1985,1,1,0,0,0)
+    greg=np.zeros(len(dates))
+    return np.array([(date-d0).seconds/3600 for date in dates ])
+
 def index_from_gregorian(gregs, date):
     '''
         Return index of date within gregs array

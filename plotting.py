@@ -12,12 +12,14 @@ import numpy as np
 import matplotlib
 from mpl_toolkits.basemap import Basemap #, maskoceans
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 from matplotlib.colors import LogNorm # for lognormal colour bar
 from JesseRegression import RMA
 #import matplotlib.patches as mpatches
 
 # S W N E
 __AUSREGION__=[-50,100,-5,160,]
+__GLOBALREGION__=[-80, -179, 80, 179]
 
 def InitMatplotlib():
     """set some Matplotlib stuff."""
@@ -71,77 +73,60 @@ def regularbounds(x,fix=False):
         if newx[0] <= -180: newx[0]=-179.99
     return newx
 
-def createmap(data,lats,lons, vmin=5e13, vmax=1e17, latlon=True,
-              lllat=-80, urlat=80, lllon=-179, urlon=179, colorbar=True,
+def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
+              region=__GLOBALREGION__, aus=False, colorbar=True, linear=False,
               clabel=None,pname=None,ptitle=None):
-    # Create a basemap map with
-    m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
-          llcrnrlon=lllon, urcrnrlon=urlon,
-          resolution='i',projection='merc')
+    # Create a basemap map with region as inputted
+    if aus: region=__AUSREGION__
+    lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
+    m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
+              resolution='i', projection='merc')
+    
+    # Set vmin and vmax if necessary
+    if vmin is None:
+        vmin=1.05*np.nanmin(data)
+    if vmax is None:
+        vmax=0.95*np.nanmax(data)
+    
+    # fix the lats and lons to 2dimensional meshes(if they're not already)
     if len(lats.shape) == 1:
         lonsnew,latsnew=np.meshgrid(lons,lats)
     else:
         latsnew,lonsnew=(lats,lons)
-    cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon,
-                    vmin=vmin,vmax=vmax,norm = LogNorm(), clim=(vmin,vmax))
+    
+    pcmeshargs={'latlon':latlon, 'vmin':vmin, 'vmax':vmax, 'clim':(vmin,vmax)}
+    if not linear: 
+        pcmeshargs['norm']=LogNorm()
+    
+    cs=m.pcolormesh(lonsnew, latsnew, data, **pcmeshargs)
+    #, latlon=latlon, vmin=vmin, vmax=vmax, norm=norm, clim=(vmin,vmax))
+    
+    # colour limits for contour mesh
     cs.cmap.set_under('white')
     cs.cmap.set_over('pink')
     cs.set_clim(vmin,vmax)
-    m.drawcoastlines()
-    m.drawparallels([0],labels=[0,0,0,0]) # draw equator, no label
     
+    # draw coastline and equator(no latlon labels)
+    m.drawcoastlines()
+    m.drawparallels([0],labels=[0,0,0,0]) 
+    
+    # add title and cbar label
     if ptitle is not None:
         plt.title(ptitle)
-
-    if not colorbar:
-        return m,cs
-    cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
-    cb.set_label('Molecules/cm2')
-
-    return m, cs, cb
-def globalmap(data,lats,lons):
-    return createmap(data,lats,lons,lllat=-80,urlat=80,lllon=-179,urlon=179)
-def ausmap(data,lats,lons,vmin=None,vmax=None,colorbar=True,linear=False,latlon=True):
-    kwargs={'data':data,'lats':lats,'lons':lons,'lllat':-50,'urlat':-5,'lllon':100,
-        'urlon':160,'vmin':vmin,'vmax':vmax,'colorbar':colorbar,'latlon':latlon}
-    if linear:
-        return linearmap(**kwargs)
-    else:
-        return createmap(**kwargs)
-def linearmap(data,lats,lons,vmin=None,vmax=None, latlon=True, 
-              lllat=-80, urlat=80, lllon=-179, urlon=179,colorbar=True, 
-              clabel=None,pname=None,ptitle=None):
+    cb=None
+    if colorbar:
+        cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
+        if clabel is not None:
+            cb.set_label(clabel)
     
-    if len(lats.shape) == 1:
-        lonsnew,latsnew=np.meshgrid(lons,lats)
-    else:
-        latsnew,lonsnew=(lats,lons)
-
-    m=Basemap(llcrnrlat=lllat,  urcrnrlat=urlat,
-          llcrnrlon=lllon, urcrnrlon=urlon,
-          resolution='l',projection='merc')
-
-    cs=m.pcolormesh(lonsnew, latsnew, data, latlon=latlon, vmin=vmin, vmax=vmax)
-    if vmin is not None:
-        cs.cmap.set_under('white')
-        cs.cmap.set_over('pink')
-        cs.set_clim(vmin,vmax)
-    m.drawcoastlines()
-    m.drawparallels([0],labels=[0,0,0,0]) # draw equator, no label
-    if ptitle is not None:
-        plt.title(ptitle)
-    
-    if not colorbar:
-        return m,cs
-    
-    cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
-    if clabel is not None:
-        cb.set_label(clabel)
+    # if a plot name is given, save and close figure
     if pname is not None:
         plt.savefig(pname)
         print("Saved "+pname)
         plt.close()
         return 
+    
+    # if no colorbar is wanted then don't return one (can be set externally)
     return m, cs, cb
 
 def plot_rec(bmap, inlimits, color=None, linewidth=None):
@@ -220,14 +205,18 @@ def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True,
     if diag:
         plt.plot(lims0,lims0,'--',color=colour,label='1-1') # plot the 1-1 line for comparison
 
-def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, **pltargs):
+def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, dfmt='%Y%m', **pltargs):
     ''' plot values over datetimes '''
-    print(pltargs)
     plt.plot(datetimes, values, **pltargs)
+    
+    #Handle ticks:
+    plt.xticks(rotation=55)
+    myFmt = mdates.DateFormatter(dfmt)
+    plt.gca().xaxis.set_major_formatter(myFmt)
+    
     if ylabel is not None:
         plt.ylabel(ylabel)
     if xlabel is not None:
-        plt.xticks(rotation=70)
         plt.xlabel(xlabel)
     if legend:
         plt.legend() 

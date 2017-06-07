@@ -13,7 +13,8 @@ import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 
 # local modules
-from Data.GC_fio import date_from_gregorian, read_tropchem, read_HEMCO_diag
+#from Data.GC_fio import date_from_gregorian, read_tropchem
+import Data.GC_fio as gcfio
 import plotting as pp
 from plotting import __AUSREGION__
 from JesseRegression import RMA
@@ -29,41 +30,59 @@ Simplenames={'Tau':'taus','Pressure':'press','latitude':'lats','longitude':'lons
     'IJ-AVG-$NO2':'no2','BIOGSRCEISOP':'E_isop'}
     #,'ISOP_BIOG':'E_isop'}
 Tracernames={v: k for k, v in Simplenames.items()}
+
+# UCX version:
+SimpleUCXnames={'time':'taus','lev':'press','lat':'lats','lon':'lons','IJ_AVG_S__ISOP':'isop',
+    'IJ_AVG_S__CH2O':'hcho','PEDGE_S__PSURF':'psurf','BXHGHT_S__BXHEIGHT':'boxH',
+    'BXHGHT_S__AD':'AD','BXHGHT_S__AVGW':'avgW','BXHGHT_S__N_AIR_':'N_air',
+    'DXYP__':'area','TR_PAUSE__TP_LEVEL':'tplev'}
+TracerUCXnames={v: k for k, v in SimpleUCXnames.items()}
+
 ################
-###FUNCTIONS####
+#####CLASS######
 ################
 
-class GC_tropchem:
+class GC_output:
     '''
         Class holding and manipulating tropchem GC output
-        # dimensions = [[lev,] lat, lon[, time]]
-        self.hcho  = molec/1e9molecA
-        self.isop  =   '       '
+        # tropchem dims [[lev,] lat, lon[, time]]
+        # UCX dims: lev = 72; alt059 = 59; lat = 91; lon = 144;
+        self.hcho  = PPBV
+        self.isop  = PPBV or PPBC ???
         self.boxH  = box heights (m)
         self.psurf = pressure surfaces (hPa)
         self.area  = XY grid area (m2)
         self.N_air = air dens (molec_air/m3)
-        self.E_isop= "atoms C/cm2/s"
+        self.E_isop= "atoms C/cm2/s" # ONLY tropchem
 
     '''
-    def __init__(self, date):
+    def __init__(self, date, UCX=False):
         ''' Read data for date into self '''
         self.dstr=date.strftime("%Y%m")
-        tavg_file=read_tropchem(date)
-        # Save all keys in Simplenames dict to class using associated simple names:
-        for key,val in Simplenames.items():
-            setattr(self, val, tavg_file.variables[key][:])
-        tavg_file.close()
+        
+        # READ DATA, Tropchem or UCX file
+        self.UCX=False
+        if UCX:
+            self.UCX=True
+            tavg_data=gcfio.get_UCX_data(date, keys=SimpleUCXnames.keys(),
+                                         surface=False)
+            for key,val in SimpleUCXnames.items():
+                setattr(self, val, tavg_data[key])
+            self.taus=gcfio.gregorian_from_dates([date])
+        
+        else: # READ TROPCHEM DATA:
+            tavg_file=gcfio.read_tropchem(date)
+            # Save all keys in Simplenames dict to class using associated simple names:
+            for key,val in Simplenames.items():
+                setattr(self, val, tavg_file.variables[key][:])
+            tavg_file.close()
         
         # add some peripheral stuff
         self.n_lats=len(self.lats)
         self.n_lons=len(self.lons)
         
         # set dates and E_dates:
-        self.dates=date_from_gregorian(self.taus)
-        
-        # set tropospheric columns for HCHO:
-        # self.trop_hcho=(self.get_trop_columns(keys=['hcho']))['hcho']
+        self.dates=gcfio.date_from_gregorian(self.taus)
         
     
     def get_trop_columns(self, keys=['hcho'], metres=False):
@@ -90,16 +109,26 @@ class GC_tropchem:
             out=np.zeros(dims[1:])
             for lat in range(dims[1]):
                 for lon in range(dims[2]):
-                    for t in range(dims[3]):
-                        tropi=trop[lat,lon,t]
-                        out[lat,lon,t]= np.sum(X[0:tropi,lat,lon,t])+extra[lat,lon,t]*X[tropi,lat,lon,t]
+                    if self.UCX:
+                        tropi=trop[lat,lon]
+                        out[lat,lon]=np.sum(X[0:tropi,lat,lon])+extra[lat,lon]*X[tropi,lat,lon]
+                    else:
+                        for t in range(dims[3]):
+                            tropi=trop[lat,lon,t]
+                            out[lat,lon,t]= np.sum(X[0:tropi,lat,lon,t])+extra[lat,lon,t]*X[tropi,lat,lon,t]
+                        
             data[key]=out
         return data
     
     def month_average(self, keys=['hcho','isop']):
         ''' Average the time dimension '''
-        n_t=len(self.taus)
         out={}
+        if self.UCX: #UCX already month averaged
+            for v in keys:
+                attr=getattr(self,v)
+                out[v]=attr
+            return out
+        n_t=len(self.taus)
         for v in keys:
             attr=getattr(self, v)
             dims=np.shape(attr)
@@ -107,6 +136,13 @@ class GC_tropchem:
                 out[v]=np.nanmean(attr, axis=len(dims)-1) # average the last dimension
         
         return out
+    def get_surface(self, keys=['hcho']):
+        ''' Get the surface layer'''
+        out={}
+        for v in keys:
+            out[v]=(getattr(self,v))[0]
+        return out
+    
     def _get_region(self,aus=False, region=None):
         ''' region for plotting '''
         if region is None:
@@ -115,78 +151,17 @@ class GC_tropchem:
                 region=__AUSREGION__
         return region
  
-    def plot_RMA_isop_hcho(self,pname=None):
-        ''' 
-            compares isop emission [atom_C/cm2/s] against hcho vert_column [molec_hcho/cm2]
-            as done in Palmer et al. 2003
-        '''
-        
-        # Retrieve data
-        isop = self.E_isop # atom_C/cm2/s
-        hcho = self.get_trop_columns(keys=['hcho'])['hcho'] # molec/cm2
-        dates= self.dates # datetime list
-        
-        # plot name
-        if pname is None:
-            pname='Figs/GC/GC_E_isop_vs_hcho_%s.png'%self.dstr
-        
-        # subset region
-        region=self._get_region(aus=True, region=None)
-        lati,loni = pp.lat_lon_range(self.lats,self.lons,region)
-        isop_sub=isop[lati,:,:]
-        isop_sub=isop_sub[:,loni,:]
-        hcho_sub=hcho[lati,:,:]
-        hcho_sub=hcho_sub[:,loni,:]
-        
-        f,axes=plt.subplots(2,1,figsize=(10,14))
-        # plot time series (spatially averaged)
-        ts_isop=np.mean(isop_sub,axis=(0,1))
-        ts_hcho=np.mean(hcho_sub,axis=(0,1))
-        plt.sca(axes[0])
-        pp.plot_time_series(dates,ts_isop,ylabel=r'E_{isoprene} [atom_C cm^{-2} s^{-1}]',title='time series', color='r')
-        twinx=axes[0].twinx()
-        plt.sca(twinx)
-        pp.plot_time_series(dates,ts_hcho,ylabel=r'\Omega_{HCHO} [ molec_{HCHO} cm^{-2} ]', xlabel='time', color='m')
-        
-        plt.sca(axes[1])
-        # plot a sample of 6 scatter plots and their regressions
-        ii=0
-        colours=[cm.rainbow(i) for i in np.linspace(0, 0.9, 6)] 
-        for yi in np.random.choice(lati, size=(3,)):
-            for xi in np.random.choice(loni, size=(2,)): # loop over 3 random lats and 2 random lons
-                lat=self.lats[yi]; lon=self.lons[xi]
-                X=isop[yi,xi,:]; Y=hcho[yi,xi,:]
-                lims=np.array([np.min(X),np.max(X)])
-                plt.scatter(X,Y,color=colours[ii])
-                m,b,r,CI1,CI2=RMA(X, Y) # get regression
-                plt.plot(lims, m*np.array(lims)+b,color=colours[ii],
-                    label='Y[%5.1fS,%5.1fE] = %.5fX + %.2e, r=%.5f, n=%d'%(-1*lat,lon,m,b,r,len(X)))
-                ii=ii+1
-        plt.savefig(pname)
-        print("Saved "+pname)
-        plt.close()
-        
-    def plot_series_E_isop(self, aus=False, region=None, pname=None):
-        ''' Plot E_isop time series '''
-        
-        # Average over space lats and lons
-        data=np.mean(self.E_isop,axis=(0,1))
-        print(np.mean(data))
-        pp.plot_time_series(self.E_dates,data, xlabel='time',ylabel=r'E_{isoprene} [atom_C cm^{-2} s^{-1}]', pname=pname, legend=True, title='Emissions of Isoprene')
-        
-    def plot_map_E_isop(self, aus=False, region=None):
-        ''' basemap plot of E_isop 
-            region=[S,W,N,E] boundaries
-        '''
-        region=self._get_region(aus, region)
-        data=np.mean(self.E_isop,axis=2) # average over time
-        
-        pname='Figs/GC/E_isop_%s%s.png'%(['','aus_'][aus], self.dstr)
-        pp.createmap(data,self.lats,self.lons, vmin=1e10,vmax=1e13, ptitle='Emissions of isoprene',
-            clabel='atom_C/cm2/s', pname=pname)
     
+################
+###FUNCTIONS####
+################
+
 def check_units():
     '''
+        N_air (molecs/m3)
+        boxH (m)
+        trop_cols (molecs/cm2)
+        E_isop (TODO)
         
     '''
     N_ave=6.02214086*1e23 # molecs/mol
@@ -226,7 +201,5 @@ def check_diag():
 
 if __name__=='__main__':
     #check_diag()
-    #check_units()
-    gc=GC_tropchem(datetime(2005,1,1))
-    gc.plot_RMA_isop_hcho()
-    gc.plot_map_E_isop()
+    check_units()
+    

@@ -55,16 +55,20 @@ def compare_tropcol_tc_ucx(date=datetime(2005,1,1)):
         # Plot trop col differences for hcho
         f,axes=plt.subplots(2,2,figsize=(16,14))
         plt.sca(axes[0,0])
-        pp.createmap(u,lats,lons,aus=True,clabel='molec/cm2',ptitle="%s UCX")
+        pp.createmap(u,lats,lons,aus=True,clabel='molec/cm2',ptitle="%s UCX"%k)
         plt.sca(axes[0,1])
-        pp.createmap(t,lats,lons,aus=True,clabel='molec/cm2',ptitle="%s trop")
+        pp.createmap(t,lats,lons,aus=True,clabel='molec/cm2',ptitle="%s trop"%k)
         plt.sca(axes[1,0])
-        pp.createmap(u-t,lats,lons,aus=True,clabel='molec/cm2',ptitle="%s UCX - trop",
+        pp.createmap(u-t,lats,lons,aus=True,clabel='molec/cm2',ptitle="UCX - trop",
                     linear=True)
         plt.sca(axes[1,1])
-        pp.createmap((u-t)*100.0/u,lats,lons, vmin=-0.5,vmax=0.5,aus=True,
+        if k=='isop':
+            vmin=-100;vmax=100
+        if k=='hcho':
+            vmin=-20;vmax=20
+        pp.createmap((u-t)*100.0/u,lats,lons, vmin=vmin,vmax=vmax,aus=True,
                     linear=True,clabel='%',ptitle="%s 100*(UCX-trop)/UCX",
-                    pname='UCX_vs_tropchem_%s_%s'%(k,tc.dstr))
+                    pname='Figs/GC/UCX_vs_tropchem_%s_%s'%(k,tc.dstr))
 
 
 
@@ -262,7 +266,7 @@ def E_isop_map(gc, aus=False, region=None):
 if __name__=='__main__':
     pp.InitMatplotlib()
     #compare_surface_tc_ucx()
-    #compare_tropcol_tc_ucx()
+    compare_tropcol_tc_ucx()
 
     # scripts mapping stuff
     date=datetime(2005,1,1)

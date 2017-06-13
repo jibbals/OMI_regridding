@@ -81,35 +81,35 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
     lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
     m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
               resolution='i', projection='merc')
-    
+
     # Set vmin and vmax if necessary
     if vmin is None:
         vmin=1.05*np.nanmin(data)
     if vmax is None:
         vmax=0.95*np.nanmax(data)
-    
+
     # fix the lats and lons to 2dimensional meshes(if they're not already)
     if len(lats.shape) == 1:
         lonsnew,latsnew=np.meshgrid(lons,lats)
     else:
         latsnew,lonsnew=(lats,lons)
-    
+
     pcmeshargs={'latlon':latlon, 'vmin':vmin, 'vmax':vmax, 'clim':(vmin,vmax)}
-    if not linear: 
+    if not linear:
         pcmeshargs['norm']=LogNorm()
-    
+
     cs=m.pcolormesh(lonsnew, latsnew, data, **pcmeshargs)
     #, latlon=latlon, vmin=vmin, vmax=vmax, norm=norm, clim=(vmin,vmax))
-    
+
     # colour limits for contour mesh
     cs.cmap.set_under('white')
     cs.cmap.set_over('pink')
     cs.set_clim(vmin,vmax)
-    
+
     # draw coastline and equator(no latlon labels)
     m.drawcoastlines()
-    m.drawparallels([0],labels=[0,0,0,0]) 
-    
+    m.drawparallels([0],labels=[0,0,0,0])
+
     # add title and cbar label
     if ptitle is not None:
         plt.title(ptitle)
@@ -118,14 +118,14 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
         cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
         if clabel is not None:
             cb.set_label(clabel)
-    
+
     # if a plot name is given, save and close figure
     if pname is not None:
         plt.savefig(pname)
         print("Saved "+pname)
         plt.close()
-        return 
-    
+        return
+
     # if no colorbar is wanted then don't return one (can be set externally)
     return m, cs, cb
 
@@ -207,23 +207,26 @@ def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True,
 
 def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, dfmt='%Y%m', **pltargs):
     ''' plot values over datetimes '''
-    plt.plot(datetimes, values, **pltargs)
-    
+    dates = mdates.date2num(datetimes)
+    #plt.plot_date(dates, values, **pltargs)
+    plt.plot(dates,values,**pltargs)
+
     #Handle ticks:
+    #plt.gcf().autofmt_xdate()
     plt.xticks(rotation=55)
     myFmt = mdates.DateFormatter(dfmt)
     plt.gca().xaxis.set_major_formatter(myFmt)
-    
+
     if ylabel is not None:
         plt.ylabel(ylabel)
     if xlabel is not None:
         plt.xlabel(xlabel)
     if legend:
-        plt.legend() 
+        plt.legend()
     if title is not None:
         plt.title(title)
     if pname is not None:
         plt.savefig(pname)
         print('%s saved'%pname)
         plt.close()
-    
+

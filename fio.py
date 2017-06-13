@@ -12,7 +12,7 @@ Writes HDF5 files (used to create regridded and reprocessed datasets)
 # plotting module, and something to prevent using displays(can save output but not display it)
 
 # module for hdf eos 5
-import h5py 
+import h5py
 import numpy as np
 from datetime import datetime, timedelta
 from glob import glob
@@ -38,7 +38,7 @@ _omhchorp_keylist=['AMF_GC', 'AMF_GCz', 'AMF_OMI','AMF_PP', 'SC', 'VC_GC', 'VC_O
 
 def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, verbose=False):
     '''
-    Takes a bunch of arrays, named in the arraydict parameter, and saves 
+    Takes a bunch of arrays, named in the arraydict parameter, and saves
     to outfilename as hdf5 using h5py with fillvalue=0, gzip compression
     '''
     if verbose:
@@ -51,17 +51,17 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, verbose=False):
         f.attrs['HDF5_Version']     = h5py.version.hdf5_version
         f.attrs['h5py_version']     = h5py.version.version
         f.attrs['Fill Value']       = fillvalue
-        
+
         if verbose:
             print("Inside fio.save_to_hdf5()")
             print(arraydict.keys())
-        
+
         for name in arraydict.keys():
             # create dataset, using arraydict values
             darr=arraydict[name]
             if verbose:
                 print((name, darr.shape, darr.dtype))
-            
+
             # Fill array using darr,
             # this way takes minutes to save, using ~ 500 MB space / avg
             dset=f.create_dataset(name,fillvalue=fillvalue,
@@ -88,7 +88,7 @@ def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded
     '''
     Make filename based on date, resolution, and type of file.
     '''
-    
+
     # if not created by me just return the filepath(s) using date variable and glob
     if gridded:
         return glob('Data/omhchog/OMI-Aura*%4dm%02d%02d*.he5'%(date.year, date.month, date.day))[0]
@@ -96,11 +96,11 @@ def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded
         return ('Data/omhchorp/metadata/metadata_%s.he5'%(date.strftime('%Y%m%d')))
     if not (regridded or reprocessed):
         return glob('Data/omhcho/OMI-Aura*%4dm%02d%02d*'%(date.year, date.month, date.day))
-    
+
     # geos chem output created via idl scripts match the following
     if geoschem:
         return ('Data/gchcho/hcho_%4d%2d.he5'%(date.year,date.month))
-    
+
     # reprocessed and regridded match the following:
     avg=['8','1'][oneday] # one or 8 day average when applicable
     typ=['p','g'][regridded] # reprocessed or regridded
@@ -116,36 +116,36 @@ def read_8dayfire(date=datetime(2005,1,1,0)):
     '''
     # filenames are all like *yyyyddd.h5, where ddd is day of the year(DOY), one for every 8 days
     tt = date.timetuple()
-    
+
     # only every 8 days matches a file
     # this will give us a multiple of 8 which matches our DOY
-    daymatch= int(np.floor(tt.tm_yday/8)*8) +1 
+    daymatch= int(np.floor(tt.tm_yday/8)*8) +1
     filepath='Data/MYD14C8H/MYD14C8H.%4d%03d.h5' % (tt.tm_year, daymatch)
     return read_8dayfire_path(filepath)
 
 def read_8dayfire_path(path):
     '''
     Read fires file using given path
-    '''    
+    '''
     ## Fields to be read:
     # Count of fires in each grid box over 8 days
     corrFirePix = 'CorrFirePix'
     cloudCorrFirePix = 'CloudCorrFirePix'
-    
+
     ## read in file:
     with h5py.File(path,'r') as in_f:
         ## get data arrays
         cfp     = in_f[corrFirePix].value
         ccfp    = in_f[cloudCorrFirePix].value
-    
+
     # from document at
     # http://www.fao.org/fileadmin/templates/gfims/docs/MODIS_Fire_Users_Guide_2.4.pdf
     # latitude = 89.75 - 0.5 * y
-    # longitude = -179.75 + 0.5 * x 
+    # longitude = -179.75 + 0.5 * x
     lats    = np.arange(90,-90,-0.5) - 0.25
     lons    = np.arange(-180,180, 0.5) + 0.25
     return (cfp, lats, lons)
-    
+
 def read_8dayfire_interpolated(date,latres,lonres):
     '''
     Read the date, interpolate data to match lat/lon resolution, return data
@@ -154,13 +154,13 @@ def read_8dayfire_interpolated(date,latres,lonres):
     fires, lats, lons = read_8dayfire(date)
     #lats = np.arange(90,-90,-0.5) - 0.25
     #lons = np.arange(-180,180, 0.5) + 0.25
-    
+
     newlats= np.arange(-90,90, latres) + latres/2.0
     newlons= np.arange(-180,180, lonres) + lonres/2.0
 
     mlons,mlats = np.meshgrid(lons,lats)
-    mnewlons,mnewlats = np.meshgrid(newlons,newlats)    
-    
+    mnewlons,mnewlats = np.meshgrid(newlons,newlats)
+
     interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons), method='nearest')
     return interp, newlats, newlons
 
@@ -175,9 +175,9 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
             'qualityflag':qf, 'xtrackflag':xqf,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
     '''
-    
+
     # Total column amounts are in molecules/cm2
-    field_hcho  = datafields+'ColumnAmount' 
+    field_hcho  = datafields+'ColumnAmount'
     field_ref_c = datafields+'RadianceReferenceColumnAmount'
     # other useful fields
     field_amf   = datafields+'AirMassFactor'
@@ -198,8 +198,8 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
     field_colUnc    = datafields+'ColumnUncertainty' # also molec/cm2
     field_fitflag   = datafields+'FitConvergenceFlag'
     field_fitRMS    = datafields+'FittingRMS'
-    
-    
+
+
     ## read in file:
     with h5py.File(path,'r') as in_f:
         ## get data arrays
@@ -207,7 +207,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
         lons    = in_f[field_lon].value     #
         hcho    = in_f[field_hcho].value    #
         rsc_omi = in_f[field_rsc].value     # ref sector corrected vc
-        amf     = in_f[field_amf].value     # 
+        amf     = in_f[field_amf].value     #
         amfg    = in_f[field_amfg].value    # geometric amf
         clouds  = in_f[field_clouds].value  # cloud fraction
         ctp     = in_f[field_ctp].value     # cloud top pressure
@@ -215,7 +215,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
         xqf     = in_f[field_xqf].value     # cross track flag
         sza     = in_f[field_sza].value     # solar zenith angle
         vza     = in_f[field_vza].value     # viewing zenith angle
-        
+
         # uncertainty arrays                #
         cunc    = in_f[field_colUnc].value  # uncertainty
         fcf     = in_f[field_fitflag].value # convergence flag
@@ -226,9 +226,9 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
         plevs   = in_f[field_plevs].value   # pressure dim
         #                                   # [ 60 ]
         ref_c   = in_f[field_ref_c].value   # reference radiance col for swath tracks
-        
+
         #
-        ## remove missing values and bad flags: 
+        ## remove missing values and bad flags:
         # QF: missing<0, suss=1, bad=2
         if verbose:
             print("%d pixels in %s prior to filtering"%(np.sum(~np.isnan(hcho)),path))
@@ -239,7 +239,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
         lats[suss] = np.NaN
         lons[suss] = np.NaN
         amf[suss]  = np.NaN
-        
+
         # remove xtrack flagged data
         xsuss       = xqf != 0
         if verbose:
@@ -249,7 +249,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
         lats[xsuss] = np.NaN
         lons[xsuss] = np.NaN
         amf[xsuss]  = np.NaN
-        
+
         # remove pixels polewards of maxlat
         if maxlat is not None:
             with np.errstate(invalid='ignore'):
@@ -261,7 +261,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
             lats[rmlat] = np.NaN
             lons[rmlat] = np.NaN
             amf[rmlat]  = np.NaN
-        
+
         # remove solarzenithangle over 60 degrees
         if szamax is not None:
             rmsza       = sza > szamax
@@ -272,7 +272,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
             lats[rmsza] = np.NaN
             lons[rmsza] = np.NaN
             amf[rmsza]  = np.NaN
-        
+
         # remove VCs outside screen range
         if screen is not None:
             # ignore warnings from comparing NaNs to Values
@@ -285,7 +285,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
             lats[rmscr] = np.NaN
             lons[rmscr] = np.NaN
             amf[rmscr]  = np.NaN
-    
+
     #return everything in a structure
     return {'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
             'omega':w,'apriori':apri,'plevels':plevs, 'cloudfrac':clouds,
@@ -314,7 +314,7 @@ def read_omhcho_8days(day=datetime(2005,1,1)):
     '''
     data8=read_omhcho_day(day)
     for date in [ day + timedelta(days=d) for d in range(1,8) ]:
-        data=read_omhcho_day(date) 
+        data=read_omhcho_day(date)
         for key in data.keys():
             axis= [0,1][key in ['omega','apriori','plevels']]
             data8[key] = np.concatenate( (data8[key], data[key]), axis=axis)
@@ -324,7 +324,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     '''
     Function to read a reprocessed omi file, by default reads an 8-day average (8p)
     Inputs:
-        date = datetime(y,m,d) of file 
+        date = datetime(y,m,d) of file
         oneday = False : read a single day average rather than 8 day average
         latres=0.25
         lonres=0.3125
@@ -333,7 +333,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     Output:
         Structure containing omhchorp dataset
     '''
-    
+
     if keylist is None:
         keylist=_omhchorp_keylist
     retstruct=dict.fromkeys(keylist)
@@ -341,7 +341,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
         fpath=determine_filepath(date,oneday=oneday,latres=latres,lonres=lonres,reprocessed=True)
     else:
         fpath=filename
-    
+
     with h5py.File(fpath,'r') as in_f:
         #print('reading from file '+fpath)
         for key in keylist:
@@ -375,7 +375,7 @@ def filter_high_latitudes(array, latres=0.25, lonres=0.3125, highest_lat=60.0):
 
 def read_AMF_pp(date=datetime(2005,1,1),troprun=True):
     '''
-    Read AMF created by randal martin code for this day 
+    Read AMF created by randal martin code for this day
     along with pixel index for adding data to the good pixel list
     '''
     import os.path
@@ -410,10 +410,10 @@ def read_GC_output(date=datetime(2005,1,1), Isop=False,
     keys=[tropchem_HCHO_keys, UCX_HCHO_keys][UCX]
     if Isop:
         keys=[tropchem_Isop_keys, UCX_Isop_keys][UCX]
-    
+
     data={}
     if UCX:
         data=get_UCX_data(date,keys=keys,surface=surface)
     else:
-        data=get_tropchem_data(date,keys=keys,monthavg=monthavg,surface=surface
+        data=get_tropchem_data(date,keys=keys,monthavg=monthavg,surface=surface)
     return data

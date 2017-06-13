@@ -8,7 +8,7 @@ Run from main project directory or else imports will not work
 ## Modules
 
 # module for hdf eos 5
-#import h5py 
+#import h5py
 import netCDF4 as nc
 import numpy as np
 from datetime import datetime, timedelta
@@ -18,52 +18,57 @@ from glob import glob # for file pattern reading
 #####GLOBALS######
 ##################
 run_number={"tropchem":0,"UCX":1}
+#folder_location="/home/574/jwg574/OMI_regridding/"
+# relative paths (for use on non NCI computers)
+folder_location="Data/GC_Output/"
 runs=["geos5_2x25_tropchem","UCX_geos5_2x25"]
-paths=["/home/574/jwg574/OMI_regridding/Data/GC_Output/%s/trac_avg"%rstr for rstr in runs]
+#paths=["/home/574/jwg574/OMI_regridding/Data/GC_Output/%s/trac_avg"%rstr for rstr in runs]
+paths=["%s%s/trac_avg"%(folder_location,rstr) for rstr in runs]
 hemcodiag_path="/home/574/jwg574/OMI_regridding/Data/GC_Output/%s/hemco_diags"%runs[run_number['tropchem']]
 
 tropchem_dims=['Tau', 'Pressure', 'latitude', 'longitude']
-tropchem_keys=tropchem_dims+['ANTHSRCENO', 'ANTHSRCECO', 'ANTHSRCEALK4', 
+tropchem_keys=tropchem_dims+['ANTHSRCENO', 'ANTHSRCECO', 'ANTHSRCEALK4',
     'ANTHSRCEACET', 'ANTHSRCEMEK', 'ANTHSRCEALD2', 'ANTHSRCEPRPE', 'ANTHSRCEC3H8',
     'ANTHSRCECH2O', 'ANTHSRCEC2H6', 'BIOBSRCENO', 'BIOBSRCECO', 'BIOBSRCEALK4',
     'BIOBSRCEACET', 'BIOBSRCEMEK', 'BIOBSRCEALD2', 'BIOBSRCEPRPE', 'BIOBSRCEC3H8',
     'BIOBSRCECH2O', 'BIOBSRCEC2H6', 'BIOBSRCESO2', 'BIOBSRCENH3', 'BIOBSRCEBC',
-    'BIOBSRCEOC', 'BIOFSRCENO', 'BIOFSRCECO', 'BIOFSRCEALK4', 'BIOFSRCEACET', 
-    'BIOFSRCEMEK', 'BIOFSRCEALD2', 'BIOFSRCEPRPE', 'BIOFSRCEC3H8', 'BIOFSRCECH2O', 
-    'BIOFSRCEC2H6', 'BIOFSRCESO2', 'BIOFSRCENH3', 'BIOGSRCEISOP', 'BIOGSRCEACET', 
-    'BIOGSRCEPRPE', 'BIOGSRCEMONX', 'BIOGSRCEMBOX', 'BIOGSRCEAPIN', 'BIOGSRCEBPIN', 
-    'BIOGSRCELIMO', 'BIOGSRCESABI', 'BIOGSRCEMYRC', 'BIOGSRCECARE', 'BIOGSRCEOCIM', 
-    'BIOGSRCEHCOOH', 'BIOGSRCEACTA', 'BIOGSRCEALD2', 'BIOGSRCEOMON', 'BIOGSRCEMOHX', 
-    'BIOGSRCEETOH', 'BIOGSRCEFARN', 'BIOGSRCEBCAR', 'BIOGSRCEOSQT', 'BIOGSRCECHBr3', 
-    'BIOGSRCECH2Br2', 'BIOGSRCESSBr2', 'BXHGHT-$BXHEIGHT', 'BXHGHT-$AD', 
-    'BXHGHT-$AVGW', 'BXHGHT-$N(AIR)', 'CH4-EMISCH4-TOT', 'CH4-EMISCH4-GAO', 
-    'CH4-EMISCH4-COL', 'CH4-EMISCH4-LIV', 'CH4-EMISCH4-WST', 'CH4-EMISCH4-BFL', 
+    'BIOBSRCEOC', 'BIOFSRCENO', 'BIOFSRCECO', 'BIOFSRCEALK4', 'BIOFSRCEACET',
+    'BIOFSRCEMEK', 'BIOFSRCEALD2', 'BIOFSRCEPRPE', 'BIOFSRCEC3H8', 'BIOFSRCECH2O',
+    'BIOFSRCEC2H6', 'BIOFSRCESO2', 'BIOFSRCENH3', 'BIOGSRCEISOP', 'BIOGSRCEACET',
+    'BIOGSRCEPRPE', 'BIOGSRCEMONX', 'BIOGSRCEMBOX', 'BIOGSRCEAPIN', 'BIOGSRCEBPIN',
+    'BIOGSRCELIMO', 'BIOGSRCESABI', 'BIOGSRCEMYRC', 'BIOGSRCECARE', 'BIOGSRCEOCIM',
+    'BIOGSRCEHCOOH', 'BIOGSRCEACTA', 'BIOGSRCEALD2', 'BIOGSRCEOMON', 'BIOGSRCEMOHX',
+    'BIOGSRCEETOH', 'BIOGSRCEFARN', 'BIOGSRCEBCAR', 'BIOGSRCEOSQT', 'BIOGSRCECHBr3',
+    'BIOGSRCECH2Br2', 'BIOGSRCESSBr2', 'BXHGHT-$BXHEIGHT', 'BXHGHT-$AD',
+    'BXHGHT-$AVGW', 'BXHGHT-$N(AIR)', 'CH4-EMISCH4-TOT', 'CH4-EMISCH4-GAO',
+    'CH4-EMISCH4-COL', 'CH4-EMISCH4-LIV', 'CH4-EMISCH4-WST', 'CH4-EMISCH4-BFL',
     'CH4-EMISCH4-RIC', 'CH4-EMISCH4-OTA', 'CH4-EMISCH4-BBN', 'CH4-EMISCH4-WTL',
-    'CH4-EMISCH4-SAB', 'CH4-EMISCH4-OTN', 'DRYD-FLXO3df', 'DRYD-FLXCH2Odf', 
-    'DRYD-VELO3dv', 'DRYD-VELCH2Odv', 'DXYPDXYP', 'IJ-AVG-$NO', 'IJ-AVG-$O3', 
-    'IJ-AVG-$ISOP', 'IJ-AVG-$MVK', 'IJ-AVG-$MACR', 'IJ-AVG-$CH2O', 'IJ-AVG-$ISOPN', 
-    'IJ-AVG-$RIP', 'IJ-AVG-$IEPOX', 'IJ-AVG-$NO2', 'IJ-AVG-$NO3', 'JV-MAP-$JHNO3', 
-    'JV-MAP-$', 'PBLDEPTHPBL-M', 'PBLDEPTHPBL-L', 'PEDGE-$PSURF', 'PORL-L=$POX', 
+    'CH4-EMISCH4-SAB', 'CH4-EMISCH4-OTN', 'DRYD-FLXO3df', 'DRYD-FLXCH2Odf',
+    'DRYD-VELO3dv', 'DRYD-VELCH2Odv', 'DXYPDXYP', 'IJ-AVG-$NO', 'IJ-AVG-$O3',
+    'IJ-AVG-$ISOP', 'IJ-AVG-$MVK', 'IJ-AVG-$MACR', 'IJ-AVG-$CH2O', 'IJ-AVG-$ISOPN',
+    'IJ-AVG-$RIP', 'IJ-AVG-$IEPOX', 'IJ-AVG-$NO2', 'IJ-AVG-$NO3', 'JV-MAP-$JHNO3',
+    'JV-MAP-$', 'PBLDEPTHPBL-M', 'PBLDEPTHPBL-L', 'PEDGE-$PSURF', 'PORL-L=$POX',
     'PORL-L=$LOX', 'TR-PAUSETP-LEVEL', 'TR-PAUSETP-HGHT', 'TR-PAUSETP-PRESS' ]
-tropchem_HCHO_keys=tropchem_dims+['BXHGHT-$BXHEIGHT', 'BXHGHT-$AD', 'BXHGHT-$AVGW', 
-    'BXHGHT-$N(AIR)', 'DXYPDXYP', 'IJ-AVG-$ISOP', 'IJ-AVG-$CH2O', 'PEDGE-$PSURF', 
+tropchem_HCHO_keys=tropchem_dims+['BXHGHT-$BXHEIGHT', 'BXHGHT-$AD', 'BXHGHT-$AVGW',
+    'BXHGHT-$N(AIR)', 'DXYPDXYP', 'IJ-AVG-$ISOP', 'IJ-AVG-$CH2O', 'PEDGE-$PSURF',
     'TR-PAUSETP-LEVEL']
 tropchem_Isop_keys=tropchem_HCHO_keys+['IJ-AVG-$ISOP', 'IJ-AVG-$MVK', 'IJ-AVG-$MACR',
     'IJ-AVG-$NO2']
 # SOME KEYS DIDN'T GET THE 1E9 SCALING !?
 tropchem_scaled_keys=['IJ-AVG-$ISOP','IJ-AVG-$CH2O']
+tropchem_scale=1e9
 
 UCX_dims=['time','lev','lat','lon']
 UCX_keys=UCX_dims+['IJ_AVG_S__O3','IJ_AVG_S__ISOP','IJ_AVG_S__MVK','IJ_AVG_S__MACR',
     'IJ_AVG_S__CH2O','PEDGE_S__PSURF','CHEM_L_S__LBRO2H','PORL_L_S__POX',
-    'BXHGHT_S__BXHEIGHT','BXHGHT_S__AD','BXHGHT_S__AVGW','BXHGHT_S__N_AIR_', 
+    'BXHGHT_S__BXHEIGHT','BXHGHT_S__AD','BXHGHT_S__AVGW','BXHGHT_S__N_AIR_',
     'DXYP__','TR_PAUSE__TP_LEVEL','TR_PAUSE__TP_HGHT',
     'TR_PAUSE__TP_PRESS','CH4_LOSS__']
 UCX_HCHO_keys=UCX_dims+['IJ_AVG_S__ISOP','IJ_AVG_S__CH2O','PEDGE_S__PSURF',
     'BXHGHT_S__BXHEIGHT','BXHGHT_S__AD','BXHGHT_S__AVGW','BXHGHT_S__N_AIR_',
     'DXYP__','TR_PAUSE__TP_LEVEL']
 UCX_Isop_keys=UCX_HCHO_keys+['IJ_AVG_S__ISOP','IJ_AVG_S__MVK','IJ_AVG_S__MACR']
-    
+
 UCX_scaled_keys=[]
 __VERBOSE__=False
 
@@ -72,7 +77,7 @@ __VERBOSE__=False
 ################
 
 def date_from_gregorian(greg):
-    ''' 
+    '''
         gregorian = "hours since 1985-1-1 00:00:0.0"
         Returns list of datetimes
     '''
@@ -128,7 +133,7 @@ def read_UCX():
     print("Reading %s"%fullpath)
     ucxfile=nc.Dataset(fullpath,'r')
     return(ucxfile)
- 
+
 def read_tropchem(date=datetime(2005,1,1)):
     ''' read output file'''
     dstr=date.strftime("%Y%m%d")
@@ -139,7 +144,7 @@ def read_tropchem(date=datetime(2005,1,1)):
     tropfile=nc.Dataset(fullpath,'r')
     return(tropfile)
 
-def get_tropchem_data(date=datetime(2005,1,1), keys=tropchem_HCHO_keys, 
+def get_tropchem_data(date=datetime(2005,1,1), keys=tropchem_HCHO_keys,
     monthavg=True, surface=False):
     ''' return a subset of the tropchem data '''
     tf=read_tropchem(date)
@@ -151,12 +156,12 @@ def get_tropchem_data(date=datetime(2005,1,1), keys=tropchem_HCHO_keys,
     lon     = tf.variables['longitude'][:]
     Tau     = tf.variables['Tau'][:] # Tau(time): hours since 19850101:0000
     Press   = tf.variables['Pressure'][:] # Pressure(altitude): hPa, midpoints
-    
+
     # get the subset of data: (most are [[lev],lat,lon,time])
     data={}
-    
+
     for key in keys:
-        scale=[1.0, 1e9][key in tropchem_scaled_keys] # scale if needed
+        scale=[1.0, tropchem_scale][key in tropchem_scaled_keys] # scale if needed
         tmp=tf.variables[key][:]*scale
         if __VERBOSE__:
             print("%s originally [%s], with min, mean, max = (%.2e, %.2e %.2e)"%
@@ -190,9 +195,9 @@ def get_tropchem_data(date=datetime(2005,1,1), keys=tropchem_HCHO_keys,
     return(data)
 
 def read_HEMCO_diag(date=datetime(2005,1,1)):
-    ''' 
-        Read the HEMCO_diagnostics BIOGENIC ISOP EMISSIONS data 
-        This is for tropchem run only, with output in units 
+    '''
+        Read the HEMCO_diagnostics BIOGENIC ISOP EMISSIONS data
+        This is for tropchem run only, with output in units
         float ISOP_BIOG(time, lat, lon) ;
             ISOP_BIOG:long_name = "ISOP_BIOG" ;
             ISOP_BIOG:units = "kg/m2/s" ;
@@ -213,10 +218,10 @@ def read_HEMCO_diag(date=datetime(2005,1,1)):
         	float time(time) ;
         		time:long_name = "Time" ;
         		time:units = "hours since 1985-01-01 00:00:00" ;
-                
-            
+
+
     '''
-    # looks like hemco_diags/hemco_diags.200502.nc 
+    # looks like hemco_diags/hemco_diags.200502.nc
     dstr=date.strftime("%Y%m")
     fname="%s/hemco_diags.%s.nc"%(hemcodiag_path,dstr)
     print("Reading %s"%fname)
@@ -233,10 +238,10 @@ def get_UCX_data(date=datetime(2005,1,1), keys=UCX_HCHO_keys, surface=False):
     lon     = uf.variables['lon'][:]
     Tau     = uf.variables['time'][:] # Tau(time): hours since 19850101:0000
     Press   = uf.variables['lev'][:] # Pressure(altitude): hPa, midpoints
-    
+
     # get the subset of data: (most are [time,[lev],lat,lon])
     data={}
-    
+
     # find the month index:
     di=index_from_gregorian(Tau,date)
     if __VERBOSE__:
@@ -250,7 +255,7 @@ def get_UCX_data(date=datetime(2005,1,1), keys=UCX_HCHO_keys, surface=False):
                 (key, str(tmp.shape), np.nanmin(tmp), np.nanmean(tmp), np.nanmax(tmp)))
         dims=np.shape(tmp)
         Tdim=0 # time is first dimension
-        
+
         if dims[Tdim] == len(Tau): # check we have the time dimension
             tmp=np.squeeze(tmp[di])
             if __VERBOSE__:
@@ -271,7 +276,7 @@ def get_UCX_data(date=datetime(2005,1,1), keys=UCX_HCHO_keys, surface=False):
         data[key]=tmp
         if __VERBOSE__:
             print("%s now has shape: %s"%(key,str(np.shape(data[key]))))
-        
+
     # return the data we want
     uf.close()
     return(data)
@@ -287,10 +292,10 @@ def determine_trop_column(ppbv, N_air, boxH, tplev):
             tropcol[lat,lon]: tropospheric column (molec/cm2)
     '''
     dims=np.shape(ppbv)
-    
+
     # (molec_x/1e9 molec_air) * 1e9 * molec_air/m3 * m * m2/cm2
     X = ppbv * 1e-9 * N_air * boxH * 1e-4 # molec/cm2
-        
+
     out=np.zeros([dims[1],dims[2]])
     for lat in range(dims[1]):
         for lon in range(dims[2]):
@@ -299,7 +304,7 @@ def determine_trop_column(ppbv, N_air, boxH, tplev):
             out[lat,lon]= np.sum(X[0:trop,lat,lon]) + extra*X[trop,lat,lon]
     return out
 
-    
+
 def _test_trop_column_calc():
     '''
     This tests the trop column calculation with a trivial case

@@ -35,15 +35,23 @@ from JesseRegression import RMA
 
 def compare_tropcol_tc_ucx(date=datetime(2005,1,1)):
     ''' maps of UCX and tropchem tropospheric columns '''
+
+    # Read UCX and TC datasets
     ucx=GC_output(date,UCX=True)
     tc=GC_output(date,UCX=False)
     lats=tc.lats
     lons=tc.lons
+
+    # Get hcho and isop for comparisons
     keys=['hcho','isop']
     tc_trop_cols=tc.get_trop_columns(keys=keys)
     for k in keys:
         tc_trop_cols[k] = np.mean(tc_trop_cols[k], axis=2) # mean of last dim
     ucx_trop_cols=ucx.get_trop_columns(keys=keys)
+
+    # Set up limits
+    rlims={'hcho':(-20,20),'isop':(-50,100)}
+    alims={'hcho':(1e14,5e16),'isop':(1e9,5e16)}
 
     for ii,k in enumerate(keys):
         u=ucx_trop_cols[k]; t=tc_trop_cols[k]
@@ -52,25 +60,24 @@ def compare_tropcol_tc_ucx(date=datetime(2005,1,1)):
         print(" min    | %.3e     |   %.3e"%(np.min(u),np.min(t)))
         print(" max    | %.3e     |   %.3e"%(np.max(u),np.max(t)))
         print(" std    | %.3e     |   %.3e"%(np.std(u),np.std(t)))
+
         # Plot trop col differences for hcho
+        amin,amax = alims[k]
+        rmin,rmax = rlims[k]
         f,axes=plt.subplots(2,2,figsize=(16,14))
         plt.sca(axes[0,0])
-        pp.createmap(u,lats,lons,aus=True,clabel='molec/cm2',ptitle="%s UCX"%k)
+        pp.createmap(u,lats,lons,aus=True,clabel='molec/cm2',
+                     ptitle="%s UCX"%k, vmin=amin, vmax=amax)
         plt.sca(axes[0,1])
-        pp.createmap(t,lats,lons,aus=True,clabel='molec/cm2',ptitle="%s trop"%k)
+        pp.createmap(t,lats,lons,aus=True,clabel='molec/cm2',
+                     ptitle="%s trop"%k, vmin=amin, vmax=amax)
         plt.sca(axes[1,0])
-        pp.createmap(u-t,lats,lons,aus=True,clabel='molec/cm2',ptitle="UCX - trop",
-                    linear=True)
+        pp.createmap(u-t,lats,lons,aus=True,clabel='molec/cm2',
+                     ptitle="UCX - trop", linear=True)
         plt.sca(axes[1,1])
-        if k=='isop':
-            vmin=-100;vmax=100
-        if k=='hcho':
-            vmin=-20;vmax=20
-        pp.createmap((u-t)*100.0/u,lats,lons, vmin=vmin,vmax=vmax,aus=True,
-                    linear=True,clabel='%',ptitle="%s 100*(UCX-trop)/UCX",
+        pp.createmap((u-t)*100.0/u,lats,lons, vmin=rmin,vmax=rmax,aus=True,
+                    linear=True,clabel='%',ptitle="100*(UCX-trop)/UCX",
                     pname='Figs/GC/UCX_vs_tropchem_%s_%s'%(k,tc.dstr))
-
-
 
 def compare_surface_tc_ucx(date=datetime(2005,1,1)):
     ''' maps of UCX and tropchem surface HCHO'''
@@ -198,7 +205,7 @@ def isop_hcho_RMA(gc):
     plt.xlabel(r'E$_{isop}$ [atom$_C$ cm$^{-2}$ s$^{-1}$]')
     plt.ylabel(r'$\Omega_{HCHO}$ [molec$_{HCHO}$ cm$^{-2}$]')
     plt.title('Sample of regressions over Australia')
-    plt.legend(loc=0,fontsize=9) # show legend!
+    plt.legend(loc=0,fontsize=9) # show legend
     plt.savefig(pname1)
     print("Saved "+pname1)
     plt.close()
@@ -270,7 +277,7 @@ if __name__=='__main__':
 
     # scripts mapping stuff
     date=datetime(2005,1,1)
-    tc=GC_output(date,UCX=False)
-    E_isop_map(tc,aus=True)
-    E_isop_series(tc,aus=True)
-    isop_hcho_RMA(tc)
+    #tc=GC_output(date,UCX=False)
+    #E_isop_map(tc,aus=True)
+    #E_isop_series(tc,aus=True)
+    #isop_hcho_RMA(tc)

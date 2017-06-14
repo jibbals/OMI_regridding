@@ -75,7 +75,7 @@ def regularbounds(x,fix=False):
 
 def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, colorbar=True, linear=False,
-              clabel=None,pname=None,ptitle=None):
+              clabel=None,pname=None,title=None,suptitle=None):
     # Create a basemap map with region as inputted
     if aus: region=__AUSREGION__
     lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
@@ -111,8 +111,10 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
     m.drawparallels([0],labels=[0,0,0,0])
 
     # add title and cbar label
-    if ptitle is not None:
-        plt.title(ptitle)
+    if title is not None:
+        plt.title(title)
+    if suptitle is not None:
+        plt.suptitle(suptitle)
     cb=None
     if colorbar:
         cb=m.colorbar(cs,"bottom",size="5%", pad="2%")

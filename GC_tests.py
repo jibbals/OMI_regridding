@@ -67,16 +67,17 @@ def compare_tropcol_tc_ucx(date=datetime(2005,1,1)):
         f,axes=plt.subplots(2,2,figsize=(16,14))
         plt.sca(axes[0,0])
         pp.createmap(u,lats,lons,aus=True,clabel='molec/cm2',
-                     ptitle="%s UCX"%k, vmin=amin, vmax=amax)
+                     title="%s UCX"%k, vmin=amin, vmax=amax)
         plt.sca(axes[0,1])
         pp.createmap(t,lats,lons,aus=True,clabel='molec/cm2',
-                     ptitle="%s trop"%k, vmin=amin, vmax=amax)
+                     title="%s trop"%k, vmin=amin, vmax=amax)
         plt.sca(axes[1,0])
         pp.createmap(u-t,lats,lons,aus=True,clabel='molec/cm2',
-                     ptitle="UCX - trop", linear=True)
+                     title="UCX - trop", linear=True)
         plt.sca(axes[1,1])
         pp.createmap((u-t)*100.0/u,lats,lons, vmin=rmin,vmax=rmax,aus=True,
-                    linear=True,clabel='%',ptitle="100*(UCX-trop)/UCX",
+                    linear=True,clabel='%',title="100*(UCX-trop)/UCX",
+                    suptitle='%s %s'%(k,tc.dstr),
                     pname='Figs/GC/UCX_vs_tropchem_%s_%s'%(k,tc.dstr))
 
 def compare_surface_tc_ucx(date=datetime(2005,1,1)):
@@ -233,7 +234,7 @@ def isop_hcho_RMA(gc):
                 clabel=r'm for: $\Omega_{HCHO}$ = m E$_{isop}$ + b')
     plt.sca(axes[1]) # then plot r2 and save figure
     pp.createmap(r2,lats,lons,vmin=0.01,vmax=1.0,aus=True,linear=True,clabel=r'r$^2$',
-        ptitle="HCHO trop column vs isoprene emissions %s"%gc.dstr, pname=pname2)
+        title="HCHO trop column vs isoprene emissions %s"%gc.dstr, pname=pname2)
 
 def E_isop_series(gc, aus=False, region=None):
     ''' Plot E_isop time series '''
@@ -266,7 +267,7 @@ def E_isop_map(gc, aus=False, region=None):
 
     pname='Figs/GC/E_isop_%s%s.png'%(['','aus_'][aus], gc.dstr)
     pp.createmap(data,gc.lats,gc.lons, region=region, vmin=1e10,vmax=1e13,
-        ptitle='Emissions of isoprene', clabel=r'atom$_C$ cm$^{-2}$ s$^{-1}$',
+        title='Emissions of isoprene', clabel=r'atom$_C$ cm$^{-2}$ s$^{-1}$',
         pname=pname)
 
 # If this script is run directly:

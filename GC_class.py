@@ -92,6 +92,42 @@ class GC_output:
         # set dates and E_dates:
         self.dates=gcfio.date_from_gregorian(self.taus)
 
+    def model_yield(self, region=pp.__AUSREGION__):
+        '''
+            use RMA regression between E_isop and tropcol_HCHO to determine S:
+                HCHO = S * E_isop + B
+        '''
+
+        hcho = self.get_trop_columns(keys=['hcho'])['hcho']
+        isop = self.E_isop
+        lats,lons = self.lats, self.lons
+        lati,loni=pp.lat_lon_range(lats,lons,region)
+        sublats, sublons = lats[lati], lons[loni]
+        n_x=len(loni)
+        n_y=len(lati)
+        slope  = np.zeros([n_y,n_x]) + np.NaN
+        bg     = np.zeros([n_y,n_x]) + np.NaN
+        reg    = np.zeros([n_y,n_x]) + np.NaN
+
+        for xi in range(n_x):
+            for yi in range(n_y):
+                # Y = m X + B
+                X=isop[yi, xi, :]
+                Y=hcho[yi, xi, :]
+
+                # Skip ocean or no emissions squares:
+                if np.isclose(np.mean(X),0.0): continue
+
+                # get regression
+                m,b,r,CI1,CI2=RMA(X, Y)
+                slope[yi,xi] = m
+                bg[yi,xi] = b
+                reg[yi,xi] = r
+
+        # Return all the data and the lats/lons of our subregion:
+        return {'lats':sublats,'lons':sublons,'r':reg, 'b':bg, 'slope':slope}
+
+
     def ppbv_to_molec_cm2(self,keys=['hcho'],metres=False):
         ''' return dictionary with data in format molecules/cm2 [or /m2]'''
         out={}

@@ -47,7 +47,7 @@ def lat_lon_range(lats,lons,region):
     loninds=np.intersect1d(loninds1,loninds2, assume_unique=True)
     return latinds, loninds
 
-def findrange(data,lats,lons,region):
+def findvminmax(data,lats,lons,region):
     '''
     return vmin, vmax of data[lats,lons] within region: list=[SWNE]
     '''

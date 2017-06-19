@@ -92,6 +92,18 @@ class GC_output:
         # set dates and E_dates:
         self.dates=gcfio.date_from_gregorian(self.taus)
 
+    def ppbv_to_molec_cm2(self,keys=['hcho'],metres=False):
+        ''' return dictionary with data in format molecules/cm2 [or /m2]'''
+        out={}
+        for k in keys:
+            ppbv=getattr(self,k)
+            if k=='isop':
+                ppbv=ppbv/5.0 # ppb carbon to ppb isoprene
+
+            # ppbv * 1e-9 * molec_air/m3 * m * [m2/cm2]
+            scale=[1e-4, 1.0][metres]
+            out[k] = ppbv * 1e-9 * self.N_air * self.boxH * scale # molec/area
+        return out
 
     def get_trop_columns(self, keys=['hcho'], metres=False):
         ''' Return tropospheric column amounts in molec/cm2 [or molec/m2] '''
@@ -101,18 +113,12 @@ class GC_output:
         trop=np.floor(self.tplev).astype(int)
         extra=self.tplev - trop
 
+        Xdata=self.ppbv_to_molec_cm2(keys=keys,metres=metres)
         # for each key, work out trop columns
         for key in keys:
-            ppbv=getattr(self,key)
-            # if key is Isoprene: we have PPBC instead of PPBV
-            if key=='isop':
-                ppbv=ppbv/5.0 # convert PPBcarbon to PPBisoprene
 
-            dims=np.shape(ppbv)
-
-            # ppbv * 1e-9 * molec_air/m3 * m * [m2/cm2]
-            scale=[1e-4, 1.0][metres]
-            X = ppbv * 1e-9 * self.N_air * self.boxH * scale # molec/area
+            dims=np.shape(Xdata[key])
+            X=Xdata[key]
 
             out=np.zeros(dims[1:])
             for lat in range(dims[1]):

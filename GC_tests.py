@@ -33,8 +33,11 @@ from JesseRegression import RMA
 ###FUNCTIONS####
 ################
 
-def compare_tropcol_tc_ucx(date=datetime(2005,1,1)):
-    ''' maps of UCX and tropchem tropospheric columns '''
+def compare_tc_ucx(date=datetime(2005,1,1)):
+    '''
+        maps of UCX and tropchem tropospheric columns
+        Can also produce similar maps for surface values rather than column amounts
+    '''
 
     # Read UCX and TC datasets
     ucx=GC_output(date,UCX=True)
@@ -43,109 +46,63 @@ def compare_tropcol_tc_ucx(date=datetime(2005,1,1)):
     lons=tc.lons
 
     # Get hcho and isop for comparisons
+    data={} # data['tc']['isop'] = molec/cm2 [lat,lon]
+
     keys=['hcho','isop']
-    tc_trop_cols=tc.get_trop_columns(keys=keys)
-    for k in keys:
-        tc_trop_cols[k] = np.mean(tc_trop_cols[k], axis=2) # mean of last dim
-    ucx_trop_cols=ucx.get_trop_columns(keys=keys)
-
-    # Set up limits
     rlims={'hcho':(-20,20),'isop':(-50,100)}
-    alims={'hcho':(1e14,5e16),'isop':(1e9,5e16)}
+    for sf in [True,False]:
+        if sf: # surface only
+            data['tc']=tc.ppbv_to_molec_cm2(keys=keys)
+            data['ucx']=ucx.ppbv_to_molec_cm2(keys=keys)
+            for run in ['tc','ucx']:
+                for k in keys:
+                    data[run][k] = data[run][k][0,:] # surface layer only
 
-    for ii,k in enumerate(keys):
-        u=ucx_trop_cols[k]; t=tc_trop_cols[k]
-        print("%5s   |  UCX          | tropchem"%k)
-        print(" mean   | %.3e     |   %.3e"%(np.mean(u),np.mean(t)))
-        print(" min    | %.3e     |   %.3e"%(np.min(u),np.min(t)))
-        print(" max    | %.3e     |   %.3e"%(np.max(u),np.max(t)))
-        print(" std    | %.3e     |   %.3e"%(np.std(u),np.std(t)))
+            alims={'hcho':(1e13,5e15),'isop':(1e9,5e15)}
 
-        # Plot trop col differences for hcho
-        amin,amax = alims[k]
-        rmin,rmax = rlims[k]
-        f,axes=plt.subplots(2,2,figsize=(16,14))
-        plt.sca(axes[0,0])
-        pp.createmap(u,lats,lons,aus=True,clabel='molec/cm2',
-                     title="%s UCX"%k, vmin=amin, vmax=amax)
-        plt.sca(axes[0,1])
-        pp.createmap(t,lats,lons,aus=True,clabel='molec/cm2',
-                     title="%s trop"%k, vmin=amin, vmax=amax)
-        plt.sca(axes[1,0])
-        pp.createmap(u-t,lats,lons,aus=True,clabel='molec/cm2',
-                     title="UCX - trop", linear=True)
-        plt.sca(axes[1,1])
-        pp.createmap((u-t)*100.0/u,lats,lons, vmin=rmin,vmax=rmax,aus=True,
-                    linear=True,clabel='%',title="100*(UCX-trop)/UCX",
-                    suptitle='%s %s'%(k,tc.dstr),
-                    pname='Figs/GC/UCX_vs_tropchem_%s_%s'%(k,tc.dstr))
+        else: # whole tropospheric column
+            data['tc']  = tc.get_trop_columns(keys=keys)
+            data['ucx'] = ucx.get_trop_columns(keys=keys)
 
-def compare_surface_tc_ucx(date=datetime(2005,1,1)):
-    ''' maps of UCX and tropchem surface HCHO'''
-    ausregion=pp.__AUSREGION__ # [S W N E]
-    dstr=date.strftime("%Y%m%d")
+            alims={'hcho':(1e14,5e16),'isop':(1e9,5e16)}
 
-    # First get tropchem data:
-    #
-    tdat=get_tropchem_data(date=date,monthavg=True,surface=True)
-    thcho=tdat['IJ-AVG-$CH2O']
-    tlat=tdat['latitude']
-    tlon=tdat['longitude']
-    # determine min and max:
-    tvmin,tvmax = np.nanmin(thcho), np.nanmax(thcho)
-    print("Global tropchem min=%.2e, max=%.2e"%(tvmin,tvmax))
-    tvmin,tvmax = pp.findrange(thcho,tlat,tlon, ausregion)
-    print("Aus tropchem min=%.2e, max=%.2e"%(tvmin,tvmax))
+        # Mean of the month for tropchem run
+        for k in keys:
+            data['tc'][k] = np.mean(data['tc'][k], axis=2) # mean of time dim
 
-    # Then get UCX data:
-    #
-    udat=get_UCX_data(date=date,surface=True)
-    uhcho=udat['IJ_AVG_S__CH2O']
-    ulat=udat['lat']
-    ulon=udat['lon']
-    assert (np.array_equal(ulat,tlat)) and (np.array_equal(ulon,tlon)), "LATS AND LONS DIFFER"
-
-    # determine min and max:
-    uvmin,uvmax = np.nanmin(uhcho), np.nanmax(uhcho)
-    print("Global UCX min=%.2e, max=%.2e"%(uvmin,uvmax))
-    uvmin,uvmax = pp.findrange(uhcho,ulat,ulon, ausregion)
-    print("Aus UCX min=%.2e, max=%.2e"%(uvmin,uvmax))
-    vmin,vmax=np.min([uvmin,tvmin]),np.max([uvmax,tvmax])
-
-    # Figures with 4 subplots
-    f,axes=plt.subplots(2,2,figsize=(14,14))
-    kwargs={'vmin':vmin,'vmax':vmax,'linear':True, 'aus':True}
-    # first is tropchem
-    plt.sca(axes[0,0])
-    m,cs,cb=pp.createmap(thcho,tlat,tlon, **kwargs)
-    plt.title('tropchem surface')
-    cb.set_label('ppbv')
-
-    # second is UCX
-    plt.sca(axes[0,1])
-    m,cs,cb=pp.createmap(uhcho,ulat,ulon, **kwargs)
-    plt.title('UCX surface')
-    cb.set_label('ppbv')
-
-    # Third is diffs:
-    plt.sca(axes[1,0])
-    m,cs,cb = pp.createmap(uhcho-thcho, tlat, tlon, **kwargs)
-    plt.title('UCX - tropchem')
-    cb.set_label('ppbv')
-
-    # Fourth is rel diff:
-    plt.sca(axes[1,1])
-    kwargs['vmin']=-10; kwargs['vmax']=10
-    m,cs,cb = pp.createmap((uhcho-thcho)/thcho*100, tlat, tlon, **kwargs)
-    plt.title('100*(UCX - tropchem)/tropchem')
-    cb.set_label('% difference')
+        for ii,k in enumerate(keys):
+            u=data['ucx'][k]; t=data['tc'][k]
+            if sf:
+                print("Surface only:")
+            else:
+                print("Troposphere")
+            print("%5s   |  UCX          | tropchem"%k)
+            print(" mean   | %.3e     |   %.3e"%(np.mean(u),np.mean(t)))
+            print(" min    | %.3e     |   %.3e"%(np.min(u),np.min(t)))
+            print(" max    | %.3e     |   %.3e"%(np.max(u),np.max(t)))
+            print(" std    | %.3e     |   %.3e"%(np.std(u),np.std(t)))
 
 
-    pname='Figs/GC/tropchem_hcho_%s.png'%dstr
-    plt.suptitle('HCHO %s'%dstr)
-    plt.savefig(pname)
-    print("%s saved"%pname)
-    plt.close()
+            # Plot values and differences for each key
+            units=r'molec cm$^{-2}$'
+            pname='Figs/GC/UCX_vs_tropchem_%s_%s_%s'%(['trop','surf'][sf],k,tc.dstr)
+            amin,amax = alims[k]
+            rmin,rmax = rlims[k]
+            f,axes=plt.subplots(2,2,figsize=(16,14))
+            plt.sca(axes[0,0])
+            pp.createmap(u,lats,lons,aus=True,clabel=units,
+                         title="%s UCX"%k, vmin=amin, vmax=amax)
+            plt.sca(axes[0,1])
+            pp.createmap(t,lats,lons,aus=True,clabel=units,
+                         title="%s tropchem"%k, vmin=amin, vmax=amax)
+            plt.sca(axes[1,0])
+            pp.createmap(u-t,lats,lons,aus=True,clabel=units,
+                         title="UCX - tropchem", linear=True)
+            plt.sca(axes[1,1])
+            pp.createmap((u-t)*100.0/u,lats,lons, vmin=rmin,vmax=rmax,aus=True,
+                        linear=True,clabel='%',title="100*(UCX-tc)/UCX",
+                        suptitle='%s %s %s'%(['trop','surf'][sf], k, tc.dstr),
+                        pname=pname)
 
 
 def isop_hcho_RMA(gc):
@@ -274,7 +231,7 @@ def E_isop_map(gc, aus=False, region=None):
 if __name__=='__main__':
     pp.InitMatplotlib()
     #compare_surface_tc_ucx()
-    compare_tropcol_tc_ucx()
+    compare_tc_ucx()
 
     # scripts mapping stuff
     date=datetime(2005,1,1)

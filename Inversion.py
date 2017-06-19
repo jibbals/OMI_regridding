@@ -18,7 +18,10 @@ import numpy as np
 # local imports
 import fio
 from JesseRegression import RMA
-from Data.GC_class import GC_tropchem
+from GC_class import GC_output # Class reading GC output
+from omhchorp import omhchorp  # class reading OMHCHORP
+import plotting as pp
+
 
 def Background(H):
     '''
@@ -66,17 +69,27 @@ def Emissions(month=datetime(2005,1,1)):
         Determine emissions of isoprene for a particular month
         1) Calculate Yield and background for a particular month
         2) Use Biogenic HCHO product to calculate E_isoprene.
+
+        HCHO = S * E_isop + b
     '''
     ## Read model data for this month
     ##
-    GC=GC_tropchem(date=month)#,Isop=True,UCX=False,surface=False)
-    
-    # Daily trop HCHO
-    trop_hcho=GC.get_trop_columns(key='hcho') # molec/cm2
+    GC=GC_output(date=month)
 
-    # Daily E_isop (From Model diag output)
-    E_isop=GC.get_daily_E_isop()
-    
+    # model slope between HCHO and E_isop:
+    region=pp.__AUSREGION__
+    S_model=GC_output.model_yield(__AUSREGION__)
+
+    # OMI HCHO, and background
+    omi=omhchorp(date=month)
+
+    lati, loni = pp.lat_lon_range(omi.latitude, omi.longitude,region)
+    lats, lons = omi.latitude[lati], omi.longitude[loni]
+    hcho = omi.VCC[lati,loni]
+    background= omi.background_HCHO()
+
+
+
     # \Omega_{HCHO} = S \times E_{isop} + B
     #   Determine S from the slope bewteen E_isop and HCHO
 

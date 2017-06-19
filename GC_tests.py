@@ -231,7 +231,7 @@ def E_isop_map(gc, aus=False, region=None):
 if __name__=='__main__':
     pp.InitMatplotlib()
     #compare_surface_tc_ucx()
-    compare_tc_ucx()
+    #compare_tc_ucx()
 
     # scripts mapping stuff
     date=datetime(2005,1,1)

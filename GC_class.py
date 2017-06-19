@@ -94,17 +94,21 @@ class GC_output:
 
     def model_yield(self, region=pp.__AUSREGION__):
         '''
-            use RMA regression between E_isop and tropcol_HCHO to determine S:
-                HCHO = S * E_isop + B
+            Use RMA regression between E_isop and tropcol_HCHO to determine S:
+                HCHO = S * E_isop + b
+            Note: Slope = Yield_isop / k_hcho
+
+            Return {'lats','lons','r':reg, 'b':bg, 'slope':slope}
+
         '''
 
         hcho = self.get_trop_columns(keys=['hcho'])['hcho']
         isop = self.E_isop
         lats,lons = self.lats, self.lons
-        lati,loni=pp.lat_lon_range(lats,lons,region)
+        lati,loni = pp.lat_lon_range(lats,lons,region)
         sublats, sublons = lats[lati], lons[loni]
-        n_x=len(loni)
-        n_y=len(lati)
+        n_x = len(loni)
+        n_y = len(lati)
         slope  = np.zeros([n_y,n_x]) + np.NaN
         bg     = np.zeros([n_y,n_x]) + np.NaN
         reg    = np.zeros([n_y,n_x]) + np.NaN

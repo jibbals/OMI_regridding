@@ -141,6 +141,10 @@ class omhchorp:
         ''' return indices of Australia, with or without(default) ocean squares '''
         return self.inds_subset(lat0=-57,lat1=-6,lon0=101,lon1=160,maskocean=maskocean,maskland=maskland)
 
+    def background_HCHO(self):
+        ''' return average HCHO over a specific region '''
+        TODO: implement
+
 
 if __name__=='__main__':
 

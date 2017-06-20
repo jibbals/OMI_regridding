@@ -91,6 +91,17 @@ class GC_output:
 
         # set dates and E_dates:
         self.dates=gcfio.date_from_gregorian(self.taus)
+    def get_field(self, keys=['hcho', 'E_isop'], region=pp.__AUSREGION__):
+        '''
+        Return fields subset to a specific region [S W N E]
+        '''
+        lati,loni = pp.lat_lon_range(self.lats,self.lons,region)
+        out={'lats':self.lats[lati],'lons':self.lons[loni]}
+        for k in keys:
+            out[k] = getattr(self, k)
+            out[k] = out[k][lati,:]
+            out[k] = out[k][:,loni]
+        return out
 
     def model_yield(self, region=pp.__AUSREGION__):
         '''
@@ -104,8 +115,15 @@ class GC_output:
 
         hcho = self.get_trop_columns(keys=['hcho'])['hcho']
         isop = self.E_isop
+
         lats,lons = self.lats, self.lons
         lati,loni = pp.lat_lon_range(lats,lons,region)
+
+        isop = isop[lati, :]
+        isop = isop[:, loni]
+        hcho = hcho[lati, :]
+        hcho = hcho[:, loni]
+
         sublats, sublons = lats[lati], lons[loni]
         n_x = len(loni)
         n_y = len(lati)
@@ -127,6 +145,9 @@ class GC_output:
                 slope[yi,xi] = m
                 bg[yi,xi] = b
                 reg[yi,xi] = r
+
+        print('model_yield')
+        print(np.nanmean(slope))
 
         # Return all the data and the lats/lons of our subregion:
         return {'lats':sublats,'lons':sublons,'r':reg, 'b':bg, 'slope':slope}

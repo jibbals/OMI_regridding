@@ -16,6 +16,12 @@ import fio
 
 __DEBUG__=False
 
+#_keynames=["AMF_GC","AMF_GCz","AMF_OMI",...]
+
+# Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
+# Changed to -175 to avoid crossing the 179 -> -179 boundary
+__REMOTEPACIFIC__=[-15, -175, 15, -120]
+
 class omhchorp:
     '''
     Class for holding OMI regridded, reprocessed dataset
@@ -97,7 +103,7 @@ class omhchorp:
         for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,self.VC_OMI,self.VC_OMI_RSC,self.VCC,self.col_uncertainty_OMI]:
             arr[mask]=np.NaN
 
-    def inds_subset(self, lat0=None,lat1=None,lon0=None,lon1=None, maskocean=True, maskland=False):
+    def inds_subset(self, lat0=None,lat1=None,lon0=None,lon1=None, maskocean=False, maskland=False):
         ''' return indices of lat,lon arrays within input box '''
         inds=~np.isnan(self.AMF_OMI) # only want non nans
         mlons,mlats=np.meshgrid(self.longitude,self.latitude)
@@ -111,17 +117,34 @@ class omhchorp:
             if lon1 is not None:
                 inds = inds * (mlons <= lon1)
 
-        if maskocean or maskland:
-            oceanmask=maskoceans(mlons,mlats,self.AMF_OMI,inlands=False).mask
+        # true over ocean squares
+        oceanmask=maskoceans(mlons,mlats,self.AMF_OMI,inlands=False).mask
+
+        landmask = (~oceanmask)
+
+        # mask ocean if flag is set
+        if maskocean:
+            inds *= (~oceanmask)
             if __DEBUG__:
                 print("oceanmask:")
                 print((type(oceanmask),oceanmask.shape))
                 print( (inds * (~oceanmask)).shape )
                 print((np.sum(oceanmask),np.sum(~oceanmask))) # true for ocean squares!
-            # either mask land or ocean
-            inds *= [(~oceanmask),oceanmask][maskland]
+
+        if maskland:
+            inds *= (~landmask)
 
         return inds
+
+    def region_subset(self, region, maskocean=False, maskland=False):
+        '''
+            Return true where lats and lons are within region
+            Can also mask ocean or land squares
+            region=[S,W,N,E]
+        '''
+        return self.inds_subset(lat0=region[0],lat1=region[2],
+                                lon0=region[1],lon1=region[3],
+                                maskocean=maskocean, maskland=maskland)
 
     def latlon_bounds(self):
         ''' Return latedges and lonedges arrays '''
@@ -143,8 +166,13 @@ class omhchorp:
 
     def background_HCHO(self):
         ''' return average HCHO over a specific region '''
-        TODO: implement
+        #TODO: implement
+        # find the average HCHO column over the __REMOTEPACIFIC__
+        inds = self.region_subset(__REMOTEPACIFIC__,
+                                  maskocean=False,maskland=False)
 
+        BG=np.nanmean(self.VCC[inds])
+        return BG
 
 if __name__=='__main__':
 

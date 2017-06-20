@@ -14,6 +14,7 @@ from mpl_toolkits.basemap import Basemap #, maskoceans
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.colors import LogNorm # for lognormal colour bar
+from scipy.interpolate import griddata # for regrid function
 from JesseRegression import RMA
 #import matplotlib.patches as mpatches
 
@@ -57,6 +58,17 @@ def findvminmax(data,lats,lons,region):
     vmin=np.nanmin(data2)
     vmax=np.nanmax(data2)
     return vmin,vmax
+
+def regrid(data,lats,lons,newlats,newlons):
+    ''' Regrid a data array [lat,lon] onto [newlat,newlon] '''
+
+    mlons,mlats = np.meshgrid(lons,lats)
+    mnewlons,mnewlats = np.meshgrid(newlons,newlats)
+
+    interp = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
+                      (mnewlats, mnewlons), method='nearest')
+
+    return interp
 
 def regularbounds(x,fix=False):
     # Take a lat or lon array input and return the grid edges
@@ -231,4 +243,51 @@ def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legen
         plt.savefig(pname)
         print('%s saved'%pname)
         plt.close()
+
+def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
+                 clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
+                 linear=False, **pltargs):
+    '''
+        Plot two maps and their relative and absolute differences
+    '''
+    A=datas[0]
+    B=datas[1]
+    Alats=lats[0]
+    Alons=lons[0]
+    Blats=lats[1]
+    Blons=lons[1]
+    if vmax is None:
+        vmax = np.nanmax(np.array(np.nanmax(A),np.nanmax(B)))
+    if vmin is None:
+        vmin = np.nanmin(np.array(np.nanmin(A),np.nanmin(B)))
+
+
+    # regrid the lower resolution data
+    if len(Alats) > len(Blats):
+        B = regrid(B,Blats,Blons,Alats,Alons)
+        Blats,Blons=Alats,Alons
+    if len(Alats) < len(Blats):
+        A = regrid(A,Alats,Alons,Blats,Blons)
+        Alats,Alons=Blats,Blons
+    lats=Alats
+    lons=Alons
+
+    # set up plot
+    f,axes=plt.subplots(2,2,figsize=(16,14))
+    plt.sca(axes[0,0])
+
+    createmap(A,lats,lons,region=region, clabel=clabel, linear=linear,
+            title=titles[0], vmin=vmin, vmax=vmax)
+
+    plt.sca(axes[0,1])
+    createmap(B,lats,lons,region=region, clabel=clabel, linear=linear,
+              title=titles[1], vmin=vmin, vmax=vmax)
+    plt.sca(axes[1,0])
+    title="%s - %s"%(titles[0],titles[1])
+    createmap(A-B,lats,lons,region=region, clabel=clabel,
+             title=title, linear=True)
+    plt.sca(axes[1,1])
+    title="100*(%s-%s)/%s"%(titles[0], titles[1], titles[0])
+    createmap((A-B)*100.0/A,lats, lons, region=region,linear=True,
+              clabel=clabel, title=title, suptitle=suptitle, pname=pname)
 

@@ -14,24 +14,16 @@ Created on Tue Dec  6 09:48:11 2016
 """
 # imports
 import numpy as np
-
+from datetime import datetime
 # local imports
 import fio
 from JesseRegression import RMA
 from GC_class import GC_output # Class reading GC output
-from omhchorp import omhchorp  # class reading OMHCHORP
+from omhchorp import omhchorp, __REMOTEPACIFIC__  # class reading OMHCHORP
 import plotting as pp
 
 
-def Background(H):
-    '''
-        Determine background HCHO as a function of latitude and time,
-        based on the average over the remote pacific ocean
-        Remote pacific = lon0 to lon1, lat+-5 degrees (TODO:)
 
-        Assume H[lat,lon,time]
-        Return B[lat,time]
-    '''
 
 def Yield(H, k_H, I, k_I):
     '''
@@ -64,7 +56,7 @@ def Yield(H, k_H, I, k_I):
     #Return the yields
     return Y
 
-def Emissions(month=datetime(2005,1,1)):
+def Emissions(month=datetime(2005,1,1), GC = None, OMI = None, region=pp.__AUSREGION__):
     '''
         Determine emissions of isoprene for a particular month
         1) Calculate Yield and background for a particular month
@@ -72,37 +64,82 @@ def Emissions(month=datetime(2005,1,1)):
 
         HCHO = S * E_isop + b
     '''
-    ## Read model data for this month
+    ## Read data for this month unless it's been passed in
     ##
-    GC=GC_output(date=month)
+    if GC is None:
+        GC=GC_output(date=month)
+    if OMI is None:
+        OMI=omhchorp(date=month)
 
     # model slope between HCHO and E_isop:
-    region=pp.__AUSREGION__
-    S_model=GC_output.model_yield(__AUSREGION__)
+    S_model=GC.model_yield(region)
 
-    # OMI HCHO, and background
-    omi=omhchorp(date=month)
+    # subset over region of interest
+    lati, loni = pp.lat_lon_range(OMI.latitude, OMI.longitude, region)
+    #inds = OMI.region_subset(region=region, maskocean=False, maskland=False)
+    lats, lons = OMI.latitude[lati], OMI.longitude[loni]
+    hcho    = OMI.VCC[lati,:]
+    hcho    = hcho[:,loni]
+    BG      = OMI.background_HCHO()
 
-    lati, loni = pp.lat_lon_range(omi.latitude, omi.longitude,region)
-    lats, lons = omi.latitude[lati], omi.longitude[loni]
-    hcho = omi.VCC[lati,loni]
-    background= omi.background_HCHO()
+    ## Calculate Emissions from these
+    ##
 
+    # map GC slope onto same lats/lons as OMI
+    #print(np.shape(S_model['slope']))
+    #print(np.nanmean(S_model['slope']))
 
+    GC_slope=pp.regrid(S_model['slope'], S_model['lats'],S_model['lons'],
+                    lats,lons)
+
+    #print (np.shape(GC_slope))
+    #print(np.nanmean(GC_slope))
 
     # \Omega_{HCHO} = S \times E_{isop} + B
+    # E_isop = (Column_hcho - B) / S
     #   Determine S from the slope bewteen E_isop and HCHO
+    E_new = (hcho - BG) / GC_slope
+
+    #print (np.nanmean(hcho))
+    #print(BG)
 
     # loss rate of HCHO
 
     # loss rate of Isop
 
-    ## Read biogenic HCHO product
-    ##
+    return {'E_isop':E_new, 'lats':lats, 'lons':lons }#'E_gcisop':GC_slope[]}
 
-    ## Calculate Background and Yield from model data
-    ##
+def check_regridding():
+    #TODO: implement
+    print('TBE')
 
-    ## Calculate Emissions from these
-    ##
 
+if __name__=='__main__':
+    # check the regridding function:
+    check_regridding()
+    # try running
+    month=datetime(2005,1,1)
+    GC=GC_output(date=month)
+    OMI=omhchorp(date=month)
+    region=pp.__AUSREGION__
+    E_new=Emissions(month=month, GC=GC, OMI=OMI, region=region)
+    E_GC=GC.get_field(keys=['E_isop'], region=region)
+    E_GC['E_isop'] = np.mean(E_GC['E_isop'],axis=2) # average of the monthly values
+    for k,v in E_GC.items():
+        print ((k, v.shape))
+        print(np.nanmean(v))
+    pp.createmap(E_new['E_isop'], E_new['lats'], E_new['lons'], aus=True,
+                 linear=True, pname="Figs/GC/E_new_200501.png")
+    pp.createmap(E_GC['E_isop'], E_GC['lats'], E_GC['lons'], aus=True,
+                 linear=True, pname="Figs/GC/E_GC_200501.png")
+
+    arrs=[E_new['E_isop'],E_GC['E_isop']]
+    lats=[E_new['lats'],E_GC['lats']]
+    lons=[E_new['lons'],E_GC['lons']]
+    titles=['E_omi','E_gc']
+    vmin,vmax=1e9,5e12
+    pp.compare_maps(arrs,lats,lons,pname='Figs/GC/E_Comparison.png',
+                    titles=titles,vmin=vmin,vmax=vmax,linear=False)
+
+    print("New estimate: %.2e"%np.nanmean(E_new['E_isop']))
+    print("Old estimate: %.2e"%np.nanmean(E_GC['E_isop']))

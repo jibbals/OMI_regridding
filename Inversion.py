@@ -111,35 +111,50 @@ def Emissions(month=datetime(2005,1,1), GC = None, OMI = None, region=pp.__AUSRE
 
 def check_regridding():
     #TODO: implement
-    print('TBE')
+    print('check_regridding TODO')
 
+def check_against_MEGAN(month=datetime(2005,1,1)):
 
-if __name__=='__main__':
-    # check the regridding function:
-    check_regridding()
-    # try running
-    month=datetime(2005,1,1)
     GC=GC_output(date=month)
     OMI=omhchorp(date=month)
     region=pp.__AUSREGION__
+
     E_new=Emissions(month=month, GC=GC, OMI=OMI, region=region)
     E_GC=GC.get_field(keys=['E_isop'], region=region)
     E_GC['E_isop'] = np.mean(E_GC['E_isop'],axis=2) # average of the monthly values
     for k,v in E_GC.items():
         print ((k, v.shape))
         print(np.nanmean(v))
-    pp.createmap(E_new['E_isop'], E_new['lats'], E_new['lons'], aus=True,
+    Eomi=E_new['E_isop']
+    Egc=E_GC['E_isop']
+    latsgc=E_GC['lats']
+    lonsgc=E_GC['lons']
+    latsom=E_new['lats']
+    lonsom=E_new['lons']
+    vmin,vmax=1e9,5e12
+    pp.createmap(Eomi, latsom, lonsom, aus=True, vmin=vmin,vmax=vmax,
                  linear=True, pname="Figs/GC/E_new_200501.png")
-    pp.createmap(E_GC['E_isop'], E_GC['lats'], E_GC['lons'], aus=True,
+    pp.createmap(Egc, latsgc, lonsgc, aus=True, vmin=vmin,vmax=vmax,
                  linear=True, pname="Figs/GC/E_GC_200501.png")
 
-    arrs=[E_new['E_isop'],E_GC['E_isop']]
-    lats=[E_new['lats'],E_GC['lats']]
-    lons=[E_new['lons'],E_GC['lons']]
+    arrs=[Eomi,Egc]
+    lats=[latsom,latsgc]
+    lons=[lonsom,lonsgc]
     titles=['E_omi','E_gc']
-    vmin,vmax=1e9,5e12
     pp.compare_maps(arrs,lats,lons,pname='Figs/GC/E_Comparison.png',
                     titles=titles,vmin=vmin,vmax=vmax,linear=False)
 
-    print("New estimate: %.2e"%np.nanmean(E_new['E_isop']))
-    print("Old estimate: %.2e"%np.nanmean(E_GC['E_isop']))
+    print("New estimate: %.2e"%np.nanmean(Eomi))
+    print("Old estimate: %.2e"%np.nanmean(Egc))
+
+    # corellation
+
+    #Convert both arrays to same dimensions for correllation?
+    #pp.plot_corellation()
+
+
+if __name__=='__main__':
+    # check the regridding function:
+    check_regridding()
+    # try running
+    #month=datetime(2005,1,1)

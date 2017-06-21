@@ -246,6 +246,7 @@ def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legen
 
 def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
                  clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
+                 rmin=-200.0, rmax=200.,
                  linear=False, **pltargs):
     '''
         Plot two maps and their relative and absolute differences
@@ -289,5 +290,6 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
     plt.sca(axes[1,1])
     title="100*(%s-%s)/%s"%(titles[0], titles[1], titles[0])
     createmap((A-B)*100.0/A,lats, lons, region=region,linear=True,
-              clabel=clabel, title=title, suptitle=suptitle, pname=pname)
+              vmin=rmin, vmax=rmax, clabel=clabel, title=title,
+              suptitle=suptitle, pname=pname)
 

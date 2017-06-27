@@ -109,6 +109,7 @@ def isop_hcho_RMA(gc):
     '''
         compares isop emission [atom_C/cm2/s] against hcho vert_column [molec_hcho/cm2]
         as done in Palmer et al. 2003
+        Also plots sample of regressions over Australia
     '''
 
     # Retrieve data

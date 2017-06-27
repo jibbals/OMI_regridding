@@ -19,7 +19,7 @@ from JesseRegression import RMA
 #import matplotlib.patches as mpatches
 
 # S W N E
-__AUSREGION__=[-50,100,-5,160,]
+__AUSREGION__=[-47,106,-5,158,]
 __GLOBALREGION__=[-80, -179, 80, 179]
 
 def InitMatplotlib():
@@ -60,15 +60,50 @@ def findvminmax(data,lats,lons,region):
     return vmin,vmax
 
 def regrid(data,lats,lons,newlats,newlons):
-    ''' Regrid a data array [lat,lon] onto [newlat,newlon] '''
+    '''
+    Regrid a data array [lat,lon] onto [newlat,newlon]
+    Assumes a regular grid!
+    '''
+    # if no resolution change then just throw back input
+    if len(newlats) == len(lats):
+        return data
 
-    mlons,mlats = np.meshgrid(lons,lats)
-    mnewlons,mnewlats = np.meshgrid(newlons,newlats)
+    # make into higher resolution
+    if len(newlats) > len(lats):
+        mlons,mlats = np.meshgrid(lons,lats)
+        mnewlons,mnewlats = np.meshgrid(newlons,newlats)
 
-    interp = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
-                      (mnewlats, mnewlons), method='nearest')
+        interp = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
+                          (mnewlats, mnewlons), method='nearest')
+        return interp
 
-    return interp
+    # transform to lower resolution
+    print("UNTESTED REGRIDDING")
+    avgbefore=np.nanmean(data)
+    if len(newlats) < len(lats):
+        ni, nj = len(newlats), len(newlons)
+        interp = np.zeros([ni,nj]) + np.NaN
+        for i in range(ni):
+            latlower=newlats[i]
+            if i == ni-1: # final lat
+                latupper=89.99
+            else:
+                latupper=newlats[i+1]
+            lat=lats[i]
+            irange = np.where((lat >= latlower) * (lat < latupper))[0]
+            for j in range(nj):
+                lonlower=newlons[j]
+                if j == nj-1: # final lat
+                    lonupper=179.99
+                else:
+                    lonupper=newlons[j+1]
+                lon=lons[i]
+                jrange = np.where((lon >= lonlower) * (lon < lonupper))
+                interp[i,j] = np.nanmean(data[irange,jrange])
+        assert np.isclose(avgbefore, np.nanmean(interp)), "Average changes too much!"
+        return interp
+    return None
+
 
 def regularbounds(x,fix=False):
     # Take a lat or lon array input and return the grid edges
@@ -105,6 +140,10 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
         lonsnew,latsnew=np.meshgrid(lons,lats)
     else:
         latsnew,lonsnew=(lats,lons)
+    #force nan into any pixel with nan results, so color is not plotted there...
+    nans=np.isnan(data)
+    lonsnew[nans]=np.NaN
+    latsnew[nans]=np.NaN
 
     pcmeshargs={'latlon':latlon, 'vmin':vmin, 'vmax':vmax, 'clim':(vmin,vmax)}
     if not linear:
@@ -114,7 +153,7 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
     #, latlon=latlon, vmin=vmin, vmax=vmax, norm=norm, clim=(vmin,vmax))
 
     # colour limits for contour mesh
-    cs.cmap.set_under('white')
+    cs.cmap.set_under('grey')
     cs.cmap.set_over('pink')
     cs.set_clim(vmin,vmax)
 
@@ -246,8 +285,8 @@ def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legen
 
 def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
                  clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
-                 rmin=-200.0, rmax=200.,
-                 linear=False, **pltargs):
+                 rmin=-200.0, rmax=200., amin=None, amax=None,
+                 linear=False, alinear=True, rlinear=True, **pltargs):
     '''
         Plot two maps and their relative and absolute differences
     '''
@@ -261,6 +300,10 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
         vmax = np.nanmax(np.array(np.nanmax(A),np.nanmax(B)))
     if vmin is None:
         vmin = np.nanmin(np.array(np.nanmin(A),np.nanmin(B)))
+    if amax is None:
+        amax = vmax
+    if amin is None:
+        amin = -vmax
 
 
     # regrid the lower resolution data
@@ -286,10 +329,10 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
     plt.sca(axes[1,0])
     title="%s - %s"%(titles[0],titles[1])
     createmap(A-B,lats,lons,region=region, clabel=clabel,
-             title=title, linear=True)
+             title=title, linear=alinear, vmin=amin, vmax=amax)
     plt.sca(axes[1,1])
-    title="100*(%s-%s)/%s"%(titles[0], titles[1], titles[0])
-    createmap((A-B)*100.0/A,lats, lons, region=region,linear=True,
+    title="100*(%s-%s)/%s"%(titles[0], titles[1], titles[1])
+    createmap((A-B)*100.0/B,lats, lons, region=region,linear=rlinear,
               vmin=rmin, vmax=rmax, clabel=clabel, title=title,
               suptitle=suptitle, pname=pname)
 

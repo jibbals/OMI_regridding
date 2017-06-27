@@ -174,6 +174,29 @@ class omhchorp:
         BG=np.nanmean(self.VCC[inds])
         return BG
 
+    def lower_resolution(self, key='VCC', factor=8):
+        ''' return data with resolution lowered by a factor of 8 (or input any integer)'''
+        # this can convert from 0.25 x 0.3125 to 2 x 2.5 resolutions
+        data=getattr(self,key)
+        ni = len(self.latitude)
+        nj = len(self.longitude)
+        counts=self.gridentries
+        dsum=data*counts
+        new_ni, new_nj = int(ni/factor),int(nj/factor)
+        newarr=np.zeros([new_ni,new_nj])+ np.NaN
+        newcounts=np.zeros([new_ni, new_nj])
+        for i in range(new_ni):
+            ir = np.arange(i*factor,i*factor+factor)
+            for j in range(new_nj):
+                jr = np.arange(j*factor, j*factor+factor)
+                newcounts[i,j] = np.nansum(counts[ir,jr])
+                newarr[i,j] = np.nansum(dsum[ir,jr])
+        newarr = newarr/newcounts
+        lats=self.latitude[0::factor]
+        lons=self.longitude[0::factor]
+        return {key:newarr, 'counts':newcounts, 'lats':lats, 'lons':lons}
+
+
 if __name__=='__main__':
 
     from datetime import datetime

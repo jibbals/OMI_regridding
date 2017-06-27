@@ -19,9 +19,9 @@ __DEBUG__=False
 #_keynames=["AMF_GC","AMF_GCz","AMF_OMI",...]
 
 # Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
-# Changed to -175 to avoid crossing the 179 -> -179 boundary
-__REMOTEPACIFIC__=[-15, -175, 15, -120]
-
+# Change to -175 to avoid crossing the 179 -> -179 boundary?
+__REMOTEPACIFIC__=[-15, -180, 15, -120]
+# __AUSBACKGROUND__=[-40, -180, -10, -120]
 class omhchorp:
     '''
     Class for holding OMI regridded, reprocessed dataset
@@ -164,13 +164,15 @@ class omhchorp:
         ''' return indices of Australia, with or without(default) ocean squares '''
         return self.inds_subset(lat0=-57,lat1=-6,lon0=101,lon1=160,maskocean=maskocean,maskland=maskland)
 
-    def background_HCHO(self):
+    def background_HCHO(self, lats=None):
         ''' return average HCHO over a specific region '''
-        #TODO: implement
+        region=__REMOTEPACIFIC__
+        if lats is not None:
+            region[0]=lats[0]
+            region[2]=lats[1]
         # find the average HCHO column over the __REMOTEPACIFIC__
-        inds = self.region_subset(__REMOTEPACIFIC__,
-                                  maskocean=False,maskland=False)
-
+        inds = self.region_subset(region, maskocean=False, maskland=False)
+        
         BG=np.nanmean(self.VCC[inds])
         return BG
 

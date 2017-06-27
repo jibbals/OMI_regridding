@@ -88,7 +88,8 @@ def Emissions(month=datetime(2005,1,1), GC = None, OMI = None, region=pp.__AUSRE
     lats, lons = lats[lati], lons[loni]
     hcho    = hcho[lati,:]
     hcho    = hcho[:,loni]
-    BG      = OMI.background_HCHO()
+    # Determine background using region latitude bounds
+    BG      = OMI.background_HCHO(lats=[region[0],region[2]])
 
 
     ## Calculate Emissions from these

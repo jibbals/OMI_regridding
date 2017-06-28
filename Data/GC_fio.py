@@ -12,19 +12,30 @@ Run from main project directory or else imports will not work
 import netCDF4 as nc
 import numpy as np
 from datetime import datetime, timedelta
-from glob import glob # for file pattern reading
+#from glob import glob # for file pattern reading
+from pathlib import Path
 
 ##################
 #####GLOBALS######
 ##################
+
 run_number={"tropchem":0,"UCX":1}
-#folder_location="/home/574/jwg574/OMI_regridding/"
-# relative paths (for use on non NCI computers)
-folder_location="Data/GC_Output/"
 runs=["geos5_2x25_tropchem","UCX_geos5_2x25"]
-#paths=["/home/574/jwg574/OMI_regridding/Data/GC_Output/%s/trac_avg"%rstr for rstr in runs]
-paths=["%s%s/trac_avg"%(folder_location,rstr) for rstr in runs]
-hemcodiag_path="/home/574/jwg574/OMI_regridding/Data/GC_Output/%s/hemco_diags"%runs[run_number['tropchem']]
+
+def datapaths():
+    ''' get location of datafiles, handles either NCI or desktop '''
+    folder_location="Data/GC_Output/"
+
+    desktop_dir = Path("/media/jesse/My Book/jwg366/rundirs")
+    if desktop_dir.is_dir():
+        folder_location=desktop_dir
+
+    # NCI folder_location="/home/574/jwg574/OMI_regridding/Data/GC_Output"
+    paths=["%s%s/trac_avg"%(folder_location,rstr) for rstr in runs]
+    return paths
+
+paths = datapaths()
+hemcodiag_path = "/home/574/jwg574/OMI_regridding/Data/GC_Output/%s/hemco_diags" % runs[run_number['tropchem']]
 
 tropchem_dims=['Tau', 'Pressure', 'latitude', 'longitude']
 tropchem_keys=tropchem_dims+['ANTHSRCENO', 'ANTHSRCECO', 'ANTHSRCEALK4',
@@ -88,7 +99,6 @@ def date_from_gregorian(greg):
 def gregorian_from_dates(dates):
     ''' gregorian array from datetime list'''
     d0=datetime(1985,1,1,0,0,0)
-    greg=np.zeros(len(dates))
     return np.array([(date-d0).seconds/3600 for date in dates ])
 
 def index_from_gregorian(gregs, date):
@@ -152,10 +162,10 @@ def get_tropchem_data(date=datetime(2005,1,1), keys=tropchem_HCHO_keys,
     #alt     = tf.variables['altitude'][:]
     #time    = tf.variables['time'][:]
     # lat/lons are grid midpoints
-    lat     = tf.variables['latitude'][:]
-    lon     = tf.variables['longitude'][:]
+    #lat     = tf.variables['latitude'][:]
+    #lon     = tf.variables['longitude'][:]
     Tau     = tf.variables['Tau'][:] # Tau(time): hours since 19850101:0000
-    Press   = tf.variables['Pressure'][:] # Pressure(altitude): hPa, midpoints
+    #Press   = tf.variables['Pressure'][:] # Pressure(altitude): hPa, midpoints
 
     # get the subset of data: (most are [[lev],lat,lon,time])
     data={}
@@ -234,8 +244,8 @@ def get_UCX_data(date=datetime(2005,1,1), keys=UCX_HCHO_keys, surface=False):
     uf=read_UCX()
     # read dimensions:
     # lat/lons are grid midpoints
-    lat     = uf.variables['lat'][:]
-    lon     = uf.variables['lon'][:]
+    #lat     = uf.variables['lat'][:]
+    #lon     = uf.variables['lon'][:]
     Tau     = uf.variables['time'][:] # Tau(time): hours since 19850101:0000
     Press   = uf.variables['lev'][:] # Pressure(altitude): hPa, midpoints
 

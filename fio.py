@@ -352,6 +352,9 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
                 print(ke)
     return retstruct
 
+def read_omhchorp_month(date):
+    ''' read a month of omhchorp data. '''
+
 def read_gchcho(date):
     '''
     Read the geos chem hcho column data into a class and return the class

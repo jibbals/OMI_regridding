@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jun 28 17:07:55 2017
-
-@author: jesse
-"""
-
 #import matplotlib
 #matplotlib.use('Agg')
 
@@ -14,59 +6,55 @@ from mpl_toolkits.basemap import maskoceans #Basemap, maskoceans
 #from matplotlib.colors import LogNorm # lognormal color bar
 
 import numpy as np
-from datetime import datetime, timedelta
-from glob import glob
+#from datetime import datetime
+#from glob import glob
+#from scipy.interpolate import RectBivariateSpline as RBS
+#import h5py
 
 # my file reading library
 import fio
 
 __DEBUG__=False
 
-
-_keynames=['latitude','longitude',
-           'gridentries',   # how many satellite pixels make up the pixel
-           'RSC',           # The reference sector correction [rsc_lats, 60]
-           'RSC_latitude',  # latitudes of RSC
-           'RSC_region',    # RSC region [S,W,N,E]
-           'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)
-           'VCC',           # The vertical column corrected using the RSC
-           'VCC_PP',        # Corrected Paul Palmer VC
-           'AMF_GC',        # AMF calculated using by GEOS-Chem]
-           'AMF_GCz',       # secondary way of calculating AMF with GC
-           'AMF_OMI',       # AMF from OMI swaths
-           'AMF_PP',        # AMF calculated using Paul palmers code
-           'SC',            # Slant Columns
-           'VC_GC',         # GEOS-Chem Vertical Columns
-           'VC_OMI',        # OMI VCs
-           'VC_OMI_RSC',    # OMI VCs with Reference sector correction? TODO: check
-           'col_uncertainty_OMI',
-           'fires',         # Fire count
-           'fire_mask_8',   # true where fires occurred over last 8 days
-           'fire_mask_16',  # true where fires occurred over last 16 days
-           ]
+#_keynames=["AMF_GC","AMF_GCz","AMF_OMI",...]
 
 # Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
 # Change to -175 to avoid crossing the 179 -> -179 boundary?
 __REMOTEPACIFIC__=[-15, -180, 15, -120]
-
+# __AUSBACKGROUND__=[-40, -180, -10, -120]
 class omhchorp:
     '''
     Class for holding OMI regridded, reprocessed dataset
-    generally time, latitude, longitude
+    Structure containing
+        double AMF_GC(lats, lons)       #
+        double AMF_GCz(lats,lons)       # AMF using non rejigged lowest levels
+        double AMF_OMI(lats, lons)      #
+        double AMF_SSD(lats, lons)
+        double VC_GC(lats, lons)
+        double VC_OMI(lats, lons)
+        double VCC(lats, lons)
+        int64 gridentries(lats, lons)   # how many entries in each gridbox
+        double latitude(lats)
+        double longitude(lons)
+        double RSC(RSC_lats,60)
+        double RSC_GC(RSC_lats)         # GEOS_Chem reference sector values (molecs/cm2)
+        double RSC_latitude(RSC_lats)
+        double RSC_region(4)            # [lat,lon, lat,lon]
+        int64 fires
     '''
-    def __init__(self, startmonth, endmonth=None, latres=0.25, lonres=0.3125, keylist=None):
+    def __init__(self, date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, filename=None):
         '''
-        Read reprocessed OMI files, one month or longer
+        Function to read a reprocessed omi file, by default reads an 8-day average (8p)
         Inputs:
-            startmonth = datetime(y,m,d) of first month to read in
-            endmonth = final month or None if just reading one month
+            date = datetime(y,m,d) of file
+            oneday = False : read a single day average rather than 8 day average
             latres=0.25
             lonres=0.3125
-            keylist=None : read these keys from the files, otherwise read all data
+            keylist=None : if set to a list of strings, just read those data from the file, otherwise read all data
+            filename=None : if set then read this file ( used for testing )
         Output:
             Structure containing omhchorp dataset
         '''
-        daylist = get_days_list() #TODO implement so we can read in X days of data
         struct=fio.read_omhchorp(date, oneday=oneday, latres=latres, lonres=lonres, keylist=keylist, filename=filename)
 
         # date and dimensions
@@ -184,7 +172,7 @@ class omhchorp:
             region[2]=lats[1]
         # find the average HCHO column over the __REMOTEPACIFIC__
         inds = self.region_subset(region, maskocean=False, maskland=False)
-
+        
         BG=np.nanmean(self.VCC[inds])
         return BG
 

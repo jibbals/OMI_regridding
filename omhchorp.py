@@ -15,13 +15,11 @@ from mpl_toolkits.basemap import maskoceans #Basemap, maskoceans
 
 import numpy as np
 from datetime import datetime, timedelta
-from glob import glob
 
 # my file reading library
 import fio
 
 __DEBUG__=False
-
 
 _keynames=['latitude','longitude',
            'gridentries',   # how many satellite pixels make up the pixel
@@ -49,47 +47,57 @@ _keynames=['latitude','longitude',
 # Change to -175 to avoid crossing the 179 -> -179 boundary?
 __REMOTEPACIFIC__=[-15, -180, 15, -120]
 
+def list_days(day0,dayn=None):
+    ''' return list of days from day0 to dayn, or just day0 '''
+    if dayn is None: return [day0,]
+    numdays = (dayn-day0).days + 1 # timedelta
+    return [day0 + timedelta(days=x) for x in range(0, numdays)]
+
+########################################################################
+########################  OMHCHORP CLASS ###############################
+########################################################################
 class omhchorp:
     '''
     Class for holding OMI regridded, reprocessed dataset
     generally time, latitude, longitude
     '''
-    def __init__(self, startmonth, endmonth=None, latres=0.25, lonres=0.3125, keylist=None):
+    def __init__(self, day0, dayn=None, latres=0.25, lonres=0.3125, keylist=None):
         '''
         Read reprocessed OMI files, one month or longer
         Inputs:
-            startmonth = datetime(y,m,d) of first month to read in
-            endmonth = final month or None if just reading one month
+            day0 = datetime(y,m,d) of first day to read in
+            dayn = final day or None if just reading one day
             latres=0.25
             lonres=0.3125
             keylist=None : read these keys from the files, otherwise read all data
         Output:
             Structure containing omhchorp dataset
         '''
-        daylist = get_days_list() #TODO implement so we can read in X days of data
-        struct=fio.read_omhchorp(date, oneday=oneday, latres=latres, lonres=lonres, keylist=keylist, filename=filename)
+        # Read the days we want to analyse:
+        daylist = list_days(day0, dayn) # excludes last day.
+        struct = []
+        for day in daylist:
+            struct.append(fio.read_omhchorp(date=day, oneday=True,
+                                            latres=latres, lonres=lonres,
+                                            keylist=keylist))
+        # dates and dimensions
+        self.dates=daylist
+        self.lats=struct[0]['latitude']
+        self.lons=struct[0]['longitude']
+        nt,ny,nx=len(daylist), len(self.lats), len(self.lons)
 
-        # date and dimensions
-        self.date=date
-        self.latitude=struct['latitude']
-        self.longitude=struct['longitude']
-        self.gridentries=struct['gridentries']
+        # Set all the data arrays in the same way, [time,lat,lon]
+        #datakeys=['gridentries','VCC','VCC_PP','AMF_GC','AMF_GCz','AMF_OMI',
+        #          'AMF_PP','SC','VC_GC','VC_OMI','VC_OMI_RSC',
+        #          'col_uncertainty_OMI','fires','fire_mask_8','fire_mask_16']
+        for k in _keynames:
+            setattr(self, k, np.array([struct[j][k] for j in range(nt)]))
 
-        # Reference Sector Correction stuff
-        self.RSC_latitude=struct['RSC_latitude']
-        self.RSC_region=struct['RSC_region']
-        self.RSC_GC=struct['RSC_GC']
-        # [rsc_lats, 60]  - the rsc for this time period
-        self.RSC=struct['RSC']
-        # The vertical column corrected using the RSC
-        self.VCC=struct['VCC']
-        self.VCC_PP=struct['VCC_PP'] # Corrected Paul Palmer VC
+        # Reference Sector Correction latitudes don't change with time
+        self.lats_RSC=struct[0]['RSC_latitude'] # rsc latitude bins
+        self.RSC_region=struct[0]['RSC_region']
 
-        # Arrays [ lats, lons ]
-        self.AMF_GC=struct['AMF_GC']
-        self.AMF_OMI=struct['AMF_OMI']
-        self.AMF_GCz=struct['AMF_GCz']
-        self.AMF_PP=struct['AMF_PP'] # AMF calculated using Paul palmers code
+
         # remove small and negative AMFs
         print("Removing %d AMF_PP's less than 0.1"%np.nansum(self.AMF_PP<0.1))
         self.AMF_PP[self.AMF_PP < 0.1]=np.NaN
@@ -98,27 +106,23 @@ class omhchorp:
         print("Removing %d VCC_PP's outside [-5e15,1e17]"%(np.sum(screened)))
         self.VCC_PP[screened]=np.NaN
 
-        self.SC=struct['SC']
-        self.VC_GC=struct['VC_GC']
-        self.VC_OMI=struct['VC_OMI']
-        self.VC_OMI_RSC=struct['VC_OMI_RSC']
-        self.col_uncertainty_OMI=struct['col_uncertainty_OMI']
-        self.fires=struct['fires']
-        self.fire_mask_8=struct['fire_mask_8']      # true where fires occurred over last 8 days
-        self.fire_mask_16=struct['fire_mask_16']    # true where fires occurred over last 16 days
-        mlons,mlats=np.meshgrid(self.longitude,self.latitude)
-        self.oceanmask=maskoceans(mlons,mlats,self.AMF_OMI,inlands=False).mask
+        mlons,mlats=np.meshgrid(self.lons,self.lats)
+
+        # True over ocean squares:
+        self.oceanmask=maskoceans(mlons,mlats,self.AMF_OMI[0],inlands=False).mask
 
     def apply_fire_mask(self, use_8day_mask=False):
         ''' nanify arrays which are fire affected. '''
         mask = [self.fire_mask_16, self.fire_mask_8][use_8day_mask]
-        for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,self.VC_OMI,self.VC_OMI_RSC,self.VCC,self.col_uncertainty_OMI]:
+        for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,
+                    self.VC_OMI,self.VC_OMI_RSC,self.VCC,
+                    self.col_uncertainty_OMI]:
             arr[mask]=np.NaN
 
     def inds_subset(self, lat0=None,lat1=None,lon0=None,lon1=None, maskocean=False, maskland=False):
         ''' return indices of lat,lon arrays within input box '''
         inds=~np.isnan(self.AMF_OMI) # only want non nans
-        mlons,mlats=np.meshgrid(self.longitude,self.latitude)
+        mlons,mlats=np.meshgrid(self.lons,self.lats)
         with np.errstate(invalid='ignore'): # ignore comparisons with NaNs
             if lat0 is not None:
                 inds = inds * (mlats >= lat0)
@@ -130,8 +134,7 @@ class omhchorp:
                 inds = inds * (mlons <= lon1)
 
         # true over ocean squares
-        oceanmask=maskoceans(mlons,mlats,self.AMF_OMI,inlands=False).mask
-
+        oceanmask=self.oceanmask
         landmask = (~oceanmask)
 
         # mask ocean if flag is set
@@ -160,12 +163,12 @@ class omhchorp:
 
     def latlon_bounds(self):
         ''' Return latedges and lonedges arrays '''
-        dy=self.latitude[1]-self.latitude[0]
-        dx=self.longitude[1]-self.longitude[0]
-        y0=self.latitude[0]-dy/2.0
-        x0=self.longitude[0]-dx/2.0
-        y1=self.latitude[-1]+dy/2.0
-        x1=self.longitude[-1]+dx/2.0
+        dy=self.lats[1]-self.lats[0]
+        dx=self.lons[1]-self.lons[0]
+        y0=self.lats[0]-dy/2.0
+        x0=self.lons[0]-dx/2.0
+        y1=self.lats[-1]+dy/2.0
+        x1=self.lons[-1]+dx/2.0
         y=np.arange(y0,y1+0.00001,dy)
         x=np.arange(x0,x1+0.00001,dx)
         if y[0]<-90: y[0]=-89.999
@@ -192,8 +195,8 @@ class omhchorp:
         ''' return data with resolution lowered by a factor of 8 (or input any integer)'''
         # this can convert from 0.25 x 0.3125 to 2 x 2.5 resolutions
         data=getattr(self,key)
-        ni = len(self.latitude)
-        nj = len(self.longitude)
+        ni = len(self.lats)
+        nj = len(self.lons)
         counts=self.gridentries
         dsum=data*counts
         new_ni, new_nj = int(ni/factor),int(nj/factor)
@@ -206,20 +209,21 @@ class omhchorp:
                 newcounts[i,j] = np.nansum(counts[ir,jr])
                 newarr[i,j] = np.nansum(dsum[ir,jr])
         newarr = newarr/newcounts
-        lats=self.latitude[0::factor]
-        lons=self.longitude[0::factor]
+        lats=self.lats[0::factor]
+        lons=self.lons[0::factor]
         return {key:newarr, 'counts':newcounts, 'lats':lats, 'lons':lons}
 
 
 if __name__=='__main__':
 
-    from datetime import datetime
-
     om=omhchorp(datetime(2005,1,1))
+    print("One day data shape: %s"%str(om.VCC.shape))
+    om=omhchorp(datetime(2005,1,1), dayn=datetime(2005,1,4))
+    print("4 day data shape: %s"%str(om.VCC.shape))
+
     landinds=om.inds_subset(maskocean=True)
     ausinds=om.inds_aus(maskocean=True)
 
-    print("%d elements"%(720*1152))
     print("%d land elements"%np.sum(landinds))
     print("%d australia land elements"%np.sum(ausinds))
 

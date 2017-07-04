@@ -84,7 +84,8 @@ class omhchorp:
         self.dates=daylist
         self.lats=struct[0]['latitude']
         self.lons=struct[0]['longitude']
-        nt,ny,nx=len(daylist), len(self.lats), len(self.lons)
+        nt,self.n_lats,self.n_lons=len(daylist), len(self.lats), len(self.lons)
+        self.n_times=nt
 
         # Set all the data arrays in the same way, [time,lat,lon]
         #datakeys=['gridentries','VCC','VCC_PP','AMF_GC','AMF_GCz','AMF_OMI',

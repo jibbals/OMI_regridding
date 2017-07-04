@@ -16,10 +16,10 @@ Created on Tue Dec  6 09:48:11 2016
 import numpy as np
 from datetime import datetime
 # local imports
-import fio
+#import fio
 from JesseRegression import RMA
 from GC_class import GC_output # Class reading GC output
-from omhchorp import omhchorp, __REMOTEPACIFIC__  # class reading OMHCHORP
+from omhchorp import omhchorp, #__REMOTEPACIFIC__  # class reading OMHCHORP
 import plotting as pp
 
 
@@ -164,6 +164,7 @@ def check_against_MEGAN(month=datetime(2005,1,1)):
     lons=[lonsgc, lonsom]
     titles=['E_gc', 'E_omi']
     pp.compare_maps(arrs,lats,lons,pname='Figs/GC/E_Comparison.png',
+                    suptitle='GEOS-Chem (gc) vs OMI: Jan, 2005',
                     titles=titles,vmin=vmin,vmax=vmax,linear=False,
                     rlinear=False, amin=amin,amax=amax,rmin=rmin,rmax=rmax)
     # again with degraded omi emissions:

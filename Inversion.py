@@ -118,7 +118,7 @@ def Emissions(month=datetime(2005,1,1), GC = None, OMI = None, region=pp.__AUSRE
 
     # loss rate of Isop
 
-    return {'E_isop':E_new, 'lats':lats, 'lons':lons }#'E_gcisop':GC_slope[]}
+    return {'E_isop':E_new, 'lats':lats, 'lons':lons 'E_gcisop':GC_slope}
 
 def check_regridding():
     #TODO: implement

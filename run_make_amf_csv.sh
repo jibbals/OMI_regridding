@@ -2,8 +2,8 @@
 #PBS -P m19
 #PBS -q express
 #PBS -N makeAMFcsv
-#PBS -l walltime=00:30:00
-#PBS -l mem=20000MB
+#PBS -l walltime=00:40:00
+#PBS -l mem=5000MB
 #PBS -l cput=00:10:00
 #PBS -l wd
 #PBS -l ncpus=8

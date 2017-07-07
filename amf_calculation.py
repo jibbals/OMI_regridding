@@ -31,8 +31,10 @@ def pixel_list_to_csv(date=datetime(2005,1,1),nesw=None):
     '''
     fname='Data/omhcho/%s_for_AMF.csv'%date.strftime('%Y-%m-%d')
     csv_params=['scan','track', 'lat', 'lon', 'sza','vza','cloudfrac','ctp' ]
+    
     # list of good pixels
-    gp=reprocess.get_good_pixel_list(date, PalmerAMF=False) # We are going to create the Palmer AMFs
+    # We are going to create the Palmer AMFs, not read them
+    gp=reprocess.get_good_pixel_list(date, PalmerAMF=False) 
     
     # cut the pixel list down to a desired region:
     lats=np.array(gp['lat'])
@@ -41,11 +43,16 @@ def pixel_list_to_csv(date=datetime(2005,1,1),nesw=None):
     if nesw is not None:
         zone=(lats < nesw[0]) * (lons < nesw[1]) * (lats > nesw[2]) * (lons > nesw[3])
         assert (np.max(lats[zone]) < nesw[0]), "subsetting region didn't work"
+        if __DEBUG__: 
+            print("range cut down to (s,w,n,e): %s"%str((min(lats[zone]),min(lons[zone]),max(lats[zone]),max(lons[zone]))))
         # One day for AUS cuts pixels from ~ 700k to 38k
     
     # save the 9 parameters we want for randal martin AMF package to csv:
     pixelnumber=np.arange(0,len(lats))
-    lists=[list(pixelnumber[zone])]
+    # Create a list of 9 lists, each with the same length, then transpose
+    # to get an array of x rows and 9 columns
+    lists=[list(pixelnumber[zone])] # an id number to map the pixels to the AMFs
+    if __DEBUG__: print("%d entries for column %s"%(len(lists[-1]),'pixelID'))
     for name in csv_params:
         lists.append(list(np.array(gp[name])[zone]))
         if __DEBUG__: print("%d entries for column %s"%(len(lists[-1]),name))

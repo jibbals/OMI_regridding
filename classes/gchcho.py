@@ -1,3 +1,15 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on ??
+
+    Class to hold GCHCHO data
+
+@author: jesse
+"""
+###############
+### MODULES ###
+###############
 import matplotlib
 matplotlib.use('Agg')
 
@@ -8,105 +20,73 @@ from matplotlib.ticker import FormatStrFormatter as fsf # formatter for labellin
 
 import numpy as np
 #from datetime import datetime
-from glob import glob
 from scipy.interpolate import griddata
 from scipy.interpolate import RectBivariateSpline as RBS
-import h5py
 
-def match_bottom_levels(p1i,p2i, arr1i, arr2i):
-    '''
-    Takes two arrays of pressure (from surface to some altitude)
-    Returns the same two arrays with the lowest levels set to the same pressure
-    This method raises the lowest levels of the pressure arrays to match each other.
-    Also interpolates arr1, arr2 to the new pressures if their pedges have changed
-    '''
-    # update:20160905, 20161109
-    # one array will have a lower bottom level than the other
-    #
-    p1,p2=np.array(p1i.copy()),np.array(p2i.copy())
-    arr1,arr2=np.array(arr1i.copy()),np.array(arr2i.copy())
-    if p1[0] > p2[0]:
-        plow=p1
-        phigh=p2
-        alow=arr1
-    elif p1[0] == p2[0]:
-        return p1,p2,arr1,arr2
-    else:
-        plow=p2
-        phigh=p1
-        alow=arr2
-    plow_orig=plow.copy()
+# Add parent folder to path
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.insert(0,os.path.dirname(currentdir))
 
-    # now lower has a lower surface altitude(higher surface pressure)
-    movers=np.where(plow+0.05*plow[0] > phigh[0])[0] # index of pressure edges below higher surface pressure
-    above_ind = movers[-1]+1
-    above = plow[above_ind] # pressure edge above the ones we need to move upwards
-    rmovers=movers[::-1] # highest to lowest list of pmids to relevel
-    # for all but the lowest pmid, increase above lowest pmid in other pressure array
-    for ii in rmovers[0:-1]:
-        plow[ii]=(phigh[0]*above)**0.5
-        above=plow[ii]
-    # for the lowest pmid, raise to match other array's lowest pmid
-    plow[0]=phigh[0]
+from utilities import fio
+sys.path.pop(0)
 
-    # now interpolate the changed array ( reversed as interp wants increasing array xp)
-    alow[:]=np.interp(plow,plow_orig[::-1],alow[::-1])
+###############
+### CLASS   ###
+###############
 
-    return p1,p2,arr1,arr2
+# rename some variables to more coding friendly ones:
+_names={ key:str.lower(key) for key in fio.__GCHCHO_KEYS__ }
+_names['vchcho']='VC_HCHO'
+_names['latitude']='lats'
+_names['longitude']='lons'
+_names['nair']='N_Air'
+_names['nhcho']='N_HCHO'
+_names['shapez']='Shape_z'
+_names['shapes']='Shape_s'
+_names['boxheights']='boxH'
+_names['sigma']='sigmas'
 
 class gchcho:
     '''
     Class for holding the GCHCHO data
     Generally data arrays will be shaped as [(levels, )lats, lons]
     Units will be in molecules, metres, hPa
+    TODO: update to include multiple dates
     '''
     date = 0
-    
+
     # total columns     (molecules/m2)
-    VC_HCHO = 0 #[91, 144]
-    
+    #VC_HCHO
     # density profiles  (molecules/m3)
-    N_HCHO = 0
-    N_Air = 0
-    
+    #N_HCHO
+    #N_Air
+
     # Shape factors ( Palmer 01 )
-    Shape_z = 0 #(1/m) [72, 91, 144]
-    Shape_s = 0 # [72, 91, 144]
-    
+    # Shape_z  # (1/m) [72, 91, 144]
+    # Shape_s  # [72, 91, 144]
+
     # dimensions
-    pmids = 0   # (hPa)
-    pedges = 0  # (hPa)
-    lons = 0    # [144]
-    lats = 0    # [91]
-    sigmas = 0  # [ 72, 91, 144 ]
-    boxH = 0    # (m) [ 72, 91, 144 ]
-    zmids = 0   # (m) [ 72, 91, 144 ]
+    # pmids    # (hPa)
+    # pedges   # (hPa)
+    # lons     # [144]
+    # lats     # [91]
+    # sigmas   # [ 72, 91, 144 ]
+    # boxH     # (m) [ 72, 91, 144 ]
+    # zmids    # (m) [ 72, 91, 144 ]
 
     def __init__(self,date):
         #self.date=datetime(2005,1,1)
-        self.ReadFile(date)
+        fdata=fio.read_gchcho(date)
+        for key in fio.__GCHCHO_KEYS__:
+            setattr(self,key,fdata[key])
 
-    def ReadFile(self, date):
-        fpath=glob('Data/gchcho/hcho_%4d%02d.he5' % ( date.year, date.month ) )[0]
-        with h5py.File(fpath, 'r') as in_f:
-            dsetname='GC_UCX_HCHOColumns'
-            dset=in_f[dsetname]
-            self.date=date
-            #VC(molecs/m2), N(molecs/m3), ShapeZ(1/m), ShapeSig(na), Pmids, Sigma, Boxheights...
-            self.VC_HCHO    = dset['VCHCHO'].squeeze()      # molecs/m2
-            self.N_HCHO     = dset['NHCHO'].squeeze()       # molecs/m3 profile
-            self.N_Air      = dset['NAIR'].squeeze()        # molecs/m3 profile
-            self.Shape_z    = dset['SHAPEZ'].squeeze()      # 1/m
-            self.Shape_s    = dset['SHAPESIGMA'].squeeze()  # unitless
-            self.pmids      = dset['PMIDS'].squeeze()       # geometric pressure mids (hPa)
-            self.pedges     = dset['PEDGES'].squeeze()      # pressure edges hPa
-            self.lons       = dset['LONGITUDE'].squeeze()   # longitude and latitude midpoints
-            self.lats       = dset['LATITUDE'].squeeze()
-            self.sigmas     = dset['SIGMA'].squeeze()       # Sigma dimension
-            self.boxH       = dset['BOXHEIGHTS'].squeeze()  # box heights (m)
-            zedges=np.cumsum(self.boxH, axis=0)     # height at top of each box
-            zmids=zedges-self.boxH/2.0      # minus half the box height = box midpoint
-            self.zmids      = zmids                         # altitude midpoints
+        # Extras:
+        self.date=date
+
+        ztops = np.cumsum(self.boxH, axis=0) # height at top of each box
+        zmids = ztops-self.boxH/2.0   # minus half the box height = box midpoint
+        self.zmids =zmids                         # altitude midpoints
 
     def get_apriori(self, latres=0.25, lonres=0.3125):
         '''
@@ -378,4 +358,43 @@ class gchcho:
         ax2.set_xlabel('S_s')
         ax2.set_ylabel('hPa')
 
+def match_bottom_levels(p1i, p2i, arr1i, arr2i):
+    '''
+    Takes two arrays of pressure (from surface to some altitude)
+    Returns the same two arrays with the lowest levels set to the same pressure
+    This method raises the lowest levels of the pressure arrays to match each other.
+    Also interpolates arr1, arr2 to the new pressures if their pedges have changed
+    '''
+    # update:20160905, 20161109
+    # one array will have a lower bottom level than the other
+    #
+    p1,p2=np.array(p1i.copy()),np.array(p2i.copy())
+    arr1,arr2=np.array(arr1i.copy()),np.array(arr2i.copy())
+    if p1[0] > p2[0]:
+        plow=p1
+        phigh=p2
+        alow=arr1
+    elif p1[0] == p2[0]:
+        return p1,p2,arr1,arr2
+    else:
+        plow=p2
+        phigh=p1
+        alow=arr2
+    plow_orig=plow.copy()
 
+    # now lower has a lower surface altitude(higher surface pressure)
+    movers=np.where(plow+0.05*plow[0] > phigh[0])[0] # index of pressure edges below higher surface pressure
+    above_ind = movers[-1]+1
+    above = plow[above_ind] # pressure edge above the ones we need to move upwards
+    rmovers=movers[::-1] # highest to lowest list of pmids to relevel
+    # for all but the lowest pmid, increase above lowest pmid in other pressure array
+    for ii in rmovers[0:-1]:
+        plow[ii]=(phigh[0]*above)**0.5
+        above=plow[ii]
+    # for the lowest pmid, raise to match other array's lowest pmid
+    plow[0]=phigh[0]
+
+    # now interpolate the changed array ( reversed as interp wants increasing array xp)
+    alow[:]=np.interp(plow,plow_orig[::-1],alow[::-1])
+
+    return p1,p2,arr1,arr2

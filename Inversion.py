@@ -12,18 +12,17 @@ Created on Tue Dec  6 09:48:11 2016
 
 @author: jesse
 """
-# imports
+
+### LIBRARIES/MODULES ###
 import numpy as np
 from datetime import datetime
+
 # local imports
-#import fio
-from JesseRegression import RMA
-from GC_class import GC_output # Class reading GC output
-from omhchorp import omhchorp, #__REMOTEPACIFIC__  # class reading OMHCHORP
-import plotting as pp
-
-
-
+from utilities.JesseRegression import RMA
+from classes.GC_class import GC_output # Class reading GC output
+from classes.omhchorp import omhchorp # class reading OMHCHORP
+import utilities.plotting as pp
+import utilities.utilities as util
 
 def Yield(H, k_H, I, k_I):
     '''
@@ -56,20 +55,20 @@ def Yield(H, k_H, I, k_I):
     #Return the yields
     return Y
 
-def Emissions(month=datetime(2005,1,1), GC = None, OMI = None, region=pp.__AUSREGION__, ReduceOmiRes=0):
+def Emissions(day=datetime(2005,1,1), GC = None, OMI = None, region=pp.__AUSREGION__, ReduceOmiRes=0):
     '''
-        Determine emissions of isoprene for a particular month
-        1) Calculate Yield and background for a particular month
+        Determine emissions of isoprene for some length of time.
+        1) Calculate Yield and background for each month in range
         2) Use Biogenic HCHO product to calculate E_isoprene.
 
         HCHO = S * E_isop + b
     '''
-    ## Read data for this month unless it's been passed in
+    ## Read data for this date unless it's been passed in
     ##
     if GC is None:
-        GC=GC_output(date=month)
+        GC=GC_output(date=day)
     if OMI is None:
-        OMI=omhchorp(date=month)
+        OMI=omhchorp(day0=day)
 
     # model slope between HCHO and E_isop:
     S_model=GC.model_yield(region)
@@ -83,7 +82,7 @@ def Emissions(month=datetime(2005,1,1), GC = None, OMI = None, region=pp.__AUSRE
         lats,lons=omilow['lats'], omilow['lons']
 
     # subset over region of interest
-    lati, loni = pp.lat_lon_range(lats, lons, region)
+    lati, loni = util.lat_lon_range(lats, lons, region)
     #inds = OMI.region_subset(region=region, maskocean=False, maskland=False)
     lats, lons = lats[lati], lons[loni]
     hcho    = hcho[lati,:]
@@ -120,6 +119,12 @@ def Emissions(month=datetime(2005,1,1), GC = None, OMI = None, region=pp.__AUSRE
 
     return {'E_isop':E_new, 'lats':lats, 'lons':lons }#'E_gcisop':GC_slope[]}
 
+def Emissions_series(day=datetime(2005,1,1), dayn=datetime(2005,2,1),
+                     GC = None, OMI = None, region=pp.__AUSREGION__):
+    '''
+        Emissions over time
+    '''
+
 def check_regridding():
     #TODO: implement
     print('check_regridding TODO')
@@ -127,7 +132,7 @@ def check_regridding():
 def check_against_MEGAN(month=datetime(2005,1,1)):
 
     GC=GC_output(date=month)
-    OMI=omhchorp(date=month)
+    OMI=omhchorp(day0=month)
     region=pp.__AUSREGION__
 
     E_new=Emissions(month=month, GC=GC, OMI=OMI, region=region)
@@ -163,17 +168,19 @@ def check_against_MEGAN(month=datetime(2005,1,1)):
     lats=[latsgc, latsom]
     lons=[lonsgc, lonsom]
     titles=['E_gc', 'E_omi']
-    pp.compare_maps(arrs,lats,lons,pname='Figs/GC/E_Comparison.png',
-                    suptitle='GEOS-Chem (gc) vs OMI: Jan, 2005',
-                    titles=titles,vmin=vmin,vmax=vmax,linear=False,
-                    rlinear=False, amin=amin,amax=amax,rmin=rmin,rmax=rmax)
+    suptitle='GEOS-Chem (gc) vs OMI: 1st, Jan, 2005'
+    pp.compare_maps(arrs, lats, lons, pname='Figs/GC/E_Comparison.png',
+                    suptitle=suptitle,titles=titles,
+                    vmin=vmin,vmax=vmax,linear=False,rlinear=False,
+                    amin=amin,amax=amax,rmin=rmin,rmax=rmax)
     # again with degraded omi emissions:
     arrs[1]=E_new_lowres['E_isop']
     lats[1],lons[1]=E_new_lowres['lats'],E_new_lowres['lats']
     pp.compare_maps(arrs,lats,lons,pname='Figs/GC/E_Comparison_lowres.png',
-                    titles=titles,vmin=vmin,vmax=vmax,linear=False,
-                    rlinear=False, amin=amin,amax=amax,rmin=rmin,rmax=rmax)
-    pp.compare_maps
+                    suptitle=suptitle, titles=titles,
+                    vmin=vmin, vmax=vmax, linear=False, rlinear=False,
+                    amin=amin, amax=amax, rmin=rmin, rmax=rmax)
+
     print("New estimate: %.2e"%np.nanmean(Eomi))
     print("Old estimate: %.2e"%np.nanmean(Egc))
     print("New estimate (no negatives): %.2e"%np.nanmean(Eomi_nn))

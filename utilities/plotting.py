@@ -7,20 +7,34 @@ Hold functions which will generally plot or print stuff
 
 @author: jesse
 """
-
+### LIBRARIES/MODULES ###
 import numpy as np
 import matplotlib
 from mpl_toolkits.basemap import Basemap #, maskoceans
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 from matplotlib.colors import LogNorm # for lognormal colour bar
-from scipy.interpolate import griddata # for regrid function
-from JesseRegression import RMA
-#import matplotlib.patches as mpatches
+
+# Add parent folder to path
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.insert(0,os.path.dirname(currentdir))
+
+from utilities.JesseRegression import RMA
+from utilities.utilities import regrid
+sys.path.pop(0)
+
+###############
+### GLOBALS ###
+###############
 
 # S W N E
 __AUSREGION__=[-47,106,-5,158,]
 __GLOBALREGION__=[-80, -179, 80, 179]
+
+###############
+### METHODS ###
+###############
 
 def InitMatplotlib():
     """set some Matplotlib stuff."""
@@ -32,77 +46,6 @@ def InitMatplotlib():
     matplotlib.rcParams["axes.labelsize"]   = 20        #
     matplotlib.rcParams["xtick.labelsize"]  = 16        #
     matplotlib.rcParams["ytick.labelsize"]  = 16        #
-
-
-def lat_lon_range(lats,lons,region):
-    '''
-    returns indices of lats, lons which are within region: list=[S,W,N,E]
-    '''
-    S,W,N,E = region
-    lats,lons=np.array(lats),np.array(lons)
-    latinds1=np.where(lats>=S)[0]
-    latinds2=np.where(lats<=N)[0]
-    latinds=np.intersect1d(latinds1,latinds2, assume_unique=True)
-    loninds1=np.where(lons>=W)[0]
-    loninds2=np.where(lons<=E)[0]
-    loninds=np.intersect1d(loninds1,loninds2, assume_unique=True)
-    return latinds, loninds
-
-def findvminmax(data,lats,lons,region):
-    '''
-    return vmin, vmax of data[lats,lons] within region: list=[SWNE]
-    '''
-    latinds,loninds=lat_lon_range(lats,lons,region)
-    data2=data[latinds,:]
-    data2=data2[:,loninds]
-    vmin=np.nanmin(data2)
-    vmax=np.nanmax(data2)
-    return vmin,vmax
-
-def regrid(data,lats,lons,newlats,newlons):
-    '''
-    Regrid a data array [lat,lon] onto [newlat,newlon]
-    Assumes a regular grid!
-    '''
-    # if no resolution change then just throw back input
-    if len(newlats) == len(lats):
-        return data
-
-    # make into higher resolution
-    if len(newlats) > len(lats):
-        mlons,mlats = np.meshgrid(lons,lats)
-        mnewlons,mnewlats = np.meshgrid(newlons,newlats)
-
-        interp = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
-                          (mnewlats, mnewlons), method='nearest')
-        return interp
-
-    # transform to lower resolution
-    print("UNTESTED REGRIDDING")
-    avgbefore=np.nanmean(data)
-    if len(newlats) < len(lats):
-        ni, nj = len(newlats), len(newlons)
-        interp = np.zeros([ni,nj]) + np.NaN
-        for i in range(ni):
-            latlower=newlats[i]
-            if i == ni-1: # final lat
-                latupper=89.99
-            else:
-                latupper=newlats[i+1]
-            lat=lats[i]
-            irange = np.where((lat >= latlower) * (lat < latupper))[0]
-            for j in range(nj):
-                lonlower=newlons[j]
-                if j == nj-1: # final lat
-                    lonupper=179.99
-                else:
-                    lonupper=newlons[j+1]
-                lon=lons[i]
-                jrange = np.where((lon >= lonlower) * (lon < lonupper))
-                interp[i,j] = np.nanmean(data[irange,jrange])
-        assert np.isclose(avgbefore, np.nanmean(interp)), "Average changes too much!"
-        return interp
-    return None
 
 
 def regularbounds(x,fix=False):

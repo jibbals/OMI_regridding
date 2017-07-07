@@ -3,21 +3,29 @@
 # Python script created by jesse greenslad
 
 Check the ncfiles created by bpch2coards
-Run from main project directory or else imports will not work
 '''
 ## Modules
 import netCDF4 as nc
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import cm
 
-# local modules
-#from Data.GC_fio import date_from_gregorian, read_tropchem
-import Data.GC_fio as gcfio
-import plotting as pp
-from plotting import __AUSREGION__
-from JesseRegression import RMA
+# Read in including path from parent folder
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir)
+
+# 'local' modules
+import utilities.GC_fio as gcfio
+import utilities.utilities as util
+from utilities import plotting as pp
+from utilities.plotting import __AUSREGION__
+from utilities.JesseRegression import RMA
+
+# remove the parent folder from path. [optional]
+sys.path.pop(0)
 
 ##################
 #####GLOBALS######
@@ -69,7 +77,7 @@ class GC_output:
             for key,val in SimpleUCXnames.items():
                 setattr(self, val, tavg_data[key])
 
-            self.taus=gcfio.gregorian_from_dates([date])
+            self.taus=util.gregorian_from_dates([date])
 
         else: # READ TROPCHEM DATA:
             tavg_file=gcfio.read_tropchem(date)
@@ -90,7 +98,8 @@ class GC_output:
         self.n_lons=len(self.lons)
 
         # set dates and E_dates:
-        self.dates=gcfio.date_from_gregorian(self.taus)
+        self.dates=util.date_from_gregorian(self.taus)
+
     def get_field(self, keys=['hcho', 'E_isop'], region=pp.__AUSREGION__):
         '''
         Return fields subset to a specific region [S W N E]

@@ -3,55 +3,41 @@
 """
 Created on Wed Jun 28 17:07:55 2017
 
+Class for omhchorp analysis
+
 @author: jesse
 """
 
+### LIBRARIES/MODULES ###
+
 #import matplotlib
 #matplotlib.use('Agg')
-
 #import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import maskoceans #Basemap, maskoceans
 #from matplotlib.colors import LogNorm # lognormal color bar
 
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime
+
+# Add parent folder to path
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.insert(0,os.path.dirname(currentdir))
 
 # my file reading library
-import fio
+from utilities import fio
+import utilities.utilities as util
+sys.path.pop(0)
+
+###############
+### GLOBALS ###
+###############
 
 __DEBUG__=False
-
-_keynames=['latitude','longitude',
-           'gridentries',   # how many satellite pixels make up the pixel
-           'RSC',           # The reference sector correction [rsc_lats, 60]
-           'RSC_latitude',  # latitudes of RSC
-           'RSC_region',    # RSC region [S,W,N,E]
-           'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)
-           'VCC',           # The vertical column corrected using the RSC
-           'VCC_PP',        # Corrected Paul Palmer VC
-           'AMF_GC',        # AMF calculated using by GEOS-Chem]
-           'AMF_GCz',       # secondary way of calculating AMF with GC
-           'AMF_OMI',       # AMF from OMI swaths
-           'AMF_PP',        # AMF calculated using Paul palmers code
-           'SC',            # Slant Columns
-           'VC_GC',         # GEOS-Chem Vertical Columns
-           'VC_OMI',        # OMI VCs
-           'VC_OMI_RSC',    # OMI VCs with Reference sector correction? TODO: check
-           'col_uncertainty_OMI',
-           'fires',         # Fire count
-           'fire_mask_8',   # true where fires occurred over last 8 days
-           'fire_mask_16',  # true where fires occurred over last 16 days
-           ]
 
 # Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
 # Change to -175 to avoid crossing the 179 -> -179 boundary?
 __REMOTEPACIFIC__=[-15, -180, 15, -120]
-
-def list_days(day0,dayn=None):
-    ''' return list of days from day0 to dayn, or just day0 '''
-    if dayn is None: return [day0,]
-    numdays = (dayn-day0).days + 1 # timedelta
-    return [day0 + timedelta(days=x) for x in range(0, numdays)]
 
 ########################################################################
 ########################  OMHCHORP CLASS ###############################
@@ -74,7 +60,7 @@ class omhchorp:
             Structure containing omhchorp dataset
         '''
         # Read the days we want to analyse:
-        daylist = list_days(day0, dayn) # excludes last day.
+        daylist = util.list_days(day0, dayn) # excludes last day.
         struct = []
         for day in daylist:
             struct.append(fio.read_omhchorp(date=day, oneday=True,
@@ -88,10 +74,7 @@ class omhchorp:
         self.n_times=nt
 
         # Set all the data arrays in the same way, [time,lat,lon]
-        #datakeys=['gridentries','VCC','VCC_PP','AMF_GC','AMF_GCz','AMF_OMI',
-        #          'AMF_PP','SC','VC_GC','VC_OMI','VC_OMI_RSC',
-        #          'col_uncertainty_OMI','fires','fire_mask_8','fire_mask_16']
-        for k in _keynames:
+        for k in fio.__OMHCHORP_KEYS__:
             setattr(self, k, np.array([struct[j][k] for j in range(nt)]))
 
         # Reference Sector Correction latitudes don't change with time

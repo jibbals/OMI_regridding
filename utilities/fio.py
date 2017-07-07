@@ -7,8 +7,12 @@ Reads regridded and reprocessed datasets
 Reads AURA Fire datasets (MYD14C8H: 8 day averages)
 
 Writes HDF5 files (used to create regridded and reprocessed datasets)
+
+TODO: combine with GC_fio.py
 '''
-## Modules
+
+### Modules ###
+
 # plotting module, and something to prevent using displays(can save output but not display it)
 
 # module for hdf eos 5
@@ -16,25 +20,57 @@ import h5py
 import numpy as np
 from datetime import datetime, timedelta
 from glob import glob
-# my module with class definitions and that jazz
-from gchcho import gchcho
-
 # interpolation method for ND arrays
 # todo: remove once this is ported to reprocess.py
 from scipy.interpolate import griddata
 
+###############
+### GLOBALS ###
+###############
 #just_global_things, good hashtag
 datafieldsg = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Data Fields/'
 geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
-# keylist for omhchorp datafiles
-_omhchorp_keylist=['AMF_GC', 'AMF_GCz', 'AMF_OMI','AMF_PP', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
-                   'VCC', 'VCC_PP', 'gridentries', 'ppentries', 'latitude', 'longitude', 'RSC',
-                   'RSC_latitude', 'RSC_GC', 'RSC_region', 'col_uncertainty_OMI',
-                   'fires', 'fire_mask_8', 'fire_mask_16']
+# Keys for omhchorp:
+__OMHCHORP_KEYS__ = [
+    'latitude','longitude',
+    'gridentries',   # how many satellite pixels make up the pixel
+    'RSC',           # The reference sector correction [rsc_lats, 60]
+    'RSC_latitude',  # latitudes of RSC
+    'RSC_region',    # RSC region [S,W,N,E]
+    'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)
+    'VCC',           # The vertical column corrected using the RSC
+    'VCC_PP',        # Corrected Paul Palmer VC
+    'AMF_GC',        # AMF calculated using by GEOS-Chem]
+    'AMF_GCz',       # secondary way of calculating AMF with GC
+    'AMF_OMI',       # AMF from OMI swaths
+    'AMF_PP',        # AMF calculated using Paul palmers code
+    'SC',            # Slant Columns
+    'VC_GC',         # GEOS-Chem Vertical Columns
+    'VC_OMI',        # OMI VCs
+    'VC_OMI_RSC',    # OMI VCs with Reference sector correction? TODO: check
+    'col_uncertainty_OMI',
+    'fires',         # Fire count
+    'fire_mask_8',   # true where fires occurred over last 8 days
+    'fire_mask_16' ] # true where fires occurred over last 16 days
 
+__GCHCHO_KEYS__ = [
+    'LONGITUDE','LATITUDE',
+    'VCHCHO',           # molecs/m2
+    'NHCHO',            # molecs/m3 profile
+    'NAIR',
+    'SHAPEZ',           # 1/m
+    'SHAPESIGMA',       # unitless
+    'PMIDS',            # geometric pressure mids (hPa)
+    'PEDGES',           # pressure edges hPa
+    'SIGMA',            # Sigma dimension
+    'BOXHEIGHTS']       # box heights (m)
+
+###############
+### METHODS ###
+###############
 
 def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, verbose=False):
     '''
@@ -130,13 +166,13 @@ def read_8dayfire_path(path):
     ## Fields to be read:
     # Count of fires in each grid box over 8 days
     corrFirePix = 'CorrFirePix'
-    cloudCorrFirePix = 'CloudCorrFirePix'
+    #cloudCorrFirePix = 'CloudCorrFirePix'
 
     ## read in file:
     with h5py.File(path,'r') as in_f:
         ## get data arrays
         cfp     = in_f[corrFirePix].value
-        ccfp    = in_f[cloudCorrFirePix].value
+        #ccfp    = in_f[cloudCorrFirePix].value
 
     # from document at
     # http://www.fao.org/fileadmin/templates/gfims/docs/MODIS_Fire_Users_Guide_2.4.pdf
@@ -335,7 +371,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     '''
 
     if keylist is None:
-        keylist=_omhchorp_keylist
+        keylist=__OMHCHORP_KEYS__
     retstruct=dict.fromkeys(keylist)
     if filename is None:
         fpath=determine_filepath(date,oneday=oneday,latres=latres,lonres=lonres,reprocessed=True)
@@ -357,12 +393,18 @@ def read_omhchorp_month(date):
 
 def read_gchcho(date):
     '''
-    Read the geos chem hcho column data into a class and return the class
-    this is actually just a wrapper, class method does all the work.
+    Read the geos chem hcho column data into a dictionary
     '''
-    dataset = gchcho(date)
-    #dataset.ReadFile(date)
-    return(dataset)
+    fpath=glob('Data/gchcho/hcho_%4d%02d.he5' % ( date.year, date.month ) )[0]
+    ret_data={}
+    with h5py.File(fpath, 'r') as in_f:
+        dsetname='GC_UCX_HCHOColumns'
+        dset=in_f[dsetname]
+
+        for key in __GCHCHO_KEYS__:
+            ret_data[key] = dset[key].squeeze()
+    return ret_data
+
 
 def filter_high_latitudes(array, latres=0.25, lonres=0.3125, highest_lat=60.0):
     '''

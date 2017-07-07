@@ -2,18 +2,22 @@
 '''
 # Python script created by jesse greenslad
 
-Check the ncfiles created by bpch2coards
-Run from main project directory or else imports will not work
+Reading from GEOS-Chem methods are defined here
 '''
 ## Modules
-
-# module for hdf eos 5
-#import h5py
 import netCDF4 as nc
 import numpy as np
-from datetime import datetime, timedelta
-#from glob import glob # for file pattern reading
+from datetime import datetime
 from pathlib import Path
+
+# Add parent folder to path
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.insert(0,os.path.dirname(currentdir))
+
+import utilities.utilities as util
+sys.path.pop(0)
+
 
 ##################
 #####GLOBALS######
@@ -26,8 +30,8 @@ def datapaths():
     ''' get location of datafiles, handles either NCI or desktop '''
     folder_location="Data/GC_Output/"
 
-    desktop_dir = Path("/media/jesse/My Book/jwg366/rundirs")
-    if desktop_dir.is_dir():
+    desktop_dir= "/media/jesse/My Book/jwg366/rundirs/"
+    if Path(desktop_dir).is_dir():
         folder_location=desktop_dir
 
     # NCI folder_location="/home/574/jwg574/OMI_regridding/Data/GC_Output"
@@ -87,54 +91,6 @@ __VERBOSE__=False
 ###FUNCTIONS####
 ################
 
-def date_from_gregorian(greg):
-    '''
-        gregorian = "hours since 1985-1-1 00:00:0.0"
-        Returns list of datetimes
-    '''
-    d0=datetime(1985,1,1,0,0,0)
-    greg=np.array(greg)
-    #if isinstance(greg, (list, tuple, np.ndarray)):
-    return([d0+timedelta(seconds=int(hr*3600)) for hr in greg])
-def gregorian_from_dates(dates):
-    ''' gregorian array from datetime list'''
-    d0=datetime(1985,1,1,0,0,0)
-    return np.array([(date-d0).seconds/3600 for date in dates ])
-
-def index_from_gregorian(gregs, date):
-    '''
-        Return index of date within gregs array
-    '''
-    greg =(date-datetime(1985,1,1,0,0,0)).days * 24.0
-    if __VERBOSE__:
-        print("gregorian %s = %.2e"%(date.strftime("%Y%m%d"),greg))
-        print(gregs)
-    ind=np.where(gregs==greg)[0]
-    return (ind)
-
-def ppbv_to_molecs_per_cm2(ppbv, pedges):
-    '''
-    Inputs:
-        ppbv[levs,lats,lons]
-        pedges[levs]
-    USING http://www.acd.ucar.edu.au/mopitt/avg_krnls_app.pdf
-    NOTE: in pdf the midpoints are used rather than the edges
-        due to how the AK is defined
-    '''
-    dims=np.shape(ppbv)
-    N = dims[0]
-    #P[i] - P[i+1] = pressure differences
-    inds=np.arange(N)
-    #THERE should be N+1 pressure edges since we have the ppbv for each slab
-    diffs= pedges[inds] - pedges[inds+1]
-    t = (2.12e13)*diffs # multiplication factor
-    out=np.zeros(dims)
-    # there's probably a good way to vectorise this, but not worth the time
-    for x in range(dims[1]):
-        for y in range(dims[2]):
-            out[:,x,y] = t*ppbv[:,x,y]
-    return out
-
 def read_UCX():
     ''' Read the UCX netcdf file: '''
     fi=run_number['UCX']
@@ -151,7 +107,13 @@ def read_tropchem(date=datetime(2005,1,1)):
     filename='trac_avg.geos5_2x25_tropchem.%s0000.nc'%dstr
     fullpath="%s/%s"%(paths[fi],filename)
     print("Reading %s"%fullpath)
-    tropfile=nc.Dataset(fullpath,'r')
+    try:
+        tropfile=nc.Dataset(fullpath,'r')
+    except OSError as ose:
+        print(ose)
+        print(fullpath)
+
+        raise
     return(tropfile)
 
 def get_tropchem_data(date=datetime(2005,1,1), keys=tropchem_HCHO_keys,
@@ -253,7 +215,7 @@ def get_UCX_data(date=datetime(2005,1,1), keys=UCX_HCHO_keys, surface=False):
     data={}
 
     # find the month index:
-    di=index_from_gregorian(Tau,date)
+    di=util.index_from_gregorian(Tau,date)
     if __VERBOSE__:
         print ("date index = ")
         print (di)

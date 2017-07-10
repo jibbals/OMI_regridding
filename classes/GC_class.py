@@ -104,7 +104,7 @@ class GC_output:
         '''
         Return fields subset to a specific region [S W N E]
         '''
-        lati,loni = pp.lat_lon_range(self.lats,self.lons,region)
+        lati,loni = util.lat_lon_range(self.lats,self.lons,region)
         out={'lats':self.lats[lati],'lons':self.lons[loni]}
         for k in keys:
             out[k] = getattr(self, k)
@@ -126,7 +126,7 @@ class GC_output:
         isop = self.E_isop
 
         lats,lons = self.lats, self.lons
-        lati,loni = pp.lat_lon_range(lats,lons,region)
+        lati,loni = util.lat_lon_range(lats,lons,region)
 
         isop = isop[lati, :]
         isop = isop[:, loni]

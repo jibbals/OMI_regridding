@@ -13,7 +13,10 @@ Created on Tue Dec  6 09:48:11 2016
 @author: jesse
 """
 
-### LIBRARIES/MODULES ###
+
+###############
+### MODULES ###
+###############
 import numpy as np
 from datetime import datetime
 
@@ -23,6 +26,15 @@ from classes.GC_class import GC_output # Class reading GC output
 from classes.omhchorp import omhchorp # class reading OMHCHORP
 import utilities.plotting as pp
 import utilities.utilities as util
+
+###############
+### GLOBALS ###
+###############
+__VERBOSE__=True
+
+###############
+### METHODS ###
+###############
 
 def Yield(H, k_H, I, k_I):
     '''
@@ -69,7 +81,15 @@ def Emissions(day=datetime(2005,1,1), GC = None, OMI = None, region=pp.__AUSREGI
         GC=GC_output(date=day)
     if OMI is None:
         OMI=omhchorp(day0=day)
-
+    
+    if __VERBOSE__:
+        # Check the dims of our stuff
+        print("GC data %s"%str(GC.hcho.shape))
+        print("Lats from %.2f to %.2f"%(GC.lats[0],GC.lats[-1]))
+        print("Lons from %.2f to %.2f"%(GC.lons[0],GC.lons[-1]))
+        print("OMI data %s"%str(OMI.VCC.shape))
+        print("Lats from %.2f to %.2f"%(OMI.lats[0],OMI.lats[-1]))
+        print("Lons from %.2f to %.2f"%(OMI.lons[0],OMI.lons[-1]))
     # model slope between HCHO and E_isop:
     S_model=GC.model_yield(region)
 
@@ -116,8 +136,12 @@ def Emissions(day=datetime(2005,1,1), GC = None, OMI = None, region=pp.__AUSREGI
     # loss rate of HCHO
 
     # loss rate of Isop
-
-    return {'E_isop':E_new, 'lats':lats, 'lons':lons 'E_gcisop':GC_slope}
+    
+    # 
+    #TODO: store GC_background for comparison
+    GC_BG=np.NaN 
+    return {'E_isop':E_new, 'lats':lats, 'lons':lons, 'background':BG, 
+            'GC_background':GC_BG, 'GC_slope':GC_slope}
 
 def Emissions_series(day=datetime(2005,1,1), dayn=datetime(2005,2,1),
                      GC = None, OMI = None, region=pp.__AUSREGION__):
@@ -135,8 +159,8 @@ def check_against_MEGAN(month=datetime(2005,1,1)):
     OMI=omhchorp(day0=month)
     region=pp.__AUSREGION__
 
-    E_new=Emissions(month=month, GC=GC, OMI=OMI, region=region)
-    E_new_lowres=Emissions(month=month,GC=GC, OMI=OMI, region=region, ReduceOmiRes=8)
+    E_new=Emissions(day=month, GC=GC, OMI=OMI, region=region)
+    E_new_lowres=Emissions(day=month,GC=GC, OMI=OMI, region=region, ReduceOmiRes=8)
     E_GC=GC.get_field(keys=['E_isop'], region=region)
     E_GC['E_isop'] = np.mean(E_GC['E_isop'],axis=2) # average of the monthly values
     for k,v in E_GC.items():

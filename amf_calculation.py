@@ -29,7 +29,7 @@ def pixel_list_to_csv(date=datetime(2005,1,1),nesw=None):
     CSV: 
     linenumber, scan, pixel,lat, lon, sza, sva, cloud frac, cloud top pressure
     '''
-    fname='Data/omhcho/%s_for_AMF.csv'%date.strftime('%Y-%m-%d')
+    fname='Data/omhcho_csv/%s_for_AMF.csv'%date.strftime('%Y-%m-%d')
     csv_params=['scan','track', 'lat', 'lon', 'sza','vza','cloudfrac','ctp' ]
     
     # list of good pixels

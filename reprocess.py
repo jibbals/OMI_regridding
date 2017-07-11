@@ -6,7 +6,8 @@ Created on Tue Apr 19 14:22:05 2016
 """
 
 # module to read/write data to file
-import fio
+from utilities import fio
+from classes.gchcho import gchcho
 import numpy as np
 import os.path
 import sys
@@ -93,7 +94,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True, verbos
     AMFgczs=list()      # AMFs using S_z
 
     ## grab our GEOS-Chem apriori info (dimension: [ levs, lats, lons ])
-    gchcho = fio.read_gchcho(date)
+    gcdata = gchcho(date)
     # GCHCHO UNITS ARE GENERALLY m AND hPa
 
     ## 1) read in the good pixels for a particular date,
@@ -166,7 +167,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True, verbos
 
         # Create new AMF for each good entry...
         for i in range(np.sum(goods)):
-            newAMF_s, newAMF_z = gchcho.calculate_AMF(omegas[:,i],plevs[:,i],omamfgs[i],flats[i],flons[i])
+            newAMF_s, newAMF_z = gcdata.calculate_AMF(omegas[:,i],plevs[:,i],omamfgs[i],flats[i],flons[i])
             AMFgcs.append(newAMF_s)
             AMFgczs.append(newAMF_z)
             # AMF_GCz does not relevel to the highest surface pressure between pixel and gridbox
@@ -206,16 +207,16 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
 
     ## Grab GEOS-Chem monthly average:
     #
-    gchcho=fio.read_gchcho(date)
-    gc_lons=gchcho.lons
+    gcdata=gchcho(date)
+    gc_lons=gcdata.lons
     gc_ref_inds=(gc_lons <= -140) & (gc_lons >= -160)
-    gc_lats=gchcho.lats
+    gc_lats=gcdata.lats
     # fix endpoints so that lats array is [-90, -88, ..., 88, 90]
     gc_lats[0]=-90
     gc_lats[-1]=90
 
     # GEOS-CHEM VC HCHO in molecules/m2, convert to molecules/cm2
-    gc_VC=gchcho.VC_HCHO * 1e-4
+    gc_VC=gcdata.VC_HCHO * 1e-4
     # pull out reference sector vertical columns
     gc_VC_ref=gc_VC[:,gc_ref_inds]
     # average over the longitude dimension

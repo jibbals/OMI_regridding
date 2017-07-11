@@ -79,7 +79,7 @@ class gchcho:
         #self.date=datetime(2005,1,1)
         fdata=fio.read_gchcho(date)
         for key in fio.__GCHCHO_KEYS__:
-            setattr(self,key,fdata[key])
+            setattr(self,__names[key],fdata[key])
 
         # Extras:
         self.date=date

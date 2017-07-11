@@ -17,7 +17,8 @@ from mpl_toolkits.basemap import maskoceans #Basemap, maskoceans
 #from matplotlib.colors import LogNorm # lognormal color bar
 
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
+import calendar
 
 # Add parent folder to path
 import os,sys,inspect
@@ -33,6 +34,7 @@ sys.path.pop(0)
 ### GLOBALS ###
 ###############
 
+__VERBOSE__=True
 __DEBUG__=False
 
 # Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
@@ -47,7 +49,7 @@ class omhchorp:
     Class for holding OMI regridded, reprocessed dataset
     generally time, latitude, longitude
     '''
-    def __init__(self, day0, dayn=None, latres=0.25, lonres=0.3125, keylist=None):
+    def __init__(self, day0, dayn=None, latres=0.25, lonres=0.3125, keylist=None, ignorePP=False):
         '''
         Read reprocessed OMI files, one month or longer
         Inputs:
@@ -73,9 +75,12 @@ class omhchorp:
         nt,self.n_lats,self.n_lons=len(daylist), len(self.lats), len(self.lons)
         self.n_times=nt
 
-        # Set all the data arrays in the same way, [time,lat,lon]
+        # Set all the data arrays in the same way, [[time],lat,lon]
         for k in fio.__OMHCHORP_KEYS__:
-            setattr(self, k, np.array([struct[j][k] for j in range(nt)]))
+            if dayn is None: # one day only, no time dimension
+                setattr(self, k, np.array(struct[0][k]))
+            else:
+                setattr(self, k, np.array([struct[j][k] for j in range(nt)]))
 
         # Reference Sector Correction latitudes don't change with time
         self.lats_RSC=struct[0]['RSC_latitude'] # rsc latitude bins
@@ -83,17 +88,19 @@ class omhchorp:
 
 
         # remove small and negative AMFs
-        print("Removing %d AMF_PP's less than 0.1"%np.nansum(self.AMF_PP<0.1))
-        self.AMF_PP[self.AMF_PP < 0.1]=np.NaN
-        screen=[-5e15,1e17]
-        screened=(self.VCC_PP<screen[0]) + (self.VCC_PP>screen[1])
-        print("Removing %d VCC_PP's outside [-5e15,1e17]"%(np.sum(screened)))
-        self.VCC_PP[screened]=np.NaN
+        if not ignorePP:
+            print("Removing %d AMF_PP's less than 0.1"%np.nansum(self.AMF_PP<0.1))
+            self.AMF_PP[self.AMF_PP < 0.1]=np.NaN
+            screen=[-5e15,1e17]
+            screened=(self.VCC_PP<screen[0]) + (self.VCC_PP>screen[1])
+            print("Removing %d VCC_PP's outside [-5e15,1e17]"%(np.sum(screened)))
+            self.VCC_PP[screened]=np.NaN
 
         mlons,mlats=np.meshgrid(self.lons,self.lats)
 
         # True over ocean squares:
-        self.oceanmask=maskoceans(mlons,mlats,self.AMF_OMI[0],inlands=False).mask
+        check_arr=[self.VCC[0],self.VCC][dayn is None] # array with no time dim
+        self.oceanmask=maskoceans(mlons,mlats,check_arr,inlands=False).mask
 
     def apply_fire_mask(self, use_8day_mask=False):
         ''' nanify arrays which are fire affected. '''
@@ -175,14 +182,32 @@ class omhchorp:
         BG=np.nanmean(self.VCC[inds])
         return BG
 
-    def lower_resolution(self, key='VCC', factor=8):
-        ''' return data with resolution lowered by a factor of 8 (or input any integer)'''
+    def lower_resolution(self, key='VCC', factor=8, dates=None):
+        ''' 
+            return data with resolution lowered by a factor of 8 (or input any integer)
+            This function averages out the time dimension from dates[0] to dates[1]
+        '''
         # this can convert from 0.25 x 0.3125 to 2 x 2.5 resolutions
         data=getattr(self,key)
-        ni = len(self.lats)
-        nj = len(self.lons)
         counts=self.gridentries
         dsum=data*counts
+        # Average over dates.
+        if dates is not None:
+            d=np.array(self.dates)
+            ti = (d >= dates[0]) * (d < dates[1])
+            print("TI:")
+            print(ti)
+            data=np.nanmean(data[ti],axis=0)
+            counts=np.nansum(counts[ti],axis=0)
+            dsum=np.nansum(dsum[ti],axis=0)
+        elif len(self.daylist > 1):
+            data=np.nanmean(data,axis=0)
+            counts=np.nansum(counts,axis=0)
+            dsum=np.nansum(dsum,axis=0)
+                
+        ni = len(self.lats)
+        nj = len(self.lons)
+        
         new_ni, new_nj = int(ni/factor),int(nj/factor)
         newarr=np.zeros([new_ni,new_nj])+ np.NaN
         newcounts=np.zeros([new_ni, new_nj])
@@ -197,6 +222,32 @@ class omhchorp:
         lons=self.lons[0::factor]
         return {key:newarr, 'counts':newcounts, 'lats':lats, 'lons':lons}
 
+    def time_averaged(self, day0, dayn=None, keys=['VCC'], month=False):
+        '''
+            Return keys averaged over the time dimension for day0-(dayn-1)
+            or whole month if month==True
+        '''
+        ret={}
+        # inputs should be within class range
+        dates=np.array(self.dates)
+        assert day0 in dates, 'PROBLEM'+day0.strftime('%Y%m%d')
+        if dayn is not None:
+            dayn=dayn-timedelta(days=1) # dayn-1
+            assert dayn in dates, 'PROBLEM '+dayn.strftime('%Y%m%d')
+
+        #average over i0 to i1
+        i0=np.where(dates == day0)[0][0]
+        i1=i0
+        if month:
+            dayn=datetime(day0.year,day0.month,util.last_day(day0))
+        if dayn is not None:
+            i1=np.where(dates == dayn)[0][0]
+        for key in keys:
+            drange=range(i0,i1+1) # range excludes final number.
+            ret[key]=np.nanmean(getattr(self,key)[drange],axis=0)
+        if __VERBOSE__:
+            print('omhchorp.time_averaged returning %s to %s'%(day0.strftime('%Y%m%d'),dayn.strftime('%Y%m%d')))
+        return ret
 
 if __name__=='__main__':
 

@@ -2,14 +2,19 @@
 '''
 # Python script created by jesse greenslad
 
-Check the ncfiles created by bpch2coards
+Reads ncfiles created by bpch2coards, from tropchem and UCX V10.01 so far.
+
+Currently reads one month at a time... may update to N days
+
+History:
+    Created in the summer of '69 by jwg366
+    Mon 10/7/17: Added verbose flag and started history.
 '''
 ## Modules
-import netCDF4 as nc
 import numpy as np
 from datetime import datetime
-import matplotlib.pyplot as plt
-from matplotlib.pyplot import cm
+#import matplotlib.pyplot as plt
+#from matplotlib.pyplot import cm
 
 # Read in including path from parent folder
 import os,sys,inspect
@@ -30,6 +35,9 @@ sys.path.pop(0)
 ##################
 #####GLOBALS######
 ##################
+
+__VERBOSE__=True # For file-wide print statements
+
 # map for gc output names to simple names, and then reversed
 Simplenames={'Tau':'taus','Pressure':'press','latitude':'lats','longitude':'lons',
     'BXHGHT-$BXHEIGHT':'boxH','BXHGHT-$N(AIR)':'N_air','DXYPDXYP':'area',
@@ -65,7 +73,7 @@ class GC_output:
 
     '''
     def __init__(self, date, UCX=False):
-        ''' Read data for date into self '''
+        ''' Read data for ONE MONTH into self '''
         self.dstr=date.strftime("%Y%m")
 
         # READ DATA, Tropchem or UCX file
@@ -112,7 +120,7 @@ class GC_output:
             out[k] = out[k][:,loni]
         return out
 
-    def model_yield(self, region=pp.__AUSREGION__):
+    def model_slope(self, region=pp.__AUSREGION__):
         '''
             Use RMA regression between E_isop and tropcol_HCHO to determine S:
                 HCHO = S * E_isop + b
@@ -121,7 +129,12 @@ class GC_output:
             Return {'lats','lons','r':reg, 'b':bg, 'slope':slope}
 
         '''
-
+        # if this calc is already done, short cut it
+        if hasattr(self, 'modelled_slope'):
+            if __VERBOSE__:
+                print("Slope has already been modelled, re-returning")
+            return self.modelled_slope
+            # obj.attr_name exists.
         hcho = self.get_trop_columns(keys=['hcho'])['hcho']
         isop = self.E_isop
 
@@ -159,7 +172,8 @@ class GC_output:
         print(np.nanmean(slope))
 
         # Return all the data and the lats/lons of our subregion:
-        return {'lats':sublats,'lons':sublons,'r':reg, 'b':bg, 'slope':slope}
+        self.modelled_slope={'lats':sublats,'lons':sublons,'r':reg, 'b':bg, 'slope':slope}
+        return self.modelled_slope
 
 
     def ppbv_to_molec_cm2(self,keys=['hcho'],metres=False):
@@ -276,7 +290,7 @@ def check_units():
 def check_diag():
     '''
     '''
-    gc=GC_tropchem(datetime(2005,1,1))
+    gc=GC_output(datetime(2005,1,1))
     E_isop_hourly=gc.E_isop
     print(E_isop_hourly.shape())
     E_isop=gc.get_daily_E_isop()

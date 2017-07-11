@@ -8,6 +8,8 @@ Hold functions which will generally plot or print stuff
 @author: jesse
 """
 ### LIBRARIES/MODULES ###
+import matplotlib
+matplotlib.use('Agg')
 import numpy as np
 import matplotlib
 from mpl_toolkits.basemap import Basemap #, maskoceans

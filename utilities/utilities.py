@@ -13,6 +13,7 @@ Created on Thu Jul  6 11:36:52 2017
 ##############################
 # imports:
 from datetime import datetime, timedelta
+import calendar
 import numpy as np
 from scipy.interpolate import griddata # for regrid function
 
@@ -76,14 +77,22 @@ def lat_lon_range(lats,lons,region):
     loninds=np.intersect1d(loninds1,loninds2, assume_unique=True)
     return latinds, loninds
 
-def list_days(day0,dayn=None):
+def list_days(day0,dayn=None,month=False):
     '''
         return list of days from day0 to dayn, or just day0
         last day is excluded, so 20050101 - 20050201 is just January
+        if month is True, return [day0,...,end_of_month]
     '''
+    if month:
+        dayn=last_day(day0)
     if dayn is None: return [day0,]
     numdays = (dayn-day0).days + 1 # timedelta
     return [day0 + timedelta(days=x) for x in range(0, numdays)]
+
+def last_day(date):
+    lastday=calendar.monthrange(date.year,date.month)[1]
+    dayn=datetime(date.year,date.month,lastday)
+    return dayn
 
 def ppbv_to_molecs_per_cm2(ppbv, pedges):
     '''

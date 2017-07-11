@@ -16,12 +16,15 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 sys.path.insert(0,os.path.dirname(currentdir))
 
 import utilities.utilities as util
+from classes.variable_names_mapped import GC_trac_avg as GC_trac_avg_map
 sys.path.pop(0)
 
 
 ##################
 #####GLOBALS######
 ##################
+
+__VERBOSE__=True
 
 run_number={"tropchem":0,"UCX":1}
 runs=["geos5_2x25_tropchem","UCX_geos5_2x25"]
@@ -39,53 +42,6 @@ def datapaths():
     return paths
 
 paths = datapaths()
-hemcodiag_path = "/home/574/jwg574/OMI_regridding/Data/GC_Output/%s/hemco_diags" % runs[run_number['tropchem']]
-
-tropchem_dims=['Tau', 'Pressure', 'latitude', 'longitude']
-tropchem_keys=tropchem_dims+['ANTHSRCENO', 'ANTHSRCECO', 'ANTHSRCEALK4',
-    'ANTHSRCEACET', 'ANTHSRCEMEK', 'ANTHSRCEALD2', 'ANTHSRCEPRPE', 'ANTHSRCEC3H8',
-    'ANTHSRCECH2O', 'ANTHSRCEC2H6', 'BIOBSRCENO', 'BIOBSRCECO', 'BIOBSRCEALK4',
-    'BIOBSRCEACET', 'BIOBSRCEMEK', 'BIOBSRCEALD2', 'BIOBSRCEPRPE', 'BIOBSRCEC3H8',
-    'BIOBSRCECH2O', 'BIOBSRCEC2H6', 'BIOBSRCESO2', 'BIOBSRCENH3', 'BIOBSRCEBC',
-    'BIOBSRCEOC', 'BIOFSRCENO', 'BIOFSRCECO', 'BIOFSRCEALK4', 'BIOFSRCEACET',
-    'BIOFSRCEMEK', 'BIOFSRCEALD2', 'BIOFSRCEPRPE', 'BIOFSRCEC3H8', 'BIOFSRCECH2O',
-    'BIOFSRCEC2H6', 'BIOFSRCESO2', 'BIOFSRCENH3', 'BIOGSRCEISOP', 'BIOGSRCEACET',
-    'BIOGSRCEPRPE', 'BIOGSRCEMONX', 'BIOGSRCEMBOX', 'BIOGSRCEAPIN', 'BIOGSRCEBPIN',
-    'BIOGSRCELIMO', 'BIOGSRCESABI', 'BIOGSRCEMYRC', 'BIOGSRCECARE', 'BIOGSRCEOCIM',
-    'BIOGSRCEHCOOH', 'BIOGSRCEACTA', 'BIOGSRCEALD2', 'BIOGSRCEOMON', 'BIOGSRCEMOHX',
-    'BIOGSRCEETOH', 'BIOGSRCEFARN', 'BIOGSRCEBCAR', 'BIOGSRCEOSQT', 'BIOGSRCECHBr3',
-    'BIOGSRCECH2Br2', 'BIOGSRCESSBr2', 'BXHGHT-$BXHEIGHT', 'BXHGHT-$AD',
-    'BXHGHT-$AVGW', 'BXHGHT-$N(AIR)', 'CH4-EMISCH4-TOT', 'CH4-EMISCH4-GAO',
-    'CH4-EMISCH4-COL', 'CH4-EMISCH4-LIV', 'CH4-EMISCH4-WST', 'CH4-EMISCH4-BFL',
-    'CH4-EMISCH4-RIC', 'CH4-EMISCH4-OTA', 'CH4-EMISCH4-BBN', 'CH4-EMISCH4-WTL',
-    'CH4-EMISCH4-SAB', 'CH4-EMISCH4-OTN', 'DRYD-FLXO3df', 'DRYD-FLXCH2Odf',
-    'DRYD-VELO3dv', 'DRYD-VELCH2Odv', 'DXYPDXYP', 'IJ-AVG-$NO', 'IJ-AVG-$O3',
-    'IJ-AVG-$ISOP', 'IJ-AVG-$MVK', 'IJ-AVG-$MACR', 'IJ-AVG-$CH2O', 'IJ-AVG-$ISOPN',
-    'IJ-AVG-$RIP', 'IJ-AVG-$IEPOX', 'IJ-AVG-$NO2', 'IJ-AVG-$NO3', 'JV-MAP-$JHNO3',
-    'JV-MAP-$', 'PBLDEPTHPBL-M', 'PBLDEPTHPBL-L', 'PEDGE-$PSURF', 'PORL-L=$POX',
-    'PORL-L=$LOX', 'TR-PAUSETP-LEVEL', 'TR-PAUSETP-HGHT', 'TR-PAUSETP-PRESS' ]
-tropchem_HCHO_keys=tropchem_dims+['BXHGHT-$BXHEIGHT', 'BXHGHT-$AD', 'BXHGHT-$AVGW',
-    'BXHGHT-$N(AIR)', 'DXYPDXYP', 'IJ-AVG-$ISOP', 'IJ-AVG-$CH2O', 'PEDGE-$PSURF',
-    'TR-PAUSETP-LEVEL']
-tropchem_Isop_keys=tropchem_HCHO_keys+['IJ-AVG-$ISOP', 'IJ-AVG-$MVK', 'IJ-AVG-$MACR',
-    'IJ-AVG-$NO2']
-# SOME KEYS DIDN'T GET THE 1E9 SCALING !?
-tropchem_scaled_keys=['IJ-AVG-$ISOP','IJ-AVG-$CH2O']
-tropchem_scale=1e9
-
-UCX_dims=['time','lev','lat','lon']
-UCX_keys=UCX_dims+['IJ_AVG_S__O3','IJ_AVG_S__ISOP','IJ_AVG_S__MVK','IJ_AVG_S__MACR',
-    'IJ_AVG_S__CH2O','PEDGE_S__PSURF','CHEM_L_S__LBRO2H','PORL_L_S__POX',
-    'BXHGHT_S__BXHEIGHT','BXHGHT_S__AD','BXHGHT_S__AVGW','BXHGHT_S__N_AIR_',
-    'DXYP__','TR_PAUSE__TP_LEVEL','TR_PAUSE__TP_HGHT',
-    'TR_PAUSE__TP_PRESS','CH4_LOSS__']
-UCX_HCHO_keys=UCX_dims+['IJ_AVG_S__ISOP','IJ_AVG_S__CH2O','PEDGE_S__PSURF',
-    'BXHGHT_S__BXHEIGHT','BXHGHT_S__AD','BXHGHT_S__AVGW','BXHGHT_S__N_AIR_',
-    'DXYP__','TR_PAUSE__TP_LEVEL']
-UCX_Isop_keys=UCX_HCHO_keys+['IJ_AVG_S__ISOP','IJ_AVG_S__MVK','IJ_AVG_S__MACR']
-
-UCX_scaled_keys=[]
-__VERBOSE__=False
 
 ################
 ###FUNCTIONS####
@@ -102,9 +58,9 @@ def read_UCX():
 
 def read_tropchem(date=datetime(2005,1,1)):
     ''' read output file'''
-    dstr=date.strftime("%Y%m%d")
+    dstr=date.strftime("%Y%m")
     fi=run_number['tropchem']
-    filename='trac_avg.geos5_2x25_tropchem.%s0000.nc'%dstr
+    filename='trac_avg_%s.nc'%dstr
     fullpath="%s/%s"%(paths[fi],filename)
     print("Reading %s"%fullpath)
     try:
@@ -116,32 +72,28 @@ def read_tropchem(date=datetime(2005,1,1)):
         raise
     return(tropfile)
 
-def get_tropchem_data(date=datetime(2005,1,1), keys=tropchem_HCHO_keys,
-    monthavg=True, surface=False):
+def get_tropchem_data(date=datetime(2005,1,1), monthavg=False, surface=False):
     ''' return a subset of the tropchem data '''
     tf=read_tropchem(date)
-    # read dimensions:
-    #alt     = tf.variables['altitude'][:]
-    #time    = tf.variables['time'][:]
-    # lat/lons are grid midpoints
-    #lat     = tf.variables['latitude'][:]
-    #lon     = tf.variables['longitude'][:]
-    Tau     = tf.variables['Tau'][:] # Tau(time): hours since 19850101:0000
-    #Press   = tf.variables['Pressure'][:] # Pressure(altitude): hPa, midpoints
-
-    # get the subset of data: (most are [[lev],lat,lon,time])
+    Tau=tf.variables['time'][:] # tau dimension
+    
+    # get the subset of data: (most are [time, [lev, ]lat,lon])
     data={}
-
-    for key in keys:
-        scale=[1.0, tropchem_scale][key in tropchem_scaled_keys] # scale if needed
-        tmp=tf.variables[key][:]*scale
+    
+    for key in tf.variables.keys():
+        # Only reading keys mapped by the classes/variable_names_mapped.py file
+        if key not in GC_trac_avg_map:
+            if __VERBOSE__:
+                print('not reading %s'%key)
+            continue
+        tmp=tf.variables[key][:]
         if __VERBOSE__:
             print("%s originally [%s], with min, mean, max = (%.2e, %.2e %.2e)"%
                 (key, str(tmp.shape), np.nanmin(tmp), np.nanmean(tmp), np.nanmax(tmp)))
         # take the monthavg
         if monthavg:
             dims=np.shape(tmp)
-            Tdim=len(dims)-1 # time is final dimension
+            Tdim=0 # time is first dimension
             if dims[Tdim] == len(Tau): # check we have the time dimension
                 tmp=np.nanmean(tmp,axis=Tdim)
                 if __VERBOSE__:
@@ -149,65 +101,31 @@ def get_tropchem_data(date=datetime(2005,1,1), keys=tropchem_HCHO_keys,
             else:
                 if __VERBOSE__:
                     print ("%s has no time dimension"%(key))
-        if surface:
+        
+        if surface: # take surface slice
             dims=np.shape(tmp)
-            if (len(dims) > 0) and (dims[0] == 47):
-                tmp=tmp[0] # take surface slice
-                if __VERBOSE__:
-                    print("%s had surface slice taken"%(key))
-            else:
-                if __VERBOSE__:
-                    print ("%s has no level dimension"%(key))
-        data[key]=tmp
+            # Ldim could be first or second.
+            Ldim=np.where(dims == 47)[0][0]
+            if Ldim==1:
+                tmp=tmp[:,0] 
+            elif Ldim==0:
+                tmp=tmp[0] 
+            if __VERBOSE__:
+                print("%s had surface slice taken, now %s"%(key,str(np.shape(tmp))))
+        name=GC_trac_avg_map[key]
+        data[name]=tmp
         if __VERBOSE__:
-            print("%s has shape: %s"%(key,str(np.shape(data[key]))))
+            print("%s (%s) has shape: %s"%(key,name,str(np.shape(data[name]))))
 
     # return the data we want
     tf.close()
     return(data)
 
-def read_HEMCO_diag(date=datetime(2005,1,1)):
-    '''
-        Read the HEMCO_diagnostics BIOGENIC ISOP EMISSIONS data
-        This is for tropchem run only, with output in units
-        float ISOP_BIOG(time, lat, lon) ;
-            ISOP_BIOG:long_name = "ISOP_BIOG" ;
-            ISOP_BIOG:units = "kg/m2/s" ;
-            ISOP_BIOG:averaging_method = "mean" ;
-            ISOP_BIOG:_FillValue = -1.e-31f ;
-        netcdf hemco_diags.200502
-        dimensions:
-        	lat = 91 ;
-        	lon = 144 ;
-        	time = UNLIMITED ; // (672 currently)
-        	lev = 47 ;
-        variables:
-        	float ISOP_BIOG(time, lat, lon) ;
-        		ISOP_BIOG:long_name = "ISOP_BIOG" ;
-        		ISOP_BIOG:units = "kg/m2/s" ;
-        		ISOP_BIOG:averaging_method = "mean" ;
-        		ISOP_BIOG:_FillValue = -1.e-31f ;
-        	float time(time) ;
-        		time:long_name = "Time" ;
-        		time:units = "hours since 1985-01-01 00:00:00" ;
 
-
-    '''
-    # looks like hemco_diags/hemco_diags.200502.nc
-    dstr=date.strftime("%Y%m")
-    fname="%s/hemco_diags.%s.nc"%(hemcodiag_path,dstr)
-    print("Reading %s"%fname)
-    tropfile=nc.Dataset(fname,'r')
-    return(tropfile)
-
-def get_UCX_data(date=datetime(2005,1,1), keys=UCX_HCHO_keys, surface=False):
+def get_UCX_data(date=datetime(2005,1,1), surface=False):
     ''' get a month of UCX output '''
     dstr=date.strftime("%Y%m%d")
     uf=read_UCX()
-    # read dimensions:
-    # lat/lons are grid midpoints
-    #lat     = uf.variables['lat'][:]
-    #lon     = uf.variables['lon'][:]
     Tau     = uf.variables['time'][:] # Tau(time): hours since 19850101:0000
     Press   = uf.variables['lev'][:] # Pressure(altitude): hPa, midpoints
 
@@ -219,15 +137,17 @@ def get_UCX_data(date=datetime(2005,1,1), keys=UCX_HCHO_keys, surface=False):
     if __VERBOSE__:
         print ("date index = ")
         print (di)
-    for key in keys:
-        scale=[1.0, 1e9][key in UCX_scaled_keys] # scale if needed
-        tmp=uf.variables[key][:]*scale
+    for key in tf.variables.keys():
+        # Only reading keys mapped by the classes/variable_names_mapped.py file
+        if key not in GC_trac_avg_map:
+            if __VERBOSE__:
+                print('not reading %s'%key)
+            continue
         if __VERBOSE__:
             print("%s originally [%s], with min, mean, max = (%.2e, %.2e %.2e)"%
                 (key, str(tmp.shape), np.nanmin(tmp), np.nanmean(tmp), np.nanmax(tmp)))
         dims=np.shape(tmp)
         Tdim=0 # time is first dimension
-
         if dims[Tdim] == len(Tau): # check we have the time dimension
             tmp=np.squeeze(tmp[di])
             if __VERBOSE__:
@@ -245,9 +165,10 @@ def get_UCX_data(date=datetime(2005,1,1), keys=UCX_HCHO_keys, surface=False):
             else:
                 if __VERBOSE__:
                     print ("%s has no level dimension"%(key))
-        data[key]=tmp
+        name=GC_trac_avg_map[key]
+        data[name]=tmp
         if __VERBOSE__:
-            print("%s now has shape: %s"%(key,str(np.shape(data[key]))))
+            print("%s (%s) now has shape: %s"%(key,name,str(np.shape(data[key]))))
 
     # return the data we want
     uf.close()
@@ -295,4 +216,5 @@ def _test_trop_column_calc():
 
 
 if __name__=='__main__':
-    _test_trop_column_calc()
+    get_tropchem_data()
+    #_test_trop_column_calc()

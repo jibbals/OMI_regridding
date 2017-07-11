@@ -28,6 +28,7 @@ import utilities.utilities as util
 from utilities import plotting as pp
 from utilities.plotting import __AUSREGION__
 from utilities.JesseRegression import RMA
+from classes.variable_names_mapped import GC_trac_avg
 
 # remove the parent folder from path. [optional]
 sys.path.pop(0)
@@ -37,22 +38,6 @@ sys.path.pop(0)
 ##################
 
 __VERBOSE__=True # For file-wide print statements
-
-# map for gc output names to simple names, and then reversed
-Simplenames={'Tau':'taus','Pressure':'press','latitude':'lats','longitude':'lons',
-    'BXHGHT-$BXHEIGHT':'boxH','BXHGHT-$N(AIR)':'N_air','DXYPDXYP':'area',
-    'IJ-AVG-$ISOP':'isop', 'IJ-AVG-$CH2O':'hcho', 'PEDGE-$PSURF':'psurf',
-    'TR-PAUSETP-LEVEL':'tplev', 'IJ-AVG-$MVK':'mvk', 'IJ-AVG-$MACR':'macr',
-    'IJ-AVG-$NO2':'no2','BIOGSRCEISOP':'E_isop'}
-    #,'ISOP_BIOG':'E_isop'}
-Tracernames={v: k for k, v in Simplenames.items()}
-
-# UCX version:
-SimpleUCXnames={'time':'taus','lev':'press','lat':'lats','lon':'lons','IJ_AVG_S__ISOP':'isop',
-    'IJ_AVG_S__CH2O':'hcho','PEDGE_S__PSURF':'psurf','BXHGHT_S__BXHEIGHT':'boxH',
-    'BXHGHT_S__AD':'AD','BXHGHT_S__AVGW':'avgW','BXHGHT_S__N_AIR_':'N_air',
-    'DXYP__':'area','TR_PAUSE__TP_LEVEL':'tplev'}
-TracerUCXnames={v: k for k, v in SimpleUCXnames.items()}
 
 ################
 #####CLASS######

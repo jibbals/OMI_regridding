@@ -62,30 +62,24 @@ class GC_output:
         self.dstr=date.strftime("%Y%m")
 
         # READ DATA, Tropchem or UCX file
-        self.UCX=False
+        self.UCX=UCX
+        read_file_func   = gcfio.get_tropchem_data
+        read_file_params = {'date':date}
         if UCX:
-            self.UCX=True
-            tavg_data=gcfio.get_UCX_data(date, keys=SimpleUCXnames.keys(),
-                                         surface=False)
-            for key,val in SimpleUCXnames.items():
-                setattr(self, val, tavg_data[key])
-
-            self.taus=util.gregorian_from_dates([date])
-
-        else: # READ TROPCHEM DATA:
-            tavg_file=gcfio.read_tropchem(date)
-            # Save data using names mapped from the Simplenames dict:
-            for key,val in Simplenames.items():
-                # Some tropchem attributes lost the 1e9 scaling
-                # during the bpch2coards process
-                if key in gcfio.tropchem_scaled_keys:
-                    setattr(self, val, tavg_file.variables[key][:]*gcfio.tropchem_scale)
-                else:
-                    setattr(self, val, tavg_file.variables[key][:])
-
-            #Close the file
-            tavg_file.close()
-
+            read_file_func = gcfio.get_UCX_data
+        else: # if it's tropchem we want to take month avg:
+            read_file_params['monthavg']=True
+        
+        # Read the file in
+        tavg_data=read_file_func(**read_file_params)
+        
+        # Save the data to this class.
+        for key in tavg_data.keys():
+            setattr(self, key, tavg_data[key])
+            if __VERBOSE__:
+                print("GC_output reading %s"%key)
+        self.taus=util.gregorian_from_dates([date])
+        
         # add some peripheral stuff
         self.n_lats=len(self.lats)
         self.n_lons=len(self.lons)

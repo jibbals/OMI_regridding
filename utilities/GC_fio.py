@@ -204,6 +204,7 @@ def _test_trop_column_calc():
     '''
     # lets check for a few dimensions:
     for dims in [ [10,1,1], [100,100,100]]:
+        print("testing dummy trop column calculation for dims %s"%str(dims))
         ppbv=np.zeros(dims)+100.    # molec/1e9molecA
         N_air=np.zeros(dims)+1e13   # molecA/m3
         boxH=np.zeros(dims)+1.      # m
@@ -211,10 +212,13 @@ def _test_trop_column_calc():
         # should give 100molec/cm2 per level : tropcol = 440molec/cm2
         out= determine_trop_column(ppbv, N_air, boxH, tplev)
         assert out.shape==(dims[1],dims[2]), 'trop column calc shape is wrong'
+        print("PASS: shape is ok from intputs to output")
         assert np.isclose(out[0,0],440.0), 'trop column calc value is wrong, out=%f'%out[0,0]
+        print("PASS: Calculated trop column is OK")
         assert np.isclose(np.min(out), np.max(out)), 'Trop column calc has some problem'
+        print("PASS: every box matches")
 
 
 if __name__=='__main__':
-    get_tropchem_data()
-    #_test_trop_column_calc()
+    #get_tropchem_data()
+    _test_trop_column_calc()

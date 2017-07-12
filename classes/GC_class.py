@@ -54,7 +54,7 @@ class GC_output:
         self.psurf = pressure surfaces (hPa)
         self.area  = XY grid area (m2)
         self.N_air = air dens (molec_air/m3)
-        self.E_isop= "atoms C/cm2/s" # ONLY tropchem
+        self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
     def __init__(self, date, UCX=False):
@@ -69,17 +69,18 @@ class GC_output:
             read_file_func = gcfio.get_UCX_data
         else: # if it's tropchem we want to take month avg:
             read_file_params['monthavg']=True
-        
+
         # Read the file in
         tavg_data=read_file_func(**read_file_params)
-        
+
+        # Data has shape like [[time,]lev,lat,lon]
         # Save the data to this class.
         for key in tavg_data.keys():
             setattr(self, key, tavg_data[key])
             if __VERBOSE__:
                 print("GC_output reading %s"%key)
         self.taus=util.gregorian_from_dates([date])
-        
+
         # add some peripheral stuff
         self.n_lats=len(self.lats)
         self.n_lons=len(self.lons)
@@ -87,7 +88,7 @@ class GC_output:
         # set dates and E_dates:
         self.dates=util.date_from_gregorian(self.taus)
 
-    def get_field(self, keys=['hcho', 'E_isop'], region=pp.__AUSREGION__):
+    def get_field(self, keys=['hcho', 'E_isop_bio'], region=pp.__AUSREGION__):
         '''
         Return fields subset to a specific region [S W N E]
         '''
@@ -115,7 +116,7 @@ class GC_output:
             return self.modelled_slope
             # obj.attr_name exists.
         hcho = self.get_trop_columns(keys=['hcho'])['hcho']
-        isop = self.E_isop
+        isop = self.E_isop_bio
 
         lats,lons = self.lats, self.lons
         lati,loni = util.lat_lon_range(lats,lons,region)
@@ -169,7 +170,9 @@ class GC_output:
         return out
 
     def get_trop_columns(self, keys=['hcho'], metres=False):
-        ''' Return tropospheric column amounts in molec/cm2 [or molec/m2] '''
+        '''
+            Return tropospheric column amounts in molec/cm2 [or molec/m2]
+        '''
         data={}
 
         # where is tropopause and how much of next box we want
@@ -179,20 +182,34 @@ class GC_output:
         Xdata=self.ppbv_to_molec_cm2(keys=keys,metres=metres)
         # for each key, work out trop columns
         for key in keys:
-
-            dims=np.shape(Xdata[key])
             X=Xdata[key]
+            dims=np.array(np.shape(X))
+            if __VERBOSE__:
+                print("%s has shape %s"%(key,str(dims)))
+            lati=1;loni=2; timei=0
+            out=np.zeros(dims[[lati,loni]])
+            if len(dims)==4:
+                lati=2; loni=3
+                out=np.zeros(dims[[timei, lati, loni]])
 
-            out=np.zeros(dims[1:])
-            for lat in range(dims[1]):
-                for lon in range(dims[2]):
-                    if self.UCX:
-                        tropi=trop[lat,lon]
-                        out[lat,lon]=np.sum(X[0:tropi,lat,lon])+extra[lat,lon]*X[tropi,lat,lon]
-                    else:
-                        for t in range(dims[3]):
-                            tropi=trop[lat,lon,t]
-                            out[lat,lon,t]= np.sum(X[0:tropi,lat,lon,t])+extra[lat,lon,t]*X[tropi,lat,lon,t]
+            for lat in range(dims[lati]):
+                for lon in range(dims[loni]):
+                    try:
+                        if len(dims)==3:
+                            tropi=trop[lat,lon]
+                            out[lat,lon]=np.sum(X[0:tropi,lat,lon])+extra[lat,lon]*X[tropi,lat,lon]
+                        else:
+                            for t in range(dims[0]):
+                                tropi=trop[t,lat,lon]
+                                out[t,lat,lon]= np.sum(X[t,0:tropi,lat,lon])+extra[t,lat,lon]*X[t,tropi,lat,lon]
+                    except IndexError as ie:
+                        print((tropi, lat, lon))
+                        print("dims: %s"%str(dims))
+                        print(np.shape(out))
+                        print(np.shape(X))
+                        print(np.shape(extra))
+                        print(ie)
+                        raise(ie)
 
             data[key]=out
         return data
@@ -264,13 +281,13 @@ def check_units():
     print("Tropospheric HCHO %s mean = %.2e molec/cm2"%(str(trop_hcho.shape),np.nanmean(trop_hcho)))
     print("What's expected for this ~1e15?")
 
-    # E_isop is atom_C/cm2/s, around 5e12?
+    # E_isop_bio is atom_C/cm2/s, around 5e12?
 
 def check_diag():
     '''
     '''
     gc=GC_output(datetime(2005,1,1))
-    E_isop_hourly=gc.E_isop
+    E_isop_hourly=gc.E_isop_bio
     print(E_isop_hourly.shape())
     E_isop=gc.get_daily_E_isop()
     print(E_isop.shape())

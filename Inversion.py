@@ -191,14 +191,14 @@ def check_against_MEGAN(month=datetime(2005,1,1)):
 
     E_new=Emissions(day0=month, GC=GC, OMI=OMI, region=region)
     E_new_lowres=Emissions(day0=month,GC=GC, OMI=OMI, region=region, ReduceOmiRes=8)
-    E_GC=GC.get_field(keys=['E_isop'], region=region)
-    E_GC['E_isop'] = np.mean(E_GC['E_isop'],axis=2) # average of the monthly values
+    E_GC=GC.get_field(keys=['E_isop_bio'], region=region)
+    E_GC['E_isop_bio'] = np.mean(E_GC['E_isop_bio'],axis=2) # average of the monthly values
     for k,v in E_GC.items():
         print ((k, v.shape))
         print(np.nanmean(v))
 
-    Eomi=E_new['E_isop']
-    Egc=E_GC['E_isop']
+    Eomi=E_new['E_isop_bio']
+    Egc=E_GC['E_isop_bio']
     latsgc=E_GC['lats']
     lonsgc=E_GC['lons']
     latsom=E_new['lats']
@@ -229,7 +229,7 @@ def check_against_MEGAN(month=datetime(2005,1,1)):
                     vmin=vmin,vmax=vmax,linear=False,rlinear=False,
                     amin=amin,amax=amax,rmin=rmin,rmax=rmax)
     # again with degraded omi emissions:
-    arrs[1]=E_new_lowres['E_isop']
+    arrs[1]=E_new_lowres['E_isop_bio']
     lats[1],lons[1]=E_new_lowres['lats'],E_new_lowres['lats']
     fname='Figs/GC/E_Comparison_lowres_%s.png'%dstr
     pp.compare_maps(arrs,lats,lons,pname=fname,
@@ -240,7 +240,7 @@ def check_against_MEGAN(month=datetime(2005,1,1)):
     print("New estimate: %.2e"%np.nanmean(Eomi))
     print("Old estimate: %.2e"%np.nanmean(Egc))
     print("New estimate (no negatives): %.2e"%np.nanmean(Eomi_nn))
-    print("New estimate (low resolution): %.2e"%np.nanmean(E_new_lowres['E_isop']))
+    print("New estimate (low resolution): %.2e"%np.nanmean(E_new_lowres['E_isop_bio']))
     # corellation
 
     #Convert both arrays to same dimensions for correllation?

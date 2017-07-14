@@ -62,7 +62,7 @@ class omhchorp:
             Structure containing omhchorp dataset
         '''
         # Read the days we want to analyse:
-        daylist = util.list_days(day0, dayn) # excludes last day.
+        daylist = util.list_days(day0, dayn) # includes last day.
         struct = []
         for day in daylist:
             struct.append(fio.read_omhchorp(date=day, oneday=True,

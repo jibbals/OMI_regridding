@@ -85,7 +85,6 @@ def lat_lon_range(lats,lons,region):
 def list_days(day0,dayn=None,month=False):
     '''
         return list of days from day0 to dayn, or just day0
-        last day is excluded, so 20050101 - 20050201 is just January
         if month is True, return [day0,...,end_of_month]
     '''
     if month:

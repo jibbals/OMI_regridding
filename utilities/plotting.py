@@ -7,7 +7,9 @@ Hold functions which will generally plot or print stuff
 
 @author: jesse
 """
-### LIBRARIES/MODULES ###
+###############
+### MODULES ###
+###############
 import matplotlib
 matplotlib.use('Agg')
 import numpy as np
@@ -15,6 +17,7 @@ from matplotlib import ticker
 from mpl_toolkits.basemap import Basemap #, maskoceans
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import matplotlib.colors as mcolors #, colormapping
 from matplotlib.colors import LogNorm # for lognormal colour bar
 
 # Add parent folder to path
@@ -50,7 +53,7 @@ def InitMatplotlib():
     matplotlib.rcParams["axes.labelsize"]   = 20        #
     matplotlib.rcParams["xtick.labelsize"]  = 16        #
     matplotlib.rcParams["ytick.labelsize"]  = 16        #
-
+    matplotlib.rcParams['image.cmap'] = 'Inferno'       # Colormap default
 
 def regularbounds(x,fix=False):
     # Take a lat or lon array input and return the grid edges
@@ -68,8 +71,10 @@ def regularbounds(x,fix=False):
     return newx
 
 def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
-              region=__GLOBALREGION__, aus=False, colorbar=True, linear=False,
-              clabel=None,pname=None,title=None,suptitle=None, contourf=False):
+              region=__GLOBALREGION__, aus=False, linear=False,
+              clabel=None, colorbar=True, left='white', right='pink',
+              pname=None,title=None,suptitle=None, contourf=False,
+              cmap=None):
     if __VERBOSE__:
         print("createmap called")
         print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
@@ -96,7 +101,8 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
     lonsnew[nans]=np.NaN
     latsnew[nans]=np.NaN
 
-    pcmeshargs={'latlon':latlon, 'vmin':vmin, 'vmax':vmax, 'clim':(vmin,vmax)}
+    pcmeshargs={'latlon':latlon, 'vmin':vmin, 'vmax':vmax,
+                'clim':(vmin,vmax), 'cmap':cmap}
     if not linear:
         pcmeshargs['norm']=LogNorm()
 
@@ -110,8 +116,8 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
 
 
     # colour limits for contour mesh
-    cs.cmap.set_under('grey')
-    cs.cmap.set_over('pink')
+    cs.cmap.set_under(left)
+    cs.cmap.set_over(right)
     cs.set_clim(vmin,vmax)
 
     # draw coastline and equator(no latlon labels)

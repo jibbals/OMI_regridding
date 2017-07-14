@@ -67,13 +67,14 @@ def Yield(H, k_H, I, k_I):
     #Return the yields
     return Y
 
-def Emissions(day0, dayn, GC = None, OMI = None, region=pp.__AUSREGION__, ReduceOmiRes=0):
+def Emissions(day0, dayn, GC = None, OMI = None,
+              region=pp.__AUSREGION__, ReduceOmiRes=0, ignorePP=True):
     '''
         Determine emissions of isoprene averaged over some length of time.
         1) Calculates model slope E_isop -> Tropcol_HCHO
         2) Use Biogenic OMI HCHO product to calculate E_isoprene.
         Notes:
-            Up to 1 month at a time, OMI is averaged over day0 -> dayn-1
+            Up to 1 month at a time, OMI is averaged over day0 -> dayn
 
         HCHO = S * E_isop + b
     '''
@@ -85,7 +86,7 @@ def Emissions(day0, dayn, GC = None, OMI = None, region=pp.__AUSREGION__, Reduce
     if GC is None:
         GC=GC_output(date=day0)
     if OMI is None:
-        OMI=omhchorp(day0=day0,dayn=dayn)
+        OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
 
     if __VERBOSE__:
         # Check the dims of our stuff
@@ -257,12 +258,37 @@ def check_against_MEGAN(month=datetime(2005,1,1)):
     #Convert both arrays to same dimensions for correllation?
     #pp.plot_corellation()
 
+def plot_E_omi(month=datetime(2005,1,1)):
+    '''
+        Plot Emissions from OMI over region for averaged month
+    '''
+    #def Emissions(day0, dayn, GC = None, OMI = None, region=pp.__AUSREGION__, ReduceOmiRes=0):
+    day0=month
+    dstr=month.strftime("%Y%m")   # YYYYMM
+    dstr2=month.strftime("%Y %b") # YYYY Mon
+    dayn=util.last_day(day0)
+    em=Emissions(day0=day0, dayn=dayn)
+    #return {'E_isop':E_new, 'lats':lats, 'lons':lons, 'background':BG, 'GC_background':GC_BG, 'GC_slope':GC_slope}
+    E=em['E_isop']
+    lats=em['lats']; lons=em['lons']
+
+    #def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
+    #          region=__GLOBALREGION__, aus=False, colorbar=True, linear=False,
+    #          clabel=None,pname=None,title=None,suptitle=None, contourf=False,
+    #          cmap=None):
+    pname='Figs/GC/E_omi_%s.png'%dstr
+    title='E_isop %s'%dstr2
+    pp.createmap(E,lats,lons, vmin=1e9, vmax=5e12, title=title,
+                 clabel=r'Atoms C cm$^{-2}$ s$^{-1}$',cmap='Greens',
+                 right='darkgreen',
+                 aus=True,
+                 pname=pname)
+
 
 if __name__=='__main__':
     # check the regridding function:
     check_regridding()
     # try running
-    month=datetime(2005,1,1)
-    check_against_MEGAN(month)
-    month=datetime(2005,2,1)
-    check_against_MEGAN(month)
+    for month in [datetime(2005,1,1), datetime(2005,2,1)]:
+        #check_against_MEGAN(month)
+        plot_E_omi(month=month)

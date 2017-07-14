@@ -28,7 +28,7 @@ import utilities.utilities as util
 from utilities import plotting as pp
 from utilities.plotting import __AUSREGION__
 from utilities.JesseRegression import RMA
-from classes.variable_names_mapped import GC_trac_avg
+#from classes.variable_names_mapped import GC_trac_avg
 
 # remove the parent folder from path. [optional]
 sys.path.pop(0)
@@ -37,7 +37,7 @@ sys.path.pop(0)
 #####GLOBALS######
 ##################
 
-__VERBOSE__=True # For file-wide print statements
+__VERBOSE__=False # For file-wide print statements
 
 ################
 #####CLASS######
@@ -57,7 +57,7 @@ class GC_output:
         self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
-    def __init__(self, date, UCX=False):
+    def __init__(self, date, UCX=False,monthavg=False):
         ''' Read data for ONE MONTH into self '''
         self.dstr=date.strftime("%Y%m")
 
@@ -67,8 +67,8 @@ class GC_output:
         read_file_params = {'date':date}
         if UCX:
             read_file_func = gcfio.get_UCX_data
-        else: # if it's tropchem we want to take month avg:
-            read_file_params['monthavg']=True
+        else: # if it's tropchem we may want the month averaged:
+            read_file_params['monthavg']=monthavg
 
         # Read the file in
         tavg_data=read_file_func(**read_file_params)
@@ -79,7 +79,6 @@ class GC_output:
             setattr(self, key, tavg_data[key])
             if __VERBOSE__:
                 print("GC_output reading %s"%key)
-        self.taus=util.gregorian_from_dates([date])
 
         # add some peripheral stuff
         self.n_lats=len(self.lats)
@@ -87,17 +86,23 @@ class GC_output:
 
         # set dates and E_dates:
         self.dates=util.date_from_gregorian(self.taus)
+        self._has_time_dim = len(self.dates) > 1
 
     def get_field(self, keys=['hcho', 'E_isop_bio'], region=pp.__AUSREGION__):
         '''
         Return fields subset to a specific region [S W N E]
         '''
-        lati,loni = util.lat_lon_range(self.lats,self.lons,region)
+        lati, loni = util.lat_lon_range(self.lats,self.lons,region)
         out={'lats':self.lats[lati],'lons':self.lons[loni]}
         for k in keys:
-            out[k] = getattr(self, k)
-            out[k] = out[k][lati,:]
-            out[k] = out[k][:,loni]
+            if self._has_time_dim:
+                out[k] = getattr(self, k)
+                out[k] = out[k][:,lati,:]
+                out[k] = out[k][:,:,loni]
+            else:
+                out[k] = getattr(self, k)
+                out[k] = out[k][lati,:]
+                out[k] = out[k][:,loni]
         return out
 
     def model_slope(self, region=pp.__AUSREGION__):
@@ -121,10 +126,10 @@ class GC_output:
         lats,lons = self.lats, self.lons
         lati,loni = util.lat_lon_range(lats,lons,region)
 
-        isop = isop[lati, :]
-        isop = isop[:, loni]
-        hcho = hcho[lati, :]
-        hcho = hcho[:, loni]
+        isop = isop[:, lati, :]
+        isop = isop[:, :, loni]
+        hcho = hcho[:, lati, :]
+        hcho = hcho[:, :, loni]
 
         sublats, sublons = lats[lati], lons[loni]
         n_x = len(loni)
@@ -136,17 +141,17 @@ class GC_output:
         for xi in range(n_x):
             for yi in range(n_y):
                 # Y = m X + B
-                X=isop[yi, xi, :]
-                Y=hcho[yi, xi, :]
+                X=isop[:, yi, xi]
+                Y=hcho[:, yi, xi]
 
                 # Skip ocean or no emissions squares:
-                if np.isclose(np.mean(X),0.0): continue
+                if np.isclose(np.mean(X), 0.0): continue
 
                 # get regression
-                m,b,r,CI1,CI2=RMA(X, Y)
-                slope[yi,xi] = m
-                bg[yi,xi] = b
-                reg[yi,xi] = r
+                m, b, r, CI1, CI2=RMA(X, Y)
+                slope[yi, xi] = m
+                bg[yi, xi] = b
+                reg[yi, xi] = r
 
         print('model_yield')
         print(np.nanmean(slope))

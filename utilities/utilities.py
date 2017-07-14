@@ -63,6 +63,11 @@ def index_from_gregorian(gregs, date):
     ind=np.where(gregs==greg)[0]
     return (ind)
 
+def last_day(date):
+    lastday=calendar.monthrange(date.year,date.month)[1]
+    dayn=datetime(date.year,date.month,lastday)
+    return dayn
+
 def lat_lon_range(lats,lons,region):
     '''
     returns indices of lats, lons which are within region: list=[S,W,N,E]
@@ -88,11 +93,6 @@ def list_days(day0,dayn=None,month=False):
     if dayn is None: return [day0,]
     numdays = (dayn-day0).days + 1 # timedelta
     return [day0 + timedelta(days=x) for x in range(0, numdays)]
-
-def last_day(date):
-    lastday=calendar.monthrange(date.year,date.month)[1]
-    dayn=datetime(date.year,date.month,lastday)
-    return dayn
 
 def ppbv_to_molecs_per_cm2(ppbv, pedges):
     '''
@@ -122,6 +122,9 @@ def regrid(data,lats,lons,newlats,newlons):
     Regrid a data array [lat,lon] onto [newlat,newlon]
     Assumes a regular grid!
     '''
+    if __VERBOSE__:
+        print("utilities.regrid transforming %s to %s"%(str((len(lons),len(lats))),str((len(newlons),len(newlats)))))
+        print("data input looks like %s"%str(np.shape(data)))
     # if no resolution change then just throw back input
     if len(newlats) == len(lats):
         return data

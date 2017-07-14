@@ -11,7 +11,7 @@ Hold functions which will generally plot or print stuff
 import matplotlib
 matplotlib.use('Agg')
 import numpy as np
-import matplotlib
+from matplotlib import ticker
 from mpl_toolkits.basemap import Basemap #, maskoceans
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -29,6 +29,8 @@ sys.path.pop(0)
 ###############
 ### GLOBALS ###
 ###############
+
+__VERBOSE__=False
 
 # S W N E
 __AUSREGION__=[-47,106,-5,158,]
@@ -67,7 +69,11 @@ def regularbounds(x,fix=False):
 
 def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, colorbar=True, linear=False,
-              clabel=None,pname=None,title=None,suptitle=None):
+              clabel=None,pname=None,title=None,suptitle=None, contourf=False):
+    if __VERBOSE__:
+        print("createmap called")
+        print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
+
     # Create a basemap map with region as inputted
     if aus: region=__AUSREGION__
     lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
@@ -94,8 +100,14 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
     if not linear:
         pcmeshargs['norm']=LogNorm()
 
-    cs=m.pcolormesh(lonsnew, latsnew, data, **pcmeshargs)
-    #, latlon=latlon, vmin=vmin, vmax=vmax, norm=norm, clim=(vmin,vmax))
+    if contourf:
+        locator=None
+        if not linear:
+            locator=ticker.LogLocator()
+        cs=m.contourf(lonsnew, latsnew, data, locator=locator, **pcmeshargs)
+    else:
+        cs=m.pcolormesh(lonsnew, latsnew, data, **pcmeshargs)
+
 
     # colour limits for contour mesh
     cs.cmap.set_under('grey')
@@ -230,7 +242,7 @@ def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legen
 
 def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
                  clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
-                 rmin=-200.0, rmax=200., amin=None, amax=None,
+                 rmin=-200.0, rmax=200., amin=None, amax=None, contourf=False,
                  linear=False, alinear=True, rlinear=True, **pltargs):
     '''
         Plot two maps and their relative and absolute differences
@@ -264,20 +276,25 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
     # set up plot
     f,axes=plt.subplots(2,2,figsize=(16,14))
     plt.sca(axes[0,0])
-
-    createmap(A,lats,lons,region=region, clabel=clabel, linear=linear,
-            title=titles[0], vmin=vmin, vmax=vmax)
+    args={'region':region, 'clabel':clabel, 'linear':linear,
+          'lats':lats, 'lons':lons, 'contourf':contourf, 'title':titles[0],
+         'vmin':vmin, 'vmax':vmax}
+    createmap(A, **args)
 
     plt.sca(axes[0,1])
-    createmap(B,lats,lons,region=region, clabel=clabel, linear=linear,
-              title=titles[1], vmin=vmin, vmax=vmax)
+    args['title']=titles[1]
+    createmap(B, **args)
+
     plt.sca(axes[1,0])
-    title="%s - %s"%(titles[0],titles[1])
-    createmap(A-B,lats,lons,region=region, clabel=clabel,
-             title=title, linear=alinear, vmin=amin, vmax=amax)
+    args['title']="%s - %s"%(titles[0],titles[1])
+    args['vmin']=amin; args['vmax']=amax
+    args['linear']=alinear
+    createmap(A-B, **args)
+
     plt.sca(axes[1,1])
-    title="100*(%s-%s)/%s"%(titles[0], titles[1], titles[1])
-    createmap((A-B)*100.0/B,lats, lons, region=region,linear=rlinear,
-              vmin=rmin, vmax=rmax, clabel=clabel, title=title,
-              suptitle=suptitle, pname=pname)
+    args['title']="100*(%s-%s)/%s"%(titles[0], titles[1], titles[1])
+    args['vmin']=rmin; args['vmax']=rmax
+    args['linear']=rlinear
+    args['clabel']="%"
+    createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
 

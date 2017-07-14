@@ -24,7 +24,7 @@ sys.path.pop(0)
 #####GLOBALS######
 ##################
 
-__VERBOSE__=True
+__VERBOSE__=False
 
 run_number={"tropchem":0,"UCX":1}
 runs=["geos5_2x25_tropchem","UCX_geos5_2x25"]
@@ -76,10 +76,10 @@ def get_tropchem_data(date=datetime(2005,1,1), monthavg=False, surface=False):
     ''' return a subset of the tropchem data '''
     tf=read_tropchem(date)
     Tau=tf.variables['time'][:] # tau dimension
-    
+
     # get the subset of data: (most are [time, [lev, ]lat,lon])
     data={}
-    
+
     for key in tf.variables.keys():
         # Only reading keys mapped by the classes/variable_names_mapped.py file
         if key not in GC_trac_avg_map:
@@ -101,15 +101,15 @@ def get_tropchem_data(date=datetime(2005,1,1), monthavg=False, surface=False):
             else:
                 if __VERBOSE__:
                     print ("%s has no time dimension"%(key))
-        
+
         if surface: # take surface slice
             dims=np.shape(tmp)
             # Ldim could be first or second.
             Ldim=np.where(dims == 47)[0][0]
             if Ldim==1:
-                tmp=tmp[:,0] 
+                tmp=tmp[:,0]
             elif Ldim==0:
-                tmp=tmp[0] 
+                tmp=tmp[0]
             if __VERBOSE__:
                 print("%s had surface slice taken, now %s"%(key,str(np.shape(tmp))))
         name=GC_trac_avg_map[key]

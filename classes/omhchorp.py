@@ -183,7 +183,7 @@ class omhchorp:
         return BG
 
     def lower_resolution(self, key='VCC', factor=8, dates=None):
-        ''' 
+        '''
             return data with resolution lowered by a factor of 8 (or input any integer)
             This function averages out the time dimension from dates[0] to dates[1]
         '''
@@ -195,8 +195,8 @@ class omhchorp:
         if dates is not None:
             d=np.array(self.dates)
             ti = (d >= dates[0]) * (d < dates[1])
-            print("TI:")
-            print(ti)
+            if __VERBOSE__:
+                print("omhchorp.lower_resolution averaging %d days"%np.sum(ti))
             data=np.nanmean(data[ti],axis=0)
             counts=np.nansum(counts[ti],axis=0)
             dsum=np.nansum(dsum[ti],axis=0)
@@ -204,10 +204,10 @@ class omhchorp:
             data=np.nanmean(data,axis=0)
             counts=np.nansum(counts,axis=0)
             dsum=np.nansum(dsum,axis=0)
-                
+
         ni = len(self.lats)
         nj = len(self.lons)
-        
+
         new_ni, new_nj = int(ni/factor),int(nj/factor)
         newarr=np.zeros([new_ni,new_nj])+ np.NaN
         newcounts=np.zeros([new_ni, new_nj])
@@ -217,36 +217,36 @@ class omhchorp:
                 jr = np.arange(j*factor, j*factor+factor)
                 newcounts[i,j] = np.nansum(counts[ir,jr])
                 newarr[i,j] = np.nansum(dsum[ir,jr])
-        newarr = newarr/newcounts
+        # Sum divided by entry count, ignore div by zero warning
+        with np.errstate(divide='ignore'):
+            newarr = newarr/newcounts
+            newarr[newcounts==0.0]=np.NaN
         lats=self.lats[0::factor]
         lons=self.lons[0::factor]
         return {key:newarr, 'counts':newcounts, 'lats':lats, 'lons':lons}
 
     def time_averaged(self, day0, dayn=None, keys=['VCC'], month=False):
         '''
-            Return keys averaged over the time dimension for day0-(dayn-1)
-            or whole month if month==True
+            Return keys averaged over the time dimension
+                Where date >= day0 and date < dayn
+                or whole month if month==True
         '''
         ret={}
-        # inputs should be within class range
         dates=np.array(self.dates)
-        assert day0 in dates, 'PROBLEM'+day0.strftime('%Y%m%d')
-        if dayn is not None:
-            dayn=dayn-timedelta(days=1) # dayn-1
-            assert dayn in dates, 'PROBLEM '+dayn.strftime('%Y%m%d')
 
-        #average over i0 to i1
-        i0=np.where(dates == day0)[0][0]
-        i1=i0
+        # option to do whole month:
         if month:
-            dayn=datetime(day0.year,day0.month,util.last_day(day0))
-        if dayn is not None:
-            i1=np.where(dates == dayn)[0][0]
-        for key in keys:
-            drange=range(i0,i1+1) # range excludes final number.
-            ret[key]=np.nanmean(getattr(self,key)[drange],axis=0)
+            dayn=util.last_day(day0) + timedelta(days=1)
+        if dayn is None:
+            dayn=dayn+timedelta(days=1)
+
+        dinds = (dates >= day0) * (dates < dayn)
         if __VERBOSE__:
-            print('omhchorp.time_averaged returning %s to %s'%(day0.strftime('%Y%m%d'),dayn.strftime('%Y%m%d')))
+            print("omhchorp.time_averaged() averaging %d days"%np.sum(dinds))
+            print("from %s to %s"%(day0.strftime('%Y%m%d'),dayn.strftime('%Y%m%d')))
+
+        for key in keys:
+            ret[key]=np.nanmean(getattr(self,key)[dinds], axis=0)
         return ret
 
 if __name__=='__main__':

@@ -278,9 +278,9 @@ def plot_E_omi(month=datetime(2005,1,1)):
     #          cmap=None):
     pname='Figs/GC/E_omi_%s.png'%dstr
     title='E_isop %s'%dstr2
-    pp.createmap(E,lats,lons, vmin=1e9, vmax=5e12, title=title,
+    pp.createmap(E,lats,lons, vmin=1e11, vmax=5e12, title=title,
                  clabel=r'Atoms C cm$^{-2}$ s$^{-1}$',cmap='Greens',
-                 right='darkgreen',
+                 right='darkgreen', linear=True,
                  aus=True,
                  pname=pname)
 

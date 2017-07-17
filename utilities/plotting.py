@@ -17,7 +17,7 @@ from matplotlib import ticker
 from mpl_toolkits.basemap import Basemap #, maskoceans
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-import matplotlib.colors as mcolors #, colormapping
+#import matplotlib.colors as mcolors #, colormapping
 from matplotlib.colors import LogNorm # for lognormal colour bar
 
 # Add parent folder to path
@@ -72,7 +72,7 @@ def regularbounds(x,fix=False):
 
 def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
-              clabel=None, colorbar=True, left='white', right='pink',
+              clabel=None, colorbar=True, left='white', right='red',
               pname=None,title=None,suptitle=None, contourf=False,
               cmap=None):
     if __VERBOSE__:
@@ -93,7 +93,9 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
 
     # fix the lats and lons to 2dimensional meshes(if they're not already)
     if len(lats.shape) == 1:
-        lonsnew,latsnew=np.meshgrid(lons,lats)
+        lonsnew=regularbounds(lons) # USE EDGES NOT MIDS
+        latsnew=regularbounds(lats) #
+        lonsnew,latsnew=np.meshgrid(lonsnew,latsnew)
     else:
         latsnew,lonsnew=(lats,lons)
     #force nan into any pixel with nan results, so color is not plotted there...
@@ -109,13 +111,14 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
     if contourf:
         locator=None
         if not linear:
-            locator=ticker.LogLocator()
+            locator=ticker.LogLocator(ticks=ticks)
         cs=m.contourf(lonsnew, latsnew, data, locator=locator, **pcmeshargs)
     else:
         cs=m.pcolormesh(lonsnew, latsnew, data, **pcmeshargs)
 
 
     # colour limits for contour mesh
+
     cs.cmap.set_under(left)
     cs.cmap.set_over(right)
     cs.set_clim(vmin,vmax)
@@ -131,7 +134,13 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
         plt.suptitle(suptitle)
     cb=None
     if colorbar:
-        cb=m.colorbar(cs,"bottom",size="5%", pad="2%")
+        #formatter = None; norm=None
+        #if not linear:
+        #    formatter = ticker.LogFormatter(10, labelOnlyBase=False)
+        cb=m.colorbar(cs,"bottom",size="5%", pad="2%", extend='both')
+                      #format=formatter)
+
+        #cb = plt.colorbar(ticks=[1,5,10,20,50], format=formatter)
         if clabel is not None:
             cb.set_label(clabel)
 
@@ -303,4 +312,3 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
     args['linear']=rlinear
     args['clabel']="%"
     createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
-

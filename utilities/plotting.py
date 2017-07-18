@@ -33,7 +33,7 @@ sys.path.pop(0)
 ### GLOBALS ###
 ###############
 
-__VERBOSE__=False
+__VERBOSE__=True
 
 # S W N E
 __AUSREGION__=[-47,106,-5,158,]
@@ -70,14 +70,16 @@ def regularbounds(x,fix=False):
         if newx[0] <= -180: newx[0]=-179.99
     return newx
 
-def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
+
+def createmap(data, lats, lons, edges=False ,
+              vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
-              clabel=None, colorbar=True, left='white', right='red',
+              clabel=None, colorbar=True, left=None, right=None,
               pname=None,title=None,suptitle=None, contourf=False,
-              cmap=None):
+              cmapname=None, fillcontinents=None):
     if __VERBOSE__:
-        print("createmap called")
-        print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
+        print("createmap called: %s"%str(title))
+        #print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
 
     # Create a basemap map with region as inputted
     if aus: region=__AUSREGION__
@@ -91,56 +93,65 @@ def createmap(data,lats,lons, vmin=None, vmax=None, latlon=True,
     if vmax is None:
         vmax=0.95*np.nanmax(data)
 
-    # fix the lats and lons to 2dimensional meshes(if they're not already)
-    if len(lats.shape) == 1:
-        lonsnew=regularbounds(lons) # USE EDGES NOT MIDS
-        latsnew=regularbounds(lats) #
-        lonsnew,latsnew=np.meshgrid(lonsnew,latsnew)
-    else:
-        latsnew,lonsnew=(lats,lons)
+    # basemap pcolormesh uses data edges
+    if (not edges) and (not contourf):
+        nlat,nlon=len(lats), len(lons)
+        lats=regularbounds(lats)
+        lons=regularbounds(lons)
+        assert nlat == len(lats)-1, "regularbounds failed: %d -> %d"%(nlat, len(lats))
+        assert nlon == len(lons)-1, "regularbounds failed: %d -> %d"%(nlon, len(lons))
+    # contourf uses midpoints
+    elif edges and contourf:
+        lats=(lats[0:-1]+lats[1:]) / 2.0
+        lons=(lons[0:-1]+lons[1:]) / 2.0
+
+    # Make lats/lons 2D meshed grid
+    mlons,mlats=np.meshgrid(lons,lats)
+
+    if (not (mlats.shape[0] == data.shape[0] + 1)) and (not contourf):
+        print("Warning: pcolormesh needs edges for the lats/lons " +
+              "(array: %s, lats:%s)"%(str(np.shape(data)),str(np.shape(mlats))))
+    if contourf:
+        assert mlats.shape == data.shape, "Contourf needs lat/lon midpoints"
+
     #force nan into any pixel with nan results, so color is not plotted there...
-    nans=np.isnan(data)
-    lonsnew[nans]=np.NaN
-    latsnew[nans]=np.NaN
+    mdata=np.ma.masked_array(data,mask=np.isnan(data))
 
     pcmeshargs={'latlon':latlon, 'vmin':vmin, 'vmax':vmax,
-                'clim':(vmin,vmax), 'cmap':cmap}
+                'clim':(vmin, vmax), 'cmap':plt.cm.cmap_d[cmapname]}
     if not linear:
         pcmeshargs['norm']=LogNorm()
 
+    if __VERBOSE__:
+        shapes=tuple([ str(np.shape(a)) for a in [mlats, mlons, mdata] ])
+        print("lats: %s, lons: %s, data: %s"%shapes)
+
     if contourf:
-        locator=None
-        if not linear:
-            locator=ticker.LogLocator(ticks=ticks)
-        cs=m.contourf(lonsnew, latsnew, data, locator=locator, **pcmeshargs)
+        locator=[None, ticker.LogLocator()][linear]
+        cs=m.contourf(mlons,mlats,mdata)
+        #cs=m.contourf(mlons, mlats, mdata, locator=locator, **pcmeshargs)
     else:
-        cs=m.pcolormesh(lonsnew, latsnew, data, **pcmeshargs)
+        cs=m.pcolormesh(mlons, mlats, mdata, **pcmeshargs)
 
 
     # colour limits for contour mesh
-
-    cs.cmap.set_under(left)
-    cs.cmap.set_over(right)
     cs.set_clim(vmin,vmax)
 
     # draw coastline and equator(no latlon labels)
     m.drawcoastlines()
     m.drawparallels([0],labels=[0,0,0,0])
 
-    # add title and cbar label
+    if fillcontinents is not None:
+        m.fillcontinents(fillcontinents)
+
+    # add titles and cbar label
     if title is not None:
         plt.title(title)
     if suptitle is not None:
         plt.suptitle(suptitle)
     cb=None
-    if colorbar:
-        #formatter = None; norm=None
-        #if not linear:
-        #    formatter = ticker.LogFormatter(10, labelOnlyBase=False)
+    if colorbar and (not contourf):
         cb=m.colorbar(cs,"bottom",size="5%", pad="2%", extend='both')
-                      #format=formatter)
-
-        #cb = plt.colorbar(ticks=[1,5,10,20,50], format=formatter)
         if clabel is not None:
             cb.set_label(clabel)
 

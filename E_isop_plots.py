@@ -34,23 +34,24 @@ __VERBOSE__=True
 ###############
 
 def map_E_gc(month, GC, clims=[1e11,5e12], region=pp.__AUSREGION__,
-             right='purple', cmap='PuBuGn'):
+             cmapname='PuBuGn',linear=True, contourf=False):
     #GEOS-Chem over our region:
     E_GC_sub=GC.get_field(keys=['E_isop_bio'], region=region)
     Egc = np.mean(E_GC_sub['E_isop_bio'],axis=0) # average of the monthly values
-    latsgc=E_GC_sub['lats']
-    lonsgc=E_GC_sub['lons']
+    lats_e=E_GC_sub['lats_e']
+    lons_e=E_GC_sub['lons_e']
 
     title=r'E$_{GC}$ %s'%month.strftime("%Y, %b")
-    pp.createmap(Egc, latsgc, lonsgc, title=title,
-                 vmin=clims[0], vmax=clims[1],
+    # We need to specify the edges since GC is not fully regular
+    pp.createmap(Egc, lats_e, lons_e, edges=True, title=title,
+                 vmin=clims[0], vmax=clims[1], contourf=contourf,
                  clabel=r'Atoms C cm$^{-2}$ s$^{-1}$',
-                 cmap=cmap, right=right, left='white',
-                 linear=False, region=region)
+                 cmapname=cmapname, linear=linear, region=region)
 
 def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
-              clims=[1e11,3e12], region=pp.__AUSREGION__,
-              right='purple', cmap='PuBuGn'):
+              contourf=False, linear=True,
+              clims=[2e11,2e12], region=pp.__AUSREGION__,
+              cmapname='PuBuGn', pname=None):
     '''
         Plot calculated emissions
     '''
@@ -63,15 +64,14 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
 
     title=r'E$_{isop}$ %s'%dstr
 
-    pp.createmap(E,lats,lons, vmin=clims[0], vmax=clims[1], title=title,
-                 clabel=r'Atoms C cm$^{-2}$ s$^{-1}$',cmap=cmap,
-                 right=right, left='white',
-                 linear=False, aus=True)
-                 #pname=pname)
+    pp.createmap(E, lats, lons, edges=False, title=title, pname=pname,
+                 contourf=contourf,
+                 vmin=clims[0], vmax=clims[1], linear=linear, aus=True,
+                 clabel=r'Atoms C cm$^{-2}$ s$^{-1}$', cmapname=cmapname)
 
 
 def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
-                  ReduceOmiRes=0, smoothed=False,
+                  ReduceOmiRes=0, contourf=False,
                   region=pp.__AUSREGION__):
     '''
         Plot E_gc, E_new, diff, ratio
@@ -102,39 +102,40 @@ def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     latsgc=E_GC_sub['lats']
     lonsgc=E_GC_sub['lons']
 
-    right='purple' # color for values over max
-    vlims=[1e11,5e12] # map min and max
-    amin,amax=-1e12, 3e12 # absolute diff min and max
-    rmin,rmax=.5, 10 # ratio min and max
-
-    ## First plot maps of emissions:
-    ##
-    plt.figure(figsize=(16,12))
-
-
-    # start with E_GC:
-    plt.subplot(221)
-    map_E_gc(month=month, GC=GC, clims=vlims, region=region, right=right)
-
-    # then E_new
-    plt.subplot(222)
-    map_E_new(month=month,GC=GC,OMI=OMI,clims=vlims,region=region, right=right)
-
-    ## Difference and ratio:
-    ##
-
     # map the lower resolution data onto the higher resolution data:
     Egc_up=Egc
     if len(omilats) > len(latsgc):
         Egc_up = util.regrid(Egc,latsgc,lonsgc,omilats,omilons)
+
+
+    ## First plot maps of emissions:
+    ##
+    plt.figure(figsize=(16,12))
+    vlinear=True # linear flag for plot functions
+    clims=[2e11,2.5e12] # map min and max
+    amin,amax=-1e12, 3e12 # absolute diff min and max
+    rmin,rmax=0, 10 # ratio min and max
+
+    # start with E_GC:
+    plt.subplot(221)
+    map_E_gc(month=month, GC=GC, clims=clims, region=region,
+             linear=vlinear, contourf=contourf)
+
+    # then E_new
+    plt.subplot(222)
+    map_E_new(month=month,GC=GC,OMI=OMI,clims=clims,
+              region=region, linear=vlinear, contourf=contourf)
+
+    ## Difference and ratio:
+    ##
 
     ## Diff map:
     plt.subplot(223)
     title=r'E$_{GC} - $E$_{omi}$ '
     args={'region':region, 'clabel':r'atoms C cm$^{-2}$ s$^{-1}$',
           'linear':True, 'lats':omilats, 'lons':omilons,
-          'contourf':smoothed, 'title':title, 'cmap':'YlGnBu',
-          'vmin':amin, 'vmax':amax, 'right':right}
+          'contourf':contourf, 'title':title, 'cmapname':'cool',
+          'vmin':amin, 'vmax':amax}
     pp.createmap(Egc_up - newE, **args)
 
     ## Ratio map:
@@ -150,7 +151,7 @@ def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     suptitle='GEOS-Chem (gc) vs OMI for %s'%yyyymon
     plt.suptitle(suptitle)
     fname='Figs/GC/E_Comparison_%s%s%s.png'%(dstr,
-                                             ['','_smoothed'][smoothed],
+                                             ['','_contourf'][contourf],
                                              ['','_lowres'][ReduceOmiRes>0])
     plt.savefig(fname)
     print("SAVED FIGURE: %s"%fname)
@@ -186,8 +187,7 @@ def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     #pp.plot_corellation()
 
 
-def All_maps(month=datetime(2005,1,1), clims=[1e12,3e12],
-             ignorePP=True, region=pp.__AUSREGION__):
+def All_maps(month=datetime(2005,1,1), ignorePP=True, region=pp.__AUSREGION__):
     '''
         Plot Emissions from OMI over region for averaged month
     '''
@@ -204,16 +204,19 @@ def All_maps(month=datetime(2005,1,1), clims=[1e12,3e12],
 
     ## Plot E_new
     ##
+    clims=[2e11,2e12]
+    cmapname='YlGnBu'
     pname='Figs/GC/E_new_%s.png'%dstr
     plt.figure(figsize=[10,8])
-    map_E_new(month=month, GC=GC, OMI=OMI)
+    map_E_new(month=month, GC=GC, OMI=OMI, clims=clims, cmapname=cmapname)
     plt.savefig(pname)
 
     ## Plot E_GC vs E_new, low and high res.
     ##
     for ReduceOmiRes in [0,8]:
-        E_gc_VS_E_new(month=month, GC=GC, OMI=OMI,
-                  ReduceOmiRes=ReduceOmiRes, smoothed=False)
+        for contourf in [False, True]:
+            E_gc_VS_E_new(month=month, GC=GC, OMI=OMI,
+                          ReduceOmiRes=ReduceOmiRes, contourf=contourf)
 
 if __name__=='__main__':
 

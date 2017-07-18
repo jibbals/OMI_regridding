@@ -28,6 +28,7 @@ import utilities.utilities as util
 from utilities import plotting as pp
 from utilities.plotting import __AUSREGION__
 from utilities.JesseRegression import RMA
+import utilities.GMAO as gmao
 #from classes.variable_names_mapped import GC_trac_avg
 
 # remove the parent folder from path. [optional]
@@ -48,6 +49,7 @@ class GC_output:
         Class holding and manipulating tropchem GC output
         # tropchem dims [[lev,] lat, lon[, time]]
         # UCX dims: lev = 72; alt059 = 59; lat = 91; lon = 144;
+        # LATS AND LONS ARE BOX MIDPOINTS
         self.hcho  = PPBV
         self.isop  = PPBC (=PPBV*5)
         self.boxH  = box heights (m)
@@ -88,12 +90,23 @@ class GC_output:
         self.dates=util.date_from_gregorian(self.taus)
         self._has_time_dim = len(self.dates) > 1
 
+        assert all(self.lats == gmao.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
+        self.lats_e=gmao.lats_e
+        assert all(self.lons == gmao.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"
+        self.lons_e=gmao.lons_e
+
     def get_field(self, keys=['hcho', 'E_isop_bio'], region=pp.__AUSREGION__):
         '''
         Return fields subset to a specific region [S W N E]
         '''
         lati, loni = util.lat_lon_range(self.lats,self.lons,region)
-        out={'lats':self.lats[lati],'lons':self.lons[loni]}
+        lati_e = np.append(lati,np.max(lati)+1)
+        loni_e = np.append(loni,np.max(loni)+1)
+        out={'lats':self.lats[lati],
+             'lons':self.lons[loni],
+             'lats_e':self.lats_e[lati_e],
+             'lons_e':self.lons_e[loni_e]}
+
         for k in keys:
             if self._has_time_dim:
                 out[k] = getattr(self, k)

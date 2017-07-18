@@ -30,7 +30,7 @@ import utilities.utilities as util
 ###############
 ### GLOBALS ###
 ###############
-__VERBOSE__=True
+__VERBOSE__=False
 
 ###############
 ### METHODS ###
@@ -134,7 +134,7 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     GC_slope_mean_after_regrid=np.nanmean(GC_slope)
     assert np.shape(hcho) == np.shape(GC_slope), "Regridded slope shape doesn't match OMI shape!"
     check=np.abs((GC_slope_mean_after_regrid-GC_slope_mean_before_regrid)/GC_slope_mean_before_regrid)
-    assert  check < 0.01, "Regridded slope changes by more than 1\%!"
+    assert check < 0.01, "Regridded slope changes by more than 1\%!"
     if __VERBOSE__:
         print("Regridding slope passes change tests")
         print("Mean slope = %1.3e"%np.nanmean(GC_slope))

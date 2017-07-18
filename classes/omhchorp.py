@@ -18,7 +18,6 @@ from mpl_toolkits.basemap import maskoceans #Basemap, maskoceans
 
 import numpy as np
 from datetime import datetime, timedelta
-import calendar
 
 # Add parent folder to path
 import os,sys,inspect
@@ -72,6 +71,9 @@ class omhchorp:
         self.dates=daylist
         self.lats=struct[0]['latitude']
         self.lons=struct[0]['longitude']
+        self.lats_e = util.edges_from_mids(self.lats)
+        self.lons_e = util.edges_from_mids(self.lons)
+
         nt,self.n_lats,self.n_lons=len(daylist), len(self.lats), len(self.lons)
         self.n_times=nt
 
@@ -223,7 +225,10 @@ class omhchorp:
             newarr[newcounts==0.0]=np.NaN
         lats=self.lats[0::factor]
         lons=self.lons[0::factor]
-        return {key:newarr, 'counts':newcounts, 'lats':lats, 'lons':lons}
+        lats_e=util.edges_from_mids(lats)
+        lons_e=util.edges_from_mids(lons)
+        return {key:newarr, 'counts':newcounts, 'lats':lats, 'lons':lons,
+                'lats_e':lats_e, 'lons_e':lons_e}
 
     def time_averaged(self, day0, dayn=None, keys=['VCC'], month=False):
         '''

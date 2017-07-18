@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 import calendar
 import numpy as np
 from scipy.interpolate import griddata # for regrid function
+from mpl_toolkits.basemap import maskoceans #
 
 ###############
 ### GLOBALS ###
@@ -36,6 +37,30 @@ def date_from_gregorian(greg):
     #if isinstance(greg, (list, tuple, np.ndarray)):
     return([d0+timedelta(seconds=int(hr*3600)) for hr in greg])
 
+def edges_from_mids(x,fix=False):
+    '''
+        Take a lat or lon array input and return the grid edges
+        REQUIRES REGULAR VECTOR INPUT
+    '''
+
+    newx=np.zeros(len(x)+1)
+    xres=x[1]-x[0]
+    newx[0:-1]=np.array(x) - xres/2.0
+    newx[-1]=newx[-2]+xres
+    # If the ends are outside 90N/S or 180E/W then bring them back
+    if fix:
+        if newx[-1] >= 90: newx[-1]=89.99
+        if newx[0] <= -90: newx[0]=-89.99
+        if newx[-1] >= 180: newx[-1]=179.99
+        if newx[0] <= -180: newx[0]=-179.99
+    return newx
+
+def edges_to_mids(x):
+    ''' lat or lon array and return midpoints '''
+    out=np.zeros(len(x)-1)
+    out= (x[0:-1]+x[1:]) / 2.0
+    return out
+
 def findvminmax(data,lats,lons,region):
     '''
     return vmin, vmax of data[lats,lons] within region: list=[SWNE]
@@ -46,6 +71,25 @@ def findvminmax(data,lats,lons,region):
     vmin=np.nanmin(data2)
     vmax=np.nanmax(data2)
     return vmin,vmax
+
+def get_mask(arr, lats=None, lons=None, masknan=True, maskocean=False, maskland=False):
+    '''
+        Return array which is a mask for the input array
+        to mask the ocean or land you need to put in the lats, lons of the data
+    '''
+    mask=np.isnan(arr)
+    if maskocean:
+        mask = mask + maskoceans(lons,lats,arr, inlands=False).mask
+    if maskland:
+        mask = mask + ~(maskoceans(lons,lats,arr, inlands=False).mask)
+    return mask
+
+def get_masked(arr, lats=None, lons=None, masknan=True, maskocean=False, maskland=False):
+    '''
+        return array masked by nans and optionally ocean/land
+    '''
+    mask=get_mask(arr, lats=None, lons=None, masknan=True, maskocean=False, maskland=False)
+    return np.ma.masked_array(arr,mask=mask)
 
 def gregorian_from_dates(dates):
     ''' gregorian array from datetime list'''

@@ -14,7 +14,7 @@ import matplotlib
 matplotlib.use('Agg')
 import numpy as np
 from matplotlib import ticker
-from mpl_toolkits.basemap import Basemap #, maskoceans
+from mpl_toolkits.basemap import Basemap, interp
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 #import matplotlib.colors as mcolors #, colormapping
@@ -56,18 +56,37 @@ def InitMatplotlib():
     matplotlib.rcParams['image.cmap'] = 'Inferno'       # Colormap default
 
 def regularbounds(x,fix=False):
-    # Take a lat or lon array input and return the grid edges
+    '''
+        Take a lat or lon array input and return the grid edges
+        Works on regular grids, and GEOSChem lat mids
+    '''
+    # assert x[1]-x[0] == x[2]-x[1], "Resolution at edge not representative"
+    # replace assert with this if it works, HANDLES GEOS CHEM LATS PROBLEM ONLY
+    if not np.isclose(x[1]-x[0], x[2]-x[1]):
+        xres=x[2]-x[1]   # Get resolution away from edge
+        if __VERBOSE__:
+            print("Edge resolution %.3f, replaced by %.3f"%(x[1]-x[0], xres))
+        x[0]=x[1]-xres   # push out the edges
+        x[-1]=x[-2]+xres #
+        if __VERBOSE__:
+            print("Lats: %.2f, %.2f, %.2f, ..., %.2f, %.2f, %.2f"%tuple([x[i] for i in [0,1,2,-3,-2,-1]]))
 
+    # new vector for array
     newx=np.zeros(len(x)+1)
+    # resolution from old vector
     xres=x[1]-x[0]
+    # edges will be mids - resolution / 2.0
     newx[0:-1]=np.array(x) - xres/2.0
+    # final edge
     newx[-1]=newx[-2]+xres
-    # If the ends are outside 90N/S or 180E/W then bring them back
+
+    # Finally if the ends are outside 90N/S or 180E/W then bring them back
     if fix:
         if newx[-1] >= 90: newx[-1]=89.99
         if newx[0] <= -90: newx[0]=-89.99
         if newx[-1] >= 180: newx[-1]=179.99
         if newx[0] <= -180: newx[0]=-179.99
+
     return newx
 
 
@@ -75,7 +94,7 @@ def createmap(data, lats, lons, edges=False ,
               vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
               clabel=None, colorbar=True, left=None, right=None,
-              pname=None,title=None,suptitle=None, contourf=False,
+              pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None, fillcontinents=None):
     if __VERBOSE__:
         print("createmap called: %s"%str(title))
@@ -93,47 +112,58 @@ def createmap(data, lats, lons, edges=False ,
     if vmax is None:
         vmax=0.95*np.nanmax(data)
 
-    # basemap pcolormesh uses data edges
-    if (not edges) and (not contourf):
+    ## basemap pcolormesh uses data edges
+    ##
+    lats_e,lons_e=lats,lons
+    if not edges:
         nlat,nlon=len(lats), len(lons)
-        lats=regularbounds(lats)
-        lons=regularbounds(lons)
-        assert nlat == len(lats)-1, "regularbounds failed: %d -> %d"%(nlat, len(lats))
-        assert nlon == len(lons)-1, "regularbounds failed: %d -> %d"%(nlon, len(lons))
-    # contourf uses midpoints
-    elif edges and contourf:
-        lats=(lats[0:-1]+lats[1:]) / 2.0
-        lons=(lons[0:-1]+lons[1:]) / 2.0
+        lats_e=regularbounds(lats)
+        lons_e=regularbounds(lons)
+        assert nlat == len(lats_e)-1, "regularbounds failed: %d -> %d"%(nlat, len(lats_e))
+        assert nlon == len(lons_e)-1, "regularbounds failed: %d -> %d"%(nlon, len(lons_e))
 
-    # Make lats/lons 2D meshed grid
-    mlons,mlats=np.meshgrid(lons,lats)
+    ## midpoints, derive simply from edges
+    lats=(lats_e[0:-1] + lats_e[1:])/2.0
+    lons=(lons_e[0:-1] + lons_e[1:])/2.0
 
-    if (not (mlats.shape[0] == data.shape[0] + 1)) and (not contourf):
-        print("Warning: pcolormesh needs edges for the lats/lons " +
-              "(array: %s, lats:%s)"%(str(np.shape(data)),str(np.shape(mlats))))
-    if contourf:
-        assert mlats.shape == data.shape, "Contourf needs lat/lon midpoints"
+    ## interpolate for smoothed output if desired
+    ##
+    if smoothed:
+        factor=5
+        if __VERBOSE__: print("Smoothing data, by factor of %d"%factor)
+        # 'increase' resolution
+        nlats = factor*data.shape[0]
+        nlons = factor*data.shape[1]
+        lonsi = np.linspace(lons[0],lons[-1],nlons)
+        latsi = np.linspace(lats[0],lats[-1],nlats)
+
+        # also increase resolution of our edge lats/lons
+        lats_e=regularbounds(latsi);
+        lons_e=regularbounds(lonsi)
+        lonsi, latsi = np.meshgrid(lonsi, latsi)
+        # Smoothe data to increased resolution
+        data = interp(data,lons,lats,lonsi,latsi)
+
+    # Make edges into 2D meshed grid
+    mlons_e,mlats_e=np.meshgrid(lons_e,lats_e)
+
+    errmsg="pcolormesh needs edges for lat/lon (array: %s, lats:%s)"%(str(np.shape(data)),str(np.shape(mlats_e)))
+    assert mlats_e.shape[0] == data.shape[0] + 1, errmsg
 
     #force nan into any pixel with nan results, so color is not plotted there...
     mdata=np.ma.masked_array(data,mask=np.isnan(data))
 
-    pcmeshargs={'latlon':latlon, 'vmin':vmin, 'vmax':vmax,
-                'clim':(vmin, vmax), 'cmap':plt.cm.cmap_d[cmapname]}
+    cmap=plt.cm.cmap_d[cmapname]
+    pcmeshargs={'vmin':vmin, 'vmax':vmax, 'clim':(vmin, vmax),
+                'latlon':latlon, 'cmap':cmap}
     if not linear:
         pcmeshargs['norm']=LogNorm()
 
     if __VERBOSE__:
-        shapes=tuple([ str(np.shape(a)) for a in [mlats, mlons, mdata] ])
+        shapes=tuple([ str(np.shape(a)) for a in [mlats_e, mlons_e, mdata] ])
         print("lats: %s, lons: %s, data: %s"%shapes)
 
-    if contourf:
-        locator=[None, ticker.LogLocator()][linear]
-        cs=m.contourf(mlons,mlats,mdata)
-        #cs=m.contourf(mlons, mlats, mdata, locator=locator, **pcmeshargs)
-    else:
-        cs=m.pcolormesh(mlons, mlats, mdata, **pcmeshargs)
-
-
+    cs=m.pcolormesh(mlons_e, mlats_e, mdata, **pcmeshargs)
     # colour limits for contour mesh
     cs.set_clim(vmin,vmax)
 
@@ -150,8 +180,9 @@ def createmap(data, lats, lons, edges=False ,
     if suptitle is not None:
         plt.suptitle(suptitle)
     cb=None
-    if colorbar and (not contourf):
-        cb=m.colorbar(cs,"bottom",size="5%", pad="2%", extend='both')
+    if colorbar:
+        cbargs={'size':'5%','pad':'2%','extend':'both'}
+        cb=m.colorbar(cs,"bottom", **cbargs)
         if clabel is not None:
             cb.set_label(clabel)
 

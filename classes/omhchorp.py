@@ -225,6 +225,7 @@ class omhchorp:
             newarr[newcounts==0.0]=np.NaN
         lats=self.lats[0::factor]
         lons=self.lons[0::factor]
+
         lats_e=util.edges_from_mids(lats)
         lons_e=util.edges_from_mids(lons)
         return {key:newarr, 'counts':newcounts, 'lats':lats, 'lons':lons,

@@ -39,20 +39,32 @@ def date_from_gregorian(greg):
 
 def edges_from_mids(x,fix=False):
     '''
-        Take a lat or lon array input and return the grid edges
-        REQUIRES REGULAR VECTOR INPUT
+        Take a lat or lon vector input and return the edges
+        Works for REGULAR grids only
     '''
+    assert x[1]-x[0] == x[2]-x[1], "Resolution at edge not representative"
+    # replace assert with this if it works, HANDLES GEOS CHEM LATS PROBLEM ONLY
+    if x[1]-x[0] != x[2]-x[1]:
+        xres=x[2]-x[1]   # Get resolution away from edge
+        x[0]=x[1]-xres   # push out the edges
+        x[-1]=x[-2]+xres #
 
+    # new vector for array
     newx=np.zeros(len(x)+1)
+    # resolution from old vector
     xres=x[1]-x[0]
+    # edges will be mids - resolution / 2.0
     newx[0:-1]=np.array(x) - xres/2.0
+    # final edge
     newx[-1]=newx[-2]+xres
-    # If the ends are outside 90N/S or 180E/W then bring them back
+
+    # Finally if the ends are outside 90N/S or 180E/W then bring them back
     if fix:
         if newx[-1] >= 90: newx[-1]=89.99
         if newx[0] <= -90: newx[0]=-89.99
         if newx[-1] >= 180: newx[-1]=179.99
         if newx[0] <= -180: newx[0]=-179.99
+
     return newx
 
 def edges_to_mids(x):

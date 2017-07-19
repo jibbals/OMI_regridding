@@ -30,7 +30,7 @@ import utilities.utilities as util
 ###############
 ### GLOBALS ###
 ###############
-__VERBOSE__=False
+__VERBOSE__=True
 
 ###############
 ### METHODS ###
@@ -91,11 +91,11 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     if __VERBOSE__:
         # Check the dims of our stuff
         print("GC data %s"%str(GC.hcho.shape))
-        print("Lats from %.2f to %.2f"%(GC.lats[0],GC.lats[-1]))
-        print("Lons from %.2f to %.2f"%(GC.lons[0],GC.lons[-1]))
+        #print("Lats from %.2f to %.2f"%(GC.lats[0],GC.lats[-1]))
+        #print("Lons from %.2f to %.2f"%(GC.lons[0],GC.lons[-1]))
         print("OMI data %s"%str(OMI.VCC.shape))
-        print("Lats from %.2f to %.2f"%(OMI.lats[0],OMI.lats[-1]))
-        print("Lons from %.2f to %.2f"%(OMI.lons[0],OMI.lons[-1]))
+        #print("Lats from %.2f to %.2f"%(OMI.lats[0],OMI.lats[-1]))
+        #print("Lons from %.2f to %.2f"%(OMI.lons[0],OMI.lons[-1]))
 
     # model slope between HCHO and E_isop:
     S_model=GC.model_slope(region)
@@ -109,11 +109,13 @@ def Emissions(day0, dayn, GC = None, OMI = None,
             print("Lowering resolution by factor of %d"%ReduceOmiRes)
         omilow=OMI.lower_resolution('VCC', factor=ReduceOmiRes, dates=[day0,dayn])
         hcho=omilow['VCC']
-        lats,lons=omilow['lats'], omilow['lons']
+        lats, lons=omilow['lats'], omilow['lons']
 
     # subset over region of interest
     lati, loni = util.lat_lon_range(lats, lons, region)
-    #inds = OMI.region_subset(region=region, maskocean=False, maskland=False)
+    if __VERBOSE__:
+        print("util.lat_lon_range() reduced %s to %s"%(str((len(lats),len(lons))), str((len(lati),len(loni)))))
+
     lats, lons = lats[lati], lons[loni]
     if __VERBOSE__:
         print('%d lats, %d lons in region'%(len(lats),len(lons)))
@@ -122,7 +124,6 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     hcho    = hcho[:, loni]
     # Determine background using region latitude bounds
     BG      = OMI.background_HCHO(lats=[region[0],region[2]])
-
 
     ## Calculate Emissions from these
     ##

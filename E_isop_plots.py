@@ -34,7 +34,7 @@ __VERBOSE__=True
 ###############
 
 def map_E_gc(month, GC, clims=[1e11,5e12], region=pp.__AUSREGION__,
-             cmapname='PuBuGn',linear=True, contourf=False):
+             cmapname='PuBuGn',linear=True, smoothed=False):
     #GEOS-Chem over our region:
     E_GC_sub=GC.get_field(keys=['E_isop_bio'], region=region)
     Egc = np.mean(E_GC_sub['E_isop_bio'],axis=0) # average of the monthly values
@@ -44,12 +44,12 @@ def map_E_gc(month, GC, clims=[1e11,5e12], region=pp.__AUSREGION__,
     title=r'E$_{GC}$ %s'%month.strftime("%Y, %b")
     # We need to specify the edges since GC is not fully regular
     pp.createmap(Egc, lats_e, lons_e, edges=True, title=title,
-                 vmin=clims[0], vmax=clims[1], contourf=contourf,
+                 vmin=clims[0], vmax=clims[1], smoothed=smoothed,
                  clabel=r'Atoms C cm$^{-2}$ s$^{-1}$',
                  cmapname=cmapname, linear=linear, region=region)
 
 def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
-              contourf=False, linear=True,
+              smoothed=False, linear=True,
               clims=[2e11,2e12], region=pp.__AUSREGION__,
               cmapname='PuBuGn', pname=None):
     '''
@@ -65,13 +65,13 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     title=r'E$_{isop}$ %s'%dstr
 
     pp.createmap(E, lats, lons, edges=False, title=title, pname=pname,
-                 contourf=contourf,
+                 smoothed=smoothed,
                  vmin=clims[0], vmax=clims[1], linear=linear, aus=True,
                  clabel=r'Atoms C cm$^{-2}$ s$^{-1}$', cmapname=cmapname)
 
 
 def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
-                  ReduceOmiRes=0, contourf=False,
+                  ReduceOmiRes=0, smoothed=False,
                   region=pp.__AUSREGION__):
     '''
         Plot E_gc, E_new, diff, ratio
@@ -119,12 +119,12 @@ def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     # start with E_GC:
     plt.subplot(221)
     map_E_gc(month=month, GC=GC, clims=clims, region=region,
-             linear=vlinear, contourf=contourf)
+             linear=vlinear, smoothed=smoothed)
 
     # then E_new
     plt.subplot(222)
     map_E_new(month=month,GC=GC,OMI=OMI,clims=clims,
-              region=region, linear=vlinear, contourf=contourf)
+              region=region, linear=vlinear, smoothed=smoothed)
 
     ## Difference and ratio:
     ##
@@ -134,7 +134,7 @@ def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     title=r'E$_{GC} - $E$_{omi}$ '
     args={'region':region, 'clabel':r'atoms C cm$^{-2}$ s$^{-1}$',
           'linear':True, 'lats':omilats, 'lons':omilons,
-          'contourf':contourf, 'title':title, 'cmapname':'cool',
+          'smoothed':smoothed, 'title':title, 'cmapname':'cool',
           'vmin':amin, 'vmax':amax}
     pp.createmap(Egc_up - newE, **args)
 
@@ -151,7 +151,7 @@ def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     suptitle='GEOS-Chem (gc) vs OMI for %s'%yyyymon
     plt.suptitle(suptitle)
     fname='Figs/GC/E_Comparison_%s%s%s.png'%(dstr,
-                                             ['','_contourf'][contourf],
+                                             ['','_smoothed'][smoothed],
                                              ['','_lowres'][ReduceOmiRes>0])
     plt.savefig(fname)
     print("SAVED FIGURE: %s"%fname)
@@ -206,17 +206,17 @@ def All_maps(month=datetime(2005,1,1), ignorePP=True, region=pp.__AUSREGION__):
     ##
     clims=[2e11,2e12]
     cmapname='YlGnBu'
-    pname='Figs/GC/E_new_%s.png'%dstr
-    plt.figure(figsize=[10,8])
-    map_E_new(month=month, GC=GC, OMI=OMI, clims=clims, cmapname=cmapname)
-    plt.savefig(pname)
+    for smoothed in [True,False]:
+        pname='Figs/GC/E_new_%s%s.png'%(dstr,['','_smoothed'][smoothed])
+        map_E_new(month=month, GC=GC, OMI=OMI, clims=clims, cmapname=cmapname,
+                  smoothed=smoothed,pname=pname)
 
     ## Plot E_GC vs E_new, low and high res.
     ##
     for ReduceOmiRes in [0,8]:
-        for contourf in [False, True]:
+        for smoothed in [True, False]:
             E_gc_VS_E_new(month=month, GC=GC, OMI=OMI,
-                          ReduceOmiRes=ReduceOmiRes, contourf=contourf)
+                          ReduceOmiRes=ReduceOmiRes, smoothed=smoothed)
 
 if __name__=='__main__':
 

@@ -153,6 +153,8 @@ def createmap(data, lats, lons, edges=False ,
     #force nan into any pixel with nan results, so color is not plotted there...
     mdata=np.ma.masked_array(data,mask=np.isnan(data))
 
+    if cmapname is None:
+        cmapname = matplotlib.rcParams['image.cmap']
     cmap=plt.cm.cmap_d[cmapname]
     pcmeshargs={'vmin':vmin, 'vmax':vmax, 'clim':(vmin, vmax),
                 'latlon':latlon, 'cmap':cmap}

@@ -155,6 +155,7 @@ def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
                                              ['','_lowres'][ReduceOmiRes>0])
     plt.savefig(fname)
     print("SAVED FIGURE: %s"%fname)
+    plt.close()
 
     ## PRINT EXTRA INFO
     #
@@ -172,15 +173,7 @@ def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
         print("    Has %d nans"%np.sum(np.isnan(e)))
         print("    Has %d negatives"%np.sum(e<0))
 
-    ## Get the non-negative version of our new emissions estimate:
-    newE_nn = np.copy(newE)
-    newE_nn[newE_nn < 0] = 0.0 # np.NaN makes average too high
 
-    # Print the average estimates:
-    print("New estimate: %.2e"%np.nanmean(newE))
-    print("Old estimate: %.2e"%np.nanmean(Egc))
-    print("New estimate (no negatives): %.2e"%np.nanmean(newE_nn))
-    #print("New estimate (low resolution): %.2e"%np.nanmean(E_new_lowres['E_isop']))
     # corellation
 
     #Convert both arrays to same dimensions for correllation?
@@ -218,9 +211,67 @@ def All_maps(month=datetime(2005,1,1), ignorePP=True, region=pp.__AUSREGION__):
             E_gc_VS_E_new(month=month, GC=GC, OMI=OMI,
                           ReduceOmiRes=ReduceOmiRes, smoothed=smoothed)
 
+def plot_comparison_table():
+    """
+        Currently: Demo of table function to display a table within a plot.
+    """
+    data = [[  66386,  174296,   75131,  577908,   32015],
+            [  58230,  381139,   78045,   99308,  160454],
+            [  89135,   80552,  152558,  497981,  603535],
+            [  78415,   81858,  150656,  193263,   69638],
+            [ 139361,  331509,  343164,  781380,   52269]]
+
+    columns = ('Freeze', 'Wind', 'Flood', 'Quake', 'Hail')
+    rows = ['%d year' % x for x in (100, 50, 20, 10, 5)]
+
+    values = np.arange(0, 2500, 500)
+    value_increment = 1000
+
+    # Get some pastel shades for the colors
+    colors = plt.cm.BuPu(np.linspace(0, 0.5, len(rows)))
+    n_rows = len(data)
+
+    index = np.arange(len(columns)) + 0.3
+    bar_width = 0.4
+
+    # Initialize the vertical-offset for the stacked bar chart.
+    y_offset = np.array([0.0] * len(columns))
+
+    # Plot bars and create text labels for the table
+    cell_text = []
+    for row in range(n_rows):
+        plt.bar(index, data[row], bar_width, bottom=y_offset, color=colors[row])
+        y_offset = y_offset + data[row]
+        cell_text.append(['%1.1f' % (x/1000.0) for x in y_offset])
+    # Reverse colors and text labels to display the last value at the top.
+    colors = colors[::-1]
+    cell_text.reverse()
+
+    # Add a table at the bottom of the axes
+    the_table = plt.table(cellText=cell_text,
+                          rowLabels=rows,
+                          rowColours=colors,
+                          colLabels=columns,
+                          loc='bottom')
+
+    # Adjust layout to make room for the table:
+    plt.subplots_adjust(left=0.2, bottom=0.2)
+
+    plt.ylabel("Loss in ${0}'s".format(value_increment))
+    plt.yticks(values * value_increment, ['%d' % val for val in values])
+    plt.xticks([])
+    plt.title('Loss by Disaster')
+
+    pname='Figs/GC/Table.png'
+    plt.savefig(pname)
+    print('SAVED FIGURE %s'%pname)
+    plt.close()
+
 if __name__=='__main__':
 
     # try running
+    region=pp.__AUSREGION__
+    print("REGION 1: %s"%str(region))
     for month in [datetime(2005,1,1), datetime(2005,2,1)]:
-        All_maps(month=month)
+        All_maps(month=month, region=region)
 

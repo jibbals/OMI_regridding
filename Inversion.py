@@ -96,54 +96,74 @@ def Emissions(day0, dayn, GC = None, OMI = None,
         print("OMI data %s"%str(OMI.VCC.shape))
         #print("Lats from %.2f to %.2f"%(OMI.lats[0],OMI.lats[-1]))
         #print("Lons from %.2f to %.2f"%(OMI.lons[0],OMI.lons[-1]))
+    latsomi0,lonsomi0=OMI.lats,OMI.lons
+    latsomi, lonsomi= latsomi0.copy(), lonsomi0.copy()
 
     # model slope between HCHO and E_isop:
-    S_model=GC.model_slope(region)
+    # This also returns the lats and lons for just this region.
+    S_model=GC.model_slope(region=region)
+    slopegc=S_model['slope']
+    latsgc, lonsgc=S_model['lats'], S_model['lons']
 
-    # get OMI corrected vertical columns, averaged over time
-    hcho=OMI.time_averaged(day0=day0,dayn=dayn,keys=['VCC'])['VCC']
+    if __VERBOSE__:
+        print("%d lats, %d lons for GC(region)"%(len(latsgc),len(lonsgc)))
+        print("%d lats, %d lons for OMI(global)"%(len(latsomi0),len(lonsomi0)))
 
-    lats, lons = OMI.lats, OMI.lons
+    # Get OMI corrected vertical columns, averaged over time
+    # And with reduced resolution if desired
+    hchoomi=OMI.time_averaged(day0=day0,dayn=dayn,keys=['VCC'])['VCC']
     if ReduceOmiRes > 0 :
         if __VERBOSE__:
             print("Lowering resolution by factor of %d"%ReduceOmiRes)
         omilow=OMI.lower_resolution('VCC', factor=ReduceOmiRes, dates=[day0,dayn])
-        hcho=omilow['VCC']
-        lats, lons=omilow['lats'], omilow['lons']
+        hchoomi=omilow['VCC']
+        latsomi, lonsomi=omilow['lats'], omilow['lons']
 
-    # subset over region of interest
-    lati, loni = util.lat_lon_range(lats, lons, region)
+    # subset omi to region
+    #
+    latiomi,loniomi = util.lat_lon_range(latsomi,lonsomi,region)
+    latsomi,lonsomi=latsomi[latiomi], lonsomi[loniomi]
+    hchoomi=hchoomi[latiomi,:]
+    hchoomi=hchoomi[:,loniomi]
     if __VERBOSE__:
-        print("util.lat_lon_range() reduced %s to %s"%(str((len(lats),len(lons))), str((len(lati),len(loni)))))
-
-    lats, lons = lats[lati], lons[loni]
-    if __VERBOSE__:
-        print('%d lats, %d lons in region'%(len(lats),len(lons)))
-        print('HCHO shape: %s'%str(hcho.shape))
-    hcho    = hcho[lati, :]
-    hcho    = hcho[:, loni]
-    # Determine background using region latitude bounds
-    BG      = OMI.background_HCHO(lats=[region[0],region[2]])
-
-    ## Calculate Emissions from these
-    ##
+        print('%d lats, %d lons in region'%(len(latsomi),len(lonsomi)))
+        print('HCHO shape: %s'%str(hchoomi.shape))
 
     # map GC slope onto same lats/lons as OMI
-    GC_slope_mean_before_regrid=np.nanmean(S_model['slope'])
-    GC_slope=util.regrid(S_model['slope'], S_model['lats'],S_model['lons'],
-                         lats,lons)
-    GC_slope_mean_after_regrid=np.nanmean(GC_slope)
-    assert np.shape(hcho) == np.shape(GC_slope), "Regridded slope shape doesn't match OMI shape!"
-    check=np.abs((GC_slope_mean_after_regrid-GC_slope_mean_before_regrid)/GC_slope_mean_before_regrid)
-    assert check < 0.01, "Regridded slope changes by more than 1\%!"
+
+    slope_before=np.nanmean(slopegc)
+    GC_slope=util.regrid(slopegc, latsgc, lonsgc,latsomi0,lonsomi0)
+    slope_after=np.nanmean(GC_slope)
+    assert np.shape(GC_slope)== (len(latsomi0),len(lonsomi0)), "Regridded slope shape doesn't match OMI shape!"
+    check=100.0*np.abs((slope_after-slope_before)/slope_before)
+    if check > 1:
+        print("Regridded slope changes by %.2f%%, from %.2f to %.2f"%(check,slope_before,slope_after))
+        [ print(x) for x in [latsgc, lonsgc,latsomi,lonsomi] ]
+        print (np.shape(GC_slope))
+        vmin,vmax=1000,300000
+        region=np.array(region) + np.array([-10,-10,10,10])
+        pp.createmap(slopegc, latsgc, lonsgc, pname="ERRTEST0.png", title="slopegc", vmin=vmin, vmax=vmax, region=region)
+        pp.createmap(GC_slope, latsomi0, lonsomi0, pname="ERRTEST1.png", title="GC_Slope", vmin=vmin, vmax=vmax, region=region)
+        assert False, "Slope change too high"
     if __VERBOSE__:
         print("Regridding slope passes change tests")
         print("Mean slope = %1.3e"%np.nanmean(GC_slope))
 
+    # Subset our slopes
+    GC_slope=GC_slope[latiomi,:]
+    GC_slope=GC_slope[:,loniomi]
+
+    # Determine background using region latitude bounds
+    BGomi    = OMI.background_HCHO(lats=[region[0],region[2]])
+
+    ## Calculate Emissions from these
+    ##
+
     # \Omega_{HCHO} = S \times E_{isop} + B
     # E_isop = (Column_hcho - B) / S
     #   Determine S from the slope bewteen E_isop and HCHO
-    E_new = (hcho - BG) / GC_slope
+    [print(np.nanmean(x)) for x in [hchoomi, BGomi, GC_slope]]
+    E_new = (hchoomi - BGomi) / GC_slope
 
     #print (np.nanmean(hcho))
     #print(BG)
@@ -155,7 +175,7 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     #
     #TODO: store GC_background for comparison
     GC_BG=np.array([np.NaN])
-    return {'E_isop':E_new, 'lats':lats, 'lons':lons, 'background':BG,
+    return {'E_isop':E_new, 'lats':latsomi, 'lons':lonsomi, 'background':BGomi,
             'GC_background':GC_BG, 'GC_slope':GC_slope}
 
 def Emissions_series(day0=datetime(2005,1,1), dayn=datetime(2005,2,1),
@@ -181,6 +201,51 @@ def Emissions_series(day0=datetime(2005,1,1), dayn=datetime(2005,2,1),
     #return {'E_isop':E_new, 'lats':lats, 'lons':lons, 'background':BG,
     #        'GC_background':GC_BG, 'GC_slope':GC_slope}
 
+def print_megan_comparison(month=datetime(2005,1,1), GC=None, OMI=None,
+                           ReduceOmiRes=0, region=pp.__AUSREGION__):
+    ''' look at number differences between E_new and MEGAN output from GEOS_Chem'''
+    dstr=month.strftime("%Y%m")
+    yyyymon=month.strftime("%Y, %b")
+    day0=month; dayn=util.last_day(month)
+    if __VERBOSE__:
+        print("running E_isop_plots.E_gc_VS_E_new from %s and %s"%(day0, dayn))
+
+    ## READ DATA
+    if GC is None:
+        GC=GC_output(date=month)
+    if OMI is None:
+        OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=True)
+
+    ## Inversion
+    # based on OMI using GC calculated yield (slope)
+    E_new=Emissions(day0=day0, dayn=dayn, GC=GC, OMI=OMI,
+                              ReduceOmiRes=ReduceOmiRes, region=region)
+    newE=E_new['E_isop']
+    omilats=E_new['lats']
+    omilons=E_new['lons']
+
+    # GEOS-Chem over our region:
+    E_GC_sub=GC.get_field(keys=['E_isop_bio'], region=region)
+    Egc = np.mean(E_GC_sub['E_isop_bio'],axis=0) # average of the monthly values
+    #latsgc=E_GC_sub['lats']
+    #lonsgc=E_GC_sub['lons']
+
+    #    # map the lower resolution data onto the higher resolution data:
+    #    Egc_up=Egc
+    #    if len(omilats) > len(latsgc):
+    #        Egc_up = util.regrid(Egc,latsgc,lonsgc,omilats,omilons)
+
+    ## Get the non-negative version of our new emissions estimate:
+    newE_nn = np.copy(newE)
+    newE_nn[newE_nn < 0] = 0.0 # np.NaN makes average too high
+
+    # Print the average estimates:
+    print("For %s, in %s"%(str(region),yyyymon))
+    print("New estimate: %.2e"%np.nanmean(newE))
+    print("Old estimate: %.2e"%np.nanmean(Egc))
+    print("New estimate (no negatives): %.2e"%np.nanmean(newE_nn))
+    #print("New estimate (low resolution): %.2e"%np.nanmean(E_new_lowres['E_isop']))
+
 def check_regridding():
     #TODO: implement
     print('check_regridding TODO')
@@ -188,3 +253,12 @@ def check_regridding():
 if __name__=='__main__':
     # check the regridding function:
     check_regridding()
+
+    SEAus=[-40,140,-25,155]
+    for month in [datetime(2005,1,1),datetime(2005,2,1)]:
+        ## READ DATA
+        GC=GC_output(date=month)
+        OMI=omhchorp(day0=month,dayn=util.last_day(month),ignorePP=True)
+
+        for region in [pp.__AUSREGION__, SEAus]:
+            print_megan_comparison(month, GC=GC, OMI=OMI, region=region,)

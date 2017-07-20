@@ -38,7 +38,7 @@ sys.path.pop(0)
 #####GLOBALS######
 ##################
 
-__VERBOSE__=False # For file-wide print statements
+__VERBOSE__=True # For file-wide print statements
 
 ################
 #####CLASS######
@@ -129,15 +129,17 @@ class GC_output:
         '''
         # if this calc is already done, short cut it
         if hasattr(self, 'modelled_slope'):
-            if __VERBOSE__:
-                print("Slope has already been modelled, re-returning")
-            return self.modelled_slope
+            if self.modelled_slope['region'] == region:
+                if __VERBOSE__:
+                    print("Slope has already been modelled, re-returning")
+                return self.modelled_slope
+
             # obj.attr_name exists.
         hcho = self.get_trop_columns(keys=['hcho'])['hcho']
         isop = self.E_isop_bio
 
         lats,lons = self.lats, self.lons
-        lati,loni = util.lat_lon_range(lats,lons,region)
+        lati,loni = util.lat_lon_range(lats,lons,region=region)
 
         isop = isop[:, lati, :]
         isop = isop[:, :, loni]
@@ -170,7 +172,12 @@ class GC_output:
         print(np.nanmean(slope))
 
         # Return all the data and the lats/lons of our subregion:
-        self.modelled_slope={'lats':sublats,'lons':sublons,'r':reg, 'b':bg, 'slope':slope}
+                            # lats and lons for slope, (and region for later)
+        self.modelled_slope={'lats':sublats,'lons':sublons, 'region':region,
+                             # indexes of lats/lons for slope
+                             'lati':lati, 'loni':loni,
+                             # regression, background, and slope
+                             'r':reg, 'b':bg, 'slope':slope}
         return self.modelled_slope
 
 

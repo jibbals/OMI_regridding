@@ -175,47 +175,28 @@ def ppbv_to_molecs_per_cm2(ppbv, pedges):
 def regrid(data,lats,lons,newlats,newlons):
     '''
     Regrid a data array [lat,lon] onto [newlat,newlon]
-    Assumes a regular grid!
+    Assumes a regular grid, and that boundaries are compatible!!
     '''
     if __VERBOSE__:
         print("utilities.regrid transforming %s to %s"%(str((len(lons),len(lats))),str((len(newlons),len(newlats)))))
         print("data input looks like %s"%str(np.shape(data)))
+    interp=None
     # if no resolution change then just throw back input
-    if len(newlats) == len(lats):
-        return data
+    if len(newlats) == len(lats) and len(newlons) == len(lons):
+        if all(newlats == lats) and all(newlons == lons):
+            return data
 
+    # If new lats have higher resolution
+    #elif len(newlats) > len(lats):
     # make into higher resolution
-    if len(newlats) > len(lats):
-        mlons,mlats = np.meshgrid(lons,lats)
-        mnewlons,mnewlats = np.meshgrid(newlons,newlats)
+    mlons,mlats = np.meshgrid(lons,lats)
+    mnewlons,mnewlats = np.meshgrid(newlons,newlats)
 
-        interp = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
-                          (mnewlats, mnewlons), method='nearest')
-        return interp
+    #https://docs.scipy.org/doc/scipy/reference/interpolate.html
+    interp = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
+                      (mnewlats, mnewlons), method='nearest')
 
-    # transform to lower resolution
-    print("UNTESTED REGRIDDING")
-    avgbefore=np.nanmean(data)
-    if len(newlats) < len(lats):
-        ni, nj = len(newlats), len(newlons)
-        interp = np.zeros([ni,nj]) + np.NaN
-        for i in range(ni):
-            latlower=newlats[i]
-            if i == ni-1: # final lat
-                latupper=89.99
-            else:
-                latupper=newlats[i+1]
-            lat=lats[i]
-            irange = np.where((lat >= latlower) * (lat < latupper))[0]
-            for j in range(nj):
-                lonlower=newlons[j]
-                if j == nj-1: # final lat
-                    lonupper=179.99
-                else:
-                    lonupper=newlons[j+1]
-                lon=lons[i]
-                jrange = np.where((lon >= lonlower) * (lon < lonupper))
-                interp[i,j] = np.nanmean(data[irange,jrange])
-        assert np.isclose(avgbefore, np.nanmean(interp)), "Average changes too much!"
-        return interp
-    return None
+    # Check shape is as requested
+    assert np.shape(interp)== (len(newlats),len(newlons)), "Regridded shape new lats/lons!"
+
+    return interp

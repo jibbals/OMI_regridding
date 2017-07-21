@@ -38,7 +38,7 @@ sys.path.pop(0)
 #####GLOBALS######
 ##################
 
-__VERBOSE__=True # For file-wide print statements
+__VERBOSE__=False # For file-wide print statements
 
 ################
 #####CLASS######
@@ -129,12 +129,12 @@ class GC_output:
         '''
         # if this calc is already done, short cut it
         if hasattr(self, 'modelled_slope'):
+            # unless we're looking at a new area
             if self.modelled_slope['region'] == region:
                 if __VERBOSE__:
                     print("Slope has already been modelled, re-returning")
                 return self.modelled_slope
 
-            # obj.attr_name exists.
         hcho = self.get_trop_columns(keys=['hcho'])['hcho']
         isop = self.E_isop_bio
 
@@ -168,8 +168,8 @@ class GC_output:
                 bg[yi, xi] = b
                 reg[yi, xi] = r
 
-        print('model_yield')
-        print(np.nanmean(slope))
+        if __VERBOSE__:
+            print('GC_output.model_yield() calculates avg. slope of %.2e'%np.nanmean(slope))
 
         # Return all the data and the lats/lons of our subregion:
                             # lats and lons for slope, (and region for later)

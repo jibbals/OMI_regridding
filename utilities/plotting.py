@@ -36,7 +36,7 @@ sys.path.pop(0)
 __VERBOSE__=True
 
 # S W N E
-__AUSREGION__=[-47,106,-5,158,]
+__AUSREGION__=[-45, 108.75, -7, 156.25] # picked from lons_e and lats_e in GMAO.py
 __GLOBALREGION__=[-80, -179, 80, 179]
 
 ###############
@@ -96,6 +96,9 @@ def createmap(data, lats, lons, edges=False ,
               clabel=None, colorbar=True, left=None, right=None,
               pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None, fillcontinents=None):
+    '''
+        Pass in data[lati,loni], lats[lati], lons[loni]
+    '''
     if __VERBOSE__:
         print("createmap called: %s"%str(title))
         #print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
@@ -151,7 +154,8 @@ def createmap(data, lats, lons, edges=False ,
     assert mlats_e.shape[0] == data.shape[0] + 1, errmsg
 
     #force nan into any pixel with nan results, so color is not plotted there...
-    mdata=np.ma.masked_array(data,mask=np.isnan(data))
+    mdata=np.ma.masked_invalid(data) # mask non-finite elements
+    #mdata=data # masking occasionally throws up all over your face
 
     if cmapname is None:
         cmapname = matplotlib.rcParams['image.cmap']
@@ -162,8 +166,8 @@ def createmap(data, lats, lons, edges=False ,
         pcmeshargs['norm']=LogNorm()
 
     if __VERBOSE__:
-        shapes=tuple([ str(np.shape(a)) for a in [mlats_e, mlons_e, mdata] ])
-        print("lats: %s, lons: %s, data: %s"%shapes)
+        shapes=tuple([ str(np.shape(a)) for a in [mlats_e, mlons_e, mdata, mdata.mask] ])
+        print("lats: %s, lons: %s, data: %s, mask: %s"%shapes)
 
     cs=m.pcolormesh(mlons_e, mlats_e, mdata, **pcmeshargs)
     # colour limits for contour mesh

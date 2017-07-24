@@ -27,6 +27,49 @@ __VERBOSE__=False
 ### METHODS ###
 ###############
 
+def area_quadrangle(SWNE):
+    '''
+        Return area of sphere with earths radius bounded by S,W,N,E quadrangle
+        units = km^2
+    '''
+    #Earths Radius
+    R=6371.0
+    # radians from degrees
+    S,W,N,E=SWNE
+    Sr,Wr,Nr,Er = np.array(SWNE)*np.pi/180.0
+    # perpendicular distance from plane containing line of latitude to the pole
+    # (checked with trig)
+
+    h0=R*(1-np.sin(Sr))
+    h1=R*(1-np.sin(Nr))
+
+    # Area north of a latitude: (Spherical cap - wikipedia)
+    A0= 2*np.pi*R*h0
+    A1= 2*np.pi*R*h1
+    A_zone= A0-A1 # Area of zone from south to north
+
+    # portion between longitudes
+    p=(E-W)/360.0
+
+    # area of quadrangle
+    A= A_zone*p
+    return A
+
+def area_grid(lats,lons, latres, lonres):
+    '''
+        Area give lats and lons in a grid in km^2
+    '''
+    areas=np.zeros([len(lats),len(lons)]) + np.NaN
+    yr,xr=latres/2.0,lonres/2.0
+
+    for yi,y in lats:
+        for xi, x in lons:
+            if not np.isfinite(x+y):
+                continue
+            SWNE=[y-yr, x-xr, y+yr, x+xr]
+            areas[yi,xi] = area_quadrangle(SWNE)
+    return areas
+
 def date_from_gregorian(greg):
     '''
         gregorian = "hours since 1985-1-1 00:00:0.0"

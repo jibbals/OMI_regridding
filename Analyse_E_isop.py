@@ -20,8 +20,10 @@ import matplotlib.pyplot as plt
 # local modules
 import utilities.utilities as util
 import utilities.plotting as pp
+from utilities import GMAO
 from classes.GC_class import GC_output # GC trac_avg class
 from classes.omhchorp import omhchorp # OMI product class
+
 import Inversion
 
 ###############
@@ -211,6 +213,53 @@ def All_maps(month=datetime(2005,1,1), ignorePP=True, region=pp.__AUSREGION__):
             E_gc_VS_E_new(month=month, GC=GC, OMI=OMI,
                           ReduceOmiRes=ReduceOmiRes, smoothed=smoothed)
 
+def print_megan_comparison(month=datetime(2005,1,1), GC=None, OMI=None,
+                           ReduceOmiRes=0, region=pp.__AUSREGION__):
+    ''' look at number differences between E_new and MEGAN output from GEOS_Chem'''
+    dstr=month.strftime("%Y%m")
+    yyyymon=month.strftime("%Y, %b")
+    day0=month; dayn=util.last_day(month)
+    if __VERBOSE__:
+        print("running Inversion.print_megan_comparison for %s"%(yyyymon))
+
+    ## READ DATA
+    if GC is None:
+        GC=GC_output(date=month)
+    if OMI is None:
+        OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=True)
+
+    ## Inversion
+    # based on OMI using GC calculated yield (slope)
+    E_new=Inversion.Emissions(day0=day0, dayn=dayn, GC=GC, OMI=OMI,
+                              ReduceOmiRes=ReduceOmiRes, region=region)
+    newE=E_new['E_isop']
+    omilats=E_new['lats']
+    omilons=E_new['lons']
+
+    # GEOS-Chem over our region:
+    E_GC_sub=GC.get_field(keys=['E_isop_bio','area'], region=region)
+    Egc = np.mean(E_GC_sub['E_isop_bio'],axis=0) # average of the monthly values
+    #latsgc=E_GC_sub['lats']
+    #lonsgc=E_GC_sub['lons']
+
+    #    # map the lower resolution data onto the higher resolution data:
+    #    Egc_up=Egc
+    #    if len(omilats) > len(latsgc):
+    #        Egc_up = util.regrid(Egc,latsgc,lonsgc,omilats,omilons)
+
+    ## Get the non-negative version of our new emissions estimate:
+    newE_nn = np.copy(newE)
+    # lets ignore that nans don't compare to numbers, nan<0 gives false anyway
+    with np.errstate(divide='ignore', invalid='ignore'):
+        newE_nn[newE_nn < 0] = 0.0 # np.NaN makes average too high
+
+    # Print the average estimates:
+    print("For %s, in %s"%(str(region),yyyymon))
+    print("New estimate: %.2e atom C/cm2/s"%np.nanmean(newE))
+    print("Old estimate: %.2e atom C/cm2/s"%np.nanmean(Egc))
+    print("New estimate (no negatives): %.2e atom C/cm2/s"%np.nanmean(newE_nn))
+    #print("New estimate (low resolution): %.2e"%np.nanmean(E_new_lowres['E_isop']))
+
 def plot_comparison_table():
     """
         Currently: Demo of table function to display a table within a plot.
@@ -271,7 +320,22 @@ if __name__=='__main__':
 
     # try running
     region=pp.__AUSREGION__
+    SEAus=[-41,138.75,-25,156.25]
+    JennySEA=[-38, 145, -30, 153]
+    JennySEA_fixed=[-37, 143.75,-29, 153.75]
+    JennySEA_fixed=GMAO.edges_containing_region(JennySEA)
+
+    region=JennySEA_fixed
     print("REGION 1: %s"%str(region))
+
     for month in [datetime(2005,1,1), datetime(2005,2,1)]:
-        All_maps(month=month, region=region)
+        #All_maps(month=month, region=region)
+
+        # print megan comparisons :
+        ## READ DATA
+        GC=GC_output(date=month)
+        OMI=omhchorp(day0=month,dayn=util.last_day(month),ignorePP=True)
+
+        for region in [JennySEA]:#[pp.__AUSREGION__, SEAus]:
+            print_megan_comparison(month, GC=GC, OMI=OMI, region=region,)
 

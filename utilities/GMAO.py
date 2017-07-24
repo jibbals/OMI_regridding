@@ -72,3 +72,14 @@ lats_m=np.array([  -89.5, -88.,  -86.,  -84.,  -82.,  -80.,  -78.,  -76.,
                 54.,   56.,   58.,   60.,   62.,   64.,   66.,   68.,
                 70.,   72.,   74.,   76.,   78.,   80.,   82.,   84.,
                 86.,   88.,   89.5, ])
+
+def edges_containing_region(region):
+    '''
+        Determine smallest region containing input [SWNE]
+    '''
+    S,W,N,E=region
+    S=(lats_e[lats_e <= S])[-1]   # first edge less than S
+    W=(lons_e[lons_e <= W])[-1]   # ^^
+    N=(lats_e[lats_e >= N])[0]    # first edge greater than N
+    E=(lons_e[lons_e >= E])[0]    # ^^
+    return [S,W,N,E]

@@ -85,10 +85,13 @@ class GC_output:
         # add some peripheral stuff
         self.n_lats=len(self.lats)
         self.n_lons=len(self.lons)
+        if len(self.area.shape)==4:
+            self.area=self.area[0] # surface area doesn't change with time
 
         # set dates and E_dates:
         self.dates=util.date_from_gregorian(self.taus)
         self._has_time_dim = len(self.dates) > 1
+
 
         assert all(self.lats == gmao.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
         self.lats_e=gmao.lats_e

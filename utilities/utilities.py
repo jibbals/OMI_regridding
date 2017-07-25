@@ -22,6 +22,8 @@ from mpl_toolkits.basemap import maskoceans #
 ### GLOBALS ###
 ###############
 __VERBOSE__=False
+isoprene_grams_per_mole=60.06+8.08 # C5H8
+
 
 ###############
 ### METHODS ###
@@ -62,8 +64,8 @@ def area_grid(lats,lons, latres, lonres):
     areas=np.zeros([len(lats),len(lons)]) + np.NaN
     yr,xr=latres/2.0,lonres/2.0
 
-    for yi,y in lats:
-        for xi, x in lons:
+    for yi,y in enumerate(lats):
+        for xi, x in enumerate(lons):
             if not np.isfinite(x+y):
                 continue
             SWNE=[y-yr, x-xr, y+yr, x+xr]

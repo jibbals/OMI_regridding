@@ -10,9 +10,13 @@ History:
     Created in the summer of '69 by jwg366
     Mon 10/7/17: Added verbose flag and started history.
 '''
-## Modules
+###############
+### Modules ###
+###############
+
 import numpy as np
 from datetime import datetime
+from scipy.constants import N_A as N_avegadro
 #import matplotlib.pyplot as plt
 #from matplotlib.pyplot import cm
 
@@ -85,13 +89,21 @@ class GC_output:
         # add some peripheral stuff
         self.n_lats=len(self.lats)
         self.n_lons=len(self.lons)
-        if len(self.area.shape)==4:
-            self.area=self.area[0] # surface area doesn't change with time
+        #if len(self.area.shape)==4:
+        #    self.area=self.area[0] # surface area doesn't change with time
 
         # set dates and E_dates:
         self.dates=util.date_from_gregorian(self.taus)
         self._has_time_dim = len(self.dates) > 1
 
+        # Determine emissions in kg/s from atom_C / cm2 / s
+        E=self.E_isop_bio # atom C / cm2 / s
+        SA=self.area * 1e-6  # m2 -> km2
+        # kg/atom_isop = grams/mole * mole/molec * kg/gram
+        kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
+        #          isop/C * cm2/km2 * km2 * kg/isop
+        conversion= 1./5.0 * 1e10 * SA * kg_per_atom
+        self.E_isop_bio_kgs=E*conversion
 
         assert all(self.lats == gmao.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
         self.lats_e=gmao.lats_e
@@ -108,7 +120,9 @@ class GC_output:
         out={'lats':self.lats[lati],
              'lons':self.lons[loni],
              'lats_e':self.lats_e[lati_e],
-             'lons_e':self.lons_e[loni_e]}
+             'lons_e':self.lons_e[loni_e],
+             'lati':lati,
+             'loni':loni}
 
         for k in keys:
             if self._has_time_dim:

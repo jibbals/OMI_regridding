@@ -19,6 +19,7 @@ Created on Tue Dec  6 09:48:11 2016
 ###############
 import numpy as np
 from datetime import datetime
+from scipy.constants import N_A as N_avegadro
 
 # local imports
 from utilities.JesseRegression import RMA
@@ -30,7 +31,7 @@ import utilities.utilities as util
 ###############
 ### GLOBALS ###
 ###############
-__VERBOSE__=True
+__VERBOSE__=False
 
 ###############
 ### METHODS ###
@@ -98,6 +99,7 @@ def Emissions(day0, dayn, GC = None, OMI = None,
         #print("Lons from %.2f to %.2f"%(OMI.lons[0],OMI.lons[-1]))
     latsomi0,lonsomi0=OMI.lats,OMI.lons
     latsomi, lonsomi= latsomi0.copy(), lonsomi0.copy()
+    SA=OMI.surface_areas
 
     # model slope between HCHO and E_isop:
     # This also returns the lats and lons for just this region.
@@ -118,11 +120,15 @@ def Emissions(day0, dayn, GC = None, OMI = None,
         omilow=OMI.lower_resolution('VCC', factor=ReduceOmiRes, dates=[day0,dayn])
         hchoomi=omilow['VCC']
         latsomi, lonsomi=omilow['lats'], omilow['lons']
+        SA=omilow['surface_areas']
 
     # subset omi to region
     #
     latiomi,loniomi = util.lat_lon_range(latsomi,lonsomi,region)
     latsomi,lonsomi=latsomi[latiomi], lonsomi[loniomi]
+
+    SA=SA[latiomi,:]
+    SA=SA[:,loniomi]
     hchoomi=hchoomi[latiomi,:]
     hchoomi=hchoomi[:,loniomi]
     if __VERBOSE__:
@@ -169,7 +175,7 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     # \Omega_{HCHO} = S \times E_{isop} + B
     # E_isop = (Column_hcho - B) / S
     #   Determine S from the slope bewteen E_isop and HCHO
-    [print(np.nanmean(x)) for x in [hchoomi, BGomi, GC_slope]]
+    #[print(np.nanmean(x)) for x in [hchoomi, BGomi, GC_slope]]
     E_new = (hchoomi - BGomi) / GC_slope
 
     #print (np.nanmean(hcho))
@@ -182,8 +188,19 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     #
     #TODO: store GC_background for comparison
     GC_BG=np.array([np.NaN])
-    return {'E_isop':E_new, 'lats':latsomi, 'lons':lonsomi, 'background':BGomi,
-            'GC_background':GC_BG, 'GC_slope':GC_slope}
+
+    ## Calculate in kg/s for each grid box:
+    # newE in atom C / cm2 / s  |||  * 1/5 * cm2/km2 * km2 * kg/atom_isop
+    # = isoprene kg/s
+    # kg/atom_isop = grams/mole * mole/molec * kg/gram
+    kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
+    conversion= 1./5.0 * 1e10 * SA * kg_per_atom
+    E_isop_kgs=E_new*conversion
+
+    return {'E_isop':E_new, 'E_isop_kg_per_second':E_isop_kgs,
+            'lats':latsomi, 'lons':lonsomi, 'background':BGomi,
+            'GC_background':GC_BG, 'GC_slope':GC_slope,
+            'lati':latiomi,'loni':loniomi}
 
 def Emissions_series(day0=datetime(2005,1,1), dayn=datetime(2005,2,1),
                      GC = None, OMI = None, region=pp.__AUSREGION__):

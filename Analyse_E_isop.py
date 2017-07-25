@@ -182,7 +182,7 @@ def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     #pp.plot_corellation()
 
 
-def All_maps(month=datetime(2005,1,1), ignorePP=True, region=pp.__AUSREGION__):
+def All_maps(month=datetime(2005,1,1),GC=None, OMI=None, ignorePP=True, region=pp.__AUSREGION__):
     '''
         Plot Emissions from OMI over region for averaged month
     '''
@@ -194,8 +194,11 @@ def All_maps(month=datetime(2005,1,1), ignorePP=True, region=pp.__AUSREGION__):
 
     ## Read data
     ##
-    GC=GC_output(date=day0) # gets one month of GC.
-    OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=ignorePP)
+    ## READ DATA
+    if GC is None:
+        GC=GC_output(date=month)
+    if OMI is None:
+        OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=ignorePP)
 
     ## Plot E_new
     ##
@@ -233,31 +236,32 @@ def print_megan_comparison(month=datetime(2005,1,1), GC=None, OMI=None,
     E_new=Inversion.Emissions(day0=day0, dayn=dayn, GC=GC, OMI=OMI,
                               ReduceOmiRes=ReduceOmiRes, region=region)
     newE=E_new['E_isop']
+    E_isop_kgs=E_new['E_isop_kg_per_second']
     omilats=E_new['lats']
     omilons=E_new['lons']
 
     # GEOS-Chem over our region:
-    E_GC_sub=GC.get_field(keys=['E_isop_bio','area'], region=region)
+    E_GC_sub=GC.get_field(keys=['E_isop_bio','E_isop_bio_kgs'], region=region)
+    Egc_kg=np.mean(E_GC_sub['E_isop_bio_kgs'], axis=0)
     Egc = np.mean(E_GC_sub['E_isop_bio'],axis=0) # average of the monthly values
-    #latsgc=E_GC_sub['lats']
-    #lonsgc=E_GC_sub['lons']
-
-    #    # map the lower resolution data onto the higher resolution data:
-    #    Egc_up=Egc
-    #    if len(omilats) > len(latsgc):
-    #        Egc_up = util.regrid(Egc,latsgc,lonsgc,omilats,omilons)
 
     ## Get the non-negative version of our new emissions estimate:
     newE_nn = np.copy(newE)
+    E_isop_kgs_nn=np.copy(E_isop_kgs)
     # lets ignore that nans don't compare to numbers, nan<0 gives false anyway
     with np.errstate(divide='ignore', invalid='ignore'):
         newE_nn[newE_nn < 0] = 0.0 # np.NaN makes average too high
+        E_isop_kgs_nn[E_isop_kgs_nn<0]=0.0
 
     # Print the average estimates:
     print("For %s, in %s"%(str(region),yyyymon))
-    print("New estimate: %.2e atom C/cm2/s"%np.nanmean(newE))
-    print("Old estimate: %.2e atom C/cm2/s"%np.nanmean(Egc))
-    print("New estimate (no negatives): %.2e atom C/cm2/s"%np.nanmean(newE_nn))
+    print("   units     | E_New     | E_MEGAN ")
+    print("atom C/cm2/s | %.2e  | %.2e "%(np.nanmean(newE),np.nanmean(Egc)))
+    print("   isop kg/s | %.2e  | %.2e "%(np.nansum(E_isop_kgs),np.nansum(Egc_kg)))
+    print("---Then with negatives set to zero---")
+    print("atom C/cm2/s | %.2e  | %.2e "%(np.nanmean(newE_nn),np.nan))
+    print("   isop kg/s | %.2e  | %.2e "%(np.nansum(E_isop_kgs_nn),np.nan))
+
     #print("New estimate (low resolution): %.2e"%np.nanmean(E_new_lowres['E_isop']))
 
 def plot_comparison_table():
@@ -319,23 +323,19 @@ def plot_comparison_table():
 if __name__=='__main__':
 
     # try running
-    region=pp.__AUSREGION__
-    SEAus=[-41,138.75,-25,156.25]
     JennySEA=[-38, 145, -30, 153]
-    JennySEA_fixed=[-37, 143.75,-29, 153.75]
-    JennySEA_fixed=GMAO.edges_containing_region(JennySEA)
+    JennySEA_fixed=GMAO.edges_containing_region(JennySEA) # [-37, 143.75,-29, 153.75]
+    SEAus=[-41,138.75,-25,156.25]
+    regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
 
-    region=JennySEA_fixed
-    print("REGION 1: %s"%str(region))
+    for region in regions:
+        print("REGION = %s"%str(region))
+        for month in [datetime(2005,1,1), datetime(2005,2,1)]:
+            # Read month of data
+            GC=GC_output(date=month)
+            OMI=omhchorp(day0=month,dayn=util.last_day(month),ignorePP=True)
 
-    for month in [datetime(2005,1,1), datetime(2005,2,1)]:
-        #All_maps(month=month, region=region)
-
-        # print megan comparisons :
-        ## READ DATA
-        GC=GC_output(date=month)
-        OMI=omhchorp(day0=month,dayn=util.last_day(month),ignorePP=True)
-
-        for region in [JennySEA]:#[pp.__AUSREGION__, SEAus]:
+            # Run plots and print outputs
             print_megan_comparison(month, GC=GC, OMI=OMI, region=region,)
+            All_maps(month=month, GC=GC, OMI=OMI, region=region)
 

@@ -72,13 +72,18 @@ __GCHCHO_KEYS__ = [
 ### METHODS ###
 ###############
 
-def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, verbose=False):
+def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attributedict={}, verbose=False):
     '''
-    Takes a bunch of arrays, named in the arraydict parameter, and saves
-    to outfilename as hdf5 using h5py with fillvalue=0, gzip compression
+        Takes a bunch of arrays, named in the arraydict parameter, and saves
+        to outfilename as hdf5 using h5py (with fillvalue specified), and gzip compression
+
+        INPUTS:
+            outfilename: name of file to save
+            arraydict: named arrays of data to save using given fillvalue and attributes
+            attributedict is an optional dictionary of dictionaries,
+                keys should match arraydict, values should be dicts of attributes
     '''
-    if verbose:
-        print("saving to "+outfilename)
+    print("saving "+outfilename)
     with h5py.File(outfilename,"w") as f:
         # attribute creation
         # give the HDF5 root some more attributes
@@ -104,15 +109,20 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, verbose=False):
                                   data=darr, compression_opts=9,
                                   chunks=True, compression="gzip")
             # for VC items and RSC, note the units in the file.
-            if ('VC' in name) or ('RSC' == name) or ('SC' == name) or ('col_uncertainty' in name):
-                dset.attrs["Units"] = "Molecules/cm2"
-            if 'fire_mask_16' == name:
-                dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day blocks"
-            if 'fire_mask_8' == name:
-                dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"
+            if name in attributedict:
+                for attrk, attrv in attributedict[name].items():
+                    dset.attrs[attrk]=attrv
+
+            # TODO: Move to function which saves these things
+            #if ('VC' in name) or ('RSC' == name) or ('SC' == name) or ('col_uncertainty' in name):
+            #    dset.attrs["Units"] = "Molecules/cm2"
+            #if 'fire_mask_16' == name:
+            #    dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day blocks"
+            #if 'fire_mask_8' == name:
+            #    dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"
         # force h5py to flush buffers to disk
         f.flush()
-        print("end of fio.save_to_hdf5()")
+    print("Saved "+outfilename)
 
 def combine_dicts(d1,d2):
     '''

@@ -16,15 +16,61 @@ from datetime import datetime, timedelta
 import calendar
 import numpy as np
 from scipy.interpolate import griddata # for regrid function
+from mpl_toolkits.basemap import maskoceans #
 
 ###############
 ### GLOBALS ###
 ###############
 __VERBOSE__=False
+isoprene_grams_per_mole=60.06+8.08 # C5H8
+
 
 ###############
 ### METHODS ###
 ###############
+
+def area_quadrangle(SWNE):
+    '''
+        Return area of sphere with earths radius bounded by S,W,N,E quadrangle
+        units = km^2
+    '''
+    #Earths Radius
+    R=6371.0
+    # radians from degrees
+    S,W,N,E=SWNE
+    Sr,Wr,Nr,Er = np.array(SWNE)*np.pi/180.0
+    # perpendicular distance from plane containing line of latitude to the pole
+    # (checked with trig)
+
+    h0=R*(1-np.sin(Sr))
+    h1=R*(1-np.sin(Nr))
+
+    # Area north of a latitude: (Spherical cap - wikipedia)
+    A0= 2*np.pi*R*h0
+    A1= 2*np.pi*R*h1
+    A_zone= A0-A1 # Area of zone from south to north
+
+    # portion between longitudes
+    p=(E-W)/360.0
+
+    # area of quadrangle
+    A= A_zone*p
+    return A
+
+def area_grid(lats,lons, latres, lonres):
+    '''
+        Area give lats and lons in a grid in km^2
+    '''
+    areas=np.zeros([len(lats),len(lons)]) + np.NaN
+    yr,xr=latres/2.0,lonres/2.0
+
+    for yi,y in enumerate(lats):
+        for xi, x in enumerate(lons):
+            if not np.isfinite(x+y):
+                continue
+            SWNE=[y-yr, x-xr, y+yr, x+xr]
+            areas[yi,xi] = area_quadrangle(SWNE)
+    return areas
 
 def date_from_gregorian(greg):
     '''
@@ -36,6 +82,42 @@ def date_from_gregorian(greg):
     #if isinstance(greg, (list, tuple, np.ndarray)):
     return([d0+timedelta(seconds=int(hr*3600)) for hr in greg])
 
+def edges_from_mids(x,fix=False):
+    '''
+        Take a lat or lon vector input and return the edges
+        Works for REGULAR grids only
+    '''
+    assert x[1]-x[0] == x[2]-x[1], "Resolution at edge not representative"
+    # replace assert with this if it works, HANDLES GEOS CHEM LATS PROBLEM ONLY
+    if x[1]-x[0] != x[2]-x[1]:
+        xres=x[2]-x[1]   # Get resolution away from edge
+        x[0]=x[1]-xres   # push out the edges
+        x[-1]=x[-2]+xres #
+
+    # new vector for array
+    newx=np.zeros(len(x)+1)
+    # resolution from old vector
+    xres=x[1]-x[0]
+    # edges will be mids - resolution / 2.0
+    newx[0:-1]=np.array(x) - xres/2.0
+    # final edge
+    newx[-1]=newx[-2]+xres
+
+    # Finally if the ends are outside 90N/S or 180E/W then bring them back
+    if fix:
+        if newx[-1] >= 90: newx[-1]=89.99
+        if newx[0] <= -90: newx[0]=-89.99
+        if newx[-1] >= 180: newx[-1]=179.99
+        if newx[0] <= -180: newx[0]=-179.99
+
+    return newx
+
+def edges_to_mids(x):
+    ''' lat or lon array and return midpoints '''
+    out=np.zeros(len(x)-1)
+    out= (x[0:-1]+x[1:]) / 2.0
+    return out
+
 def findvminmax(data,lats,lons,region):
     '''
     return vmin, vmax of data[lats,lons] within region: list=[SWNE]
@@ -46,6 +128,25 @@ def findvminmax(data,lats,lons,region):
     vmin=np.nanmin(data2)
     vmax=np.nanmax(data2)
     return vmin,vmax
+
+def get_mask(arr, lats=None, lons=None, masknan=True, maskocean=False, maskland=False):
+    '''
+        Return array which is a mask for the input array
+        to mask the ocean or land you need to put in the lats, lons of the data
+    '''
+    mask=np.isnan(arr)
+    if maskocean:
+        mask = mask + maskoceans(lons,lats,arr, inlands=False).mask
+    if maskland:
+        mask = mask + ~(maskoceans(lons,lats,arr, inlands=False).mask)
+    return mask
+
+def get_masked(arr, lats=None, lons=None, masknan=True, maskocean=False, maskland=False):
+    '''
+        return array masked by nans and optionally ocean/land
+    '''
+    mask=get_mask(arr, lats=None, lons=None, masknan=True, maskocean=False, maskland=False)
+    return np.ma.masked_array(arr,mask=mask)
 
 def gregorian_from_dates(dates):
     ''' gregorian array from datetime list'''
@@ -119,47 +220,28 @@ def ppbv_to_molecs_per_cm2(ppbv, pedges):
 def regrid(data,lats,lons,newlats,newlons):
     '''
     Regrid a data array [lat,lon] onto [newlat,newlon]
-    Assumes a regular grid!
+    Assumes a regular grid, and that boundaries are compatible!!
     '''
     if __VERBOSE__:
         print("utilities.regrid transforming %s to %s"%(str((len(lons),len(lats))),str((len(newlons),len(newlats)))))
         print("data input looks like %s"%str(np.shape(data)))
+    interp=None
     # if no resolution change then just throw back input
-    if len(newlats) == len(lats):
-        return data
+    if len(newlats) == len(lats) and len(newlons) == len(lons):
+        if all(newlats == lats) and all(newlons == lons):
+            return data
 
+    # If new lats have higher resolution
+    #elif len(newlats) > len(lats):
     # make into higher resolution
-    if len(newlats) > len(lats):
-        mlons,mlats = np.meshgrid(lons,lats)
-        mnewlons,mnewlats = np.meshgrid(newlons,newlats)
+    mlons,mlats = np.meshgrid(lons,lats)
+    mnewlons,mnewlats = np.meshgrid(newlons,newlats)
 
-        interp = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
-                          (mnewlats, mnewlons), method='nearest')
-        return interp
+    #https://docs.scipy.org/doc/scipy/reference/interpolate.html
+    interp = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
+                      (mnewlats, mnewlons), method='nearest')
 
-    # transform to lower resolution
-    print("UNTESTED REGRIDDING")
-    avgbefore=np.nanmean(data)
-    if len(newlats) < len(lats):
-        ni, nj = len(newlats), len(newlons)
-        interp = np.zeros([ni,nj]) + np.NaN
-        for i in range(ni):
-            latlower=newlats[i]
-            if i == ni-1: # final lat
-                latupper=89.99
-            else:
-                latupper=newlats[i+1]
-            lat=lats[i]
-            irange = np.where((lat >= latlower) * (lat < latupper))[0]
-            for j in range(nj):
-                lonlower=newlons[j]
-                if j == nj-1: # final lat
-                    lonupper=179.99
-                else:
-                    lonupper=newlons[j+1]
-                lon=lons[i]
-                jrange = np.where((lon >= lonlower) * (lon < lonupper))
-                interp[i,j] = np.nanmean(data[irange,jrange])
-        assert np.isclose(avgbefore, np.nanmean(interp)), "Average changes too much!"
-        return interp
-    return None
+    # Check shape is as requested
+    assert np.shape(interp)== (len(newlats),len(newlons)), "Regridded shape new lats/lons!"
+
+    return interp

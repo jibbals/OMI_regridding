@@ -18,7 +18,6 @@ from mpl_toolkits.basemap import maskoceans #Basemap, maskoceans
 
 import numpy as np
 from datetime import datetime, timedelta
-import calendar
 
 # Add parent folder to path
 import os,sys,inspect
@@ -72,6 +71,11 @@ class omhchorp:
         self.dates=daylist
         self.lats=struct[0]['latitude']
         self.lons=struct[0]['longitude']
+        self.lat_res=self.lats[1]-self.lats[0]
+        self.lon_res=self.lons[1]-self.lons[0]
+        self.lats_e = util.edges_from_mids(self.lats)
+        self.lons_e = util.edges_from_mids(self.lons)
+        self.surface_areas=util.area_grid(self.lats,self.lons,self.lat_res,self.lon_res)
         nt,self.n_lats,self.n_lons=len(daylist), len(self.lats), len(self.lons)
         self.n_times=nt
 
@@ -211,19 +215,27 @@ class omhchorp:
         new_ni, new_nj = int(ni/factor),int(nj/factor)
         newarr=np.zeros([new_ni,new_nj])+ np.NaN
         newcounts=np.zeros([new_ni, new_nj])
+        surface_area=np.zeros([new_ni,new_nj])
         for i in range(new_ni):
             ir = np.arange(i*factor,i*factor+factor)
             for j in range(new_nj):
                 jr = np.arange(j*factor, j*factor+factor)
                 newcounts[i,j] = np.nansum(counts[ir,jr])
                 newarr[i,j] = np.nansum(dsum[ir,jr])
+                surface_area[i,j] = np.sum(self.surface_areas[ir,jr])
         # Sum divided by entry count, ignore div by zero warning
         with np.errstate(divide='ignore'):
             newarr = newarr/newcounts
             newarr[newcounts==0.0]=np.NaN
         lats=self.lats[0::factor]
         lons=self.lons[0::factor]
-        return {key:newarr, 'counts':newcounts, 'lats':lats, 'lons':lons}
+
+        lats_e=util.edges_from_mids(lats)
+        lons_e=util.edges_from_mids(lons)
+        return {key:newarr, 'counts':newcounts,
+                'surface_areas':surface_area,
+                'lats':lats, 'lons':lons,
+                'lats_e':lats_e, 'lons_e':lons_e}
 
     def time_averaged(self, day0, dayn=None, keys=['VCC'], month=False):
         '''

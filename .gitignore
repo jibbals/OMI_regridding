@@ -12,6 +12,8 @@ __pycache__/
 
 # ignore some images
 pictures/levels_debug
+Figs/levels_debug
+Figs/Checks
 
 # ignore log files
 logs/*

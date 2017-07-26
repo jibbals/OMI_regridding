@@ -259,8 +259,8 @@ def print_megan_comparison(month=datetime(2005,1,1), GC=None, OMI=None,
     print("atom C/cm2/s | %.2e  | %.2e "%(np.nanmean(newE),np.nanmean(Egc)))
     print("   isop kg/s | %.2e  | %.2e "%(np.nansum(E_isop_kgs),np.nansum(Egc_kg)))
     print("---Then with negatives set to zero---")
-    print("atom C/cm2/s | %.2e  | %.2e "%(np.nanmean(newE_nn),np.nan))
-    print("   isop kg/s | %.2e  | %.2e "%(np.nansum(E_isop_kgs_nn),np.nan))
+    print("atom C/cm2/s | %.2e  |  "%(np.nanmean(newE_nn)))
+    print("   isop kg/s | %.2e  |  "%(np.nansum(E_isop_kgs_nn)))
 
     #print("New estimate (low resolution): %.2e"%np.nanmean(E_new_lowres['E_isop']))
 

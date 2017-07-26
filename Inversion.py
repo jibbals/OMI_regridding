@@ -149,12 +149,12 @@ def Emissions(day0, dayn, GC = None, OMI = None,
         regionB=np.array(region) + np.array([-10,-10,10,10])
         pp.createmap(slopegc, latsgc, lonsgc, title="slopegc",
                      vmin=vmin, vmax=vmax, region=regionB,
-                     pname="SlopeBefore_%s_%s.png"%(str(region),dstr))
+                     pname="Figs/Checks/SlopeBefore_%s_%s.png"%(str(region),dstr))
         #print("GC_Slope shapes")
         #[ print (np.shape(x)) for x in [GC_slope, latsomi, lonsomi] ]
         pp.createmap(GC_slope, latsomi, lonsomi, title="GC_Slope",
                      vmin=vmin, vmax=vmax, region=regionB,
-                     pname="SlopeAfter_%s_%s.png"%(str(region),dstr))
+                     pname="Figs/Checks/SlopeAfter_%s_%s.png"%(str(region),dstr))
         print("CHECK THE SLOPE BEFORE AND AFTER REGRID IMAGES FOR ERROR")
         #assert False, "Slope change too high"
     if __VERBOSE__:

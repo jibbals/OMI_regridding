@@ -32,20 +32,25 @@ from utilities import fio
 sys.path.pop(0)
 
 ###############
+### GLOBALS ###
+###############
+__VERBOSE__=True
+
+###############
 ### CLASS   ###
 ###############
 
 # rename some variables to more coding friendly ones:
 _names={ key:str.lower(key) for key in fio.__GCHCHO_KEYS__ }
-_names['vchcho']='VC_HCHO'
-_names['latitude']='lats'
-_names['longitude']='lons'
-_names['nair']='N_Air'
-_names['nhcho']='N_HCHO'
-_names['shapez']='Shape_z'
-_names['shapes']='Shape_s'
-_names['boxheights']='boxH'
-_names['sigma']='sigmas'
+_names['VCHCHO']='VC_HCHO'
+_names['LATITUDE']='lats'
+_names['LONGITUDE']='lons'
+_names['NAIR']='N_Air'
+_names['NHCHO']='N_HCHO'
+_names['SHAPEZ']='Shape_z'
+_names['SHAPESIGMA']='Shape_s'
+_names['BOXHEIGHTS']='boxH'
+_names['SIGMA']='sigmas'
 
 class gchcho:
     '''
@@ -79,7 +84,9 @@ class gchcho:
         #self.date=datetime(2005,1,1)
         fdata=fio.read_gchcho(date)
         for key in fio.__GCHCHO_KEYS__:
-            setattr(self,__names[key],fdata[key])
+            if __VERBOSE__:
+                print("Reading key %s (%s)"%(key,_names[key]))
+            setattr(self,_names[key],fdata[key])
 
         # Extras:
         self.date=date

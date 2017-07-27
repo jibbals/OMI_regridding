@@ -9,6 +9,12 @@
 #PBS -l ncpus=8
 #PBS -j oe
 
+
+#
+#   This script takes omi swath dataset and poops out the _amf version
+#   into Data/omhcho_amf
+#
+
 #---------------------------------
 # send to queue with 
 # qsub -o log.qsub run.sh

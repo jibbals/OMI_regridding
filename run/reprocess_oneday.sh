@@ -9,6 +9,10 @@
 #PBS -l ncpus=1
 #PBS -j oe
 
+##
+## This script reprocesses one day of swaths and GC output 
+## into omhcho_1 data
+##
 #---------------------------------
 # send to queue with 
 # qsub -o log.qsub run.sh

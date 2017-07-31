@@ -35,13 +35,13 @@ ulimit -c unlimited
 # unlimit memorylocked 
 ulimit -l unlimited
 
-yyyy=${YEAR}
 # Zero pad the day and month:
+yyyy=${YEAR}
 printf -v mm "%02d" ${MONTH}
 printf -v dd "%02d" ${DAY}
 
 # parameters
-PP_amf_dir="/home/574/jwg574/AMF_omi/"
+PP_amf_dir="/home/574/jwg574/AMF_omi"
 regrid_data_dir="/home/574/jwg574/OMI_regridding/Data"
 csv_dir="${regrid_data_dir}/omhcho_csv"
 gchem_dir="${regrid_data_dir}/GC_Output/geos5_2x25_tropchem/satellite_output"

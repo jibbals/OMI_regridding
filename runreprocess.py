@@ -1,5 +1,11 @@
 #!/apps/python3/3.5.2/bin/python3
 
+###
+#  Reprocess  8 days from start input argument
+#    runs each day in parallel then combines them at the end.
+#  Note: Called from run/reprocess_8dayclumps.sh
+###
+
 # get command line options:
 import sys, getopt
 # module I created to reprocess OMI swath data

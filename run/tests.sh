@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -P m19
 #PBS -q express
-#PBS -N TestsRun
+#PBS -N Tests
 #PBS -l walltime=00:30:00
 #PBS -l mem=25000MB
 #PBS -l cput=02:00:00

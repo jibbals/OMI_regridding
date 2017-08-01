@@ -18,14 +18,17 @@ from datetime import timedelta, datetime
 # GLOBALS
 __VERBOSE__=True # set to true for more print statements
 __DEBUG__=True # set to true for even more print statements
-_AusNESW=[-10,160, -50, 110] # Australian region
-_RefSect=[90,-140, -90, -160] # reference sector
+#_AusNESW=[-10,160, -50, 110] # Australian region
+#_RefSect=[90,-140, -90, -160] # reference sector
 #
 # function to create .csv from swaths:
 #
 def pixel_list_to_csv(date=datetime(2005,1,1),nesw=None):
     '''
-    Read good pixel list, [optional: pull out the section we want,] save to csv for amf program to use.
+    Read good pixel list, 
+        These pixels are read from the omi swath dataset
+        [optional: pull out the section we want,]
+        save to csv for amf program to use.
     CSV: 
     linenumber, scan, pixel,lat, lon, sza, sva, cloud frac, cloud top pressure
     '''

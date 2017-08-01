@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -P m19
 #PBS -q normal
-#PBS -N jesse_pp_tropchem_amf
+#PBS -N pp_trop_amf
 #PBS -l walltime=07:30:00
 #PBS -l mem=20000MB
 #PBS -l cput=100:00:00
@@ -51,8 +51,8 @@ satin="${csv_dir}/${yyyy}-${mm}-${dd}_for_AMF.csv"
 nd51in="${gchem_dir}/ts_satellite_omi.${yyyy}${mm}${dd}.bpch"
 # run the amf utility
 
-echo "bash ${PP_amf_dir}/amf.run $satin $nd51in $outfile $yyyy $mm $dd"
+echo " ${PP_amf_dir}/amf.run $satin $nd51in $outfile $yyyy $mm $dd"
 
-bash ${PP_amf_dir}/amf.run $satin $nd51in testfiles/amf_${yyyy}${mm}${dd}.csv $yyyy $mm $dd
+${PP_amf_dir}/amf.run $satin $nd51in testfiles/amf_${yyyy}${mm}${dd}.csv $yyyy $mm $dd
 #./amf.run testfiles/2014-04-01_for_AMF.csv testfiles/ts_satellite_omi.20140401.bpch testrun_ouptut.csv 2014 4 1
 

@@ -17,8 +17,9 @@
 # send to queue with 
 # qsub -o log.qsub run.sh
 # --------------------------------
-if [ -z ${PBS_O_LOGNAME} ]; then
-    echo "EG usage: qsub run_one_day.sh"
+if [ -z ${PBS_O_LOGNAME} ] || [ -z ${dstr} ]; then
+    echo "EG usage: qsub -v dstr="20050205" run_one_day.sh"
+    echo " To reprocess and get omhchorp_1 for 5/feb/2005"
     exit 0
 fi
 
@@ -26,7 +27,11 @@ fi
 python3 << END
 from datetime import datetime
 import reprocess
-reprocess.create_omhchorp_1(datetime(2005,1,9),verbose=True)
+date=datetime.strptime($1,"%Y%m%d")
+assert (date > datetime(2004,12,31)) and (date < datetime(2013,4,1))
+
+reprocess.create_omhchorp_1(date,verbose=True)
+
 END
 
 #------------------

@@ -131,6 +131,10 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     #
     latiomi,loniomi = util.lat_lon_range(latsomi,lonsomi,region)
     latsomi,lonsomi=latsomi[latiomi], lonsomi[loniomi]
+    attrs["lats"]={"units":"degrees",
+        "desc":"gridbox midpoint"}
+    attrs["lons"]={"units":"degrees",
+        "desc":"gridbox midpoint"}
 
     SA=SA[latiomi,:]
     SA=SA[:,loniomi]
@@ -144,6 +148,8 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     slope_before=np.nanmean(slopegc)
     GC_slope=util.regrid(slopegc, latsgc, lonsgc,latsomi,lonsomi)
     slope_after=np.nanmean(GC_slope)
+    attrs["GC_slope"]={"units":"s",
+        "desc":"slope between HCHO_GC (molec/cm2) and E_Isop_GC (atom c/cm2/s)"}
 
     check=100.0*np.abs((slope_after-slope_before)/slope_before)
     if check > 1:
@@ -173,7 +179,8 @@ def Emissions(day0, dayn, GC = None, OMI = None,
 
     # Determine background using region latitude bounds
     BGomi    = OMI.background_HCHO(lats=[region[0],region[2]])
-    # Molecules / cm2
+    attrs["background"]={"units":"molec HCHO/cm2",
+        "desc":"background from OMI HCHO swathes"}
 
     ## Calculate Emissions from these
     ##
@@ -183,7 +190,7 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     #   Determine S from the slope bewteen E_isop and HCHO
     #[print(np.nanmean(x)) for x in [hchoomi, BGomi, GC_slope]]
     E_new = (hchoomi - BGomi) / GC_slope
-    # E_new is in atom C/cm2/s (same units as E_GC for slope)
+    attrs["E_isop"]={"units":"atom C/cm2/s"}
 
     #print (np.nanmean(hcho))
     #print(BG)
@@ -196,6 +203,17 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     #TODO: store GC_background for comparison
     GC_BG=np.array([np.NaN])
 
+    ## TODO: Also store GC estimate (For easy MEGAN comparison)
+    # GEOS-Chem over our region:
+    #E_GC_sub=GC.get_field(keys=['E_isop_bio','E_isop_bio_kgs'], region=region)
+    #Egc = np.mean(E_GC_sub['E_isop_bio'],axis=0) # average of the monthly values
+
+    # map the lower resolution data onto the higher resolution data:
+    #megan=E_GC_sub['E_isop_bio']
+    #megan_kgs=E_GC_sub['E_isop_bio_kgs']
+    #for i in range() #DAILY REGRID...
+    #megan = util.regrid(megan,E_GC_sub['lats'],E_GC_sub['lons'],omilats,omilons)
+
     ## Calculate in kg/s for each grid box:
     # newE in atom C / cm2 / s  |||  * 1/5 * cm2/km2 * km2 * kg/atom_isop
     # = isoprene kg/s
@@ -203,19 +221,9 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
     conversion= 1./5.0 * 1e10 * SA * kg_per_atom
     E_isop_kgs=E_new*conversion
-
-    # Set up attributes for our file
-    attrs["E_isop"]={"units":"atom C/cm2/s"}
     attrs["E_isop_kg"]={"units":"kg/s",
         "desc":"emissions/cm2 multiplied by area"}
-    attrs["lats"]={"units":"degrees",
-        "desc":"gridbox midpoint"}
-    attrs["lons"]={"units":"degrees",
-        "desc":"gridbox midpoint"}
-    attrs["background"]={"units":"molec HCHO/cm2",
-        "desc":"background from OMI HCHO swathes"}
-    attrs["GC_slope"]={"units":"s",
-        "desc":"slope between HCHO_GC (molec/cm2) and E_Isop_GC (atom c/cm2/s)"}
+
 
     return {'E_isop':E_new, 'E_isop_kg':E_isop_kgs,
             'lats':latsomi, 'lons':lonsomi, 'background':BGomi,
@@ -223,18 +231,17 @@ def Emissions(day0, dayn, GC = None, OMI = None,
             'lati':latiomi,'loni':loniomi,
             'attributes':attrs}
 
-def Emissions_series(day0=datetime(2005,1,1), dayn=datetime(2005,2,1),
-                     GC = None, OMI = None, region=pp.__AUSREGION__):
+def Emissions_series(day0=datetime(2005,1,1), dayn=datetime(2005,2,1), region=pp.__AUSREGION__):
     '''
         Emissions over time
     '''
     if __VERBOSE__: print("Running Inversion.Emissions_series()")
-    ## Read data for this date unless it's been passed in
+    ## Read data for these dates
     ##
-    if GC is None:
-        GC=GC_output(date=day0) # gets one month of GC.
-    if OMI is None:
-        OMI=omhchorp(day0=day0,dayn=dayn)
+    # TODO: update to use read_E_new_range()
+    E_new=fio.read_E_new()
+
+
 
     days=util.list_days(day0,dayn)
     Eomi=[]
@@ -252,16 +259,18 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None, GC=None, OMI=None,
     '''
         Store a month of new emissions estimates into an he5 file
     '''
-    mstr=day0.strftime("%Y%m")
-    ddir="Data/Isop/E_new"
-    fname=ddir+"/emissions_%s.h5"%mstr
-    if __VERBOSE__:
-        print("Reading %s Estimated Emissions over %s to file %s"%(mstr,str(region),fname))
 
-    # If just a day is input, then save the whole month
+    # If just a day is input, then save a month
     if dayn is None:
         dayn=util.last_day(day0)
     days=util.list_days(day0,dayn)
+
+    d0str=day0.strftime("%Y%m%d")
+    dnstr=dayn.strftime("%Y%m%d")
+    ddir="Data/Isop/E_new"
+    fname=ddir+"/emissions_%s-%s.h5"%(d0str,dnstr)
+    if __VERBOSE__:
+        print("Calculating %s-%s estimated emissions over %s to file %s"%(d0str,dnstr,str(region),fname))
 
     if GC is None:
         GC=GC_output(date=day0)

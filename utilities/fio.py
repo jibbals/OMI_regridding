@@ -33,6 +33,8 @@ geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
+__VERBOSE__=False
+
 # Keys for omhchorp:
 __OMHCHORP_KEYS__ = [
     'latitude','longitude',
@@ -153,6 +155,32 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
         f.flush()
     print("Saved "+outfilename)
 
+def read_hdf5(filename):
+    '''
+        Should be able to read hdf5 files created by my method above...
+        Returns data dictionary and attributes dictionary
+    '''
+    retstruct={}
+    retattrs={}
+    with h5py.File(filename,'r') as in_f:
+        if __VERBOSE__:
+            print('reading from file '+filename)
+
+        # READ DATA AND ATTRIBUTES:
+        #attrs=in_f.attrs
+
+        for key in in_f.keys():
+            print(key)
+            retstruct[key]=in_f[key].value
+            attrs=in_f[key].attrs
+            retattrs[key]={}
+            # print the attributes
+            for akey,val in attrs.items():
+                print("%s(attr)   %s:%s"%(key,akey,val))
+                retattrs[key][akey]=val
+
+    return retstruct, retattrs
+
 def combine_dicts(d1,d2):
     '''
     Add two dictionaries together
@@ -238,6 +266,43 @@ def read_8dayfire_interpolated(date,latres,lonres):
 
     interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons), method='nearest')
     return interp, newlats, newlons
+
+def read_E_new(date, oneday=False, filename=None):
+    '''
+    Function to read the recalculated Emissions output
+    Inputs:
+        date = datetime(y,m,d) of file
+        oneday = False : read a single day average rather than the whole month
+        filename=None : if set then read this file ( used for testing )
+    Output:
+        Structure containing E_new dataset
+    '''
+    dstr=date.strftime("%Y%m")
+    ddir='Data/Isop/E_new/'
+    fpath=ddir+'emissions_%s.h5'%dstr
+
+    if filename is not None:
+        fpath=filename
+
+    datastruct, attributes=read_hdf5(fpath)
+
+    # get datetimes from yyyymmdd ints
+    dates=[datetime.strptime(str(d),'%Y%m%d') for d in datastruct['time']]
+    datastruct['dates']=dates
+
+    if oneday:
+        dind=np.where(dates==date)[0]
+        for key in datastruct.keys():
+            # Date is first dimension, so easy to pull out one day
+            datastruct[key]=datastruct[key][dind]
+
+    return datastruct
+
+def read_E_new_range(day0, dayN):
+    '''
+        Read E_new from day0 to dayN
+    '''
+    print("TODO: To be implemented")
 
 def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=False):
     '''

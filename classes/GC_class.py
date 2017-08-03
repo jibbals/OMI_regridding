@@ -139,7 +139,11 @@ class GC_output:
         '''
             Use RMA regression between E_isop and tropcol_HCHO to determine S:
                 HCHO = S * E_isop + b
-            Note: Slope = Yield_isop / k_hcho
+            Notes:
+                Slope = Yield_isop / k_hcho
+                HCHO: molec/cm2
+                E_isop: Atom C/cm2/s
+
 
             Return {'lats','lons','r':reg, 'b':bg, 'slope':slope}
 
@@ -153,7 +157,7 @@ class GC_output:
                 return self.modelled_slope
 
         hcho = self.get_trop_columns(keys=['hcho'])['hcho']
-        isop = self.E_isop_bio
+        isop = self.E_isop_bio # Atom C/cm2/s
 
         lats,lons = self.lats, self.lons
         lati,loni = util.lat_lon_range(lats,lons,region=region)

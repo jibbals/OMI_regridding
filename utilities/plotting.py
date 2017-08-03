@@ -37,7 +37,7 @@ __VERBOSE__=True
 
 # S W N E
 __AUSREGION__=[-45, 108.75, -7, 156.25] # picked from lons_e and lats_e in GMAO.py
-__GLOBALREGION__=[-80, -179, 80, 179]
+__GLOBALREGION__=[-70, -179, 70, 179]
 
 ###############
 ### METHODS ###

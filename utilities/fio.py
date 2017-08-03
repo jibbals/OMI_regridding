@@ -56,6 +56,36 @@ __OMHCHORP_KEYS__ = [
     'fire_mask_8',   # true where fires occurred over last 8 days
     'fire_mask_16' ] # true where fires occurred over last 16 days
 
+# attributes for omhchorp
+__OMHCHORP_ATTRS__ = {
+    'VC_OMI':               {'units':'molec/cm2',
+                             'desc':'regridded OMI swathe VC'},
+    'VC_GC':                {'units':'molec/cm2',
+                             'desc':'regridded VC, using OMI SC recalculated using GEOSChem shape factor'},
+    'SC':                   {'units':'molec/cm2',
+                             'desc':'OMI slant colums'},
+    'VCC':                  {'units':'molec/cm2',
+                             'desc':'Corrected OMI columns using GEOS-Chem shape factor and reference sector correction'},
+    'VCC_PP':               {'units':'molec/cm2',
+                             'desc':'Corrected OMI columns using PPalmer and LSurl\'s lidort/GEOS-Chem based AMF'},
+    'VC_OMI_RSC':           {'units':'molec/cm2',
+                             'desc':'OMI\'s RSC column amount'},
+    'RSC':                  {'units':'molec/cm2',
+                             'desc':'GEOS-Chem/OMI based Reference Sector Correction: is applied to pixels based on latitude and track number'},
+    'RSC_latitude':         {'units':'degrees',
+                             'desc':'latitude centres for RSC'},
+    'RSC_GC':               {'units':'molec/cm2',
+                             'desc':'GEOS-Chem HCHO over reference sector'},
+    'col_uncertainty_OMI':  {'units':'molec/cm2',
+                             'desc':'OMI\'s column uncertainty'},
+    'AMF_GC':               {'desc':'AMF based on GC recalculation of shape factor'},
+    'AMF_OMI':              {'desc':'AMF based on GC recalculation of shape factor'},
+    'AMF_PP':               {'desc':'AMF based on PPalmer code using OMI and GEOS-Chem'},
+    'fire_mask_16':         {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day block"},
+    'fire_mask_8':          {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"},
+    'fires':                {'desc':"8 day fire count from AQUA"},
+    }
+
 __GCHCHO_KEYS__ = [
     'LONGITUDE','LATITUDE',
     'VCHCHO',           # molecs/m2
@@ -72,7 +102,9 @@ __GCHCHO_KEYS__ = [
 ### METHODS ###
 ###############
 
-def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attributedict={}, verbose=False):
+def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
+                 attrdicts={}, fattrs={},
+                 verbose=False):
     '''
         Takes a bunch of arrays, named in the arraydict parameter, and saves
         to outfilename as hdf5 using h5py (with fillvalue specified), and gzip compression
@@ -80,8 +112,9 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attributedict={}, ver
         INPUTS:
             outfilename: name of file to save
             arraydict: named arrays of data to save using given fillvalue and attributes
-            attributedict is an optional dictionary of dictionaries,
+            attrdicts is an optional dictionary of dictionaries,
                 keys should match arraydict, values should be dicts of attributes
+            fattrs: extra file level attributes
     '''
     print("saving "+outfilename)
     with h5py.File(outfilename,"w") as f:
@@ -92,6 +125,9 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attributedict={}, ver
         f.attrs['HDF5_Version']     = h5py.version.hdf5_version
         f.attrs['h5py_version']     = h5py.version.version
         f.attrs['Fill Value']       = fillvalue
+        # optional extra file attributes from argument
+        for key in fattrs.keys():
+            f.attrs[key] = fattrs[key]
 
         if verbose:
             print("Inside fio.save_to_hdf5()")
@@ -104,22 +140,15 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attributedict={}, ver
                 print((name, darr.shape, darr.dtype))
 
             # Fill array using darr,
-            # this way takes minutes to save, using ~ 500 MB space / avg
+            #
             dset=f.create_dataset(name,fillvalue=fillvalue,
                                   data=darr, compression_opts=9,
                                   chunks=True, compression="gzip")
             # for VC items and RSC, note the units in the file.
-            if name in attributedict:
-                for attrk, attrv in attributedict[name].items():
+            if name in attrdicts:
+                for attrk, attrv in attrdicts[name].items():
                     dset.attrs[attrk]=attrv
 
-            # TODO: Move to function which saves these things
-            #if ('VC' in name) or ('RSC' == name) or ('SC' == name) or ('col_uncertainty' in name):
-            #    dset.attrs["Units"] = "Molecules/cm2"
-            #if 'fire_mask_16' == name:
-            #    dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day blocks"
-            #if 'fire_mask_8' == name:
-            #    dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"
         # force h5py to flush buffers to disk
         f.flush()
     print("Saved "+outfilename)

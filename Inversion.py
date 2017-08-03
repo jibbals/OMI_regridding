@@ -25,13 +25,14 @@ from scipy.constants import N_A as N_avegadro
 from utilities.JesseRegression import RMA
 from classes.GC_class import GC_output # Class reading GC output
 from classes.omhchorp import omhchorp # class reading OMHCHORP
+from utilities import fio as fio
 import utilities.plotting as pp
 import utilities.utilities as util
 
 ###############
 ### GLOBALS ###
 ###############
-__VERBOSE__=False
+__VERBOSE__=True
 
 ###############
 ### METHODS ###
@@ -89,6 +90,9 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
 
+    # will return also a dictionary of dicts for attributes:
+    attrs={}
+
     if __VERBOSE__:
         # Check the dims of our stuff
         print("GC data %s"%str(GC.hcho.shape))
@@ -103,7 +107,8 @@ def Emissions(day0, dayn, GC = None, OMI = None,
 
     # model slope between HCHO and E_isop:
     # This also returns the lats and lons for just this region.
-    S_model=GC.model_slope(region=region)
+    S_model=GC.model_slope(region=region) # in seconds I think
+
     slopegc=S_model['slope']
     latsgc, lonsgc=S_model['lats'], S_model['lons']
 
@@ -168,6 +173,7 @@ def Emissions(day0, dayn, GC = None, OMI = None,
 
     # Determine background using region latitude bounds
     BGomi    = OMI.background_HCHO(lats=[region[0],region[2]])
+    # Molecules / cm2
 
     ## Calculate Emissions from these
     ##
@@ -177,6 +183,7 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     #   Determine S from the slope bewteen E_isop and HCHO
     #[print(np.nanmean(x)) for x in [hchoomi, BGomi, GC_slope]]
     E_new = (hchoomi - BGomi) / GC_slope
+    # E_new is in atom C/cm2/s (same units as E_GC for slope)
 
     #print (np.nanmean(hcho))
     #print(BG)
@@ -197,10 +204,24 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     conversion= 1./5.0 * 1e10 * SA * kg_per_atom
     E_isop_kgs=E_new*conversion
 
-    return {'E_isop':E_new, 'E_isop_kg_per_second':E_isop_kgs,
+    # Set up attributes for our file
+    attrs["E_isop"]={"units":"atom C/cm2/s"}
+    attrs["E_isop_kg"]={"units":"kg/s",
+        "desc":"emissions/cm2 multiplied by area"}
+    attrs["lats"]={"units":"degrees",
+        "desc":"gridbox midpoint"}
+    attrs["lons"]={"units":"degrees",
+        "desc":"gridbox midpoint"}
+    attrs["background"]={"units":"molec HCHO/cm2",
+        "desc":"background from OMI HCHO swathes"}
+    attrs["GC_slope"]={"units":"s",
+        "desc":"slope between HCHO_GC (molec/cm2) and E_Isop_GC (atom c/cm2/s)"}
+
+    return {'E_isop':E_new, 'E_isop_kg':E_isop_kgs,
             'lats':latsomi, 'lons':lonsomi, 'background':BGomi,
             'GC_background':GC_BG, 'GC_slope':GC_slope,
-            'lati':latiomi,'loni':loniomi}
+            'lati':latiomi,'loni':loniomi,
+            'attributes':attrs}
 
 def Emissions_series(day0=datetime(2005,1,1), dayn=datetime(2005,2,1),
                      GC = None, OMI = None, region=pp.__AUSREGION__):
@@ -226,6 +247,60 @@ def Emissions_series(day0=datetime(2005,1,1), dayn=datetime(2005,2,1),
     #        'GC_background':GC_BG, 'GC_slope':GC_slope}
 
 
+def store_emissions(day0=datetime(2005,1,1), dayn=None, GC=None, OMI=None,
+                    region=pp.__GLOBALREGION__, ignorePP=True):
+    '''
+        Store a month of new emissions estimates into an he5 file
+    '''
+    mstr=day0.strftime("%Y%m")
+    ddir="Data/Isop/E_new"
+    fname=ddir+"/emissions_%s.h5"%mstr
+    if __VERBOSE__:
+        print("Reading %s Estimated Emissions over %s to file %s"%(mstr,str(region),fname))
+
+    # If just a day is input, then save the whole month
+    if dayn is None:
+        dayn=util.last_day(day0)
+    days=util.list_days(day0,dayn)
+
+    if GC is None:
+        GC=GC_output(date=day0)
+    if OMI is None:
+        OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
+
+    Emiss=[]
+    # Read each day then save the month
+    for day in days:
+        # Get a day of new emissions estimates
+        Emiss.append(Emissions(day0=day, dayn=day, GC=GC, OMI=OMI, region=region))
+
+    outattrs=Emiss[0]['attributes'] # get one copy of attributes is required
+
+    # Adding time dimension (needs to be utf8 for h5 files)
+    #dates = np.array([d.strftime("%Y%m%d").encode('utf8') for d in days])
+    #outattrs["time"]={"format":"%Y%m%d", "desc":"year month day string"}
+    dates = np.array([int(d.strftime("%Y%m%d")) for d in days])
+    outdata={"time":dates}
+    outattrs["time"]={"format":"%Y%m%d", "desc":"year month day as integer (YYYYMMDD)"}
+    fattrs={'region':"SWNE: %s"%str(region)}
+
+    # Save lat,lon
+    outdata['lats']=Emiss[0]['lats']
+    outdata['lons']=Emiss[0]['lons']
+    outdata['lats_e']=util.edges_from_mids(outdata['lats'])
+    outdata['lons_e']=util.edges_from_mids(outdata['lons'])
+
+    # Save data into month of daily averages
+    # TODO: keep OMI counts from earlier...
+    keys_to_save=['E_isop', 'E_isop_kg','background', 'GC_background', 'GC_slope']
+    #if not ignorePP: keys_to_save.append("") save PP based new emissions also..
+    for key in keys_to_save:
+        outdata[key]=np.array([E[key] for E in Emiss]) # time will be first dim
+
+    # Save file, with attributes
+    fio.save_to_hdf5(fname,outdata,attrdicts=outattrs,fattrs=fattrs)
 
 if __name__=='__main__':
     print('Inversion has been run')
+
+    store_emissions()

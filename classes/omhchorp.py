@@ -33,7 +33,7 @@ sys.path.pop(0)
 ### GLOBALS ###
 ###############
 
-__VERBOSE__=True
+__VERBOSE__=False
 __DEBUG__=False
 
 # Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
@@ -175,7 +175,10 @@ class omhchorp:
         return self.inds_subset(lat0=-57,lat1=-6,lon0=101,lon1=160,maskocean=maskocean,maskland=maskland)
 
     def background_HCHO(self, lats=None):
-        ''' return average HCHO over a specific region '''
+        '''
+            return average HCHO over a specific region
+            In same units as VCC [ Molecules/cm2 ]
+        '''
         region=__REMOTEPACIFIC__
         if lats is not None:
             region[0]=lats[0]
@@ -240,7 +243,7 @@ class omhchorp:
     def time_averaged(self, day0, dayn=None, keys=['VCC'], month=False):
         '''
             Return keys averaged over the time dimension
-                Where date >= day0 and date < dayn
+                Where date >= day0 and date <= dayn
                 or whole month if month==True
         '''
         ret={}
@@ -248,11 +251,13 @@ class omhchorp:
 
         # option to do whole month:
         if month:
-            dayn=util.last_day(day0) + timedelta(days=1)
+            dayn=util.last_day(day0)
         if dayn is None:
-            dayn=dayn+timedelta(days=1)
+            dayn=day0
 
-        dinds = (dates >= day0) * (dates < dayn)
+
+        dinds = (dates >= day0) * (dates <= dayn)
+        assert np.sum(dinds)>0, "omhchorp.time_averaged() averaged zero days!"
         if __VERBOSE__:
             print("omhchorp.time_averaged() averaging %d days"%np.sum(dinds))
             print("from %s to %s"%(day0.strftime('%Y%m%d'),dayn.strftime('%Y%m%d')))

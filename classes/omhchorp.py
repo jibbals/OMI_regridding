@@ -90,7 +90,6 @@ class omhchorp:
         self.lats_RSC=struct[0]['RSC_latitude'] # rsc latitude bins
         self.RSC_region=struct[0]['RSC_region']
 
-
         # remove small and negative AMFs
         if not ignorePP:
             print("Removing %d AMF_PP's less than 0.1"%np.nansum(self.AMF_PP<0.1))
@@ -105,6 +104,7 @@ class omhchorp:
         # True over ocean squares:
         check_arr=[self.VCC[0],self.VCC][dayn is None] # array with no time dim
         self.oceanmask=maskoceans(mlons,mlats,check_arr,inlands=False).mask
+        self.background=self.get_background_array()
 
     def apply_fire_mask(self, use_8day_mask=False):
         ''' nanify arrays which are fire affected. '''
@@ -114,8 +114,8 @@ class omhchorp:
                     self.col_uncertainty_OMI]:
             arr[mask]=np.NaN
 
-    def inds_subset(self, lat0=None,lat1=None,lon0=None,lon1=None, maskocean=False, maskland=False):
-        ''' return indices of lat,lon arrays within input box '''
+    def inds_subset(self, lat0=None, lat1=None, lon0=None, lon1=None, maskocean=False, maskland=False):
+        ''' return indices of lat, lon arrays within input box '''
         inds=~np.isnan(self.AMF_OMI) # only want non nans
         mlons,mlats=np.meshgrid(self.lons,self.lats)
         with np.errstate(invalid='ignore'): # ignore comparisons with NaNs
@@ -174,7 +174,7 @@ class omhchorp:
         ''' return indices of Australia, with or without(default) ocean squares '''
         return self.inds_subset(lat0=-57,lat1=-6,lon0=101,lon1=160,maskocean=maskocean,maskland=maskland)
 
-    def background_HCHO(self, lats=None):
+    def background_VCC_averaged(self, lats=None):
         '''
             return average HCHO over a specific region
             In same units as VCC [ Molecules/cm2 ]
@@ -188,6 +188,50 @@ class omhchorp:
 
         BG=np.nanmean(self.VCC[inds])
         return BG
+
+    def get_background_array(self, lats=None, lons=None):
+        '''
+            Return background HCHO based on average over pacific region
+            for given latitudes (can be gridded with longitudes)
+
+            Whatever time dimension we have gets averaged over for
+                pacific background returned on lats,lons grid
+        '''
+        # Average pacific ocean longitudinally
+        lon0=__REMOTEPACIFIC__[1] # left lon
+        lon1=__REMOTEPACIFIC__[3] # right lon
+
+        if lats is None:
+            lats=self.lats
+        if lons is None:
+            lons=self.lons
+
+        # VCC Data looks like [[time,] lat, lon]
+
+        # grab VCC over the ocean.
+        oceanlons= (self.lons >= lon0) * (self.lons <= lon1)
+        print (self.VCC.shape)
+        if self.n_times>1:
+            # average this stuff over the time dim
+            if __VERBOSE__:
+                dstrs=tuple(self.dates[0].strftime('%Y%m%d'),self.dates[-1].strftime('%Y%m%d'))
+                print("omhchorp.get_background_array() averaging over %s-%s"%dstrs)
+            oceanVCC=self.VCC[:,:,oceanlons]
+            oceanVCC=np.nanmean(oceanVCC,axis=0)
+        else:
+            oceanVCC=self.VCC[:,oceanlons]
+
+        print(oceanVCC.shape)
+
+        # Average the pacific strip longitudinally
+        pacific_strip=np.nanmean(oceanVCC,axis=1)
+        print(pacific_strip.shape)
+        # get background interpolated to whatever latitude
+        background=np.interp(lats,self.lats,pacific_strip,left=np.NaN,right=np.NaN)
+        # grid it to longitude so we have the background on our grid (longitudinally equal)
+        mbackground=background.repeat(len(lons)).reshape([len(lats),len(lons)])
+
+        return mbackground
 
     def lower_resolution(self, key='VCC', factor=8, dates=None):
         '''
@@ -240,11 +284,14 @@ class omhchorp:
                 'lats':lats, 'lons':lons,
                 'lats_e':lats_e, 'lons_e':lons_e}
 
-    def time_averaged(self, day0, dayn=None, keys=['VCC'], month=False):
+    def time_averaged(self, day0, dayn=None, keys=['VCC'],
+                      month=False, weighted=True):
         '''
             Return keys averaged over the time dimension
                 Where date >= day0 and date <= dayn
                 or whole month if month==True
+            Just pass in day0 for one day of data
+            If weighted then weight the average by gridentries
         '''
         ret={}
         dates=np.array(self.dates)
@@ -262,8 +309,19 @@ class omhchorp:
             print("omhchorp.time_averaged() averaging %d days"%np.sum(dinds))
             print("from %s to %s"%(day0.strftime('%Y%m%d'),dayn.strftime('%Y%m%d')))
 
+        entries=self.gridentries[dinds] # entries for each day
+        totentries=np.nansum(entries,axis=0) # total entries over time dim
+        ret['gridentries']=totentries
+        actual={}
+        flat={}
         for key in keys:
-            ret[key]=np.nanmean(getattr(self,key)[dinds], axis=0)
+            data=getattr(self,key)[dinds]
+            actual[key]=np.nansum(data*entries, axis=0)/totentries
+            flat[key]=np.nanmean(data, axis=0)
+            ret[key]=[flat[key],actual[key]][weighted]
+            #TODO: remove once checked
+            print("time_average... Flat:%.2e  VS  actual: %.2e"%(np.nanmean(flat[key]),np.nanmean(actual[key])))
+
         return ret
 
 if __name__=='__main__':

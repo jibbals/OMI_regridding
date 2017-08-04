@@ -110,6 +110,10 @@ class GC_output:
         assert all(self.lons == gmao.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"
         self.lons_e=gmao.lons_e
 
+    def date_index(self, date):
+        ''' Return index of date '''
+        return np.where(np.array(self.dates) == date)[0][0]
+
     def get_field(self, keys=['hcho', 'E_isop_bio'], region=pp.__AUSREGION__):
         '''
         Return fields subset to a specific region [S W N E]

@@ -28,6 +28,8 @@ __DEBUG__=False # set to true for even more print statements
 # interpolate linearly to 500 points
 ref_lat_bins=np.arange(-90,90,0.36)+0.18
 
+
+
 def sum_dicts(d1,d2):
     '''
     Add two dictionaries together, only where keys match
@@ -426,6 +428,13 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
 
     ## 5)
     # Save one day averages to file
+    #if ('VC' in name) or ('RSC' == name) or ('SC' == name) or ('col_uncertainty' in name):
+    #    dset.attrs["Units"] = "Molecules/cm2"
+    #if 'fire_mask_16' == name:
+    #    dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day blocks"
+    #if 'fire_mask_8' == name:
+    #    dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"
+
     outd=dict()
     outd['VC_OMI']              = VC_omi
     outd['VC_GC']               = VC_gc
@@ -455,7 +464,8 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
         print("sending day average to be saved: "+outfilename)
     if __DEBUG__:
         print(("keys: ",outd.keys()))
-    fio.save_to_hdf5(outfilename, outd,verbose=verbose)
+
+    fio.save_to_hdf5(outfilename, outd, attrdicts=fio.__OMHCHORP_ATTRS__, verbose=verbose)
     if __DEBUG__:
         print("File should be saved now...")
     ## 5.1)
@@ -472,7 +482,7 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
     days8 = [ date + timedelta(days=dd) for dd in range(8)]
     files8= []
     for day in days8:
-        yyyymmdd=date.strftime("%Y%m%d")
+        #yyyymmdd=date.strftime("%Y%m%d")
         filename=fio.determine_filepath(day,latres=latres,lonres=lonres,oneday=True,reprocessed=True)
         assert os.path.isfile(filename), "ERROR: file not found for averaging : "+filename
         files8.append(filename)
@@ -539,7 +549,7 @@ def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
     avgdict['AMF_PP']=sumdict['AMF_PP']/countspp.astype(float)
     avgdict['VCC_PP']=sumdict['VCC_PP']/countspp.astype(float)
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,oneday=False,reprocessed=True)
-    fio.save_to_hdf5(outfilename, avgdict)
+    fio.save_to_hdf5(outfilename, avgdict, attrdicts=fio.__OMHCHORP_ATTRS__)
     print("File Saved: "+outfilename)
 
 def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True,remove_fires=True):

@@ -33,6 +33,8 @@ geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
+__VERBOSE__=False
+
 # Keys for omhchorp:
 __OMHCHORP_KEYS__ = [
     'latitude','longitude',
@@ -56,6 +58,36 @@ __OMHCHORP_KEYS__ = [
     'fire_mask_8',   # true where fires occurred over last 8 days
     'fire_mask_16' ] # true where fires occurred over last 16 days
 
+# attributes for omhchorp
+__OMHCHORP_ATTRS__ = {
+    'VC_OMI':               {'units':'molec/cm2',
+                             'desc':'regridded OMI swathe VC'},
+    'VC_GC':                {'units':'molec/cm2',
+                             'desc':'regridded VC, using OMI SC recalculated using GEOSChem shape factor'},
+    'SC':                   {'units':'molec/cm2',
+                             'desc':'OMI slant colums'},
+    'VCC':                  {'units':'molec/cm2',
+                             'desc':'Corrected OMI columns using GEOS-Chem shape factor and reference sector correction'},
+    'VCC_PP':               {'units':'molec/cm2',
+                             'desc':'Corrected OMI columns using PPalmer and LSurl\'s lidort/GEOS-Chem based AMF'},
+    'VC_OMI_RSC':           {'units':'molec/cm2',
+                             'desc':'OMI\'s RSC column amount'},
+    'RSC':                  {'units':'molec/cm2',
+                             'desc':'GEOS-Chem/OMI based Reference Sector Correction: is applied to pixels based on latitude and track number'},
+    'RSC_latitude':         {'units':'degrees',
+                             'desc':'latitude centres for RSC'},
+    'RSC_GC':               {'units':'molec/cm2',
+                             'desc':'GEOS-Chem HCHO over reference sector'},
+    'col_uncertainty_OMI':  {'units':'molec/cm2',
+                             'desc':'OMI\'s column uncertainty'},
+    'AMF_GC':               {'desc':'AMF based on GC recalculation of shape factor'},
+    'AMF_OMI':              {'desc':'AMF based on GC recalculation of shape factor'},
+    'AMF_PP':               {'desc':'AMF based on PPalmer code using OMI and GEOS-Chem'},
+    'fire_mask_16':         {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day block"},
+    'fire_mask_8':          {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"},
+    'fires':                {'desc':"8 day fire count from AQUA"},
+    }
+
 __GCHCHO_KEYS__ = [
     'LONGITUDE','LATITUDE',
     'VCHCHO',           # molecs/m2
@@ -72,7 +104,9 @@ __GCHCHO_KEYS__ = [
 ### METHODS ###
 ###############
 
-def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attributedict={}, verbose=False):
+def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
+                 attrdicts={}, fattrs={},
+                 verbose=False):
     '''
         Takes a bunch of arrays, named in the arraydict parameter, and saves
         to outfilename as hdf5 using h5py (with fillvalue specified), and gzip compression
@@ -80,8 +114,9 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attributedict={}, ver
         INPUTS:
             outfilename: name of file to save
             arraydict: named arrays of data to save using given fillvalue and attributes
-            attributedict is an optional dictionary of dictionaries,
+            attrdicts is an optional dictionary of dictionaries,
                 keys should match arraydict, values should be dicts of attributes
+            fattrs: extra file level attributes
     '''
     print("saving "+outfilename)
     with h5py.File(outfilename,"w") as f:
@@ -92,6 +127,9 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attributedict={}, ver
         f.attrs['HDF5_Version']     = h5py.version.hdf5_version
         f.attrs['h5py_version']     = h5py.version.version
         f.attrs['Fill Value']       = fillvalue
+        # optional extra file attributes from argument
+        for key in fattrs.keys():
+            f.attrs[key] = fattrs[key]
 
         if verbose:
             print("Inside fio.save_to_hdf5()")
@@ -104,25 +142,44 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attributedict={}, ver
                 print((name, darr.shape, darr.dtype))
 
             # Fill array using darr,
-            # this way takes minutes to save, using ~ 500 MB space / avg
+            #
             dset=f.create_dataset(name,fillvalue=fillvalue,
                                   data=darr, compression_opts=9,
                                   chunks=True, compression="gzip")
             # for VC items and RSC, note the units in the file.
-            if name in attributedict:
-                for attrk, attrv in attributedict[name].items():
+            if name in attrdicts:
+                for attrk, attrv in attrdicts[name].items():
                     dset.attrs[attrk]=attrv
 
-            # TODO: Move to function which saves these things
-            #if ('VC' in name) or ('RSC' == name) or ('SC' == name) or ('col_uncertainty' in name):
-            #    dset.attrs["Units"] = "Molecules/cm2"
-            #if 'fire_mask_16' == name:
-            #    dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day blocks"
-            #if 'fire_mask_8' == name:
-            #    dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"
         # force h5py to flush buffers to disk
         f.flush()
     print("Saved "+outfilename)
+
+def read_hdf5(filename):
+    '''
+        Should be able to read hdf5 files created by my method above...
+        Returns data dictionary and attributes dictionary
+    '''
+    retstruct={}
+    retattrs={}
+    with h5py.File(filename,'r') as in_f:
+        if __VERBOSE__:
+            print('reading from file '+filename)
+
+        # READ DATA AND ATTRIBUTES:
+        #attrs=in_f.attrs
+
+        for key in in_f.keys():
+            print(key)
+            retstruct[key]=in_f[key].value
+            attrs=in_f[key].attrs
+            retattrs[key]={}
+            # print the attributes
+            for akey,val in attrs.items():
+                print("%s(attr)   %s:%s"%(key,akey,val))
+                retattrs[key][akey]=val
+
+    return retstruct, retattrs
 
 def combine_dicts(d1,d2):
     '''
@@ -209,6 +266,43 @@ def read_8dayfire_interpolated(date,latres,lonres):
 
     interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons), method='nearest')
     return interp, newlats, newlons
+
+def read_E_new(date, oneday=False, filename=None):
+    '''
+    Function to read the recalculated Emissions output
+    Inputs:
+        date = datetime(y,m,d) of file
+        oneday = False : read a single day average rather than the whole month
+        filename=None : if set then read this file ( used for testing )
+    Output:
+        Structure containing E_new dataset
+    '''
+    dstr=date.strftime("%Y%m")
+    ddir='Data/Isop/E_new/'
+    fpath=ddir+'emissions_%s.h5'%dstr
+
+    if filename is not None:
+        fpath=filename
+
+    datastruct, attributes=read_hdf5(fpath)
+
+    # get datetimes from yyyymmdd ints
+    dates=[datetime.strptime(str(d),'%Y%m%d') for d in datastruct['time']]
+    datastruct['dates']=dates
+
+    if oneday:
+        dind=np.where(dates==date)[0]
+        for key in datastruct.keys():
+            # Date is first dimension, so easy to pull out one day
+            datastruct[key]=datastruct[key][dind]
+
+    return datastruct
+
+def read_E_new_range(day0, dayN):
+    '''
+        Read E_new from day0 to dayN
+    '''
+    print("TODO: To be implemented")
 
 def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=False):
     '''

@@ -110,6 +110,10 @@ class GC_output:
         assert all(self.lons == gmao.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"
         self.lons_e=gmao.lons_e
 
+    def date_index(self, date):
+        ''' Return index of date '''
+        return np.where(np.array(self.dates) == date)[0][0]
+
     def get_field(self, keys=['hcho', 'E_isop_bio'], region=pp.__AUSREGION__):
         '''
         Return fields subset to a specific region [S W N E]
@@ -139,7 +143,11 @@ class GC_output:
         '''
             Use RMA regression between E_isop and tropcol_HCHO to determine S:
                 HCHO = S * E_isop + b
-            Note: Slope = Yield_isop / k_hcho
+            Notes:
+                Slope = Yield_isop / k_hcho
+                HCHO: molec/cm2
+                E_isop: Atom C/cm2/s
+
 
             Return {'lats','lons','r':reg, 'b':bg, 'slope':slope}
 
@@ -153,7 +161,7 @@ class GC_output:
                 return self.modelled_slope
 
         hcho = self.get_trop_columns(keys=['hcho'])['hcho']
-        isop = self.E_isop_bio
+        isop = self.E_isop_bio # Atom C/cm2/s
 
         lats,lons = self.lats, self.lons
         lati,loni = util.lat_lon_range(lats,lons,region=region)

@@ -20,10 +20,10 @@ import matplotlib.dates as mdates
 import matplotlib.cm as cm
 
 # local imports:
-import plotting as pp
-from Data.GC_fio import get_tropchem_data, get_UCX_data
-from GC_class import GC_output
-from JesseRegression import RMA
+import utilities.plotting as pp
+from utilities.GC_fio import get_tropchem_data, get_UCX_data
+from utilities.JesseRegression import RMA
+from classes.GC_class import GC_output
 
 ##################
 #####GLOBALS######
@@ -33,7 +33,20 @@ from JesseRegression import RMA
 ###FUNCTIONS####
 ################
 
-def compare_tc_ucx(date=datetime(2005,1,1)):
+def compare_tc_ucx():
+    '''
+        Check UCX vs Tropchem from special 200501 runs
+    '''
+    # read two files directly
+    ucx=get_UCX_data(test=True)
+    trp=get_tropchem_data(monthavg=True, test=True)
+    
+    print("UCX shape: %s"%str(np.shape(ucx['E_isop_bio'])))
+    print("Tropchem shape: %s"%str(np.shape(trp['E_isop_bio'])))
+    # first compare biogsrce-isop:
+    
+
+def compare_tc_ucx_old(date=datetime(2005,1,1)):
     '''
         maps of UCX and tropchem tropospheric columns
         Can also produce similar maps for surface values rather than column amounts
@@ -231,6 +244,7 @@ def E_isop_map(gc, aus=False, region=None):
 # If this script is run directly:
 if __name__=='__main__':
     pp.InitMatplotlib()
+    compare_tc_ucx()
     #compare_surface_tc_ucx()
     #compare_tc_ucx()
 

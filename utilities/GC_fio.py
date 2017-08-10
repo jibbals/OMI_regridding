@@ -24,7 +24,7 @@ sys.path.pop(0)
 #####GLOBALS######
 ##################
 
-__VERBOSE__=False
+__VERBOSE__=True
 
 run_number={"tropchem":0,"UCX":1}
 runs=["geos5_2x25_tropchem","UCX_geos5_2x25"]
@@ -47,20 +47,20 @@ paths = datapaths()
 ###FUNCTIONS####
 ################
 
-def read_UCX():
+def read_UCX(test=False):
     ''' Read the UCX netcdf file: '''
     fi=run_number['UCX']
-    filename='trac_avg_UCX.nc'
+    filename=['trac_avg_UCX.nc','UCX_trac_avg_20050101.nc'][test]
     fullpath="%s/%s"%(paths[fi], filename)
     print("Reading %s"%fullpath)
     ucxfile=nc.Dataset(fullpath,'r')
     return(ucxfile)
 
-def read_tropchem(date=datetime(2005,1,1)):
+def read_tropchem(date=datetime(2005,1,1),test=False):
     ''' read output file'''
     dstr=date.strftime("%Y%m")
     fi=run_number['tropchem']
-    filename='trac_avg_%s.nc'%dstr
+    filename=['trac_avg_%s.nc'%dstr,'trac_avg_200501_test.nc'][test]
     fullpath="%s/%s"%(paths[fi],filename)
     print("Reading %s"%fullpath)
     try:
@@ -72,9 +72,9 @@ def read_tropchem(date=datetime(2005,1,1)):
         raise
     return(tropfile)
 
-def get_tropchem_data(date=datetime(2005,1,1), monthavg=False, surface=False):
+def get_tropchem_data(date=datetime(2005,1,1), monthavg=False, surface=False, test=False):
     ''' return a subset of the tropchem data '''
-    tf=read_tropchem(date)
+    tf=read_tropchem(date, test=test)
     Tau=tf.variables['time'][:] # tau dimension
 
     # get the subset of data: (most are [time, [lev, ]lat,lon])
@@ -88,7 +88,7 @@ def get_tropchem_data(date=datetime(2005,1,1), monthavg=False, surface=False):
             continue
         tmp=tf.variables[key][:]
         if __VERBOSE__:
-            print("%s originally [%s], with min, mean, max = (%.2e, %.2e %.2e)"%
+            print("%s originally %s, with min, mean, max = (%.2e, %.2e %.2e)"%
                 (key, str(tmp.shape), np.nanmin(tmp), np.nanmean(tmp), np.nanmax(tmp)))
         # take the monthavg
         if monthavg:
@@ -122,10 +122,10 @@ def get_tropchem_data(date=datetime(2005,1,1), monthavg=False, surface=False):
     return(data)
 
 
-def get_UCX_data(date=datetime(2005,1,1), surface=False):
+def get_UCX_data(date=datetime(2005,1,1), surface=False, test=False):
     ''' get a month of UCX output '''
     dstr=date.strftime("%Y%m%d")
-    uf=read_UCX()
+    uf=read_UCX(test=test)
     Tau     = uf.variables['time'][:] # Tau(time): hours since 19850101:0000
     Press   = uf.variables['lev'][:] # Pressure(altitude): hPa, midpoints
 
@@ -137,14 +137,15 @@ def get_UCX_data(date=datetime(2005,1,1), surface=False):
     if __VERBOSE__:
         print ("date index = ")
         print (di)
-    for key in tf.variables.keys():
+    for key in uf.variables.keys():
         # Only reading keys mapped by the classes/variable_names_mapped.py file
         if key not in GC_trac_avg_map:
             if __VERBOSE__:
                 print('not reading %s'%key)
             continue
+        tmp=uf.variables[key][:]
         if __VERBOSE__:
-            print("%s originally [%s], with min, mean, max = (%.2e, %.2e %.2e)"%
+            print("%s originally %s, with min, mean, max = (%.2e, %.2e %.2e)"%
                 (key, str(tmp.shape), np.nanmin(tmp), np.nanmean(tmp), np.nanmax(tmp)))
         dims=np.shape(tmp)
         Tdim=0 # time is first dimension
@@ -168,7 +169,7 @@ def get_UCX_data(date=datetime(2005,1,1), surface=False):
         name=GC_trac_avg_map[key]
         data[name]=tmp
         if __VERBOSE__:
-            print("%s (%s) now has shape: %s"%(key,name,str(np.shape(data[key]))))
+            print("%s (%s) has shape: %s"%(key,name,str(np.shape(data[name]))))
 
     # return the data we want
     uf.close()

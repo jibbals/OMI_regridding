@@ -1,18 +1,20 @@
 #!/bin/bash
 
 ##
-## This needs to be run FROM WITHIN THE trac_avg FOLDER
+## This needs to be run on NCI
 ## 
 
 if [ $# -lt 1 ]
 then
     echo "  EG: $0 200501"
     echo "    (For jan 2005 conversion)"
-    echo "    Make sure you're running this from trac_avg folder.."
     exit 0
 fi
 
 date=$1
+
+# Go to tropchem dir:
+pushd /home/574/jwg574/rundirs/geos5_2x25_tropchem/trac_avg
 fname=trac_avg.geos5_2x25_tropchem.${date}010000
 
 # poop out the days as netcdf
@@ -27,9 +29,20 @@ do
     # Add DXYP to all the files...
     ncks -A -v DXYP__DXYP tavg_temp_${date}01.nc $f
 done
-ncrcat tavg_temp_*.nc trac_avg_${date}.nc
+
+outname=trac_avg_${date}.nc
+# if we input a second argument, save ncfile to that instead
+if [ $# -eq 2 ]
+then
+    outname=$2
+fi
+ncrcat tavg_temp_*.nc ${outname}
 
 
 # delete intermediate poop
 rm tavg_temp*
+
+# return to original dir for no reason
+popd
+
 

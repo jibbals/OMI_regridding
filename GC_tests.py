@@ -37,14 +37,72 @@ def compare_tc_ucx():
     '''
         Check UCX vs Tropchem from special 200501 runs
     '''
+    region=pp.__AUSREGION__
+    date=datetime(2005,1,1)
     # read two files directly
-    ucx=get_UCX_data(test=True)
-    trp=get_tropchem_data(monthavg=True, test=True)
-    
-    print("UCX shape: %s"%str(np.shape(ucx['E_isop_bio'])))
-    print("Tropchem shape: %s"%str(np.shape(trp['E_isop_bio'])))
-    # first compare biogsrce-isop:
-    
+    #ucx=get_UCX_data(test=True)
+    #trp=get_tropchem_data(monthavg=True, test=True)
+
+    ucx=GC_output(date,UCX=True, test=True)
+    trp=GC_output(date,UCX=False, monthavg=True, test=True)
+    lats_all=ucx.lats
+    lons_all=ucx.lons
+
+    keys=['hcho','isop','E_isop_bio','OH']
+    units={ 'hcho'      :'ppbv',        #r'molec cm$^{-2}$',
+            'E_isop_bio':r'atom C cm$^{-2}$ s$^{-1}$',
+            'OH'        :r'molec cm$^{-3}$',
+            'isop'      :r'ppbv'}
+    rlims={'hcho':(-20,20),'E_isop_bio':(-50,50),'OH':(-50,50),'isop':(-50,100)}
+    alims={'hcho':(None,None),'isop':(None,None),'OH':(None,None),'E_isop_bio':(None,None)}
+
+    ucx_data=ucx.get_field(keys=keys,region=region)
+    trp_data=trp.get_field(keys=keys,region=region)
+    lats=ucx_data['lats'];lons=ucx_data['lons']
+
+    print("Region: ",region)
+    for key in keys:
+        print(key)
+        dats=[ucx_data[key], trp_data[key]]
+        for di,dat in enumerate(dats):
+            pre=['UCX  ','trop '][di]
+            print(pre+"%s shape: %s"%(key,str(np.shape(dat))))
+            print("    min/mean/max: %.1e/ %.1e /%.1e"%(np.min(dat),np.mean(dat),np.max(dat)))
+            # Just look at surface from here
+            if len(dat.shape)==3:
+                dat=dat[0]
+                print("    at surface  : %.1e/ %.1e /%.1e"%(np.min(dat),np.mean(dat),np.max(dat)))
+                dats[di]=dat
+
+        # whole tropospheric column
+        #data['tc']  = tc.get_trop_columns(keys=keys)
+        #data['ucx'] = ucx.get_trop_columns(keys=keys)
+
+        # Plot values and differences for each key
+        pname='Figs/GC/UCX_vs_trp_%s.png'%key
+        u=dats[0];t=dats[1]
+        amin,amax = alims[key]
+        rmin,rmax = rlims[key]
+        args={'region':region,'clabel':units[key], 'vmin':amin, 'vmax':amax,'linear':True}
+
+        f,axes=plt.subplots(2,2,figsize=(16,14))
+
+        plt.sca(axes[0,0])
+        pp.createmap(u,lats,lons, title="%s UCX"%key, **args)
+
+        plt.sca(axes[0,1])
+        pp.createmap(t,lats,lons, title="%s tropchem"%key, **args)
+
+        plt.sca(axes[1,0])
+        args['vmin']=None; args['vmax']=None
+        pp.createmap(u-t,lats,lons,title="UCX - tropchem", **args)
+
+        plt.sca(axes[1,1])
+        args['vmin']=rmin; args['vmax']=rmax; args['clabel']='%'
+        pp.createmap((u-t)*100.0/u,lats,lons, title="100*(UCX-tc)/UCX",
+                        suptitle='%s %s %s'%('surface', key, trp.dstr),
+                        pname=pname, **args)
+
 
 def compare_tc_ucx_old(date=datetime(2005,1,1)):
     '''

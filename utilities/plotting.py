@@ -53,7 +53,7 @@ def InitMatplotlib():
     matplotlib.rcParams["axes.labelsize"]   = 20        #
     matplotlib.rcParams["xtick.labelsize"]  = 16        #
     matplotlib.rcParams["ytick.labelsize"]  = 16        #
-    matplotlib.rcParams['image.cmap'] = 'Inferno'       # Colormap default
+    matplotlib.rcParams['image.cmap'] = 'inferno'       # Colormap default
 
 def regularbounds(x,fix=False):
     '''
@@ -119,6 +119,7 @@ def createmap(data, lats, lons, edges=False ,
     ##
     lats_e,lons_e=lats,lons
     if not edges:
+        if __VERBOSE__: print("Making edges from lat/lon mids")
         nlat,nlon=len(lats), len(lons)
         lats_e=regularbounds(lats)
         lons_e=regularbounds(lons)
@@ -153,17 +154,21 @@ def createmap(data, lats, lons, edges=False ,
     errmsg="pcolormesh needs edges for lat/lon (array: %s, lats:%s)"%(str(np.shape(data)),str(np.shape(mlats_e)))
     assert mlats_e.shape[0] == data.shape[0] + 1, errmsg
 
-    #force nan into any pixel with nan results, so color is not plotted there...
-    mdata=np.ma.masked_invalid(data) # mask non-finite elements
-    #mdata=data # masking occasionally throws up all over your face
-
     if cmapname is None:
         cmapname = matplotlib.rcParams['image.cmap']
+
     cmap=plt.cm.cmap_d[cmapname]
     pcmeshargs={'vmin':vmin, 'vmax':vmax, 'clim':(vmin, vmax),
                 'latlon':latlon, 'cmap':cmap}
+
     if not linear:
+        if __VERBOSE__:print("createmap() is removing negatives")
         pcmeshargs['norm']=LogNorm()
+        data[data<=0]=np.NaN
+
+    #force nan into any pixel with nan results, so color is not plotted there...
+    mdata=np.ma.masked_invalid(data) # mask non-finite elements
+    #mdata=data # masking occasionally throws up all over your face
 
     if __VERBOSE__:
         shapes=tuple([ str(np.shape(a)) for a in [mlats_e, mlons_e, mdata, mdata.mask] ])

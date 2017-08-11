@@ -79,7 +79,8 @@ def date_from_gregorian(greg):
     '''
     d0=datetime(1985,1,1,0,0,0)
     greg=np.array(greg)
-    #if isinstance(greg, (list, tuple, np.ndarray)):
+    if greg.ndim==0:
+        return([d0+timedelta(seconds=int(greg*3600)),])
     return([d0+timedelta(seconds=int(hr*3600)) for hr in greg])
 
 def edges_from_mids(x,fix=False):

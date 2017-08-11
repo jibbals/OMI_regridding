@@ -63,14 +63,14 @@ class GC_output:
         self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
-    def __init__(self, date, UCX=False,monthavg=False):
+    def __init__(self, date, UCX=False,monthavg=False,test=False):
         ''' Read data for ONE MONTH into self '''
         self.dstr=date.strftime("%Y%m")
 
         # READ DATA, Tropchem or UCX file
         self.UCX=UCX
         read_file_func   = gcfio.get_tropchem_data
-        read_file_params = {'date':date}
+        read_file_params = {'date':date,'test':test}
         if UCX:
             read_file_func = gcfio.get_UCX_data
         else: # if it's tropchem we may want the month averaged:
@@ -94,6 +94,7 @@ class GC_output:
 
         # set dates and E_dates:
         self.dates=util.date_from_gregorian(self.taus)
+        #self._has_time_dim = len(self.E_isop_bio.shape) > 2
         self._has_time_dim = len(self.dates) > 1
 
         # Determine emissions in kg/s from atom_C / cm2 / s
@@ -128,15 +129,24 @@ class GC_output:
              'lati':lati,
              'loni':loni}
 
-        for k in keys:
-            if self._has_time_dim:
+        try:
+            for k in keys:
                 out[k] = getattr(self, k)
-                out[k] = out[k][:,lati,:]
-                out[k] = out[k][:,:,loni]
-            else:
-                out[k] = getattr(self, k)
-                out[k] = out[k][lati,:]
-                out[k] = out[k][:,loni]
+                dims=len(out[k].shape)
+                if dims==4:
+                    out[k] = out[k][:,:,lati,:]
+                    out[k] = out[k][:,:,:,loni]
+                elif dims==3:
+                    out[k] = out[k][:,lati,:]
+                    out[k] = out[k][:,:,loni]
+                else:
+                    out[k] = out[k][lati,:]
+                    out[k] = out[k][:,loni]
+        except IndexError as ie:
+            print(k)
+            print(np.shape(out[k]))
+            print(np.shape(lati),np.shape(loni))
+            raise ie
         return out
 
     def model_slope(self, region=pp.__AUSREGION__):

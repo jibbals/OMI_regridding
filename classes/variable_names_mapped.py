@@ -18,4 +18,6 @@ GC_trac_avg = { 'time':'taus','lev':'press','lat':'lats','lon':'lons',
     'TR_PAUSE__TP_HGHT':'tpH', # trop height: km
     'TR_PAUSE__TP_PRESS':'tpP', # trop Pressure: mb
     # Many more in trac_avg_yyyymm.nc, not read here yet...
+    'CHEM_L_S__OH':'OH', # OH molec/cm3: (time, alt059, lat, lon) : 'chemically produced OH'
+
     }

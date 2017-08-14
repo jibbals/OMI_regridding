@@ -2,9 +2,9 @@
 #PBS -P m19
 #PBS -q normal
 #PBS -N pp_trop_amf
-#PBS -l walltime=07:30:00
-#PBS -l mem=20000MB
-#PBS -l cput=100:00:00
+#PBS -l walltime=24:00:00
+#PBS -l mem=30000MB
+#PBS -l cput=300:00:00
 #PBS -l jobfs=10MB
 #PBS -l wd
 #PBS -l ncpus=16
@@ -48,7 +48,7 @@ gchem_dir="${regrid_data_dir}/GC_Output/geos5_2x25_tropchem/satellite_output"
 outfile="${regrid_data_dir}/pp_amf/tropchem/amf_${yyyy}${mm}${dd}.csv"
 
 satin="${csv_dir}/${yyyy}-${mm}-${dd}_for_AMF.csv"
-nd51in="${gchem_dir}/ts_satellite_omi.${yyyy}${mm}${dd}.bpch"
+nd51in="${gchem_dir}/ts_satellite.${yyyy}${mm}${dd}.bpch"
 # run the amf utility
 
 echo " ${PP_amf_dir}/amf.run $satin $nd51in $outfile $yyyy $mm $dd"

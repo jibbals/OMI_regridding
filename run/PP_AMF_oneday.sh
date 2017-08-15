@@ -48,11 +48,14 @@ gchem_dir="${regrid_data_dir}/GC_Output/geos5_2x25_tropchem/satellite_output"
 outfile="${regrid_data_dir}/pp_amf/tropchem/amf_${yyyy}${mm}${dd}.csv"
 
 satin="${csv_dir}/${yyyy}-${mm}-${dd}_for_AMF.csv"
-nd51in="${gchem_dir}/ts_satellite.${yyyy}${mm}${dd}.bpch"
-# run the amf utility
+nd51in="${gchem_dir}/ts_satellite_omi.${yyyy}${mm}${dd}.bpch"
 
+# cd to the AMF folder and run the utility
+# We cd there to have jv_spec.dat and similar things in the working directory
+pushd $PP_amf_dir 
 echo " ${PP_amf_dir}/amf.run $satin $nd51in $outfile $yyyy $mm $dd"
 
 ${PP_amf_dir}/amf.run $satin $nd51in testfiles/amf_${yyyy}${mm}${dd}.csv $yyyy $mm $dd
 #./amf.run testfiles/2014-04-01_for_AMF.csv testfiles/ts_satellite_omi.20140401.bpch testrun_ouptut.csv 2014 4 1
+popd
 

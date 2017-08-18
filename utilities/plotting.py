@@ -53,7 +53,7 @@ def InitMatplotlib():
     matplotlib.rcParams["axes.labelsize"]   = 20        #
     matplotlib.rcParams["xtick.labelsize"]  = 16        #
     matplotlib.rcParams["ytick.labelsize"]  = 16        #
-    matplotlib.rcParams['image.cmap'] = 'inferno'       # Colormap default
+    matplotlib.rcParams['image.cmap'] = 'PuRd' #'inferno_r'       # Colormap default
 
 def regularbounds(x,fix=False):
     '''
@@ -93,7 +93,7 @@ def regularbounds(x,fix=False):
 def createmap(data, lats, lons, edges=False ,
               vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
-              clabel=None, colorbar=True, left=None, right=None,
+              clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
               pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None, fillcontinents=None):
     '''
@@ -192,10 +192,12 @@ def createmap(data, lats, lons, edges=False ,
         plt.suptitle(suptitle)
     cb=None
     if colorbar:
-        cbargs={'size':'5%','pad':'2%','extend':'both'}
+        cbargs={'size':'5%','pad':'1%','extend':'both','format':cbarfmt}
         cb=m.colorbar(cs,"bottom", **cbargs)
         if clabel is not None:
             cb.set_label(clabel)
+        if cbarxtickrot is not None:
+            cb.ax.set_xticklabels(cb.ax.get_xticklabels(), rotation=cbarxtickrot)
 
     # if a plot name is given, save and close figure
     if pname is not None:

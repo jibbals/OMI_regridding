@@ -37,7 +37,7 @@ def compare_tc_ucx():
     '''
         Check UCX vs Tropchem from special 200501 runs
     '''
-    region=pp.__AUSREGION__
+    region=pp.__GLOBALREGION__
     date=datetime(2005,1,1)
     # read two files directly
     #ucx=get_UCX_data(test=True)
@@ -53,8 +53,13 @@ def compare_tc_ucx():
             'E_isop_bio':r'atom C cm$^{-2}$ s$^{-1}$',
             'OH'        :r'molec cm$^{-3}$',
             'isop'      :r'ppbv'}
-    rlims={'hcho':(-20,20),'E_isop_bio':(-50,50),'OH':(-50,50),'isop':(-50,100)}
-    alims={'hcho':(None,None),'isop':(None,None),'OH':(None,None),'E_isop_bio':(None,None)}
+    cbarfmt={}; cbarxtickrot={}
+    rlims={'hcho':(-20,20),   'E_isop_bio':(-50,50),   'OH':(-50,50), 'isop':(-70,70)}
+    dlims={'hcho':(-.5,.5),   'E_isop_bio':(-1e12,1e12),   'OH':(-8e5,8e5), 'isop':(-6,6)}
+    alims={'hcho':(None,None),'E_isop_bio':(None,None),'OH':(1e6,4e6),'isop':(None,None)}
+    for key in keys:
+        cbarfmt[key]=None; cbarxtickrot[key]=None
+    cbarfmt['OH']="%.1e"; cbarxtickrot['OH']=30
 
     ucx_data=ucx.get_field(keys=keys,region=region)
     trp_data=trp.get_field(keys=keys,region=region)
@@ -79,11 +84,14 @@ def compare_tc_ucx():
         #data['ucx'] = ucx.get_trop_columns(keys=keys)
 
         # Plot values and differences for each key
-        pname='Figs/GC/UCX_vs_trp_%s.png'%key
+        pname='Figs/GC/UCX_vs_trp_glob_%s.png'%key
         u=dats[0];t=dats[1]
         amin,amax = alims[key]
         rmin,rmax = rlims[key]
-        args={'region':region,'clabel':units[key], 'vmin':amin, 'vmax':amax,'linear':True}
+        dmin,dmax = dlims[key]
+        args={'region':region,'clabel':units[key], 'vmin':amin, 'vmax':amax,
+              'linear':True, 'cmapname':'PuRd', 'cbarfmt':cbarfmt[key],
+              'cbarxtickrot':cbarxtickrot[key]}
 
         f,axes=plt.subplots(2,2,figsize=(16,14))
 
@@ -94,14 +102,14 @@ def compare_tc_ucx():
         pp.createmap(t,lats,lons, title="%s tropchem"%key, **args)
 
         plt.sca(axes[1,0])
-        args['vmin']=None; args['vmax']=None
+        args['vmin']=dmin; args['vmax']=dmax
+        args['cmapname']='coolwarm'
         pp.createmap(u-t,lats,lons,title="UCX - tropchem", **args)
 
         plt.sca(axes[1,1])
         args['vmin']=rmin; args['vmax']=rmax; args['clabel']='%'
-        pp.createmap((u-t)*100.0/u,lats,lons, title="100*(UCX-tc)/UCX",
-                        suptitle='%s %s %s'%('surface', key, trp.dstr),
-                        pname=pname, **args)
+        pp.createmap((u-t)*100.0/u, lats, lons, title="100*(UCX-tc)/UCX",
+                     suptitle='%s %s %s'%('surface', key, trp.dstr), pname=pname, **args)
 
 
 def compare_tc_ucx_old(date=datetime(2005,1,1)):

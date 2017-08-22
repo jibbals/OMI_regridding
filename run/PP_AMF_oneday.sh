@@ -2,12 +2,12 @@
 #PBS -P m19
 #PBS -q normal
 #PBS -N pp_trop_amf
-#PBS -l walltime=24:00:00
-#PBS -l mem=30000MB
-#PBS -l cput=300:00:00
+#PBS -l walltime=15:00:00
+#PBS -l mem=5000MB
+#PBS -l cput=15:00:00
 #PBS -l jobfs=10MB
 #PBS -l wd
-#PBS -l ncpus=16
+#PBS -l ncpus=1
 #PBS -j oe
 
 # -P is project group to charge resource time to
@@ -55,7 +55,7 @@ nd51in="${gchem_dir}/ts_satellite_omi.${yyyy}${mm}${dd}.bpch"
 pushd $PP_amf_dir 
 echo " ${PP_amf_dir}/amf.run $satin $nd51in $outfile $yyyy $mm $dd"
 
-${PP_amf_dir}/amf.run $satin $nd51in testfiles/amf_${yyyy}${mm}${dd}.csv $yyyy $mm $dd
+${PP_amf_dir}/amf.run $satin $nd51in $outfile $yyyy $mm $dd
 #./amf.run testfiles/2014-04-01_for_AMF.csv testfiles/ts_satellite_omi.20140401.bpch testrun_ouptut.csv 2014 4 1
 popd
 

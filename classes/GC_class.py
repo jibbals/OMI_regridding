@@ -93,7 +93,17 @@ class GC_output:
         #    self.area=self.area[0] # surface area doesn't change with time
 
         # set dates and E_dates:
+        # bpch2coards messes up the taus somehow..
+        if __VERBOSE__:
+            print("Fixing stupid taus")
+            print("pre-fix: %d .. %d"%(self.taus[0],self.taus[-1]))
+        new_taus=np.arange(0,len(self.taus))*24+self.taus[0]
+        self.taus=new_taus
+        if __VERBOSE__:
+            print("post-fix: %d .. %d"%(self.taus[0],self.taus[-1]))
+
         self.dates=util.date_from_gregorian(self.taus)
+
         #self._has_time_dim = len(self.E_isop_bio.shape) > 2
         self._has_time_dim = len(self.dates) > 1
 
@@ -113,7 +123,8 @@ class GC_output:
 
     def date_index(self, date):
         ''' Return index of date '''
-        return np.where(np.array(self.dates) == date)[0][0]
+        whr=np.where(np.array(self.dates) == date) # returns (matches_array,something)
+        return whr[0][0] # We just want the match
 
     def get_field(self, keys=['hcho', 'E_isop_bio'], region=pp.__AUSREGION__):
         '''

@@ -197,6 +197,8 @@ class omhchorp:
             Whatever time dimension we have gets averaged over for
                 pacific background returned on lats,lons grid
         '''
+        if __VERBOSE__:
+            print("In omhchorp.get_background_array()")
         # Average pacific ocean longitudinally
         lon0=__REMOTEPACIFIC__[1] # left lon
         lon1=__REMOTEPACIFIC__[3] # right lon
@@ -210,7 +212,9 @@ class omhchorp:
 
         # grab VCC over the ocean.
         oceanlons= (self.lons >= lon0) * (self.lons <= lon1)
-        print (self.VCC.shape)
+        if __VERBOSE__:
+            print("VCC.shape:")
+            print (self.VCC.shape)
         if self.n_times>1:
             # average this stuff over the time dim
             if __VERBOSE__:
@@ -221,11 +225,15 @@ class omhchorp:
         else:
             oceanVCC=self.VCC[:,oceanlons]
 
-        print(oceanVCC.shape)
+        if __VERBOSE__:
+            print("oceanVCC.shape")
+            print(oceanVCC.shape)
 
         # Average the pacific strip longitudinally
         pacific_strip=np.nanmean(oceanVCC,axis=1)
-        print(pacific_strip.shape)
+        if __VERBOSE__:
+            print("Pacific strip array shape:")
+            print(pacific_strip.shape)
         # get background interpolated to whatever latitude
         background=np.interp(lats,self.lats,pacific_strip,left=np.NaN,right=np.NaN)
         # grid it to longitude so we have the background on our grid (longitudinally equal)

@@ -170,13 +170,13 @@ def read_hdf5(filename):
         #attrs=in_f.attrs
 
         for key in in_f.keys():
-            print(key)
+            if __VERBOSE__: print(key)
             retstruct[key]=in_f[key].value
             attrs=in_f[key].attrs
             retattrs[key]={}
             # print the attributes
             for akey,val in attrs.items():
-                print("%s(attr)   %s:%s"%(key,akey,val))
+                if __VERBOSE__: print("%s(attr)   %s:%s"%(key,akey,val))
                 retattrs[key][akey]=val
 
     return retstruct, retattrs
@@ -267,22 +267,24 @@ def read_8dayfire_interpolated(date,latres,lonres):
     interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons), method='nearest')
     return interp, newlats, newlons
 
-def read_E_new(date, oneday=False, filename=None):
+def read_E_new(oneday=None, filename=None):
     '''
     Function to read the recalculated Emissions output
     Inputs:
-        date = datetime(y,m,d) of file
-        oneday = False : read a single day average rather than the whole month
+        oneday = None : read a single day - set this arg to a datetime to do this
         filename=None : if set then read this file ( used for testing )
     Output:
         Structure containing E_new dataset
     '''
-    dstr=date.strftime("%Y%m")
+
+    # First get filename:
     ddir='Data/Isop/E_new/'
-    fpath=ddir+'emissions_%s.h5'%dstr
+    fpath=glob(ddir+'emissions_20050101-*.h5')[-1]
 
     if filename is not None:
         fpath=filename
+
+    print("Reading E_new: %s"%fpath)
 
     datastruct, attributes=read_hdf5(fpath)
 
@@ -290,13 +292,13 @@ def read_E_new(date, oneday=False, filename=None):
     dates=[datetime.strptime(str(d),'%Y%m%d') for d in datastruct['time']]
     datastruct['dates']=dates
 
-    if oneday:
-        dind=np.where(dates==date)[0]
+    if oneday is not None:
+        dind=np.where(dates==oneday)[0]
         for key in datastruct.keys():
             # Date is first dimension, so easy to pull out one day
             datastruct[key]=datastruct[key][dind]
 
-    return datastruct
+    return datastruct, attributes
 
 def read_E_new_range(day0, dayN):
     '''

@@ -88,9 +88,12 @@ def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
     omi_SA=OMI.surface_areas # in km^2
 
     # Get GC_isoprene for this day also
-    GC_isop=GC.get_field(keys=['E_isop_bio',],region=region)['E_isop_bio']
-    GC_isop=GC_isop[GC.date_index(day)] # only want one day of E_isop_GC
-    attrs['GC_isop']={'units':'atom C/cm2/s',
+    GC_E_isop=GC.get_field(keys=['E_isop_bio',],region=region)['E_isop_bio']
+    print("GC_E_isop.shape before and after dateindex")
+    print(GC_E_isop.shape)
+    GC_E_isop=GC_E_isop[GC.date_index(day)] # only want one day of E_isop_GC
+    print(GC_E_isop.shape)
+    attrs['GC_E_isop']={'units':'atom C/cm2/s',
                       'desc' :'biogenic isoprene emissions from MEGAN/GEOS-Chem'}
 
     # model slope between HCHO and E_isop:
@@ -130,7 +133,7 @@ def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
     slope_before=np.nanmean(GC_slope)
     GC_slope0=np.copy(GC_slope)
     GC_slope=util.regrid(GC_slope, GC_lats, GC_lons,omi_lats,omi_lons)
-    GC_isop=util.regrid(GC_isop, GC_lats,GC_lons,omi_lats,omi_lons)
+    GC_E_isop=util.regrid(GC_E_isop, GC_lats,GC_lons,omi_lats,omi_lons)
     slope_after=np.nanmean(GC_slope)
     attrs["GC_slope"]={"units":"s",
         "desc":"\"VC_H=S*E_i+B\" slope (S) between HCHO_GC (molec/cm2) and E_Isop_GC (atom c/cm2/s)"}
@@ -180,14 +183,14 @@ def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
     kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
     conversion= 1./5.0 * 1e10 * omi_SA * kg_per_atom
     E_isop_kgs=E_new*conversion
-    GC_isop_kgs=GC_isop*conversion
+    GC_E_isop_kgs=GC_E_isop*conversion
     attrs["E_isop_kg"]={"units":"kg/s",
         "desc":"emissions/cm2 multiplied by area"}
-    attrs["GC_isop_kg"]={"units":"kg/s",
+    attrs["GC_E_isop_kg"]={"units":"kg/s",
         "desc":"emissions/cm2 multiplied by area"}
 
     return {'E_isop':E_new, 'E_isop_kg':E_isop_kgs,
-            'GC_isop':GC_isop, 'GC_isop_kg':GC_isop_kgs,
+            'GC_E_isop':GC_E_isop, 'GC_E_isop_kg':GC_E_isop_kgs,
             'lats':omi_lats, 'lons':omi_lons, 'background':omi_background,
             'GC_background':GC_background, 'GC_slope':GC_slope,
             'lati':omi_lati,'loni':omi_loni,'gridentries':gridentries,
@@ -433,7 +436,7 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None, GC=None, OMI=None,
     # Save data into month of daily averages
     # TODO: keep OMI counts from earlier...
     keys_to_save=['E_isop', 'E_isop_kg','background',
-                  'GC_isop', 'GC_isop_kg', 'GC_background',
+                  'GC_E_isop', 'GC_E_isop_kg', 'GC_background',
                   'GC_slope']
     #if not ignorePP: keys_to_save.append("") save PP based new emissions also..
     for key in keys_to_save:

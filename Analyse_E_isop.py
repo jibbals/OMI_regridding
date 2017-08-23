@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import utilities.utilities as util
 import utilities.plotting as pp
 from utilities import GMAO
+from utilities import fio
 from classes.GC_class import GC_output # GC trac_avg class
 from classes.omhchorp import omhchorp # OMI product class
 
@@ -34,6 +35,43 @@ __VERBOSE__=True
 ###############
 ### Methods ###
 ###############
+
+def E_new_time_series(region=pp.__AUSREGION__):
+    '''
+        Plot the time series of E_new, eventually compare against MEGAN, etc..
+    '''
+
+    # Read data, attributes
+    #date=datetime(2005,1,1)
+    E,Ea=fio.read_E_new()
+    lats=E['lats']; lons=E['lons']
+    dates=E['dates']
+    dnums = matplotlib.dates.date2num(dates)
+    E_new=E['E_isop']
+    units=Ea['E_isop']['units']
+
+    # Subset to region
+    lati,loni=util.lat_lon_range(lats,lons,region)
+    E_new=E_new[:,lati,:]
+    E_new=E_new[:,:,loni]
+
+    # average down to time series
+    E_new=np.nanmean(E_new,axis=(1,2)) # mean over lat/lon
+
+    # Plot time series
+    print(dnums)
+    print(E_new)
+    plt.plot_date(dnums,E_new)
+    plt.title('E_new time series over %s'%str(region))
+    # set up better labels
+    plt.ylabel("E_isop [%s]"%units)
+    plt.gca().xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d %b %y'))
+
+
+    # save figure
+    pname='Figs/E_new_series.png'
+    plt.savefig(pname)
+    print("Saved %s"%pname)
 
 def map_E_gc(month, GC, clims=[1e11,5e12], region=pp.__AUSREGION__,
              cmapname='PuBuGn',linear=True, smoothed=False):
@@ -328,14 +366,17 @@ if __name__=='__main__':
     SEAus=[-41,138.75,-25,156.25]
     regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
 
-    for region in regions:
-        print("REGION = %s"%str(region))
-        for month in [datetime(2005,1,1), datetime(2005,2,1)]:
-            # Read month of data
-            GC=GC_output(date=month)
-            OMI=omhchorp(day0=month,dayn=util.last_day(month),ignorePP=True)
+    E_new_time_series(region=pp.__AUSREGION__)
 
-            # Run plots and print outputs
-            print_megan_comparison(month, GC=GC, OMI=OMI, region=region,)
-            All_maps(month=month, GC=GC, OMI=OMI, region=region)
+#    for region in regions:
+#        print("REGION = %s"%str(region))
+#
+#        for month in [datetime(2005,1,1), datetime(2005,2,1)]:
+#            # Read month of data
+#            GC=GC_output(date=month)
+#            OMI=omhchorp(day0=month,dayn=util.last_day(month),ignorePP=True)
+#
+#            # Run plots and print outputs
+#            print_megan_comparison(month, GC=GC, OMI=OMI, region=region,)
+#            All_maps(month=month, GC=GC, OMI=OMI, region=region)
 

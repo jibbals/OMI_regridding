@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -P m19
-#PBS -q express
+#PBS -q normal
 #PBS -N ReprocessOneDay
 #PBS -l walltime=02:00:00
 #PBS -l mem=20000MB
@@ -18,7 +18,7 @@
 # qsub -o log.qsub run.sh
 # --------------------------------
 if [ -z ${PBS_O_LOGNAME} ] || [ -z ${dstr} ]; then
-    echo "EG usage: qsub -v dstr="20050205" run_one_day.sh"
+    echo "EG usage: qsub -v dstr=\"20050205\" run/reprocess_oneday.sh"
     echo " To reprocess and get omhchorp_1 for 5/feb/2005"
     exit 0
 fi
@@ -27,7 +27,7 @@ fi
 python3 << END
 from datetime import datetime
 import reprocess
-date=datetime.strptime($1,"%Y%m%d")
+date=datetime.strptime(${dstr},"%Y%m%d")
 assert (date > datetime(2004,12,31)) and (date < datetime(2013,4,1))
 
 reprocess.create_omhchorp_1(date,verbose=True)

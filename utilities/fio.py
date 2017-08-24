@@ -531,9 +531,9 @@ def read_AMF_pp(date=datetime(2005,1,1),troprun=True):
     along with pixel index for adding data to the good pixel list
     '''
     import os.path
-    runstr=['ucxrunpathgoeshere','tropchem_geos5_2x25_47L'][troprun]
-    #path="/Data/GC_Output/tropchem_geos5_2x25_47L/pp_amf/amf_20050101.csv"
-    fname='Data/GC_Output/%s/pp_amf/amf_%s.csv'%(runstr,date.strftime('%Y%m%d'))
+    runstr=['ucxrunpathgoeshere','tropchem'][troprun]
+    dstr=date.strftime('%Y%m%d')
+    fname='Data/pp_amf/%s/amf_%s.csv'%(runstr,dstr)
     if not os.path.isfile(fname):
         return None,None
     inds=[]
@@ -543,7 +543,12 @@ def read_AMF_pp(date=datetime(2005,1,1),troprun=True):
             s=line.split(',')
             inds.append(int(s[1]))
             amfs.append(float(s[2]))
-    #print("mean AMF from %s = %f"%(fname,np.mean(amfs)))
+    amfs=np.array(amfs)
+    if __VERBOSE__:
+        print ("%d of the PP_AMFs are < 0 on %s"%(np.sum(amfs<0),dstr))
+        print("mean PP_AMF from %s = %f"%(fname,np.nanmean(amfs[amfs>0])))
+    amfs[amfs<0.0] = np.NaN # convert missing numbers to NaN
+    amfs = list(amfs)
     return inds, amfs
 
 def read_GC_output(date=datetime(2005,1,1), Isop=False,

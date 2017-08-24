@@ -27,7 +27,7 @@ fi
 python3 << END
 from datetime import datetime
 import reprocess
-date=datetime.strptime(${dstr},"%Y%m%d")
+date=datetime.strptime(str(${dstr}),"%Y%m%d")
 assert (date > datetime(2004,12,31)) and (date < datetime(2013,4,1))
 
 reprocess.create_omhchorp_1(date,verbose=True)

@@ -14,7 +14,7 @@
 # qsub -o log.qsub run.sh
 # --------------------------------
 if [ -z ${PBS_O_LOGNAME} ] || [ -z ${START} ]; then
-    echo "EG usage: qsub -v START=9 run_reprocess.sh"
+    echo "EG usage: qsub -v START=9 run/reprocess_8dayclump.sh"
     exit 0
 fi
 

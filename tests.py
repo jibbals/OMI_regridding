@@ -1,5 +1,6 @@
 '''
-File to test various parts of fio.py and reprocess.py
+    File to test various calculations
+    Tests for coding are moved to utilities/tests.py
 '''
 ## Modules
 import matplotlib

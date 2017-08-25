@@ -397,7 +397,8 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None, GC=None, OMI=None,
     ddir="Data/Isop/E_new"
     fname=ddir+"/emissions_%s-%s.h5"%(d0str,dnstr)
     if __VERBOSE__:
-        print("Calculating %s-%s estimated emissions over %s to file %s"%(d0str,dnstr,str(region),fname))
+        print("Calculating %s-%s estimated emissions over %s"%(d0str,dnstr,str(region)))
+        print("Saving to file %s"%(fname))
 
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)

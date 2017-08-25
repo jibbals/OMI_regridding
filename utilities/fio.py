@@ -120,20 +120,21 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
     '''
     print("saving "+outfilename)
     with h5py.File(outfilename,"w") as f:
+        if verbose:
+            print("Inside fio.save_to_hdf5()")
+            print(arraydict.keys())
+        
         # attribute creation
         # give the HDF5 root some more attributes
         f.attrs['Filename']        = outfilename.split('/')[-1]
         f.attrs['creator']          = 'fio.py, Jesse Greenslade'
         f.attrs['HDF5_Version']     = h5py.version.hdf5_version
         f.attrs['h5py_version']     = h5py.version.version
-        f.attrs['Fill Value']       = fillvalue
+        f.attrs['Fill_Value']       = fillvalue
         # optional extra file attributes from argument
         for key in fattrs.keys():
             f.attrs[key] = fattrs[key]
 
-        if verbose:
-            print("Inside fio.save_to_hdf5()")
-            print(arraydict.keys())
 
         for name in arraydict.keys():
             # create dataset, using arraydict values

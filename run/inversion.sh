@@ -32,7 +32,7 @@ d1s=d1.strftime('%Y%m%d')
 ndays=(d1-d0).days
 
 print("Beginning inversion (%d days) from %s to %s"%(ndays,d0s,d1s))
-store_emissions(day0=d0,dayn=d1)
+Inversion.store_emissions(day0=d0,dayn=d1)
 print("Finished inversion")
 
 END

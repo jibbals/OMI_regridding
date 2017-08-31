@@ -20,9 +20,9 @@ logs/*
 *.out
 
 # unignore some data files
-!Data/omhchorp/*2005010*.he5
-!Data/omhcho/OMI-Aura_L2-OMHCHO_2005m0101*.he5
-!Data/gchcho/*hcho*_200501*
+#!Data/omhchorp/*2005010*.he5
+#!Data/omhcho/OMI-Aura_L2-OMHCHO_2005m0101*.he5
+#!Data/gchcho/*hcho*_200501*
 
 # unignore scripts in the data directories
 !Data/**/*.py

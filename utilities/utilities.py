@@ -195,6 +195,16 @@ def list_days(day0,dayn=None,month=False):
     numdays = (dayn-day0).days + 1 # timedelta
     return [day0 + timedelta(days=x) for x in range(0, numdays)]
 
+def list_months(day0,dayn):
+    '''
+        Return list of months (day=1) included between day0 and dayN
+    '''
+    # first get list of days
+    days=list_days(day0,dayn)
+    # Just pull out entries with day==1
+    months=[d for d in days if d.day==1]
+    return months
+
 def ppbv_to_molecs_per_cm2(ppbv, pedges):
     '''
     Inputs:

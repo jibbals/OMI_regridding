@@ -384,22 +384,22 @@ def Emissions_series(day0=datetime(2005,1,1), dayn=datetime(2005,2,1), region=pp
     #return {'E_isop':E_new, 'lats':lats, 'lons':lons, 'background':BG,
     #        'GC_background':GC_BG, 'GC_slope':GC_slope}
 
-
-def store_emissions(day0=datetime(2005,1,1), dayn=None, GC=None, OMI=None,
-                    region=pp.__GLOBALREGION__, ignorePP=True):
+def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
+                          region=pp.__GLOBALREGION__, ignorePP=True):
     '''
         Store a month of new emissions estimates into an he5 file
     '''
+    day0=datetime(month.year,month.month,1)
 
-    # If just a day is input, then save a month
-    if dayn is None:
-        dayn=util.last_day(day0)
+    # Get last day in month:
+    dayn=util.last_day(day0)
     days=util.list_days(day0,dayn)
 
+    mstr=dayn.strftime('%Y%m')
     d0str=day0.strftime("%Y%m%d")
     dnstr=dayn.strftime("%Y%m%d")
-    ddir="Data/Isop/E_new"
-    fname=ddir+"/emissions_%s-%s.h5"%(d0str,dnstr)
+    ddir="Data/Isop/E_new/"
+    fname=ddir+"emissions_%s.h5"%(mstr)
     if __VERBOSE__:
         print("Calculating %s-%s estimated emissions over %s"%(d0str,dnstr,str(region)))
         print("will save to file %s"%(fname))
@@ -409,17 +409,11 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None, GC=None, OMI=None,
     if GC is None:
         GC=GC_output(date=day0)
 
-    Emiss=[]
     # Read each day then save the month
     #
-    priorday=days[0]
+    Emiss=[]
     for day in days:
-        # Read GC month if necessary:
-        if day.month != priorday.month:
-            GC=GC_output(date=day)
-        # Get a day of new emissions estimates
         Emiss.append(Emissions_1day(day=day, GC=GC, OMI=OMI, region=region))
-        priorday=day
 
     outattrs=Emiss[0]['attributes'] # get one copy of attributes is required
 
@@ -451,9 +445,40 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None, GC=None, OMI=None,
     fio.save_to_hdf5(fname,outdata,attrdicts=outattrs,fattrs=fattrs)
     if __VERBOSE__:
         print("%s should now be saved"%fname)
-        print("store_emissions() now finished")
+
+def store_emissions(day0=datetime(2005,1,1), dayn=None,
+                    region=pp.__GLOBALREGION__, ignorePP=True):
+    '''
+        Store many months of new emissions estimates into he5 files
+    '''
+
+    # If just a day is input, then save a month
+    if dayn is None:
+        dayn=util.last_day(day0)
+    if __VERBOSE__:
+        print("Running Inversion.store_emissions()")
+
+    # Grab all reprocessed data:
+    OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
+
+    months=util.list_months(day0,dayn)
+    # save each month seperately
+    #
+    for month in months:
+        # Read GC month:
+        GC=GC_output(date=month)
+
+        # save the month of emissions
+        store_emissions_month(month=month, GC=GC, OMI=OMI,
+                              region=region, ignorePP=ignorePP)
+
+    if __VERBOSE__:
+        print("Inversion.store_emissions() now finished")
+
 if __name__=='__main__':
     print('Inversion has been run')
 
-    store_emissions()
-    
+    day0=datetime(2005,1,1)
+    dayn=datetime(2005,5,1)
+    store_emissions(day0=day0,dayn=dayn)
+

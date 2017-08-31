@@ -17,7 +17,7 @@ do
     if [ $jj -lt $1 ]; then
         continue
     fi
-    echo "running qsub -v START=$jj run/reprocess_8dayclump.sh"
+    echo "running qsub -v START=$jj -o logs/log.qsubreprocess$jj run/reprocess_8dayclump.sh"
     qsub -v START=$jj -o logs/log.qsubreprocess$jj run/reprocess_8dayclump.sh 
 done
 

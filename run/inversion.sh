@@ -1,10 +1,10 @@
 #!/bin/bash
 #PBS -P m19
-#PBS -q normal
+#PBS -q express
 #PBS -N Inversion
-#PBS -l walltime=03:00:00
+#PBS -l walltime=01:00:00
 #PBS -l mem=10000MB
-#PBS -l cput=05:00:00
+#PBS -l cput=02:00:00
 #PBS -l wd
 #PBS -l ncpus=2
 #PBS -j oe

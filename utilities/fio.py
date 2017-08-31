@@ -39,6 +39,7 @@ __VERBOSE__=False
 __OMHCHORP_KEYS__ = [
     'latitude','longitude',
     'gridentries',   # how many satellite pixels make up the pixel
+    'ppentries',     # how many pixels we got the PP_AMF for
     'RSC',           # The reference sector correction [rsc_lats, 60]
     'RSC_latitude',  # latitudes of RSC
     'RSC_region',    # RSC region [S,W,N,E]
@@ -60,6 +61,8 @@ __OMHCHORP_KEYS__ = [
 
 # attributes for omhchorp
 __OMHCHORP_ATTRS__ = {
+    'gridentries':          {'desc':'satellite pixels averaged per gridbox'},
+    'ppentries':            {'desc':'PP_AMF values averaged per gridbox'},
     'VC_OMI':               {'units':'molec/cm2',
                              'desc':'regridded OMI swathe VC'},
     'VC_GC':                {'units':'molec/cm2',

@@ -328,7 +328,8 @@ class omhchorp:
             flat[key]=np.nanmean(data, axis=0)
             ret[key]=[flat[key],actual[key]][weighted]
             #TODO: remove once checked
-            print("time_average... Flat:%.2e  VS  actual: %.2e"%(np.nanmean(flat[key]),np.nanmean(actual[key])))
+            if __VERBOSE__:
+                print("time_average... Flat:%.2e  VS  actual: %.2e"%(np.nanmean(flat[key]),np.nanmean(actual[key])))
 
         return ret
 

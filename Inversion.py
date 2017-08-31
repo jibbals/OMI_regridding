@@ -33,6 +33,7 @@ import utilities.utilities as util
 ### GLOBALS ###
 ###############
 __VERBOSE__=True
+__DEBUG__=False
 
 ###############
 ### METHODS ###
@@ -79,9 +80,10 @@ def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
     attrs={} # attributes dict for meta data
     if __VERBOSE__:
         # Check the dims of our stuff
+        print()
+        print("Calculating emissions for %s"%dstr)
         print("GC data %s"%str(GC.hcho.shape))
         print("OMI data %s"%str(OMI.VCC.shape))
-        print("Calculating emissions for %s"%dstr)
 
     omilats0, omilons0=OMI.lats,OMI.lons
     omi_lats, omi_lons= omilats0.copy(), omilons0.copy()
@@ -89,10 +91,12 @@ def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
 
     # Get GC_isoprene for this day also
     GC_E_isop=GC.get_field(keys=['E_isop_bio',],region=region)['E_isop_bio']
-    print("GC_E_isop.shape before and after dateindex")
-    print(GC_E_isop.shape)
+    if __DEBUG__:
+        print("GC_E_isop.shape before and after dateindex")
+        print(GC_E_isop.shape)
     GC_E_isop=GC_E_isop[GC.date_index(day)] # only want one day of E_isop_GC
-    print(GC_E_isop.shape)
+    if __DEBUG__:
+        print(GC_E_isop.shape)
     attrs['GC_E_isop']={'units':'atom C/cm2/s',
                       'desc' :'biogenic isoprene emissions from MEGAN/GEOS-Chem'}
 
@@ -125,7 +129,7 @@ def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
     omi_SA=omi_SA[:,omi_loni]
     omi_hcho=omi_hcho[omi_lati,:]
     omi_hcho=omi_hcho[:,omi_loni]
-    if __VERBOSE__:
+    if __DEBUG__:
         print('%d lats, %d lons in region'%(len(omi_lats),len(omi_lons)))
         print('HCHO shape: %s'%str(omi_hcho.shape))
 
@@ -156,8 +160,8 @@ def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
         #assert False, "Slope change too high"
 
     if __VERBOSE__:
-        print()
-        print("Mean slope = %1.3e"%np.nanmean(GC_slope))
+        minmeanmax=(np.nanmin(GC_slope),np.nanmean(GC_slope),np.nanmax(GC_slope))
+        print("min/mean/max GC_slope: %1.1e/%1.1e/%1.1e"%minmeanmax)
 
     # Determine background using region latitude bounds
     omi_background = OMI.get_background_array(lats=omi_lats,lons=omi_lons)
@@ -398,7 +402,7 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None, GC=None, OMI=None,
     fname=ddir+"/emissions_%s-%s.h5"%(d0str,dnstr)
     if __VERBOSE__:
         print("Calculating %s-%s estimated emissions over %s"%(d0str,dnstr,str(region)))
-        print("Saving to file %s"%(fname))
+        print("will save to file %s"%(fname))
 
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
@@ -445,8 +449,11 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None, GC=None, OMI=None,
 
     # Save file, with attributes
     fio.save_to_hdf5(fname,outdata,attrdicts=outattrs,fattrs=fattrs)
-
+    if __VERBOSE__:
+        print("%s should now be saved"%fname)
+        print("store_emissions() now finished")
 if __name__=='__main__':
     print('Inversion has been run')
 
     store_emissions()
+    

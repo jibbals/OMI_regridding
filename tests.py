@@ -7,12 +7,12 @@ import matplotlib
 matplotlib.use('Agg') # don't actually display any plots, just create them
 
 # my file reading and writing module
-import fio
+from utilities import fio
 import reprocess
-import plotting as pp
-from JesseRegression import RMA
-from omhchorp import omhchorp as omrp
-from gchcho import match_bottom_levels
+from utilities import plotting as pp
+from utilities.JesseRegression import RMA
+from classes.omhchorp import omhchorp as omrp
+from classes.gchcho import match_bottom_levels
 
 
 import numpy as np
@@ -62,6 +62,27 @@ def check_array(array, nonzero=False):
 #############################################################################
 ######################       TESTS                  #########################
 #############################################################################
+
+def check_HEMCO_restarts():
+    '''
+        Check how different the hemco restarts are between UCX and tropchem
+    '''
+    fpat='Data/GC_Output/%s/restarts/HEMCO_restart.200501010000.nc'
+    fucx=fpat%'UCX_geos5_2x25'
+    ftrp=fpat%'geos5_2x25_tropchem'
+    ucx=fio.read_netcdf(fucx)
+    trp=fio.read_netcdf(ftrp)
+    print("Name, run, shape, mean")
+    for name in ucx.keys():#['PARDF_DAVG','PARDR_DAVG']:
+        ucx_mean=np.nanmean(ucx[name])
+        print (name, "ucx", ucx[name].shape, ucx_mean)
+        if name in trp.keys():
+            trp_mean=np.nanmean(trp[name])
+            print(name, 'trop', trp[name].shape ,trp_mean)
+            print(['NOT EQUAL','EQUAL'][np.isclose(trp_mean,ucx_mean)])
+        #createmap(ucx[
+    return None
+    
 
 def compare_GC_OMI_new(date=datetime(2005,1,1),aus=True):
     '''
@@ -1616,6 +1637,9 @@ if __name__ == '__main__':
     print("Running tests.py")
     pp.InitMatplotlib()
     #Summary_Single_Profile()
+    
+    # GEOS Chem trop vs ucx restarts
+    check_HEMCO_restarts()
 
     # AMF tests and correlations
     #Check_OMI_AMF()
@@ -1626,7 +1650,7 @@ if __name__ == '__main__':
     #    test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=aus_only)
     #Test_Uncertainty()
     
-    compare_GC_OMI_new()
+    #compare_GC_OMI_new()
     
     # fires things
     #test_fires_fio()
@@ -1636,9 +1660,9 @@ if __name__ == '__main__':
     # check some days (or one or no days)
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
-    dates=[ datetime(2005,1,1) ]
+    #dates=[ datetime(2005,1,1) ]
     #check_products(date=dates[0],oneday=False)
-    Summary_RSC(date=dates[0], oneday=False)
+    #Summary_RSC(date=dates[0], oneday=False)
     #dates=[ ]
     #test_pp_against_mine(day=dates[0],oneday=False, ausonly=False)
     #CompareMaps(day=dates[0],oneday=False,ausonly=False)

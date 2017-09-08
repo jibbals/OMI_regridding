@@ -159,6 +159,23 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
         f.flush()
     print("Saved "+outfilename)
 
+def read_netcdf(filename):
+    '''
+        read all of some netcdf file...
+    '''
+    print("Trying to read netcdf file: %s"%filename)
+    from netCDF4 import Dataset
+    
+    out={}
+    with Dataset(filename,'r') as nc_f: # read netcdf datafile
+        nc_attrs=nc_f.ncattrs()
+        nc_dims= [dim for dim in nc_f.dimensions]
+        nc_vars= [var for var in nc_f.variables]
+        for var in nc_vars:
+            #print( var, nc_fid.variables[var].size )
+            out[var]=nc_f.variables[var][:]
+    return out
+
 def read_hdf5(filename):
     '''
         Should be able to read hdf5 files created by my method above...

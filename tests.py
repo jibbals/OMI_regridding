@@ -72,14 +72,16 @@ def check_HEMCO_restarts():
     ftrp=fpat%'geos5_2x25_tropchem'
     ucx=fio.read_netcdf(fucx)
     trp=fio.read_netcdf(ftrp)
-    
-    for name in ['PARDF_DAVG','PARDR_DAVG']:
-        print(ucx[name].shape)
-        print(np.nanmean(ucx[name]))
-        print(trp[name].shape)
-        print(np.nanmean(trp[name]))
+    print("Name, run, shape, mean")
+    for name in ucx.keys():#['PARDF_DAVG','PARDR_DAVG']:
+        ucx_mean=np.nanmean(ucx[name])
+        print (name, "ucx", ucx[name].shape, ucx_mean)
+        if name in trp.keys():
+            trp_mean=np.nanmean(trp[name])
+            print(name, 'trop', trp[name].shape ,trp_mean)
+            print(['NOT EQUAL','EQUAL'][np.isclose(trp_mean,ucx_mean)])
         #createmap(ucx[
-    return
+    return None
     
 
 def compare_GC_OMI_new(date=datetime(2005,1,1),aus=True):

@@ -173,7 +173,7 @@ def read_netcdf(filename):
         nc_vars= [var for var in nc_f.variables]
         for var in nc_vars:
             #print( var, nc_fid.variables[var].size )
-            out[var]=nc_fid.variables[var][:]
+            out[var]=nc_f.variables[var][:]
     return out
 
 def read_hdf5(filename):

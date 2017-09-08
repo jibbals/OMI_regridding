@@ -36,17 +36,18 @@ __VERBOSE__=True
 ### Methods ###
 ###############
 
-def E_new_time_series(region=pp.__AUSREGION__):
+def E_new_time_series(date=datetime(2005,2,1), region=pp.__AUSREGION__):
     '''
         Plot the time series of E_new, eventually compare against MEGAN, etc..
     '''
 
     # Read data, attributes
-    #date=datetime(2005,1,1)
-    E,Ea=fio.read_E_new()
+
+    dstr=date.strftime("%Y%m")
+    E,Ea=fio.read_E_new(month=date)
     lats=E['lats']; lons=E['lons']
     dates=E['dates']
-    dnums = matplotlib.dates.date2num(dates)
+    #dnums = matplotlib.dates.date2num(dates)
     E_new=E['E_isop']
     units=Ea['E_isop']['units']
 
@@ -59,17 +60,18 @@ def E_new_time_series(region=pp.__AUSREGION__):
     E_new=np.nanmean(E_new,axis=(1,2)) # mean over lat/lon
 
     # Plot time series
-    print(dnums)
-    print(E_new)
-    plt.plot_date(dnums,E_new)
+    #print(dnums)
+    #print(E_new)
+    #plt.plot_date(dnums,E_new)
+    plt.plot(E_new)
     plt.title('E_new time series over %s'%str(region))
     # set up better labels
     plt.ylabel("E_isop [%s]"%units)
-    plt.gca().xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d %b %y'))
+    #plt.gca().xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d %b %y'))
 
 
     # save figure
-    pname='Figs/E_new_series.png'
+    pname='Figs/E_new_series_%s.png'%dstr
     plt.savefig(pname)
     print("Saved %s"%pname)
 
@@ -366,7 +368,7 @@ if __name__=='__main__':
     SEAus=[-41,138.75,-25,156.25]
     regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
 
-    E_new_time_series(region=pp.__AUSREGION__)
+    E_new_time_series(date=datetime(2005,3,1),region=pp.__AUSREGION__)
 
 #    for region in regions:
 #        print("REGION = %s"%str(region))

@@ -126,7 +126,7 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
         if verbose:
             print("Inside fio.save_to_hdf5()")
             print(arraydict.keys())
-        
+
         # attribute creation
         # give the HDF5 root some more attributes
         f.attrs['Filename']        = outfilename.split('/')[-1]
@@ -271,7 +271,7 @@ def read_8dayfire_interpolated(date,latres,lonres):
     interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons), method='nearest')
     return interp, newlats, newlons
 
-def read_E_new(oneday=None, filename=None):
+def read_E_new(month=datetime(2005,1,1), oneday=None, filename=None):
     '''
     Function to read the recalculated Emissions output
     Inputs:
@@ -282,8 +282,8 @@ def read_E_new(oneday=None, filename=None):
     '''
 
     # First get filename:
-    ddir='Data/Isop/E_new/'
-    fpath=glob(ddir+'emissions_20050101-*.h5')[-1]
+    dstr=month.strftime(format='%Y%m')
+    fpath='Data/Isop/E_new/emissions_%s.h5'%dstr
 
     if filename is not None:
         fpath=filename

@@ -24,6 +24,16 @@ from glob import glob
 # todo: remove once this is ported to reprocess.py
 from scipy.interpolate import griddata
 
+# Add parent folder to path
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.insert(0,os.path.dirname(currentdir))
+
+# import utilities module
+import utilities.utilities as util
+# Remove parent folder from path
+sys.path.pop(0)
+
 ###############
 ### GLOBALS ###
 ###############
@@ -165,7 +175,7 @@ def read_netcdf(filename):
     '''
     print("Trying to read netcdf file: %s"%filename)
     from netCDF4 import Dataset
-    
+
     out={}
     with Dataset(filename,'r') as nc_f: # read netcdf datafile
         nc_attrs=nc_f.ncattrs()
@@ -288,7 +298,7 @@ def read_8dayfire_interpolated(date,latres,lonres):
     interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons), method='nearest')
     return interp, newlats, newlons
 
-def read_E_new(month=datetime(2005,1,1), oneday=None, filename=None):
+def read_E_new_month(month=datetime(2005,1,1), oneday=None, filename=None):
     '''
     Function to read the recalculated Emissions output
     Inputs:
@@ -321,11 +331,8 @@ def read_E_new(month=datetime(2005,1,1), oneday=None, filename=None):
 
     return datastruct, attributes
 
-def read_E_new_range(day0, dayN):
-    '''
-        Read E_new from day0 to dayN
-    '''
-    print("TODO: To be implemented")
+
+
 
 def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=False):
     '''

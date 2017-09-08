@@ -24,6 +24,7 @@ from utilities import GMAO
 from utilities import fio
 from classes.GC_class import GC_output # GC trac_avg class
 from classes.omhchorp import omhchorp # OMI product class
+from classes.E_new import E_new # E_new class
 
 import Inversion
 
@@ -36,34 +37,25 @@ __VERBOSE__=True
 ### Methods ###
 ###############
 
-def E_new_time_series(date=datetime(2005,2,1), region=pp.__AUSREGION__):
+def E_new_time_series(region=pp.__AUSREGION__):
     '''
         Plot the time series of E_new, eventually compare against MEGAN, etc..
     '''
 
     # Read data, attributes
-
-    dstr=date.strftime("%Y%m")
-    E,Ea=fio.read_E_new(month=date)
-    lats=E['lats']; lons=E['lons']
-    dates=E['dates']
+    d0=datetime(2005,1,1); dn=datetime(2005,4,1)
+    #dstr=date.strftime("%Y%m")
+    Enew=E_new(d0,dn)
     #dnums = matplotlib.dates.date2num(dates)
-    E_new=E['E_isop']
-    units=Ea['E_isop']['units']
 
-    # Subset to region
-    lati,loni=util.lat_lon_range(lats,lons,region)
-    E_new=E_new[:,lati,:]
-    E_new=E_new[:,:,loni]
-
-    # average down to time series
-    E_new=np.nanmean(E_new,axis=(1,2)) # mean over lat/lon
+    dates, E_isop=Enew.get_series('E_isop',region=region)
+    units=Enew.attributes['E_isop']['units']
 
     # Plot time series
     #print(dnums)
     #print(E_new)
     #plt.plot_date(dnums,E_new)
-    plt.plot(E_new)
+    plt.plot(E_isop)
     plt.title('E_new time series over %s'%str(region))
     # set up better labels
     plt.ylabel("E_isop [%s]"%units)
@@ -71,7 +63,7 @@ def E_new_time_series(date=datetime(2005,2,1), region=pp.__AUSREGION__):
 
 
     # save figure
-    pname='Figs/E_new_series_%s.png'%dstr
+    pname='Figs/E_new_series.png'#%dstr
     plt.savefig(pname)
     print("Saved %s"%pname)
 
@@ -368,7 +360,7 @@ if __name__=='__main__':
     SEAus=[-41,138.75,-25,156.25]
     regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
 
-    E_new_time_series(date=datetime(2005,3,1),region=pp.__AUSREGION__)
+    E_new_time_series(region=pp.__AUSREGION__)
 
 #    for region in regions:
 #        print("REGION = %s"%str(region))

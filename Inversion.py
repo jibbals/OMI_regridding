@@ -362,28 +362,6 @@ def Emissions(day0, dayn, GC = None, OMI = None,
             'lati':latiomi,'loni':loniomi,
             'attributes':attrs}
 
-def Emissions_series(day0=datetime(2005,1,1), dayn=datetime(2005,2,1), region=pp.__AUSREGION__):
-    '''
-        Emissions over time
-    '''
-    if __VERBOSE__: print("Running Inversion.Emissions_series()")
-    ## Read data for these dates
-    ##
-    # TODO: update to use read_E_new_range()
-    E_new=fio.read_E_new()
-
-
-
-    days=util.list_days(day0,dayn)
-    Eomi=[]
-    Egc=[]
-    for day in days:
-        E=Emissions(day0=day, dayn=None, GC=GC, OMI=OMI)
-
-
-    #return {'E_isop':E_new, 'lats':lats, 'lons':lons, 'background':BG,
-    #        'GC_background':GC_BG, 'GC_slope':GC_slope}
-
 def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
                           region=pp.__GLOBALREGION__, ignorePP=True):
     '''

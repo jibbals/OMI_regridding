@@ -2,9 +2,9 @@
 #PBS -P m19
 #PBS -q express
 #PBS -N Inversion
-#PBS -l walltime=00:45:00
+#PBS -l walltime=00:15:00
 #PBS -l mem=10000MB
-#PBS -l cput=01:30:00
+#PBS -l cput=00:30:00
 #PBS -l wd
 #PBS -l ncpus=2
 #PBS -j oe

@@ -49,18 +49,22 @@ paths = datapaths()
 ###FUNCTIONS####
 ################
 
-def read_trac_avg(date=datetime(2005,1,1), runtype='tropchem', test=False):
-    ''' Read the UCX netcdf file: '''
+def read_trac_avg(date=datetime(2005,1,1), runtype='tropchem', fname=None):
+    '''
+        Read the UCX netcdf file: 
+        if fname is set read that from datadir
+    
+    '''
     # Using runtype and test flag, determine where trac avg file is
     fi=run_number[runtype]
+    dstr=date.strftime('%Y%m')
     filename='trac_avg_%s.nc'%dstr
     if runtype=='UCX': 
         filename='trac_avg_UCX.nc'
-    if test:
-        if runtype=='tropchem':
-            filename='trac_avg_200501_test.nc'
-        if runtype=='UCX':
-            filename='UCX_trac_avg_20050101.nc'
+    
+    # Can use non default filename:
+    if fname is not None:
+        filename=fname
     
     fullpath="%s/%s"%(paths[fi], filename)
     
@@ -69,9 +73,9 @@ def read_trac_avg(date=datetime(2005,1,1), runtype='tropchem', test=False):
     ncfile=nc.Dataset(fullpath,'r')
     return(ncfile)
 
-def get_tropchem_data(date=datetime(2005,1,1),runtype='tropchem', monthavg=False, surface=False, test=False):
+def get_tropchem_data(date=datetime(2005,1,1),runtype='tropchem', monthavg=False, surface=False, fname=None):
     ''' return a subset of the tropchem data '''
-    tf=read_trac_avg(date, runtype=runtype, test=test)
+    tf=read_trac_avg(date, runtype=runtype, fname=fname)
     Tau=tf.variables['time'][:] # tau dimension
 
     # get the subset of data: (most are [time, [lev, ]lat,lon])
@@ -119,10 +123,10 @@ def get_tropchem_data(date=datetime(2005,1,1),runtype='tropchem', monthavg=False
     return(data)
 
 
-def get_UCX_data(date=datetime(2005,1,1), surface=False, test=False):
+def get_UCX_data(date=datetime(2005,1,1), surface=False, fname=None):
     ''' get a month of UCX output '''
     dstr=date.strftime("%Y%m%d")
-    uf=read_trac_avg(runtype='UCX',test=test)
+    uf=read_trac_avg(runtype='UCX', fname=fname)
     Tau     = uf.variables['time'][:] # Tau(time): hours since 19850101:0000
     Press   = uf.variables['lev'][:] # Pressure(altitude): hPa, midpoints
 

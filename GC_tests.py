@@ -33,6 +33,36 @@ from classes.GC_class import GC_output
 ###FUNCTIONS####
 ################
 
+def check_smearing():
+    '''
+        Calculate smearing using halfisoprene and tropchem trac_avg files..
+    '''
+    print("TODO")
+
+def check_tropchem_monthly():
+    '''
+        see if monthly averaged output matches month of averaged daily averages
+    '''
+    # Read month of daily averages
+    trop_mavg_fromdays=get_tropchem_data(date=datetime(2005,1,1),runtype='tropchem',monthavg=True)
+    
+    # read monthly average:
+    trop_mavg=get_tropchem_data(date=datetime(2005,1,1),runtype='tropchem', fname='trac_avg_200501_month.nc')
+    
+    print("Keys in daily output")
+    print(trop_mavg_fromdays.keys())
+    print("Keys in monthly output")
+    print(trop_mavg.keys())
+    
+    for key in ['E_isop_bio','hcho','isop','N_air']:
+        print(key)
+        print('from days, from monthly')
+        mavg=trop_mavg[key] ;davg=trop_mavg_fromdays[key]
+        print(davg.shape,mavg.shape)
+        print(np.nanmean(davg),np.nanmean(mavg))
+    
+    # Also compare against UCX month average?
+
 def compare_tc_ucx():
     '''
         Check UCX vs Tropchem from special 200501 runs
@@ -42,9 +72,10 @@ def compare_tc_ucx():
     # read two files directly
     #ucx=get_UCX_data(test=True)
     #trp=get_tropchem_data(monthavg=True, test=True)
-
-    ucx=GC_output(date,UCX=True, test=True)
-    trp=GC_output(date,UCX=False, monthavg=True, test=True)
+    
+    # Read the netcdf files (output specified for this test)
+    ucx=GC_output(date,UCX=True, fname='UCX_trac_avg_20050101.nc')
+    trp=GC_output(date,UCX=False, monthavg=True, fname='trac_avg_200501_test.nc')
     lats_all=ucx.lats
     lons_all=ucx.lons
 
@@ -310,7 +341,9 @@ def E_isop_map(gc, aus=False, region=None):
 # If this script is run directly:
 if __name__=='__main__':
     pp.InitMatplotlib()
-    compare_tc_ucx()
+    check_tropchem_monthly()
+    #compare_tc_ucx()
+    
     #compare_surface_tc_ucx()
     #compare_tc_ucx()
 

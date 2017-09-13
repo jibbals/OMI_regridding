@@ -63,14 +63,14 @@ class GC_output:
         self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
-    def __init__(self, date, UCX=False,monthavg=False,test=False):
+    def __init__(self, date, UCX=False,monthavg=False,fname=None):
         ''' Read data for ONE MONTH into self '''
         self.dstr=date.strftime("%Y%m")
 
         # READ DATA, Tropchem or UCX file
         self.UCX=UCX
         read_file_func   = gcfio.get_tropchem_data
-        read_file_params = {'date':date,'test':test}
+        read_file_params = {'date':date,'fname':fname}
         if UCX:
             read_file_func = gcfio.get_UCX_data
         else: # if it's tropchem we may want the month averaged:

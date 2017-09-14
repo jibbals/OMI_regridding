@@ -43,7 +43,7 @@ geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
-__VERBOSE__=False
+__VERBOSE__=True
 
 # Keys for omhchorp:
 __OMHCHORP_KEYS__ = [
@@ -229,7 +229,7 @@ def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded
     if metaData:
         return ('Data/omhchorp/metadata/metadata_%s.he5'%(date.strftime('%Y%m%d')))
     if not (regridded or reprocessed):
-        return glob('Data/omhcho/OMI-Aura*%4dm%02d%02d*'%(date.year, date.month, date.day))
+        return glob('Data/omhcho/%4d%02d/OMI-Aura*%4dm%02d%02d*'%(date.year,date.month,date.year, date.month, date.day))
 
     # geos chem output created via idl scripts match the following
     if geoschem:

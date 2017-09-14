@@ -18,8 +18,9 @@
 # qsub -o log.qsub run.sh
 # --------------------------------
 if [ -z ${PBS_O_LOGNAME} ] || [ -z ${dstr} ]; then
-    echo "EG usage: qsub -v dstr=\"20050205\" run/reprocess_oneday.sh"
-    echo " To reprocess and get omhchorp_1 for 5/feb/2005"
+    dstr="20050203"
+    echo "EG usage: qsub -v dstr=$dstr -o logs/log.reprocess_oneday$dstr  run/reprocess_oneday.sh"
+    echo " To reprocess and get omhchorp_1 for 3/feb/2005"
     exit 0
 fi
 

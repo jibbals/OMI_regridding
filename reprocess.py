@@ -105,8 +105,10 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True, verbos
 
     # loop through swaths
     files = fio.determine_filepath(date)
+    if verbose:
+        print("%d omhcho files for %s"%(len(files),str(date)))
     for ff in files:
-        if __DEBUG__: print("trying to read %s"%ff)
+        if verbose: print("trying to read %s"%ff)
         omiswath = fio.read_omhcho(ff, maxlat=maxlat, verbose=verbose)
         flat,flon = omiswath['lats'], omiswath['lons']
 

@@ -530,7 +530,9 @@ def read_gchcho(date):
     '''
     Read the geos chem hcho column data into a dictionary
     '''
-    fpath=glob('Data/gchcho/hcho_%4d%02d.he5' % ( date.year, date.month ) )[0]
+    #This one is the old files
+    #fpath=glob('Data/gchcho/hcho_%4d%02d.he5' % ( date.year, date.month ) )[0]
+    fpath=glob('Data/gchcho/ucx_shapefactor_%4d%02d.he5'%(date.year,date.month) )[0]
     ret_data={}
     with h5py.File(fpath, 'r') as in_f:
         dsetname='GC_UCX_HCHOColumns'

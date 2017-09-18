@@ -21,14 +21,14 @@ fi
 function checkfile {
     # Check argument file exists ($1 is argument to this function)
     if [ ! -f $1 ]; then
-        echo "No file!   |  $1"
+        echo "No file!   |  $1" | tee -a $torun
         flag=1 # global flag that file is missing
     else
         # Print out date of last modification and filename
         local mod_date=$(stat -c %y "$1" | cut -d' ' -f1)
         local fname=$(basename $1)
         #echo "$mod_date |  $1"
-        echo "$mod_date |  $fname"
+        echo "$mod_date |  $fname" | tee -a $torun
     fi
 }  
 
@@ -43,9 +43,9 @@ ymd=${yy}${mm}${dd}
 torun=torun_${ymd}.txt
 
 # Table of files for stdout
-echo "Examining data for $ymd"
-echo "Modified   |  Filename"
-echo "------------------- (AMF Reprocessing)"
+echo "Examining data for $ymd" > $torun
+echo "Modified   |  Filename" | tee -a $torun
+echo "------------------- (AMF Reprocessing)" | tee -a $torun
 
 flag=0
 # locations of ucx, tropchem data:
@@ -68,7 +68,7 @@ satfile_nc=${datadir}/gchcho/ucx_shapefactor_${yy}${mm}.he5
 checkfile $satfile_nc
 
 
-echo "------------------- (Emissions)"
+echo "------------------- (Emissions)" | tee -a $torun
 
 # file reprocessed using the above 
 newswathfile=${datadir}/omhchorp/omhcho_1p*${ymd}.he5
@@ -88,10 +88,10 @@ checkfile $emissionfile
 
 # TODO: Full list of scripts to run to get emissions on whatever date
 # 
-echo '------------------'
+echo '------------------' | tee -a $torun
 
 # Send code needed for full creation to here..
-echo "Scripts to run for $ymd emissions file creation:" > $torun
+echo "Scripts to run for $ymd emissions file creation:" >> $torun
 echo "1) make sure satellite swath files to NCI" >> $torun
 echo "2) GEOS-Chem satellite output for UCX is needed for shapefactor creation" >> $torun
 echo "3) run/make_shapefactors.sh $yy $2" >> $torun
@@ -102,7 +102,7 @@ echo "5) Check there are tracer average files from tropchem output (used for yie
 echo "      $tavgfile" >> $torun
 echo "6) run/trac_avg_to_nc_tropchem.sh ${yy}${mm}" >> $torun
 echo "       runs bpch2coards on the geoschem trac_avg output" >> $torun
-echo "7) qsub -v MONTH=${yy}${mm} run/inversion_month.sh" >> $torun
+echo "7) qsub -o logs/log.inversion${yy}${mm} -v MONTH=${yy}${mm} run/inversion_month.sh" >> $torun
 echo "       runs Inversion.store_emissions() on that month of data" >> $torun
 
 echo "Code to run for this date sent to $torun"

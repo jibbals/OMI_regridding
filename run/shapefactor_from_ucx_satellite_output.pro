@@ -1,8 +1,7 @@
-;   Procedure name: CREATE_MONTHLY_SHAPEFACTOR
+;   Procedure name: SHAPEFACTOR_FROM_UCX_SATELLITE_OUTPUT
 ;
 ;   Porpoise:
-;       Reform 47 level HCHO column from daily bitpunch output
-;       averaged at local time 1300-1400.
+;       Get shapefactor from satellite_output averaged at local time 1300-1400.
 ;       Save as .hdf5
 ;       Keep the sigma dimensions and create the shape factors used
 ;       in reformulating the AMF in OMHCHO data files.
@@ -13,6 +12,10 @@
 ;       Created by Jesse Greenslade some time ago
 ;       Updated Fri-Oct 28: comments added and header (this bit)
 ;       Updated Thu-Dec 15: Altered for tropchem 47L
+;       Updated Thu- 14/09/17: Returned to original format to calculate shape factors from UCX satellite output.
+;           Renamed to shapefactor_from_ucx_satellite_output.pro
+;           back to 72 levels
+;           All lats/lons are again included
 ;
 
 ; Function to return linear or geometric midpoints from an array of pedges(or whatever)
@@ -27,7 +30,7 @@ function midpoints, pedges, geometric=geometric
     return, mids
 end
 
-pro create_monthly_shapefactor, year, month
+pro shapefactor_from_ucx_satellite_output, year, month
 
     ; first read all the files in the desired month
     yyyymm= string(year,format='(I4)') + string(month,format='(I02)')
@@ -37,15 +40,15 @@ pro create_monthly_shapefactor, year, month
     ; use gamap2 function to grab grid
     ; subset determined from input.geos
     g5      = ctm_grid(ctm_type('GEOS5',res=2))
-    lons    =g5.xmid[117:137]
-    lats    =g5.ymid[21:41]
-    nlons=21
-    nlats=21
-    ;nlons   =g5.imx
-    ;nlats   =g5.jmx
+    lons    =g5.xmid;[117:137] ; not included in tropchem version..
+    lats    =g5.ymid;[21:41]
+    ;nlons=21
+    ;nlats=21
+    nlons   =g5.imx
+    nlats   =g5.jmx
     
     ; arrays to hold monthly averages
-    nlvls=47
+    nlvls=72 ;47
     ppbv = dblarr(nlons,nlats, nlvls) ; molecules/1e9 molecules air
     psurf= dblarr(nlons,nlats, nlvls) ; hPa
     Nair = dblarr(nlons,nlats, nlvls) ; molecules air / cm3
@@ -56,7 +59,7 @@ pro create_monthly_shapefactor, year, month
         print, 'reading ', file, '...'
         ; GC OUTPUT DIMENSIONS: 144, 91, nlvls)
         ; Read hcho ( molec/molec ) (ppbv in bitpunch notes)
-        flag= CTM_GET_DATABLOCK( ppbvtmp, 'IJ-AVG-$', Tracer=20, File=file )
+        flag= CTM_GET_DATABLOCK( ppbvtmp, 'IJ-AVG-$', Tracer=20, File=file ) 
         ; Read psurf ( hPa )
         flag= CTM_GET_DATABLOCK( psurftmp, 'PEDGE-$', Tracer=1,  File=file )
         ; Read OH(loss?) ( molec/cm3 )
@@ -138,12 +141,13 @@ pro create_monthly_shapefactor, year, month
                 Sigma:Sigma, boxheights:boxH}
 
     ; write a structure to hdf5 as a compound datatype
-    fout = './gchcho_AUS_13001400_'+yyyymm+'.he5'
+    fout = './ucx_shapefactor_'+yyyymm+'.he5'
     fid = H5F_CREATE(fout)
     
     datatype_id = H5T_IDL_CREATE(structdata)
     dataspace_id = H5S_CREATE_SIMPLE(1) ; not so simple..
     
+    ; name of compound datatype
     dataset_id = H5D_CREATE(fid,'GC_UCX_HCHOColumns',datatype_id,dataspace_id)
     H5D_WRITE, dataset_id, structdata
     

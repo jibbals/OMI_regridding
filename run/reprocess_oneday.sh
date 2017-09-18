@@ -3,8 +3,8 @@
 #PBS -q normal
 #PBS -N ReprocessOneDay
 #PBS -l walltime=02:00:00
-#PBS -l mem=20000MB
-#PBS -l cput=16:00:00
+#PBS -l mem=10000MB
+#PBS -l cput=02:00:00
 #PBS -l wd
 #PBS -l ncpus=1
 #PBS -j oe

@@ -18,6 +18,7 @@ Figs/Checks
 # ignore log files
 logs/*
 *.out
+torun_*.txt
 
 # unignore some data files
 #!Data/omhchorp/*2005010*.he5

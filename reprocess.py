@@ -296,6 +296,8 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     ## set stdout to parent process
     if verbose or __DEBUG__:
         sys.stdout = open("create_omhchorp.%s.out"%str(os.getpid()), "w")
+        print("This file was created by reprocess.create_omhchorp_1(%s) "%str(date))
+        print("Turn off verbose and __DEBUG__ to stop creating these files")
 
     ## 1)
     #

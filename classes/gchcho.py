@@ -57,7 +57,7 @@ class gchcho:
     Class for holding the GCHCHO data
     Generally data arrays will be shaped as [(levels, )lats, lons]
     Units will be in molecules, metres, hPa
-    TODO: update to include multiple dates
+    THESE FILES ARE THE 1300-1400 averaged satellite outputs from GEOS-Chem    
     '''
     date = 0
 

@@ -24,6 +24,7 @@ import utilities.plotting as pp
 from utilities.GC_fio import get_tropchem_data, get_UCX_data
 from utilities.JesseRegression import RMA
 from classes.GC_class import GC_output
+from classes.gchcho import gchcho
 
 ##################
 #####GLOBALS######
@@ -338,10 +339,28 @@ def E_isop_map(gc, aus=False, region=None):
         title='Emissions of isoprene', clabel=r'atom$_C$ cm$^{-2}$ s$^{-1}$',
         pname=pname)
 
+def check_shapefactors(date=datetime(2005,1,1)):
+    '''
+        Check shapefactors for shapefactor nc files
+    '''
+    sf=gchcho(date)
+    def check_column(key):
+        blah=getattr(sf,key)
+        print("%s: %s : %.2e"%(key, blah.shape, np.nanmean(blah)))
+        while len(blah.shape) > 1:
+            blah=blah[:,0]
+        print(blah)
+    #print("Shape: ", sf.Shape_s.shape, np.nanmean(sf.Shape_s))
+    #print("N_HCHO: ", sf.N_HCHO.shape, np.nanmean(sf.N_HCHO))
+    #print("pmids: ", sf.pmids.shape)
+    for key in ['Shape_s','N_HCHO','zmids','boxH','sigmas','pmids','pedges']:
+        check_column(key)
+
 # If this script is run directly:
 if __name__=='__main__':
     pp.InitMatplotlib()
-    check_tropchem_monthly()
+    check_shapefactors()
+    #check_tropchem_monthly()
     #compare_tc_ucx()
     
     #compare_surface_tc_ucx()

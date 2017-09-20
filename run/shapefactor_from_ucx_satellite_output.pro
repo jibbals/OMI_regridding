@@ -16,6 +16,7 @@
 ;           Renamed to shapefactor_from_ucx_satellite_output.pro
 ;           back to 72 levels
 ;           All lats/lons are again included
+;       Updated Wed 20 sep 17: BUG FIXED: "psurf=ppbv/n_files" -> psurf=psurf/n_files
 ;
 
 ; Function to return linear or geometric midpoints from an array of pedges(or whatever)
@@ -77,15 +78,14 @@ pro shapefactor_from_ucx_satellite_output, year, month
     endforeach
     n_files=n_elements(files)
     ppbv=ppbv / n_files
-    psurf=ppbv / n_files
+    psurf=psurf / n_files
     Nair=Nair / n_files
     boxH=boxH / n_files
     
     ; pedge-psurf is bottom pressure for levels 1-nlvls
     pedges  = dblarr(nlons,nlats,nlvls+1)
-    help,psurf
-    help,pedges[*,*,0:-1]
-    help,pedges[*,*,0:-2]
+    ; print, "mean surface pressure: ",mean(psurf[*,*,0] ; about 965 on 200501
+    
     pedges[*,*,0:-2] = psurf
     pedges[*,*,-1] = 0.01 ; top of top edge is 0.01 hPa
     

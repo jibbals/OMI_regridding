@@ -94,6 +94,7 @@ class gchcho:
         ztops = np.cumsum(self.boxH, axis=0) # height at top of each box
         zmids = ztops-self.boxH/2.0   # minus half the box height = box midpoint
         self.zmids =zmids                         # altitude midpoints
+        assert np.all(zmids > 0), "zmids calculation error: %s"%str(zmids)
 
     def get_apriori(self, latres=0.25, lonres=0.3125):
         '''
@@ -392,6 +393,15 @@ def match_bottom_levels(p1i, p2i, arr1i, arr2i):
     # now lower has a lower surface altitude(higher surface pressure)
     movers=np.where(plow+0.05*plow[0] > phigh[0])[0] # index of pressure edges below higher surface pressure
     above_ind = movers[-1]+1
+    if above_ind >= len(plow):
+        print("Whole plow array below surface of phigh array")
+        print("plow:",plow.shape)
+        print(plow)
+        print("phigh:",phigh.shape)
+        print(phigh)
+        assert False, "Fix this please"
+    
+        
     above = plow[above_ind] # pressure edge above the ones we need to move upwards
     rmovers=movers[::-1] # highest to lowest list of pmids to relevel
     # for all but the lowest pmid, increase above lowest pmid in other pressure array

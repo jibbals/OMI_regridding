@@ -44,6 +44,7 @@ torun=torun_${ymd}.txt
 
 # Table of files for stdout
 echo "Examining data for $ymd" > $torun
+echo " ----------------------------------------------------- " | tee -a $torun
 echo "Modified   |  Filename" | tee -a $torun
 echo "------------------- (AMF Reprocessing)" | tee -a $torun
 
@@ -66,6 +67,18 @@ checkfile $satfile
 # Check the converted GC-satellite file (.nc)
 satfile_nc=${datadir}/gchcho/ucx_shapefactor_${yy}${mm}.he5
 checkfile $satfile_nc
+
+echo "-------- (PaulPalmer bonus)" | tee -a $torun
+# check files required for pp_amf creation:
+ppamfpresat=${datadir}/pp_amf/tropchem${yy}-${mm}-${dd}_for_AMF.csv
+checkfile $ppamfpresat
+
+ppamfpregc=${tropdir}/satellite_output/ts_satellite_omi.${ymd}.bpch
+checkfile $ppamfpregc
+
+# Check paul palmer AMF file
+ppamffile=${datadir}/omhcho_csv/amf_${ymd}.csv
+checkfile $ppamffile
 
 
 echo "------------------- (Emissions)" | tee -a $torun
@@ -90,12 +103,15 @@ checkfile $emissionfile
 # 
 echo '------------------' | tee -a $torun
 
+echo " ----------------------------------------------------- " | tee -a $torun
+
 # Send code needed for full creation to here..
 echo "Scripts to run for $ymd emissions file creation:" >> $torun
 echo "1) make sure satellite swath files to NCI" >> $torun
 echo "2) GEOS-Chem satellite output for UCX is needed for shapefactor creation" >> $torun
-echo "3) run/make_shapefactors.sh $yy $2" >> $torun
+echo "3) run/shapefactor.sh $yy $2" >> $torun
 echo "       runs run/shapefactor_from_ucx_satellite_output.pro on GC satellite data" >> $torun
+echo "[3.5] see paul palmer extras (appended) to add pp_amf"
 echo "4) qsub -v dstr=$ymd run/reprocess_oneday.sh" >> $torun
 echo "       runs reprocess.omhchorp_1() for $ymd" >> $torun
 echo "5) Check there are tracer average files from tropchem output (used for yield)" >> $torun
@@ -107,6 +123,12 @@ echo "       runs Inversion.store_emissions() on that month of data" >> $torun
 
 echo "Code to run for this date sent to $torun"
     
+echo "------- PAUL PALMER STEPS ------"
+echo "a) TODO:"
+echo "      creates geos-chem satellite output used by lidort and sends it to right folder"
+echo "b) run/omi_csv_month.sh $yy $2"
+echo "       Creates csvs for swaths in this month"
+echo "c) "
 
 # TODO: Fires and Anthro filters files list
 #

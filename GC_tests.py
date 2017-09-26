@@ -64,23 +64,35 @@ def check_tropchem_monthly():
     
     # Also compare against UCX month average?
 
-def compare_tc_ucx():
+def compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
     '''
-        Check UCX vs Tropchem from special 200501 runs
+        Check UCX vs Tropchem
+        set Extra to true to look at E_isop_biog and OH (uses specific output file 20050101
+        set fnames=[tropchem.nc,ucx.nc] outputs to test specific files
     '''
+    ymstr=date.strftime("%Y%m")
     region=pp.__GLOBALREGION__
-    date=datetime(2005,1,1)
-    # read two files directly
-    #ucx=get_UCX_data(test=True)
-    #trp=get_tropchem_data(monthavg=True, test=True)
     
     # Read the netcdf files (output specified for this test)
-    ucx=GC_output(date,UCX=True, fname='UCX_trac_avg_20050101.nc')
-    trp=GC_output(date,UCX=False, monthavg=True, fname='trac_avg_200501_test.nc')
+    # UCX FILE:
+    #ucx=GC_output(date,UCX=True, fname='UCX_trac_avg_20050101.nc')
+    if fnames is None:
+        ucx=GC_output(date,UCX=True)
+        trp=GC_output(date,UCX=False,monthavg=True)
+    else:
+        trp_fname,ucx_fname=fnames#
+        trp=GC_output(date,UCX=False, monthavg=True, fname=trp_fname)
+        ucx=GC_output(date,UCX=True, fname=ucx_fname)
+    
     lats_all=ucx.lats
     lons_all=ucx.lons
 
-    keys=['hcho','isop','E_isop_bio','OH']
+    all_keys=['hcho','isop','E_isop_bio','OH']
+    keys=[]
+    for key in all_keys:
+        if hasattr(ucx,key):
+            keys.append(key)
+    #keys=['hcho','isop']
     units={ 'hcho'      :'ppbv',        #r'molec cm$^{-2}$',
             'E_isop_bio':r'atom C cm$^{-2}$ s$^{-1}$',
             'OH'        :r'molec cm$^{-3}$',
@@ -92,7 +104,7 @@ def compare_tc_ucx():
     for key in keys:
         cbarfmt[key]=None; cbarxtickrot[key]=None
     cbarfmt['OH']="%.1e"; cbarxtickrot['OH']=30
-
+    
     ucx_data=ucx.get_field(keys=keys,region=region)
     trp_data=trp.get_field(keys=keys,region=region)
     lats=ucx_data['lats'];lons=ucx_data['lons']
@@ -116,7 +128,8 @@ def compare_tc_ucx():
         #data['ucx'] = ucx.get_trop_columns(keys=keys)
 
         # Plot values and differences for each key
-        pname='Figs/GC/UCX_vs_trp_glob_%s.png'%key
+        suffix=[suffix,''][suffix is None]
+        pname='Figs/GC/UCX_vs_trp_glob_%s_%s%s.png'%(trp.dstr,key,suffix)
         u=dats[0];t=dats[1]
         amin,amax = alims[key]
         rmin,rmax = rlims[key]
@@ -143,77 +156,6 @@ def compare_tc_ucx():
         pp.createmap((u-t)*100.0/u, lats, lons, title="100*(UCX-tc)/UCX",
                      suptitle='%s %s %s'%('surface', key, trp.dstr), pname=pname, **args)
 
-
-def compare_tc_ucx_old(date=datetime(2005,1,1)):
-    '''
-        maps of UCX and tropchem tropospheric columns
-        Can also produce similar maps for surface values rather than column amounts
-    '''
-
-    # Read UCX and TC datasets
-    ucx=GC_output(date,UCX=True)
-    tc=GC_output(date,UCX=False)
-    lats=tc.lats
-    lons=tc.lons
-
-    # Get hcho and isop for comparisons
-    data={} # data['tc']['isop'] = molec/cm2 [lat,lon]
-
-    keys=['hcho','isop']
-    rlims={'hcho':(-20,20),'isop':(-50,100)}
-    for sf in [True,False]:
-        if sf: # surface only
-            data['tc']=tc.ppbv_to_molec_cm2(keys=keys)
-            data['ucx']=ucx.ppbv_to_molec_cm2(keys=keys)
-            for run in ['tc','ucx']:
-                for k in keys:
-                    data[run][k] = data[run][k][0,:] # surface layer only
-
-            alims={'hcho':(1e13,5e15),'isop':(1e9,5e15)}
-
-        else: # whole tropospheric column
-            data['tc']  = tc.get_trop_columns(keys=keys)
-            data['ucx'] = ucx.get_trop_columns(keys=keys)
-
-            alims={'hcho':(1e14,5e16),'isop':(1e9,5e16)}
-
-        # Mean of the month for tropchem run
-        for k in keys:
-            data['tc'][k] = np.mean(data['tc'][k], axis=2) # mean of time dim
-
-        for ii,k in enumerate(keys):
-            u=data['ucx'][k]; t=data['tc'][k]
-            if sf:
-                print("Surface only:")
-            else:
-                print("Troposphere")
-            print("%5s   |  UCX          | tropchem"%k)
-            print(" mean   | %.3e     |   %.3e"%(np.mean(u),np.mean(t)))
-            print(" min    | %.3e     |   %.3e"%(np.min(u),np.min(t)))
-            print(" max    | %.3e     |   %.3e"%(np.max(u),np.max(t)))
-            print(" std    | %.3e     |   %.3e"%(np.std(u),np.std(t)))
-
-
-            # Plot values and differences for each key
-            units=r'molec cm$^{-2}$'
-            pname='Figs/GC/UCX_vs_tropchem_%s_%s_%s'%(['trop','surf'][sf],k,tc.dstr)
-            amin,amax = alims[k]
-            rmin,rmax = rlims[k]
-            f,axes=plt.subplots(2,2,figsize=(16,14))
-            plt.sca(axes[0,0])
-            pp.createmap(u,lats,lons,aus=True,clabel=units,
-                         title="%s UCX"%k, vmin=amin, vmax=amax)
-            plt.sca(axes[0,1])
-            pp.createmap(t,lats,lons,aus=True,clabel=units,
-                         title="%s tropchem"%k, vmin=amin, vmax=amax)
-            plt.sca(axes[1,0])
-            pp.createmap(u-t,lats,lons,aus=True,clabel=units,
-                         title="UCX - tropchem", linear=True)
-            plt.sca(axes[1,1])
-            pp.createmap((u-t)*100.0/u,lats,lons, vmin=rmin,vmax=rmax,aus=True,
-                        linear=True,clabel='%',title="100*(UCX-tc)/UCX",
-                        suptitle='%s %s %s'%(['trop','surf'][sf], k, tc.dstr),
-                        pname=pname)
 
 
 def isop_hcho_RMA(gc):
@@ -359,9 +301,18 @@ def check_shapefactors(date=datetime(2005,1,1)):
 # If this script is run directly:
 if __name__=='__main__':
     pp.InitMatplotlib()
-    check_shapefactors()
+    #check_shapefactors()
     #check_tropchem_monthly()
-    #compare_tc_ucx()
+    
+    # Compare 200406
+    compare_tc_ucx(datetime(2004,6,1),fnames=['trac_avg_200406.nc','trac_avg_UCX_200406.nc'])
+    # compare 200501
+    compare_tc_ucx(datetime(2005,1,1))
+    compare_tc_ucx(datetime(2005,1,1),
+                   fnames=['trac_avg_200501_month.nc','trac_avg_UCX_200501.nc'],
+                   suffix='_rerun')
+    # compare 200506
+    compare_tc_ucx(datetime(2005,6,1))
     
     #compare_surface_tc_ucx()
     #compare_tc_ucx()

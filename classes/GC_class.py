@@ -42,7 +42,7 @@ sys.path.pop(0)
 #####GLOBALS######
 ##################
 
-__VERBOSE__=False # For file-wide print statements
+__VERBOSE__=True # For file-wide print statements
 
 ################
 #####CLASS######
@@ -84,7 +84,7 @@ class GC_output:
         for key in tavg_data.keys():
             setattr(self, key, tavg_data[key])
             if __VERBOSE__:
-                print("GC_output reading %s"%key)
+                print("GC_output reading %s %s"%(key,tavg_data[key].shape))
 
         # add some peripheral stuff
         self.n_lats=len(self.lats)
@@ -94,13 +94,16 @@ class GC_output:
 
         # set dates and E_dates:
         # bpch2coards messes up the taus somehow..
+        if len(self.taus.shape) == 0:
+            self.taus = np.array([float(self.taus),])
         if __VERBOSE__:
             print("Fixing stupid taus")
-            print("pre-fix: %d .. %d"%(self.taus[0],self.taus[-1]))
+            print("pre-fix: %d entries from %d .. %d"%(len(self.taus),self.taus[0],self.taus[-1]))
+            
         new_taus=np.arange(0,len(self.taus))*24+self.taus[0]
         self.taus=new_taus
         if __VERBOSE__:
-            print("post-fix: %d .. %d"%(self.taus[0],self.taus[-1]))
+            print("post-fix: %d entries from %d .. %d"%(len(self.taus),self.taus[0],self.taus[-1]))
 
         self.dates=util.date_from_gregorian(self.taus)
 
@@ -108,14 +111,15 @@ class GC_output:
         self._has_time_dim = len(self.dates) > 1
 
         # Determine emissions in kg/s from atom_C / cm2 / s
-        E=self.E_isop_bio # atom C / cm2 / s
-        SA=self.area * 1e-6  # m2 -> km2
-        # kg/atom_isop = grams/mole * mole/molec * kg/gram
-        kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
-        #          isop/C * cm2/km2 * km2 * kg/isop
-        conversion= 1./5.0 * 1e10 * SA * kg_per_atom
-        self.E_isop_bio_kgs=E*conversion
-
+        if hasattr(self, 'E_isop_bio'):
+            E=self.E_isop_bio # atom C / cm2 / s
+            SA=self.area * 1e-6  # m2 -> km2
+            # kg/atom_isop = grams/mole * mole/molec * kg/gram
+            kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
+            #          isop/C * cm2/km2 * km2 * kg/isop
+            conversion= 1./5.0 * 1e10 * SA * kg_per_atom
+            self.E_isop_bio_kgs=E*conversion
+        
         assert all(self.lats == gmao.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
         self.lats_e=gmao.lats_e
         assert all(self.lons == gmao.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"

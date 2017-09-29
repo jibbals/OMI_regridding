@@ -43,7 +43,7 @@ geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
-__VERBOSE__=True
+__VERBOSE__=False
 
 # Keys for omhchorp:
 __OMHCHORP_KEYS__ = [

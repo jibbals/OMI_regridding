@@ -47,8 +47,8 @@ def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGI
     print("Negative emissions, date")
     for i in negs:
         print("%.4e    , %s"%(E_isop[i],str(dates[i])))
-    
-    
+
+
 def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGION__):
     '''
         Plot the time series of E_new, eventually compare against MEGAN, etc..
@@ -59,21 +59,29 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__A
 
     dates, E_isop=Enew.get_series('E_isop',region=region)
     units=Enew.attributes['E_isop']['units']
-    #dnums = matplotlib.dates.date2num(list_of_datetimes)
-
+    print(dates)
     # Plot time series
-    #print(dnums)
-    #print(E_new)
-    #plt.plot_date(dnums,E_isop)
-    plt.plot(E_isop)
-    plt.title('E_new time series over %s'%str(region))
-    # set up better labels
-    plt.ylabel("E_isop [%s]"%units)
-    #plt.gca().xaxis.set_major_formatter(matplotlib.dates.DateFormatter('%d %b %y'))
+    pp.plot_time_series(dates,E_isop,
+                        title='E_new time series over %s'%str(region),
+                        ylabel="E_isop [%s]"%units,
+                        linestyle='None', marker='*', # Just use markers for daily data
+                        color='blue',label='daily')
+
+    # Add monthly average line
+    monthly=util.monthly_averaged(dates,E_isop)
+    mdates=monthly['middates']; E_isop_monthly=monthly['data']
+    mstd=monthly['std'];
+    pp.plot_time_series(mdates,E_isop_monthly, color='m',label='monthly')
+    pp.plot_time_series(mdates,E_isop_monthly+mstd,
+                        linestyle='--', color='m',label='1 std.')
+    pp.plot_time_series(mdates,E_isop_monthly-mstd,
+                        linestyle='--', color='m')
+    plt.legend()
+
 
 
     # save figure
-    pname='Figs/E_new_series.png'#%dstr
+    pname='Figs/E_new_series.png'
     plt.savefig(pname)
     print("Saved %s"%pname)
 
@@ -370,9 +378,10 @@ if __name__=='__main__':
     SEAus=[-41,138.75,-25,156.25]
     regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
 
-    E_new_time_series(region=pp.__AUSREGION__) # Takes a few minuts (use qsub)
+    d0=datetime(2005,1,1); dn=datetime(2005,2,20)
+    E_new_time_series(d0,dn,region=pp.__AUSREGION__) # Takes a few minuts (use qsub)
     #check_E_new()
-    
+
 #    for region in regions:
 #        print("REGION = %s"%str(region))
 #

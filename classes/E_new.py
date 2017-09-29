@@ -69,7 +69,7 @@ class E_new:
                 setattr(self,key,E_new_list[0][key])
             else:
                 data=np.array(E_new_list[0][key])
-                for i in range(0,n_months-1):
+                for i in range(1,n_months):
                     data=np.append(data,np.array(E_new_list[i][key]),axis=0)
                 setattr(self, key, data)
 
@@ -85,4 +85,5 @@ class E_new:
         data=data[:,lati,:]
         data=data[:,:,loni]
         dates=self.dates
+
         return dates,np.nanmean(data,axis=(1,2))

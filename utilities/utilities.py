@@ -205,6 +205,29 @@ def list_months(day0,dayn):
     months=[d for d in days if d.day==1]
     return months
 
+def monthly_averaged(dates,data):
+    '''
+        return monthly averaged version of inputs
+    '''
+    months=list_months(dates[0],dates[-1])
+    allyears=np.array([d.year for d in dates])
+    allmonths=np.array([d.month for d in dates])
+    #ind = [100*d.year+d.month for d in dates]
+    ret={}
+    mdates=[]
+    mdata=[]
+    mstd=[]
+    mcount=[]
+    for m in months:
+        inds=(allyears==m.year) * (allmonths==m.month)
+        mdates.append(m)
+        mdata.append(np.nanmean(data[inds]))
+        mstd.append(np.nanstd(data[inds]))
+        mcount.append(np.nansum(inds))
+    mdata=np.array(mdata); mstd=np.array(mstd); mcount=np.array(mcount);
+    mid_dates=[d+timedelta(days=15) for d in mdates]
+    return {'dates':mdates, 'data':mdata, 'std':mstd,'count':mcount, 'middates':mid_dates}
+
 def ppbv_to_molecs_per_cm2(ppbv, pedges):
     '''
     Inputs:

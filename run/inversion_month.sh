@@ -2,9 +2,9 @@
 #PBS -P m19
 #PBS -q express
 #PBS -N Inversion
-#PBS -l walltime=00:15:00
+#PBS -l walltime=00:25:00
 #PBS -l mem=10000MB
-#PBS -l cput=00:30:00
+#PBS -l cput=00:40:00
 #PBS -l wd
 #PBS -l ncpus=2
 #PBS -j oe
@@ -14,8 +14,18 @@
 # qsub -o log.qsub run.sh
 # --------------------------------
 if [ -z ${PBS_O_LOGNAME} ] || [ -z ${MONTH} ]; then
-    echo "EG usage: qsub -o logs/log.inversion -v MONTH=200505 run/inversion_month.sh"
-    echo "   to save E_new fOR 200501 "
+    if [ $# -lt 1 ]; then
+        echo "EG 1: $0 200505"
+        echo "EG 2: qsub -o logs/inversion_200505 -v MONTH=200505 run/inversion_month.sh"
+        echo "   to save E_new fOR 200505 "
+    else
+        echo "qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh"
+        read -r -p "run that command? [y/N] " response
+        response=${response,,}    # tolower
+        if [[ "$response" =~ ^(yes|y)$ ]]; then
+            qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh
+        fi
+    fi
     exit 0
 fi
 

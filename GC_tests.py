@@ -87,20 +87,38 @@ def compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
     lats_all=ucx.lats
     lons_all=ucx.lons
 
-    all_keys=['hcho','isop','E_isop_bio','OH']
+    all_keys=['hcho','isop','E_isop_bio','OH','O3','NO2']
     keys=[]
     for key in all_keys:
-        if hasattr(ucx,key):
+        if hasattr(ucx,key) and hasattr(trp,key): # look at fields in both outputs
             keys.append(key)
+            print('%s will be compared at surface '%(key))
     #keys=['hcho','isop']
     units={ 'hcho'      :'ppbv',        #r'molec cm$^{-2}$',
             'E_isop_bio':r'atom C cm$^{-2}$ s$^{-1}$',
             'OH'        :r'molec cm$^{-3}$',
-            'isop'      :r'ppbv'}
+            'isop'      :r'ppbv',
+            'O3'        :r'ppbv',
+            'NO2'       :r'ppbv',}
     cbarfmt={}; cbarxtickrot={}
-    rlims={'hcho':(-20,20),   'E_isop_bio':(-50,50),   'OH':(-50,50), 'isop':(-70,70)}
-    dlims={'hcho':(-.5,.5),   'E_isop_bio':(-1e12,1e12),   'OH':(-8e5,8e5), 'isop':(-6,6)}
-    alims={'hcho':(None,None),'E_isop_bio':(None,None),'OH':(1e6,4e6),'isop':(None,None)}
+    rlims={'hcho'       :(-20,20),   
+           'E_isop_bio' :(-50,50),
+           'OH'         :(-50,50),
+           'isop'       :(-70,70),
+           'O3'         :(-50,50),
+           'NO2'        :(-50,50),}
+    dlims={'hcho'       :(-.5,.5),
+           'E_isop_bio' :(-1e12,1e12),
+           'OH'         :(-8e5,8e5),
+           'isop'       :(-6,6),
+           'O3'         :(-40,40),
+           'NO2'        :(-100,100),}
+    alims={'hcho'       :(None,None),
+           'E_isop_bio' :(None,None),
+           'OH'         :(1e6,4e6),
+           'isop'       :(None,None),
+           'O3'         :(None,None),
+           'NO2'        :(None,None),}
     for key in keys:
         cbarfmt[key]=None; cbarxtickrot[key]=None
     cbarfmt['OH']="%.1e"; cbarxtickrot['OH']=30
@@ -306,13 +324,12 @@ if __name__=='__main__':
     
     # Compare 200406
     compare_tc_ucx(datetime(2004,6,1),fnames=['trac_avg_200406.nc','trac_avg_UCX_200406.nc'])
-    # compare 200501
-    compare_tc_ucx(datetime(2005,1,1))
+    # compare 200507
+    compare_tc_ucx(datetime(2005,7,1),
+                   fnames=['trac_avg_200507.nc','trac_avg_UCX_200507.nc'])
     compare_tc_ucx(datetime(2005,1,1),
                    fnames=['trac_avg_200501_month.nc','trac_avg_UCX_200501.nc'],
                    suffix='_rerun')
-    # compare 200506
-    compare_tc_ucx(datetime(2005,6,1))
     
     #compare_surface_tc_ucx()
     #compare_tc_ucx()

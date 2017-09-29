@@ -36,12 +36,11 @@ __VERBOSE__=True
 ###############
 ### Methods ###
 ###############
-def check_E_new(region=pp.__AUSREGION__):
+def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGION__):
     '''
         Print out averages and anomalies in time series
     '''
     # Read data
-    d0=datetime(2005,1,1); dn=datetime(2005,4,1)
     Enew=E_new(d0,dn)
     dates,E_isop=Enew.get_series('E_isop',region=region)
     negs=np.where(E_isop<0)[0]
@@ -50,22 +49,22 @@ def check_E_new(region=pp.__AUSREGION__):
         print("%.4e    , %s"%(E_isop[i],str(dates[i])))
     
     
-def E_new_time_series(region=pp.__AUSREGION__):
+def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGION__):
     '''
         Plot the time series of E_new, eventually compare against MEGAN, etc..
     '''
 
     # Read data
-    d0=datetime(2005,1,1); dn=datetime(2005,4,1)
     Enew=E_new(d0,dn)
 
     dates, E_isop=Enew.get_series('E_isop',region=region)
     units=Enew.attributes['E_isop']['units']
+    #dnums = matplotlib.dates.date2num(list_of_datetimes)
 
     # Plot time series
     #print(dnums)
     #print(E_new)
-    #plt.plot_date(dnums,E_new)
+    #plt.plot_date(dnums,E_isop)
     plt.plot(E_isop)
     plt.title('E_new time series over %s'%str(region))
     # set up better labels
@@ -371,8 +370,9 @@ if __name__=='__main__':
     SEAus=[-41,138.75,-25,156.25]
     regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
 
-    #E_new_time_series(region=pp.__AUSREGION__)
-    check_E_new()
+    E_new_time_series(region=pp.__AUSREGION__) # Takes a few minuts (use qsub)
+    #check_E_new()
+    
 #    for region in regions:
 #        print("REGION = %s"%str(region))
 #

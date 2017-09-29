@@ -4,23 +4,35 @@
 #PBS -N Tests
 #PBS -l walltime=00:30:00
 #PBS -l mem=25000MB
-#PBS -l cput=02:00:00
+#PBS -l cput=01:00:00
 #PBS -l wd
-#PBS -l ncpus=4
+#PBS -l ncpus=2
 #PBS -j oe
 
 #---------------------------------
 # send to queue with 
 # qsub -o log.qsub run.sh
 # --------------------------------
-if [ -z ${PBS_O_LOGNAME} ]; then
-    echo "EG usage: qsub run_tests.sh"
+
+if [ $# -lt 1 ]; then
+    if [ -z ${fname} ]; then 
+        echo "EG: $0 tests.py"
+        echo "    will run tests.py on qsub express queue"
+        exit 0
+    fi
+else
+    echo "submitting:  qsub -v fname=$1 $0"
+    echo "  will run: python3 ${1} &> logs/${1%.*}.log"
+    qsub -v fname=$1 $0
     exit 0
 fi
 
 # run the tests script, send stdout and stderr to log.tests
-echo "Running tests.py &> logs/log.tests"
-python3 tests.py &> logs/log.tests
+
+echo "Running: python3 ${fname} &> logs/${fname%.*}"
+python3 ${fname} &> logs/${fname%.*}.log
 
 echo "Finished job ${PBS_JOBID}"
+
+
 

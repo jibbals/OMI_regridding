@@ -183,7 +183,7 @@ def read_csv(filename, delimiter=',', hasheader=True):
         reader=csv.DictReader(csvfile)
         
         for i,row in enumerate(reader):
-            print(i, row)
+            #print(i, row)
             # headerline is titles:
             for k in row.keys():
                 if i == 0:

@@ -20,6 +20,7 @@ import h5py
 import numpy as np
 from datetime import datetime, timedelta
 from glob import glob
+import csv
 # interpolation method for ND arrays
 # todo: remove once this is ported to reprocess.py
 from scipy.interpolate import griddata
@@ -169,6 +170,28 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
         f.flush()
     print("Saved "+outfilename)
 
+def read_csv(filename, delimiter=',', hasheader=True):
+    '''
+        read a csv into a structure
+        headerline is nth line read as the names for the columns
+    '''
+    print("Reading %s"%filename)
+    #data=np.genfromtxt(filename, delimiter=delimiter, names=hasheader)
+    
+    ret={}
+    with open(filename) as csvfile:
+        reader=csv.DictReader(csvfile)
+        
+        for i,row in enumerate(reader):
+            print(i, row)
+            # headerline is titles:
+            for k in row.keys():
+                if i == 0:
+                    ret[k]=[]
+                ret[k].append(row[k])
+
+    return ret
+    
 def read_netcdf(filename):
     '''
         read all of some netcdf file...

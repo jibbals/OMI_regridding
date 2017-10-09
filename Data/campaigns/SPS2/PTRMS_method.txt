@@ -1,0 +1,10 @@
+PROTON TRANSFER REACTION MASS SPECTROMETRY 
+
+Proton transfer reaction mass spectrometry (PTR-MS) is a chemical ionization mass spectrometry technique capable of quantifying volatile organic compounds (VOCs), in a gaseous sample at time resolutions down to a fraction of a second. The permanent constituents of air, oxygen, nitrogen, etc. are not detected by the PTR-MS. PTR-MS is suitable for the measurement of a range of atmospheric VOCs including aromatics, oxygenates, organo-sulphurs and terpenes. 
+The PTR-MS operates with the aid of a custom built auxiliary rack that regulates the flow of air in the sample inlet and controls whether the PTR-MS is sampling ambient or zero air or calibration gas. During this study zero readings and calibrations against certified gas standards were performed on the PTR-MS several times per day. Four calibration standards were used during the study, diluted to atmospheric concentrations using a set of mass flow controllers and a mixing chamber in the auxiliary rack. The PTR-MS was calibrated for: formaldehyde, acetaldehyde, acrolein, methacrolein, acetone, methyl ethyl ketone, methanol, ethyl acetate, benzene, xylene, trimethyl benzene, isoprene, a-pinene, 1,8 cineole, dimethyl sulphide, acetonitrile and the mono-, di and tri-chlorobenzenes. Only m/z that were detected above the MDL greater than 25% of the time, and had peak to noise ratios greater than 5 (95th percentile/MDL) are reported.  Further details are available in Galbally et al. (2007) and Dunne et al. (2012) 
+
+
+Dunne, Erin, Galbally, Ian E., Lawson, Sarah, and Patti, Antonio (2012) Interference in the PTR-MS measurement of acetonitrile at m/z 42 in polluted urban air– a study using switchable reagent ion PTR-MS, International Journal of Mass Spectrometry, 319–320: 40–47. http://dx.doi.org/10.1016/j.ijms.2012.05.004
+
+Galbally, I. E., Lawson, S. J., Weeks, I. A., Bentley, S. T., Gillett, R. W., Meyer, M., and Goldstein, A. H. (2007). Volatile organic compounds in marine Air at Cape Grim, Australia. Environmental Chemistry, 4(3): 178–182.
+

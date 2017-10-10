@@ -48,15 +48,15 @@ class campaign:
         self.hcho_detection_limit=np.NaN
         self.isop_detection_limit=np.NaN
 
-    def read_SPS1(self):
+    def read_SPS(self, number=1):
         '''
-            Read the sps 1 dataset
+            Read the sps1 or sps2 dataset
             # Measurements are reported in local time (UTC+10)
             # units are unlisted in the doi
         '''
 
         # TODO: remove ../ when not testing any more
-        self.fpath='../Data/campaigns/SPS1/SPS1_PTRMS.csv'
+        self.fpath='../Data/campaigns/SPS%d/SPS%d_PTRMS.csv'%(number,number)
         data=fio.read_csv(self.fpath)
         # PTRMS names the columns with m/z ratio, we use
         #   HCHO = 31, ISOP = 69
@@ -64,13 +64,14 @@ class campaign:
         i_key='m/z 69'
 
         # First row is detection limits
-
         self.hcho_detection_limit=float(data[h_key][0])
         self.isop_detection_limit=float(data[i_key][0])
-        # second row is empty
-        # data begins at third row, last row is empty
-        hcho=np.array(data[h_key][2:-1])
-        isop=np.array(data[i_key][2:-1])
+        
+        # second row is empty in sps1
+        # last row is empty
+        start=[1,2][number==1]
+        hcho=np.array(data[h_key][start:-1])
+        isop=np.array(data[i_key][start:-1])
 
         # convert from strings to floats
         hcho[hcho=='<mdl'] = 'NaN'
@@ -78,8 +79,9 @@ class campaign:
         isop[isop=='<mdl'] = 'NaN'
         self.isop = isop.astype(np.float)
 
+        self.dates=[]
         # Convert strings to dates:
-        for date in data['Timestamp'][2:-1]:
+        for date in data['Timestamp'][start:-1]:
             #if date == '':
             #    self.dates.append(np.NaN)
             #else:
@@ -91,7 +93,7 @@ class campaign:
         #self.dates=[datetime.strptime('%d/%m/%Y %H',d) for d in dates]
 
         #print(data)
-    def plot_series(self,pname):
+    def plot_series(self,title,pname):
 
         dates=self.dates
 
@@ -99,14 +101,19 @@ class campaign:
             data=getattr(self,key)
             dlim=getattr(self,key+'_detection_limit')
             #plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', **pltargs)
-            pp.plot_time_series(dates, data, ylabel='[ppb]', dfmt='%d %b', label=key,color=c)
+            pp.plot_time_series(dates, data, dfmt='%d %b', label=key,color=c)
             plt.plot([dates[0],dates[-1]], [dlim,dlim], color=c, linestyle='--')
-
+            
+        plt.ylabel('[%s]'%self.hcho_units)
+        plt.title(title)
+        plt.legend()
         plt.savefig(pname)
         print("Saved %s"%pname)
-
+        plt.close()
 
 if __name__=='__main__':
-    sps1=campaign()
-    sps1.read_SPS1()
-    sps1.plot_series('sps1.png')
+    sps=campaign()
+    sps.read_SPS(1)
+    sps.plot_series('SPS1: 2011','sps1.png')
+    sps.read_SPS(2)
+    sps.plot_series('SPS2: 2012','sps2.png')

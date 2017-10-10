@@ -322,14 +322,15 @@ if __name__=='__main__':
     #check_shapefactors()
     #check_tropchem_monthly()
     
-    # Compare 200406
-    compare_tc_ucx(datetime(2004,6,1),fnames=['trac_avg_200406.nc','trac_avg_UCX_200406.nc'])
-    # compare 200507
-    compare_tc_ucx(datetime(2005,7,1),
-                   fnames=['trac_avg_200507.nc','trac_avg_UCX_200507.nc'])
-    compare_tc_ucx(datetime(2005,1,1),
-                   fnames=['trac_avg_200501_month.nc','trac_avg_UCX_200501.nc'],
-                   suffix='_rerun')
+    # Compare explicit dates:
+    for cdate in [ datetime(2004,7,1), ]:
+        yymm=cdate.strftime("%Y%m")
+        fnames= [ "trac_avg_%s.nc"%yymm, "trac_avg_UCX_%s.nc"%yymm] 
+        compare_tc_ucx(cdate,fnames=fnames)
+    
+    #compare_tc_ucx(datetime(2005,1,1),
+    #               fnames=['trac_avg_200501_month.nc','trac_avg_UCX_200501.nc'],
+    #               suffix='_rerun')
     
     #compare_surface_tc_ucx()
     #compare_tc_ucx()

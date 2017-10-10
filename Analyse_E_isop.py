@@ -43,10 +43,36 @@ def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGI
     # Read data
     Enew=E_new(d0,dn)
     dates,E_isop=Enew.get_series('E_isop',region=region)
+    
     negs=np.where(E_isop<0)[0]
+    highs=np.where(E_isop>6e11)[0]
     print("Negative emissions, date")
     for i in negs:
+        neg_date=dates[i]
         print("%.4e    , %s"%(E_isop[i],str(dates[i])))
+        #plot the maps:
+    print("Super high emissions, date")
+    for i in highs:
+        high_date=dates[i]
+        print("%.4e    , %s"%(E_isop[i],str(dates[i])))
+        # plot the maps:
+    
+    # first plot swath for negative, and positive day:
+    neg=dates[negs[0]]
+    high=dates[highs[0]]
+    
+    f,ax=plt.subplots([2,2], figsize=[11,11])
+    plt.sca(ax[0,0])
+    pp.plot_swath(neg, title="HCHO from OMI %s"%str(neg),region=region)
+    
+    plt.sca(ax[0,1])
+    pp.plot_swath(neg, title="HCHO from OMI %s"%str(high), region=region)
+    
+    pname="Figs/Checks/E_new_swaths.png"
+    plt.savefig(pname)
+    print("saved %s"%pname)
+    
+    
 
 
 def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGION__):
@@ -378,9 +404,9 @@ if __name__=='__main__':
     SEAus=[-41,138.75,-25,156.25]
     regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
 
-    d0=datetime(2005,1,1); dn=datetime(2005,2,20)
-    E_new_time_series(d0,dn,region=pp.__AUSREGION__) # Takes a few minuts (use qsub)
-    #check_E_new()
+    d0=datetime(2005,1,1); dn=datetime(2005,12,31)
+    #E_new_time_series(d0,dn,region=pp.__AUSREGION__) # Takes a few minuts (use qsub)
+    check_E_new(dn=datetime(2005,3,1))
 
 #    for region in regions:
 #        print("REGION = %s"%str(region))

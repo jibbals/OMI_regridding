@@ -210,8 +210,9 @@ def createmap(data, lats, lons, edges=False ,
     # if no colorbar is wanted then don't return one (can be set externally)
     return m, cs, cb
 
-def plot_swath(day, region=__AUSREGION__,
+def plot_swath(day, region=__AUSREGION__, reprocessed=False,
               pname=None,title=None,suptitle=None,
+              colorbar=True, cbarfmt=None,
               linear=True, clabel=None, cbarxtickrot=None,
               vmin=None, vmax=None,cmapname=None):
     '''
@@ -225,11 +226,13 @@ def plot_swath(day, region=__AUSREGION__,
     m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
               resolution='i', projection='merc')
 
-    swaths=fio.read_omhcho_day(day)
-    data=swaths['HCHO']
-    lats=swaths['lats']
-    lons=swaths['lons']
-    
+    #swaths=fio.read_omhcho_day(day)
+    dkey=['VC_OMI_RSC','VCC'][reprocessed]
+    swaths=fio.read_omhchorp(day,oneday=True,keylist=[dkey,'latitude','longitude'])
+    data=swaths[dkey]
+    lats=swaths['latitude']
+    lons=swaths['longitude']
+
     # Set vmin and vmax if necessary
     if vmin is None:
         vmin=1.05*np.nanmin(data)
@@ -445,3 +448,7 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
     args['linear']=rlinear
     args['clabel']="%"
     createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
+
+if __name__=='__main__':
+    from datetime import datetime
+    plot_swath(datetime(2005,1,20),title="neg_swath",pname="Figs/Checks/neg_swath.png")

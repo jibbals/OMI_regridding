@@ -41,13 +41,14 @@ __DEBUG__=False
 __REMOTEPACIFIC__=[-15, -180, 15, -120]
 
 ########################################################################
-########################  OMHCHORP CLASS ###############################
+########################  E_new CLASS ###############################
 ########################################################################
 
 class E_new:
-    def __init__(self, day0, dayn=None):
+    def __init__(self, day0, dayn=None, dkeys=None):
         '''
             Read E_new from day0 to dayn
+            if dkeys is set then only those datakeys will be kept
         '''
 
         # day0=datetime(2005,1,1); dayn=datetime(2005,3,1)

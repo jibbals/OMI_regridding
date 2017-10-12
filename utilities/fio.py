@@ -177,11 +177,11 @@ def read_csv(filename, delimiter=',', hasheader=True):
     '''
     print("Reading %s"%filename)
     #data=np.genfromtxt(filename, delimiter=delimiter, names=hasheader)
-    
+
     ret={}
     with open(filename) as csvfile:
         reader=csv.DictReader(csvfile)
-        
+
         for i,row in enumerate(reader):
             #print(i, row)
             # headerline is titles:
@@ -191,7 +191,7 @@ def read_csv(filename, delimiter=',', hasheader=True):
                 ret[k].append(row[k])
 
     return ret
-    
+
 def read_netcdf(filename):
     '''
         read all of some netcdf file...

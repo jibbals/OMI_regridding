@@ -21,7 +21,7 @@ import matplotlib.pyplot as plt
 import utilities.utilities as util
 import utilities.plotting as pp
 from utilities import GMAO
-from utilities import fio
+#from utilities import fio
 from classes.GC_class import GC_output # GC trac_avg class
 from classes.omhchorp import omhchorp # OMI product class
 from classes.E_new import E_new # E_new class
@@ -42,7 +42,7 @@ def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGI
     '''
     # Read data
     Enew=E_new(d0,dn)
-    dates,E_isop=Enew.get_series('E_isop',region=region)
+    dates,E_isop=Enew.get_series('E_isop',region=region, testplot=True)
 
     negs=np.where(E_isop<0)[0]
     highs=np.where(E_isop>6e11)[0]
@@ -400,7 +400,7 @@ if __name__=='__main__':
 
     d0=datetime(2005,1,1); dn=datetime(2005,12,31)
     #E_new_time_series(d0,dn,region=pp.__AUSREGION__) # Takes a few minuts (use qsub)
-    check_E_new(dn=datetime(2005,3,1))
+    check_E_new(dn=datetime(2005,2,1))
 
 #    for region in regions:
 #        print("REGION = %s"%str(region))

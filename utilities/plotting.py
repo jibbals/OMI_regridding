@@ -211,20 +211,15 @@ def createmap(data, lats, lons, edges=False ,
     return m, cs, cb
 
 def plot_swath(day, region=__AUSREGION__, reprocessed=False,
-              pname=None,title=None,suptitle=None,
-              colorbar=True, cbarfmt=None,
-              linear=True, clabel=None, cbarxtickrot=None,
-              vmin=None, vmax=None,cmapname=None):
+              edges=False , vmin=None, vmax=None,
+              aus=False, linear=False, clabel='molec/cm2', colorbar=True,
+              cbarfmt=None, cbarxtickrot=None,
+              pname=None,title=None,suptitle=None, smoothed=False,
+              cmapname=None, fillcontinents=None):
     '''
-        Plot OMI swath for requested day
+        Wrapper to plot gridded swath output for a day
     '''
-    if __VERBOSE__:
-        print("plot_swath called, title: %s"%str(title))
 
-    # Create a basemap map with region as inputted
-    lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
-    m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
-              resolution='i', projection='merc')
 
     #swaths=fio.read_omhcho_day(day)
     dkey=['VC_OMI_RSC','VCC'][reprocessed]
@@ -233,62 +228,14 @@ def plot_swath(day, region=__AUSREGION__, reprocessed=False,
     lats=swaths['latitude']
     lons=swaths['longitude']
 
-    # Set vmin and vmax if necessary
-    if vmin is None:
-        vmin=1.05*np.nanmin(data)
-    if vmax is None:
-        vmax=0.95*np.nanmax(data)
+    return createmap(data, lats, lons, edges=edges ,
+              vmin=vmin, vmax=vmax, latlon=True,
+              region=region, aus=aus, linear=linear,
+              clabel=clabel, colorbar=colorbar, cbarfmt=cbarfmt,
+              cbarxtickrot=cbarxtickrot, pname=pname,title=title,
+              suptitle=suptitle, smoothed=smoothed,
+              cmapname=cmapname, fillcontinents=fillcontinents)
 
-    # Make edges into 2D meshed grid
-    mlons,mlats=np.meshgrid(lons,lats)
-
-    if cmapname is None:
-        cmapname = matplotlib.rcParams['image.cmap']
-
-    cmap=plt.cm.cmap_d[cmapname]
-    pcmeshargs={'vmin':vmin, 'vmax':vmax, 'clim':(vmin, vmax),
-                'latlon':True, 'cmap':cmap}
-
-    if not linear:
-        if __VERBOSE__:print("createmap() is removing negatives")
-        pcmeshargs['norm']=LogNorm()
-        data[data<=0]=np.NaN
-
-    #force nan into any pixel with nan results, so color is not plotted there...
-    mdata=np.ma.masked_invalid(data) # mask non-finite elements
-    #mdata=data # masking occasionally throws up all over your face
-
-    cs=m.pcolormesh(mlons, mlats, mdata, **pcmeshargs)
-    # colour limits for contour mesh
-    cs.set_clim(vmin,vmax)
-
-    # draw coastline and equator(no latlon labels)
-    m.drawcoastlines()
-    m.drawparallels([0],labels=[0,0,0,0])
-
-    # add titles and cbar label
-    if title is not None:
-        plt.title(title)
-    if suptitle is not None:
-        plt.suptitle(suptitle)
-    cb=None
-    if colorbar:
-        cbargs={'size':'5%','pad':'1%','extend':'both','format':cbarfmt}
-        cb=m.colorbar(cs,"bottom", **cbargs)
-        if clabel is not None:
-            cb.set_label(clabel)
-        if cbarxtickrot is not None:
-            cb.ax.set_xticklabels(cb.ax.get_xticklabels(), rotation=cbarxtickrot)
-
-    # if a plot name is given, save and close figure
-    if pname is not None:
-        plt.savefig(pname)
-        print("Saved "+pname)
-        plt.close()
-        return
-
-    # if no colorbar is wanted then don't return one (can be set externally)
-    return m, cs, cb
 
 def plot_rec(bmap, inlimits, color=None, linewidth=None):
     '''

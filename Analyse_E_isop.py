@@ -36,7 +36,7 @@ __VERBOSE__=True
 ###############
 ### Methods ###
 ###############
-def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGION__):
+def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGION__, plotswaths=False):
     '''
         Print out averages and anomalies in time series
     '''
@@ -52,21 +52,23 @@ def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGI
         neg=dates[i]
         negstr=neg.strftime("%Y%m%d")
         print("%.4e    , %s"%(E_isop[i],negstr))
-        title="OMI Swath %s (E_new=%.4e)"%(negstr,E_isop[i])
-        #plot the maps:
-        pp.plot_swath(neg,title=title,
-                      pname="Figs/Checks/swath_%s.png"%negstr,
-                      **pargs)
+        if plotswaths:
+            title="OMI Swath %s (E_new=%.4e)"%(negstr,E_isop[i])
+            #plot the maps:
+            pp.plot_swath(neg,title=title,
+                          pname="Figs/Checks/swath_%s.png"%negstr,
+                          **pargs)
     print("Super high emissions, date")
     for i in highs:
         high=dates[i]
         highstr=high.strftime("%Y%m%d")
         print("%.4e    , %s"%(E_isop[i],str(dates[i])))
-        title="OMI Swath %s (E_new=%.4e)"%(highstr,E_isop[i])
-        # plot the maps:
-        pp.plot_swath(high,title=title,
-                      pname="Figs/Checks/swath_%s.png"%highstr,
-                      **pargs)
+        if plotswaths:
+            title="OMI Swath %s (E_new=%.4e)"%(highstr,E_isop[i])
+            # plot the maps:
+            pp.plot_swath(high,title=title,
+                          pname="Figs/Checks/swath_%s.png"%highstr,
+                          **pargs)
 
 
 def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGION__):
@@ -75,7 +77,7 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__A
     '''
 
     # Read data
-    Enew=E_new(d0,dn)
+    Enew=E_new(d0,dn,dkeys='E_isop','GC_E_isop')
 
     dates, E_isop=Enew.get_series('E_isop',region=region)
     units=Enew.attributes['E_isop']['units']

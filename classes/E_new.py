@@ -36,6 +36,9 @@ sys.path.pop(0)
 
 __VERBOSE__=False
 __DEBUG__=False
+__E_new_keys__=['E_isop','E_isop_kg','GC_E_isop,','GC_E_isop_kg',
+                'GC_background', 'GC_slope', 'background', 'lats',
+                'lats_e', 'lons', 'lons_e', 'time',]
 
 # Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
 # Change to -175 to avoid crossing the 179 -> -179 boundary?
@@ -47,10 +50,10 @@ __REMOTEPACIFIC__=[-15, -180, 15, -120]
 
 class E_new:
     # Keys: lats,lons,E_isop,...
-    def __init__(self, day0, dayn=None, dkeys=None):
+    def __init__(self, day0, dayn=None, dkeys=__E_new_keys__):
         '''
             Read E_new from day0 to dayn
-            if dkeys is set then only those datakeys will be kept
+            if dkeys is set then only those datakeys will be saved
         '''
 
         # day0=datetime(2005,1,1); dayn=datetime(2005,3,1)
@@ -70,12 +73,15 @@ class E_new:
             #print(key,np.shape(E_new_list[0][key]))
             if key in dimensions:
                 setattr(self,key,E_new_list[0][key])
-            else:
+            elif key in dkeys:
                 data=np.array(E_new_list[0][key])
                 for i in range(1,n_months):
                     data=np.append(data,np.array(E_new_list[i][key]),axis=0)
                 setattr(self, key, data)
-        
+            elif __VERBOSE__:
+                print("KEY %s not being read from E_new dataset"%key )
+
+
         # True over ocean squares
         mlons,mlats=np.meshgrid(self.lons,self.lats)
         self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=False).mask
@@ -88,22 +94,46 @@ class E_new:
         data=np.copy(getattr(self,key)) # copy so we don't overwrite anything
         lats=self.lats
         lons=self.lons
-        
+
         # Mask oceans with NANs
         if maskocean:
             for i in range(np.shape(data)[0]):
                 data[i,self.oceanmask]= np.NaN
         #TEST
         if testplot:
-            pp.createmap(data[0], lats, lons, region=region, 
+            pp.createmap(data[0], lats, lons, region=region,
                          linear=True,pname="test_mask.png")
-                    
-        
+
+
         # Subset to region:
         lati,loni=util.lat_lon_range(lats,lons,region)
         data=data[:,lati,:]
         data=data[:,:,loni]
         dates=self.dates
-        
-            
+
+
         return dates,np.nanmean(data,axis=(1,2))
+
+    def date_indices(self,datelist):
+        ''' return indexes of listed dates '''
+        ret=[]
+        for d in datelist:
+            ret.append(np.where(np.array(self.dates)==d)[0][0])
+        return ret
+    def plot_map(self, key='E_isop', day, dayn=None, region=pp.__AUSREGION__):
+        '''
+            plot map of key over region for day (or averaged from day to dayn)
+        '''
+        di=self.date_indices(util.list_days(day,dayn))
+        data=getattr(self,key)
+        if len(di)==1:
+            data=data[di]
+        else:
+            data=np.nanmean(data[di,:,:],axis=0)
+
+        units=self.attributes[key]['units']
+        pp.createmap(data, self.lats_e, self.lons_e, edges=True,
+                     latlon=True, region=region, linear=True,
+                     clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
+              pname=None,title=None,suptitle=None, smoothed=False,
+              cmapname=None, fillcontinents=None)

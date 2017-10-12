@@ -357,7 +357,7 @@ def read_E_new_month(month=datetime(2005,1,1), oneday=None, filename=None):
 
 
 
-def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=False):
+def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=60, verbose=False):
     '''
     Read info from a single swath file
     NANify entries with main quality flag not equal to zero
@@ -444,27 +444,25 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=None, verbose=Fals
         amf[xsuss]  = np.NaN
 
         # remove pixels polewards of maxlat
-        if maxlat is not None:
-            with np.errstate(invalid='ignore'):
-                rmlat   = np.abs(lats) > maxlat
-            if verbose:
-                removedcount=np.nansum(rmlat+xsuss+suss) - np.nansum(xsuss+suss)
-                print("%d further pixels removed as |latitude| > 60"%removedcount)
-            hcho[rmlat] = np.NaN
-            lats[rmlat] = np.NaN
-            lons[rmlat] = np.NaN
-            amf[rmlat]  = np.NaN
+        with np.errstate(invalid='ignore'):
+            rmlat   = np.abs(lats) > maxlat
+        if verbose:
+            removedcount=np.nansum(rmlat+xsuss+suss) - np.nansum(xsuss+suss)
+            print("%d further pixels removed as |latitude| > 60"%removedcount)
+        hcho[rmlat] = np.NaN
+        lats[rmlat] = np.NaN
+        lons[rmlat] = np.NaN
+        amf[rmlat]  = np.NaN
 
         # remove solarzenithangle over 60 degrees
-        if szamax is not None:
-            rmsza       = sza > szamax
-            if verbose:
-                removedcount= np.nansum(rmsza+rmlat+xsuss+suss) - np.nansum(rmlat+xsuss+suss)
-                print("%d further pixels removed as sza > 60"%removedcount)
-            hcho[rmsza] = np.NaN
-            lats[rmsza] = np.NaN
-            lons[rmsza] = np.NaN
-            amf[rmsza]  = np.NaN
+        rmsza       = sza > szamax
+        if verbose:
+            removedcount= np.nansum(rmsza+rmlat+xsuss+suss) - np.nansum(rmlat+xsuss+suss)
+            print("%d further pixels removed as sza > 60"%removedcount)
+        hcho[rmsza] = np.NaN
+        lats[rmsza] = np.NaN
+        lons[rmsza] = np.NaN
+        amf[rmsza]  = np.NaN
 
         # remove VCs outside screen range
         if screen is not None:

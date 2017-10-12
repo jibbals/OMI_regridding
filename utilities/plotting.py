@@ -218,18 +218,18 @@ def plot_swath(day, region=__AUSREGION__,
         Plot OMI swath for requested day
     '''
     if __VERBOSE__:
-        print("plot_swath called: %s"%str(title))
+        print("plot_swath called, title: %s"%str(title))
 
     # Create a basemap map with region as inputted
     lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
     m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
               resolution='i', projection='merc')
 
-    swaths=fio.read_omhcho_day(day)
+    swaths=fio.read_omhcho_day(day,True)
     data=swaths['HCHO']
     lats=swaths['lats']
     lons=swaths['lons']
-    
+    print(data.shape)
     # Set vmin and vmax if necessary
     if vmin is None:
         vmin=1.05*np.nanmin(data)
@@ -445,3 +445,7 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
     args['linear']=rlinear
     args['clabel']="%"
     createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
+
+if __name__=='__main__':
+    from datetime import datetime
+    plot_swath(datetime(2005,1,20), title="neg_swath.png")

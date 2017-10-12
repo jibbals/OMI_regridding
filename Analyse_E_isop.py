@@ -61,11 +61,11 @@ def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGI
     neg=dates[negs[0]]
     high=dates[highs[0]]
     
-    f,ax=plt.subplots([2,2], figsize=[11,11])
-    plt.sca(ax[0,0])
+    plt.figure(figsize=(11,11))
+    plt.subplot(121)
     pp.plot_swath(neg, title="HCHO from OMI %s"%str(neg),region=region)
     
-    plt.sca(ax[0,1])
+    plt.subplot(122)
     pp.plot_swath(neg, title="HCHO from OMI %s"%str(high), region=region)
     
     pname="Figs/Checks/E_new_swaths.png"
@@ -406,7 +406,7 @@ if __name__=='__main__':
 
     d0=datetime(2005,1,1); dn=datetime(2005,12,31)
     #E_new_time_series(d0,dn,region=pp.__AUSREGION__) # Takes a few minuts (use qsub)
-    check_E_new(dn=datetime(2005,3,1))
+    check_E_new(dn=datetime(2005,2,1))
 
 #    for region in regions:
 #        print("REGION = %s"%str(region))

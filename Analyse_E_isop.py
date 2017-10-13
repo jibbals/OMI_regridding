@@ -71,39 +71,90 @@ def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGI
                           **pargs)
 
 
-def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGION__):
+def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
+                      drawmap=True, pname='Figs/E_new_series.png'):
     '''
         Plot the time series of E_new, eventually compare against MEGAN, etc..
     '''
+    # Regions I'm averaging over:
+    Aus=[-40,112,-11,153]
+    WA=[-36,114,-14,128]
+    SEA=[-39,144,-29,153]
+    subs=[WA,Aus,SEA]
+    labels=['WA','Aus','SEA']
+    colors=['aqua','magenta','teal']
+
+    # Draw them if you want
+    if drawmap:
+        plt.figure()
+        region=pp.__AUSREGION__
+
+        Aus=GMAO.edges_containing_region(Aus)
+        WA=GMAO.edges_containing_region(WA)
+        SEA=GMAO.edges_containing_region(SEA)
+        pp.displaymap(region=region, subregions=subs,
+                      labels=labels,colors=colors)
+
+        regionname='Figs/regionmap.png'
+        plt.title("Regions for E_isop analysis")
+        plt.savefig(regionname)
+        print("Saved %s"%regionname)
+        plt.close()
+
+    pp.InitMatplotlib() # set up plotting defaults
+    plt.figure(figsize=(16,7))
+    ax=[]
 
     # Read data
-    Enew=E_new(d0,dn,dkeys='E_isop','GC_E_isop')
+    Enew=E_new(d0,dn,dkeys=['E_isop','GC_E_isop'])
 
-    dates, E_isop=Enew.get_series('E_isop',region=region)
-    units=Enew.attributes['E_isop']['units']
-    print(dates)
-    # Plot time series
-    pp.plot_time_series(dates,E_isop,
-                        title='E_new time series over %s'%str(region),
-                        ylabel="E_isop [%s]"%units,
-                        linestyle='None', marker='*', # Just use markers for daily data
-                        color='blue',label='daily')
+    for i,rc in enumerate(zip(subs,colors)):
+        ax.append(plt.subplot(131+i))
+        region,color=rc
+        ptsargs={'dfmt':"%b",'color':color}
 
-    # Add monthly average line
-    monthly=util.monthly_averaged(dates,E_isop)
-    mdates=monthly['middates']; E_isop_monthly=monthly['data']
-    mstd=monthly['std'];
-    pp.plot_time_series(mdates,E_isop_monthly, color='m',label='monthly')
-    pp.plot_time_series(mdates,E_isop_monthly+mstd,
-                        linestyle='--', color='m',label='1 std.')
-    pp.plot_time_series(mdates,E_isop_monthly-mstd,
-                        linestyle='--', color='m')
-    plt.legend()
+        dates, E_isop=Enew.get_series('E_isop',region=region)
+        dates, GC_E_isop=Enew.get_series('GC_E_isop',region=region)
+        units=Enew.attributes['E_isop']['units']
+
+        # Plot time series
+        pp.plot_time_series(dates,E_isop,
+                            linestyle='None', marker='.',
+                            label=[None,'daily'][i==0],
+                            **ptsargs)
+
+        # Add monthly average line
+        monthly=util.monthly_averaged(dates,E_isop)
+        GC_monthly=util.monthly_averaged(dates,GC_E_isop)
+        GC_E_monthly=GC_monthly['data']
+        GC_mstd=GC_monthly['std']
+        mdates=monthly['middates']; E_monthly=monthly['data']
+        mstd=monthly['std'];
+
+        pp.plot_time_series(mdates,E_monthly, linewidth=2.0,
+                            label=[None,'monthly avg.'][i==0],
+                            **ptsargs)
+
+        pp.plot_time_series(mdates,GC_E_monthly,linestyle=':',
+                            markeredgewidth=3, marker='x', linewidth=2,
+                            label=[None,'monthly avg. (MEGAN)'][i==0],
+                            **ptsargs)
+
+        # add +- 1 std.
+        pp.plot_time_series(mdates,E_monthly+mstd, linestyle='--',
+                            label=[None,'1 std.'][i==0],
+                            **ptsargs)
+        pp.plot_time_series(mdates,E_monthly-mstd, linestyle='--',
+                            **ptsargs)
+        plt.ylim([-0.5e12, 3e12])
+        plt.title(labels[i])
+    ax[0].set_ylabel("E_isop [%s]"%units)
+    plt.suptitle("Emissions over 2005")
+    plt.legend(loc='best')
 
 
 
     # save figure
-    pname='Figs/E_new_series.png'
     plt.savefig(pname)
     print("Saved %s"%pname)
 
@@ -401,8 +452,8 @@ if __name__=='__main__':
     regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
 
     d0=datetime(2005,1,1); dn=datetime(2005,12,31)
-    #E_new_time_series(d0,dn,region=pp.__AUSREGION__) # Takes a few minuts (use qsub)
-    check_E_new(dn=datetime(2005,2,1))
+    E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
+    #check_E_new(dn=datetime(2005,2,1))
 
 #    for region in regions:
 #        print("REGION = %s"%str(region))

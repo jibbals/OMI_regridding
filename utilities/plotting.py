@@ -396,6 +396,55 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
     args['clabel']="%"
     createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
 
+def add_grid_to_map(m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=1.0, dashes=[1000,1], labels=[0,0,0,0]):
+    '''
+    Overlay a grid onto the thingy
+    Inputs:
+        m: the basemap object to be gridded
+        leftbot: [left, bottom]  #as lon,lat
+        xyres: lon,lat resolution in degrees
+        color: grid colour
+        linewidth: of grid lines
+        dashes: [on,off] for dash pattern
+        label: [left,right,top,bottom] to be labelled
+    '''
+    # lats
+    y=np.arange(xy0[0], 180.0001, xyres[0])
+    # lons
+    x=np.arange(xy0[1], 90.0001, xyres[1])
+    # add grid to map
+    m.drawparallels(x, color=color, linewidth=linewidth, dashes=dashes, labels=labels)
+    m.drawmeridians(y, color=color, linewidth=linewidth, dashes=dashes, labels=labels)
+
+def displaymap(region=__AUSREGION__, subregions=[], labels=[], colors=[],
+               fontsize='small', bluemarble=True,drawstates=True):
+    '''
+        regions are [lat,lon,lat,lon]
+    '''
+    m = Basemap(projection='mill', resolution='i',
+        llcrnrlon=region[1], llcrnrlat=region[0],
+        urcrnrlon=region[3], urcrnrlat=region[2])
+    if bluemarble:
+        m.bluemarble()
+    else:
+        m.drawcountries()
+    if drawstates:
+        m.drawstates()
+
+    # Add lats/lons to map
+    add_grid_to_map(m,xy0=(-10,-80),xyres=(10,10),dashes=[1,1e6],labels=[1,0,0,1])
+
+    # add subregions and little lables:
+    for r,l,c in zip(subregions, labels,colors):
+        plot_rec(m,r,color=c)
+        lon,lat=r[1],r[2]
+        x,y = m(lon,lat)
+        plt.text(x+100,y-100,l,fontsize=fontsize,color=c)
+
+    return m
+
+
+
 if __name__=='__main__':
     from datetime import datetime
     plot_swath(datetime(2005,1,20),title="neg_swath",pname="Figs/Checks/neg_swath.png")

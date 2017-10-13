@@ -49,7 +49,7 @@ __REMOTEPACIFIC__=[-15, -180, 15, -120]
 ########################################################################
 
 class E_new:
-    # Keys: lats,lons,E_isop,...
+    # Keys: time,lats,lons,E_isop,...
     def __init__(self, day0, dayn=None, dkeys=__E_new_keys__):
         '''
             Read E_new from day0 to dayn
@@ -68,19 +68,20 @@ class E_new:
             E_new_list.append(data)
         self.attributes=attrs
         dimensions=['lons','lons_e','lats','lats_e']
+
         # Combine the data
         for key in E_new_list[0].keys():
             #print(key,np.shape(E_new_list[0][key]))
             if key in dimensions:
                 setattr(self,key,E_new_list[0][key])
-            elif key in dkeys:
+            elif (key == 'time') or (key in dkeys):
                 data=np.array(E_new_list[0][key])
                 for i in range(1,n_months):
                     data=np.append(data,np.array(E_new_list[i][key]),axis=0)
                 setattr(self, key, data)
             elif __VERBOSE__:
                 print("KEY %s not being read from E_new dataset"%key )
-
+        self.dates=[datetime.strptime(str(t),"%Y%m%d") for t in self.time]
 
         # True over ocean squares
         mlons,mlats=np.meshgrid(self.lons,self.lats)
@@ -104,7 +105,6 @@ class E_new:
             pp.createmap(data[0], lats, lons, region=region,
                          linear=True,pname="test_mask.png")
 
-
         # Subset to region:
         lati,loni=util.lat_lon_range(lats,lons,region)
         data=data[:,lati,:]
@@ -120,7 +120,7 @@ class E_new:
         for d in datelist:
             ret.append(np.where(np.array(self.dates)==d)[0][0])
         return ret
-    def plot_map(self, key='E_isop', day, dayn=None, region=pp.__AUSREGION__):
+    def plot_map(self, day, dayn=None, key='E_isop', region=pp.__AUSREGION__):
         '''
             plot map of key over region for day (or averaged from day to dayn)
         '''

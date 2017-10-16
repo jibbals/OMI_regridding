@@ -313,7 +313,7 @@ def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True,
     if diag:
         plt.plot(lims0,lims0,'--',color=colour,label='1-1') # plot the 1-1 line for comparison
 
-def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', **pltargs):
+def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', xticks=None, **pltargs):
     ''' plot values over datetimes '''
     dates = mdates.date2num(datetimes)
     #plt.plot_date(dates, values, **pltargs)
@@ -333,6 +333,10 @@ def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legen
         plt.legend()
     if title is not None:
         plt.title(title)
+    if xticks is not None:
+        #xt=[]
+        #xt.append(mdates.date2num(xticks))
+        plt.xticks(xticks)
     if pname is not None:
         plt.savefig(pname)
         print('%s saved'%pname)

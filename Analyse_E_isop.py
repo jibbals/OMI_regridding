@@ -111,17 +111,17 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
     for i,rc in enumerate(zip(subs,colors)):
         ax.append(plt.subplot(131+i))
         region,color=rc
-        ptsargs={'dfmt':"%b",'color':color}
+        ptsargs={'dfmt':"%b",'color':'k'}
 
         dates, E_isop=Enew.get_series('E_isop',region=region)
         dates, GC_E_isop=Enew.get_series('GC_E_isop',region=region)
         units=Enew.attributes['E_isop']['units']
 
-        # Plot time series
+        # Plot time series (dots with color of region)
         pp.plot_time_series(dates,E_isop,
                             linestyle='None', marker='.',
-                            label=[None,'daily'][i==0],
-                            **ptsargs)
+                            label=[None,'daily estimate'][i==1],
+                            color=color)
 
         # Add monthly average line
         monthly=util.monthly_averaged(dates,E_isop)
@@ -129,28 +129,35 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
         GC_E_monthly=GC_monthly['data']
         GC_mstd=GC_monthly['std']
         mdates=monthly['middates']; E_monthly=monthly['data']
+        xticks=mdates[0::2]
         mstd=monthly['std'];
 
+        # Plot monthly average and std:
         pp.plot_time_series(mdates,E_monthly, linewidth=2.0,
-                            label=[None,'monthly avg.'][i==0],
-                            **ptsargs)
-
-        pp.plot_time_series(mdates,GC_E_monthly,linestyle=':',
-                            markeredgewidth=3, marker='x', linewidth=2,
-                            label=[None,'monthly avg. (MEGAN)'][i==0],
+                            label=[None,'monthly avg.'][i==1],
                             **ptsargs)
 
         # add +- 1 std.
         pp.plot_time_series(mdates,E_monthly+mstd, linestyle='--',
-                            label=[None,'1 std.'][i==0],
+                            label=[None,'1 std.'][i==1],
                             **ptsargs)
         pp.plot_time_series(mdates,E_monthly-mstd, linestyle='--',
                             **ptsargs)
+
+        # Plot E_isop average
+        pp.plot_time_series(mdates,GC_E_monthly,linestyle=':',xticks=xticks,
+                            markeredgewidth=3, marker='x', linewidth=2,
+                            label=[None,'monthly avg. (MEGAN)'][i==1],
+                            **ptsargs)
+
+
         plt.ylim([-0.5e12, 3e12])
         plt.title(labels[i])
+        if i==1: plt.legend(loc='best',prop={'size': 10})
+
     ax[0].set_ylabel("E_isop [%s]"%units)
     plt.suptitle("Emissions over 2005")
-    plt.legend(loc='best')
+
 
 
 

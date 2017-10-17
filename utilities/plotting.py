@@ -211,20 +211,15 @@ def createmap(data, lats, lons, edges=False ,
     return m, cs, cb
 
 def plot_swath(day, region=__AUSREGION__, reprocessed=False,
-              pname=None,title=None,suptitle=None,
-              colorbar=True, cbarfmt=None,
-              linear=True, clabel=None, cbarxtickrot=None,
-              vmin=None, vmax=None,cmapname=None):
+              edges=False , vmin=None, vmax=None,
+              aus=False, linear=False, clabel='molec/cm2', colorbar=True,
+              cbarfmt=None, cbarxtickrot=None,
+              pname=None,title=None,suptitle=None, smoothed=False,
+              cmapname=None, fillcontinents=None):
     '''
-        Plot OMI swath for requested day
+        Wrapper to plot gridded swath output for a day
     '''
-    if __VERBOSE__:
-        print("plot_swath called, title: %s"%str(title))
 
-    # Create a basemap map with region as inputted
-    lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
-    m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
-              resolution='i', projection='merc')
 
     #swaths=fio.read_omhcho_day(day)
     dkey=['VC_OMI_RSC','VCC'][reprocessed]
@@ -233,62 +228,14 @@ def plot_swath(day, region=__AUSREGION__, reprocessed=False,
     lats=swaths['latitude']
     lons=swaths['longitude']
 
-    # Set vmin and vmax if necessary
-    if vmin is None:
-        vmin=1.05*np.nanmin(data)
-    if vmax is None:
-        vmax=0.95*np.nanmax(data)
+    return createmap(data, lats, lons, edges=edges ,
+              vmin=vmin, vmax=vmax, latlon=True,
+              region=region, aus=aus, linear=linear,
+              clabel=clabel, colorbar=colorbar, cbarfmt=cbarfmt,
+              cbarxtickrot=cbarxtickrot, pname=pname,title=title,
+              suptitle=suptitle, smoothed=smoothed,
+              cmapname=cmapname, fillcontinents=fillcontinents)
 
-    # Make edges into 2D meshed grid
-    mlons,mlats=np.meshgrid(lons,lats)
-
-    if cmapname is None:
-        cmapname = matplotlib.rcParams['image.cmap']
-
-    cmap=plt.cm.cmap_d[cmapname]
-    pcmeshargs={'vmin':vmin, 'vmax':vmax, 'clim':(vmin, vmax),
-                'latlon':True, 'cmap':cmap}
-
-    if not linear:
-        if __VERBOSE__:print("createmap() is removing negatives")
-        pcmeshargs['norm']=LogNorm()
-        data[data<=0]=np.NaN
-
-    #force nan into any pixel with nan results, so color is not plotted there...
-    mdata=np.ma.masked_invalid(data) # mask non-finite elements
-    #mdata=data # masking occasionally throws up all over your face
-
-    cs=m.pcolormesh(mlons, mlats, mdata, **pcmeshargs)
-    # colour limits for contour mesh
-    cs.set_clim(vmin,vmax)
-
-    # draw coastline and equator(no latlon labels)
-    m.drawcoastlines()
-    m.drawparallels([0],labels=[0,0,0,0])
-
-    # add titles and cbar label
-    if title is not None:
-        plt.title(title)
-    if suptitle is not None:
-        plt.suptitle(suptitle)
-    cb=None
-    if colorbar:
-        cbargs={'size':'5%','pad':'1%','extend':'both','format':cbarfmt}
-        cb=m.colorbar(cs,"bottom", **cbargs)
-        if clabel is not None:
-            cb.set_label(clabel)
-        if cbarxtickrot is not None:
-            cb.ax.set_xticklabels(cb.ax.get_xticklabels(), rotation=cbarxtickrot)
-
-    # if a plot name is given, save and close figure
-    if pname is not None:
-        plt.savefig(pname)
-        print("Saved "+pname)
-        plt.close()
-        return
-
-    # if no colorbar is wanted then don't return one (can be set externally)
-    return m, cs, cb
 
 def plot_rec(bmap, inlimits, color=None, linewidth=None):
     '''
@@ -366,7 +313,7 @@ def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True,
     if diag:
         plt.plot(lims0,lims0,'--',color=colour,label='1-1') # plot the 1-1 line for comparison
 
-def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', **pltargs):
+def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', xticks=None, **pltargs):
     ''' plot values over datetimes '''
     dates = mdates.date2num(datetimes)
     #plt.plot_date(dates, values, **pltargs)
@@ -386,6 +333,10 @@ def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legen
         plt.legend()
     if title is not None:
         plt.title(title)
+    if xticks is not None:
+        #xt=[]
+        #xt.append(mdates.date2num(xticks))
+        plt.xticks(xticks)
     if pname is not None:
         plt.savefig(pname)
         print('%s saved'%pname)
@@ -448,6 +399,55 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
     args['linear']=rlinear
     args['clabel']="%"
     createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
+
+def add_grid_to_map(m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=1.0, dashes=[1000,1], labels=[0,0,0,0]):
+    '''
+    Overlay a grid onto the thingy
+    Inputs:
+        m: the basemap object to be gridded
+        leftbot: [left, bottom]  #as lon,lat
+        xyres: lon,lat resolution in degrees
+        color: grid colour
+        linewidth: of grid lines
+        dashes: [on,off] for dash pattern
+        label: [left,right,top,bottom] to be labelled
+    '''
+    # lats
+    y=np.arange(xy0[0], 180.0001, xyres[0])
+    # lons
+    x=np.arange(xy0[1], 90.0001, xyres[1])
+    # add grid to map
+    m.drawparallels(x, color=color, linewidth=linewidth, dashes=dashes, labels=labels)
+    m.drawmeridians(y, color=color, linewidth=linewidth, dashes=dashes, labels=labels)
+
+def displaymap(region=__AUSREGION__, subregions=[], labels=[], colors=[],
+               fontsize='small', bluemarble=True,drawstates=True):
+    '''
+        regions are [lat,lon,lat,lon]
+    '''
+    m = Basemap(projection='mill', resolution='i',
+        llcrnrlon=region[1], llcrnrlat=region[0],
+        urcrnrlon=region[3], urcrnrlat=region[2])
+    if bluemarble:
+        m.bluemarble()
+    else:
+        m.drawcountries()
+    if drawstates:
+        m.drawstates()
+
+    # Add lats/lons to map
+    add_grid_to_map(m,xy0=(-10,-80),xyres=(10,10),dashes=[1,1e6],labels=[1,0,0,1])
+
+    # add subregions and little lables:
+    for r,l,c in zip(subregions, labels,colors):
+        plot_rec(m,r,color=c)
+        lon,lat=r[1],r[2]
+        x,y = m(lon,lat)
+        plt.text(x+100,y-100,l,fontsize=fontsize,color=c)
+
+    return m
+
+
 
 if __name__=='__main__':
     from datetime import datetime

@@ -13,7 +13,7 @@ from utilities import plotting as pp
 from utilities.JesseRegression import RMA
 from classes.omhchorp import omhchorp as omrp
 from classes.gchcho import match_bottom_levels
-
+from classes.GC_class import GC_output
 
 import numpy as np
 from numpy.ma import MaskedArray as ma
@@ -63,6 +63,15 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
+def smearing_calculation(date=datetime(2005,1,1)):
+    '''
+        S=change in HCHO column / change in E_isop
+    '''
+    region=pp.__AUSREGION__
+    # READ normal and halfisop run outputs:
+    full=GC_output(date)
+    half=None
+
 def check_HEMCO_restarts():
     '''
         Check how different the hemco restarts are between UCX and tropchem
@@ -82,7 +91,8 @@ def check_HEMCO_restarts():
             print(['NOT EQUAL','EQUAL'][np.isclose(trp_mean,ucx_mean)])
         #createmap(ucx[
     return None
-    
+
+
 
 def compare_GC_OMI_new(date=datetime(2005,1,1),aus=True):
     '''
@@ -94,7 +104,7 @@ def compare_GC_OMI_new(date=datetime(2005,1,1),aus=True):
     if aus:
         lllat=-45; urlat=-8; lllon=108; urlon=156
         austr='AUS_'
-    
+
     f=plt.figure(figsize=[13,13])
     # Figure of OMIcc, VCC, GC, diffs
     plt.subplot(223)
@@ -102,7 +112,7 @@ def compare_GC_OMI_new(date=datetime(2005,1,1),aus=True):
     m,cs,cb=gc.PlotVC(lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=vmin, vmax=vmax, cm2=True)
     #pname="Figs/map_%sGC_%s.png"%(austr,dstr)
     plt.title(Ogc)
-    
+
     om=omrp(date)
     lats=om.latitude
     lons=om.longitude
@@ -114,19 +124,19 @@ def compare_GC_OMI_new(date=datetime(2005,1,1),aus=True):
         pp.createmap(arr,lats,lons, vmin=vmin, vmax=vmax, latlon=True,
               lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, colorbar=False)
         plt.title(arrstr)
-    
+
     # relative differences
     #plt.subplot(224)
     #diffs=100.0*(VCC - VCC_OMI) / VCC_OMI
     #pp.linearmap(diffs,lats,lons,vmin=vmin,vmax=vmax,latlon=True,
     #          lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
     #plt.title("%s vs %s relative difference"%(Ogc,Oomi))
-    
+
     pname="Figs/map_GOM_%s%s.png"%(austr,dstr)
     plt.savefig(pname)
     print("%s saved"%pname)
     plt.close()
-    
+
 
 def compare_products(date=datetime(2005,1,1), oneday=True, positiveonly=False,
                      lllat=-60, lllon=-179, urlat=50, urlon=179,pltname=""):
@@ -530,7 +540,7 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     print ("Mean difference VC - VCC:%7.5e "%np.nanmean(diffs))
     print ("%7.2f%%"%(np.nanmean(diffs)*100/np.nanmean(dat.VC_GC)))
     print ("std VC - VCC:%7.5e "%np.nanstd(diffs))
-    
+
     # plot c) RSC by sensor and latitude
     plt.subplot2grid((2, 6), (1, 0), colspan=2)
     cp=plt.contourf(np.arange(1,60.1,1),dat.RSC_latitude,dat.RSC)
@@ -582,7 +592,7 @@ def Summary_Single_Profile():
 
     # Read OMHCHO data ( using reprocess get_good_pixels function )
     pixels=reprocess.get_good_pixel_list(day, getExtras=True)
-    
+
     #N = len(pixels['lat']) # how many pixels do we have
     #i=random.sample(range(N),1)[0]
     #print(i)
@@ -597,7 +607,7 @@ def Summary_Single_Profile():
     AMF_GC=pixels['AMF_GC'][i]
     VC_GC=SC/AMF_GC
     VC_OMI=SC/AMF_OMI
-    
+
     # read gchcho
     #lat,lon=0,0
     gchcho = fio.read_gchcho(day)
@@ -633,7 +643,7 @@ def Summary_Single_Profile():
     vcc=om.VCC[omlati,omloni] # corrected averaged grid square value
     ta=plt.gca().transAxes
     fs=30
-    
+
     plt.text(.3,.95, 'AMF$_{OMI}$=%5.2f'%AMF_OMI,transform=ta, fontsize=fs)
     plt.text(.3,.86, 'AMF$_{GC}$=%5.2f'%AMFS,transform=ta, fontsize=fs)
     plt.text(.3,.77, '$\Omega_{OMI}$=%4.2e'%VC_OMI,transform=ta, fontsize=fs)
@@ -1637,7 +1647,7 @@ if __name__ == '__main__':
     print("Running tests.py")
     pp.InitMatplotlib()
     #Summary_Single_Profile()
-    
+
     # GEOS Chem trop vs ucx restarts
     check_HEMCO_restarts()
 
@@ -1649,9 +1659,9 @@ if __name__ == '__main__':
     #for aus_only in [True, False]:
     #    test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=aus_only)
     #Test_Uncertainty()
-    
+
     #compare_GC_OMI_new()
-    
+
     # fires things
     #test_fires_fio()
     #test_fires_removed()

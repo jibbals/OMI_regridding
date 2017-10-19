@@ -51,23 +51,23 @@ paths = datapaths()
 
 def read_trac_avg(date=datetime(2005,1,1), runtype='tropchem', fname=None):
     '''
-        Read the UCX netcdf file: 
+        Read the UCX netcdf file:
         if fname is set read that from datadir
-    
+
     '''
     # Using runtype and test flag, determine where trac avg file is
     fi=run_number[runtype]
     dstr=date.strftime('%Y%m')
     filename='trac_avg_%s.nc'%dstr
-    if runtype=='UCX': 
+    if runtype=='UCX':
         filename='trac_avg_UCX.nc'
-    
+
     # Can use non default filename:
     if fname is not None:
         filename=fname
-    
+
     fullpath="%s/%s"%(paths[fi], filename)
-    
+
     # read the file and return it
     print("Reading %s"%fullpath)
     ncfile=nc.Dataset(fullpath,'r')

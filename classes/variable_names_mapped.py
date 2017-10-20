@@ -1,6 +1,7 @@
 
+
 _iga='IJ_AVG_S__'
-GC_trac_avg = { 'time':'taus','lev':'press','lat':'lats','lon':'lons',
+GC_trac_avg_nc = { 'time':'taus','lev':'press','lat':'lats','lon':'lons',
     # IJ_AVGs: in ppbv, except isop (ppbC)
     _iga+'NO':'NO', _iga+'O3':'O3', _iga+'MVK':'MVK', _iga+'MACR':'MACR',
     _iga+'ISOPN':'isopn', _iga+'IEPOX':'iepox', _iga+'NO2':'NO2', _iga+'NO3':'NO3',
@@ -19,5 +20,4 @@ GC_trac_avg = { 'time':'taus','lev':'press','lat':'lats','lon':'lons',
     'TR_PAUSE__TP_PRESS':'tpP', # trop Pressure: mb
     # Many more in trac_avg_yyyymm.nc, not read here yet...
     'CHEM_L_S__OH':'OH', # OH molec/cm3: (time, alt059, lat, lon) : 'chemically produced OH'
-
     }

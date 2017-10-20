@@ -9,16 +9,17 @@ Created on Thu Oct 12 12:15:43 2017
 from datetime import datetime
 import numpy as np
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 # local modules
 import utilities.utilities as util
 import utilities.plotting as pp
 from utilities import GMAO
-#from utilities import fio
+from utilities import GC_fio
 
 from classes.E_new import E_new # E_new class
-
+from classes.GC_class import GC_tavg
 
 ###############
 ### Globals ###
@@ -26,13 +27,13 @@ from classes.E_new import E_new # E_new class
 __VERBOSE__=True
 
 
+#####
+## DO STUFF
+#####
 d0=datetime(2005,1,1)
 dn=datetime(2005,2,1)
 region=pp.__AUSREGION__
 
-e=E_new(d0)
-d,isop=e.get_series('E_isop',maskocean=False,region=region,testplot=True)
-d,isop2=e.get_series('E_isop',maskocean=True,region=region)
-plt.plot(isop,label='original')
-plt.plot(isop2,label='ocean masked')
-plt.legend()
+#tavg,attrs=GC_fio.read_tavg(d0)
+#d=tavg['time'][0]
+tavg=GC_tavg(d0)

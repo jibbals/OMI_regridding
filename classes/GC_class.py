@@ -44,11 +44,35 @@ sys.path.pop(0)
 
 __VERBOSE__=True # For file-wide print statements
 
+# MAP GC TAVG output to nicer names:
+_iga='IJ_AVG_S_'
+_bxh='BXHGHT_S_'
+_GC_tavg_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
+    # IJ_AVGs: in ppbv, except isop (ppbC)
+    _iga+'NO':'NO', _iga+'O3':'O3', _iga+'MVK':'MVK', _iga+'MACR':'MACR',
+    _iga+'ISOPN':'isopn', _iga+'IEPOX':'iepox', _iga+'NO2':'NO2', _iga+'NO3':'NO3',
+    _iga+'NO2':'NO2', _iga+'ISOP':'isop', _iga+'CH2O':'hcho',
+    # Biogenic sources: atoms C/cm2/s
+    'BIOGSRCE__ISOP':'E_isop_bio',
+    # Other diagnostics:
+    'PEDGE_S__PSURF':'psurf',
+    _bxh+'BXHEIGHT':'boxH', # metres
+    _bxh+'AD':'AD', # air mass in grid box, kg
+    _bxh+'AVGW':'avgW', # Mixing ratio of H2O vapor, v/v
+    _bxh+'N(AIR)':'N_air', # Air density: molec/m3
+    'DXYP__DXYP':'area', # gridbox surface area: m2
+    'TR_PAUSE_TP_LEVEL':'tplev',
+    'TR_PAUSE_TP_HGHT':'tpH', # trop height: km
+    'TR_PAUSE_TP_PRESS':'tpP', # trop Pressure: mb
+    # Many more in trac_avg_yyyymm.nc, not read here yet...
+    'CHEM_L_S__OH':'OH', # OH molec/cm3: (time, alt059, lat, lon) : 'chemically produced OH'
+    }
+
 ################
 #####CLASS######
 ################
 
-class GC_output:
+class GC_tavg:
     '''
         Class holding and manipulating tropchem GC output
         # tropchem dims [[lev,] lat, lon[, time]]
@@ -63,55 +87,51 @@ class GC_output:
         self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
-    def __init__(self, date, UCX=False,monthavg=False,fname=None):
+    def __init__(self, date, run='tropchem', keys=gcfio.__tavg_mainkeys__):
         ''' Read data for ONE MONTH into self '''
         self.dstr=date.strftime("%Y%m")
 
-        # READ DATA, Tropchem or UCX file
-        self.UCX=UCX
-        read_file_func   = gcfio.get_tropchem_data
-        read_file_params = {'date':date,'fname':fname}
-        if UCX:
-            read_file_func = gcfio.get_UCX_data
-        else: # if it's tropchem we may want the month averaged:
-            read_file_params['monthavg']=monthavg
+        # Initialise to zeros:
+        self.run=run
+        self.hcho  = 0      #PPBV
+        self.isop  = 0      #PPBC (=PPBV*5)
+        self.boxH  = 0      #box heights (m)
+        self.psurf = 0      #pressure surfaces (hPa)
+        self.area  = 0      #XY grid area (m2)
+        self.N_air = 0      #air dens (molec_air/m3)
+        self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
+        self.attrs={}       # Attributes from bpch file
 
-        # Read the file in
-        tavg_data=read_file_func(**read_file_params)
+        data,attrs = gcfio.read_tavg(date,run=run,keys=keys)
+
 
         # Data has shape like [[time,]lev,lat,lon]
         # Save the data to this class.
-        for key in tavg_data.keys():
-            setattr(self, key, tavg_data[key])
+        for key in data.keys():
+            if key in _GC_tavg_to_nice.keys():
+                setattr(self, _GC_tavg_to_nice[key], data[key])
+                self.attrs[_GC_tavg_to_nice[key]] = attrs[key]
+            else:
+                setattr(self, key, data[key])
+                self.attrs[key]=attrs[key]
+
             if __VERBOSE__:
-                print("GC_output reading %s %s"%(key,tavg_data[key].shape))
+                print("GC_output reading %s %s"%(key,data[key].shape))
 
         # add some peripheral stuff
         self.n_lats=len(self.lats)
         self.n_lons=len(self.lons)
-        #if len(self.area.shape)==4:
-        #    self.area=self.area[0] # surface area doesn't change with time
 
-        # set dates and E_dates:
-        # bpch2coards messes up the taus somehow..
-        if len(self.taus.shape) == 0:
-            self.taus = np.array([float(self.taus),])
-        if __VERBOSE__:
-            print("Fixing stupid taus")
-            print("pre-fix: %d entries from %d .. %d"%(len(self.taus),self.taus[0],self.taus[-1]))
-            
-        new_taus=np.arange(0,len(self.taus))*24+self.taus[0]
-        self.taus=new_taus
-        if __VERBOSE__:
-            print("post-fix: %d entries from %d .. %d"%(len(self.taus),self.taus[0],self.taus[-1]))
+        # Convert from numpy.datetime64 to datetime
+        # '2005-01-01T00:00:00.000000000'
+        self.dates=[datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in self.time]
 
-        self.dates=util.date_from_gregorian(self.taus)
 
         #self._has_time_dim = len(self.E_isop_bio.shape) > 2
         self._has_time_dim = len(self.dates) > 1
 
         # Determine emissions in kg/s from atom_C / cm2 / s
-        if hasattr(self, 'E_isop_bio'):
+        if isinstance(self.E_isop_bio,type(np.array(0))):
             E=self.E_isop_bio # atom C / cm2 / s
             SA=self.area * 1e-6  # m2 -> km2
             # kg/atom_isop = grams/mole * mole/molec * kg/gram
@@ -119,7 +139,7 @@ class GC_output:
             #          isop/C * cm2/km2 * km2 * kg/isop
             conversion= 1./5.0 * 1e10 * SA * kg_per_atom
             self.E_isop_bio_kgs=E*conversion
-        
+
         assert all(self.lats == gmao.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
         self.lats_e=gmao.lats_e
         assert all(self.lons == gmao.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"

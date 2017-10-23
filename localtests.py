@@ -36,4 +36,10 @@ region=pp.__AUSREGION__
 
 #tavg,attrs=GC_fio.read_tavg(d0)
 #d=tavg['time'][0]
-tavg=GC_tavg(d0)
+half=GC_tavg(d0,run='halfisop')
+full=GC_tavg(d0,run='tropchem')
+print("GC_tavg read")
+
+print(half.attrs)
+
+

@@ -25,7 +25,7 @@ import utilities.utilities as util
 #####GLOBALS######
 ##################
 
-__VERBOSE__=False
+__VERBOSE__=True
 
 run_number={"tropchem":0,"UCX":1,"halfisop":2,"zeroisop":3}
 runs=["geos5_2x25_tropchem","UCX_geos5_2x25",
@@ -47,9 +47,9 @@ def _datapaths():
 paths = _datapaths()
 
 __tavg_mainkeys__=['lev','lon','lat','time',
-                   'IJ_AVG_S_ISOP','IJ_AVG_S_CH2O','BIOGSRCE_ISOP',
-                   'PEDGE_S_PSURF','BXHGHT_S_BXHEIGHT','BXHGHT_S_AD',
-                   'BXHGHT_S_AVGW','BXHGHT_S_N(AIR)','DXYP_DXYP']
+                   'IJ-AVG-$_ISOP','IJ-AVG-$_CH2O','BIOGSRCE_ISOP',
+                   'PEDGE-$_PSURF','BXHGHT-$_BXHEIGHT','BXHGHT-$_AD',
+                   'BXHGHT-$_AVGW','BXHGHT-$_N(AIR)','DXYP_DXYP']
 
 ################
 ###FUNCTIONS####
@@ -67,21 +67,36 @@ def read_bpch(path,keys):
     tracinf='/'.join(splt)
     splt[-1]='diaginfo.dat'
     diaginf='/'.join(splt)
+    
+    # Improve read performance by only reading requested fields:
+    fields=set(); categories=set()
+    for key in keys:
+        if '_' in key:
+            c,_,f = key.rpartition('_')
+            categories.add(c)
+            fields.add(f)
+        else:
+            fields.add(key)
+    if __VERBOSE__:
+        print("categories: ",categories)
+        print("fields: ",fields)
 
     # get bpch file:
     data={}
     attrs={}
-    ds=open_bpchdataset(path, tracerinfo_file=tracinf,diaginfo_file=diaginf)
+    ds=open_bpchdataset(path, 
+                        fields=list(fields), categories=list(categories),
+                        tracerinfo_file=tracinf,diaginfo_file=diaginf, decode_cf=False)
 
     # First read coordinates:
     for key in ds.coords.keys():
         data[key]=np.array(ds.coords[key]) # could also keep xarray or dask array
         attrs[key]=ds[key].attrs
-
+    
     # then read keys
     for key in keys:
         if key not in ds:
-            print("WARNING: %s not in dataset")
+            print("WARNING: %s not in dataset"%key)
             continue
         data[key]=np.array(ds[key])
         attrs[key]=ds[key].attrs

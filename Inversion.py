@@ -453,6 +453,18 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     if __VERBOSE__:
         print("Inversion.store_emissions() now finished")
 
+def smearing(month, ):
+    '''
+        Read full and half isop bpch output, calculate smearing
+        S = d column_HCHO / d E_isop
+    '''
+    full=GC_tavg(month, run='tropchem')
+    half=GC_tavg(month, run='halfisop')
+    lats=full.lats
+    lons=full.lons
+    S= (full.O_hcho - half.O_hcho) / (full.E_isop_bio - half.E_isop_bio)
+    
+
 if __name__=='__main__':
     print('Inversion has been run')
 

@@ -45,27 +45,27 @@ sys.path.pop(0)
 __VERBOSE__=True # For file-wide print statements
 
 # MAP GC TAVG output to nicer names:
-_iga='IJ_AVG_S_'
-_bxh='BXHGHT_S_'
+_iga='IJ-AVG-$_'
+_bxh='BXHGHT-S_'
 _GC_tavg_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     # IJ_AVGs: in ppbv, except isop (ppbC)
     _iga+'NO':'NO', _iga+'O3':'O3', _iga+'MVK':'MVK', _iga+'MACR':'MACR',
     _iga+'ISOPN':'isopn', _iga+'IEPOX':'iepox', _iga+'NO2':'NO2', _iga+'NO3':'NO3',
     _iga+'NO2':'NO2', _iga+'ISOP':'isop', _iga+'CH2O':'hcho',
     # Biogenic sources: atoms C/cm2/s
-    'BIOGSRCE__ISOP':'E_isop_bio',
+    'BIOGSRCE_ISOP':'E_isop_bio',
     # Other diagnostics:
-    'PEDGE_S__PSURF':'psurf',
+    'PEDGE-$_PSURF':'psurf',
     _bxh+'BXHEIGHT':'boxH', # metres
     _bxh+'AD':'AD', # air mass in grid box, kg
     _bxh+'AVGW':'avgW', # Mixing ratio of H2O vapor, v/v
     _bxh+'N(AIR)':'N_air', # Air density: molec/m3
-    'DXYP__DXYP':'area', # gridbox surface area: m2
-    'TR_PAUSE_TP_LEVEL':'tplev',
-    'TR_PAUSE_TP_HGHT':'tpH', # trop height: km
-    'TR_PAUSE_TP_PRESS':'tpP', # trop Pressure: mb
+    'DXYP_DXYP':'area', # gridbox surface area: m2
+    'TR-PAUSE_TP-LEVEL':'tplev',
+    'TR-PAUSE_TP-HGHT':'tpH', # trop height: km
+    'TR-PAUSE_TP-PRESS':'tpP', # trop Pressure: mb
     # Many more in trac_avg_yyyymm.nc, not read here yet...
-    'CHEM_L_S__OH':'OH', # OH molec/cm3: (time, alt059, lat, lon) : 'chemically produced OH'
+    'CHEM-L=$_OH':'OH', # OH molec/cm3: (time, alt059, lat, lon) : 'chemically produced OH'
     }
 
 ################
@@ -88,13 +88,16 @@ class GC_tavg:
 
     '''
     def __init__(self, date, run='tropchem', keys=gcfio.__tavg_mainkeys__):
-        ''' Read data for ONE MONTH into self '''
+        ''' Read data for ONE MONTH into self 
+            run= 'tropchem'|'halfisop'|'UCX'
+        '''
         self.dstr=date.strftime("%Y%m")
 
         # Initialise to zeros:
         self.run=run
         self.hcho  = 0      #PPBV
         self.isop  = 0      #PPBC (=PPBV*5)
+        self.O_hcho= 0      # column hcho molec/cm2 
         self.boxH  = 0      #box heights (m)
         self.psurf = 0      #pressure surfaces (hPa)
         self.area  = 0      #XY grid area (m2)
@@ -117,13 +120,18 @@ class GC_tavg:
 
             if __VERBOSE__:
                 print("GC_output reading %s %s"%(key,data[key].shape))
-
+        
+        # If possible calculate the column hcho too
+        # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
+        
         # add some peripheral stuff
         self.n_lats=len(self.lats)
         self.n_lons=len(self.lons)
 
         # Convert from numpy.datetime64 to datetime
         # '2005-01-01T00:00:00.000000000'
+        if not hasattr(self,'time'):
+            self.time=[date.strftime("%Y-%m-%dT%H:%M:%S.000000000")]
         self.dates=[datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in self.time]
 
 

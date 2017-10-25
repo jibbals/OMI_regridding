@@ -11,9 +11,10 @@ File to check data files created throughout the calculation process.
 from utilities import fio
 from utilities import plotting as pp
 from utilities import utilities as util
-from classes.omhchorp import omhchorp 
+from utilities import GMAO
+from classes.omhchorp import omhchorp
 
-# maths and dates 
+# maths and dates
 import numpy as np
 from datetime import datetime
 import matplotlib
@@ -50,7 +51,7 @@ def check_omhchorp(date=datetime(2005,1,1),suffix='',ignorePP=True):
     dstr=date.strftime("%Y%m%d") # yyyymmdd
     mstr=date.strftime("%Y, %B") # yyyy, Month
     pname="%s/omhchorp_%s_%s.png"%(figpath,dstr,suffix)
-    
+
     # read month average
     day0=datetime(date.year,date.month,1)
     dayn=util.last_day(date)
@@ -59,12 +60,12 @@ def check_omhchorp(date=datetime(2005,1,1),suffix='',ignorePP=True):
     data_month=om.time_averaged(day0=date,month=True,keys=['VCC','gridentries'])
 
     lats=om.lats; lons=om.lons
-    
+
     #print(np.shape(data_day['gridentries']))
     #print(type(data_day['gridentries']))
     #print(type(data_day['gridentries'][0,0]))
     #print(data_day['gridentries'][10:20,10:20])
-    
+
     #print(np.shape(data_day['VCC']))
     #print(type(data_day['VCC']))
     #print(type(data_day['VCC'][0,0]))
@@ -79,19 +80,19 @@ def check_omhchorp(date=datetime(2005,1,1),suffix='',ignorePP=True):
     plt.subplot(222)
     pp.createmap(data_month['VCC'],lats,lons,linear=True,clabel='molec/cm2')
     plt.title("VCC %s"%mstr)
-    
+
     # plot entry counts
     plt.subplot(223)
-    
+
     pp.createmap(data_day['gridentries'],lats,lons,linear=True)
     plt.title("omi pixels %s"%dstr)
     plt.subplot(224)
     pp.createmap(data_month['gridentries'],lats,lons,linear=True)
     plt.title("omi pixels %s"%mstr)
-    
+
     plt.savefig(pname)
     print("FIGURE SAVED: %s"%pname)
-    
+
 
 def check_HEMCO_restarts(date=datetime(2005,1,1),suffix=''):
     '''
@@ -105,7 +106,7 @@ def check_HEMCO_restarts(date=datetime(2005,1,1),suffix=''):
     ftrp=fpat%('geos5_2x25_tropchem',dstr)
     ucx=fio.read_netcdf(fucx)
     trp=fio.read_netcdf(ftrp)
-    
+
     # Try plotting a table for easy reading:
     col_labels= ('UCX','Trop')
     row_labels=[]
@@ -121,14 +122,14 @@ def check_HEMCO_restarts(date=datetime(2005,1,1),suffix=''):
             equal=np.isclose(trp_mean,ucx_mean)
             row_colour.append([red,blue][equal])
             tabledat.append(["%.2e"%ucx_mean,"%.2e"%trp_mean])
-    
+
     # Figure stuff:
     fig,ax=plt.subplots()
     plt.title("UCX vs Tropchem HEMCO Restarts %s"%dstr)
-    
+
     table=plt.table(cellText=tabledat, rowLabels=row_labels, colLabels=col_labels,
                     rowColours=row_colour,  loc='center')
-    
+
     # hide axes
     fig.patch.set_visible(False)
     ax.axis('off')
@@ -138,28 +139,56 @@ def check_HEMCO_restarts(date=datetime(2005,1,1),suffix=''):
     fig.subplots_adjust(left=0.3)
     plt.savefig(pname)
     print("FIGURE SAVED: %s "%pname)
-            
+
     return None
-    
+
 
 
 
 def plot_swaths(day):
     '''  Plot a swath/day/8day picture '''
+    print("TBA")
 
+def grid_comparison():
+    '''
+    '''
 
+    # Get resolution for GC and satellite:
+    GC_y   = GMAO.lats_e
+    GC_x   = GMAO.lons_e
+    GC_xy0 = (GC_x[2],GC_y[2])
+    GC_res = (GC_x[3]-GC_x[2],GC_y[3]-GC_y[2])
+
+    #S=omhchorp(datetime(2005,1,1),ignorePP=True)
+    #S_x    = S.lons_e
+    #S_y    = S.lats_e
+    #S_xy0  = GC_xy0#(S_x[1],S_y[1])
+    #S_res  = (0.3125,0.25) #(S_x[3]-S_x[2],S_y[3]-S_y[2])
+
+    # Make bluemarble display map:
+    m=pp.displaymap()
+
+    # Add GC resolution and then my satellite resolution
+    #m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=1.0, dashes=[1000,1], labels=[0,0,0,0]
+    pp.add_grid_to_map(m,xy0=GC_xy0,xyres=GC_res,color='white',linewidth=1,labels=[0,0,0,0])
+    #pp.add_grid_to_map(m,xy0=S_xy0,xyres=S_res,color='orange',linewidth=1,labels=[0,0,0,0])
+
+    pname=figpath+'/GridSizes.png'
+    plt.title("GEOS-Chem Resolution")
+    plt.savefig(pname)
+    print("Saved "+pname)
 
 ##############################
 ########## IF CALLED #########
 ##############################
 if __name__ == '__main__':
     print("Running check_data.py")
-    
-    
+
+    grid_comparison()
     #for date in [datetime(2005,1,1),datetime(2005,2,1),datetime(2005,7,1),datetime(2006,1,1),]:
     #    check_HEMCO_restarts(date=date)
-    
-    for date in [datetime(2005,1,1),datetime(2005,1,2), datetime(2005,3,1)]:
-        check_omhchorp(date)
-    
-    
+
+    #for date in [datetime(2005,1,1),datetime(2005,1,2), datetime(2005,3,1)]:
+    #    check_omhchorp(date)
+
+

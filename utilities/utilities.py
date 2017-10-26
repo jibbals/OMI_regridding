@@ -184,6 +184,12 @@ def lat_lon_range(lats,lons,region):
     loninds=np.intersect1d(loninds1,loninds2, assume_unique=True)
     return latinds, loninds
 
+def lat_lon_subset(lats,lons,region, data=[])
+    '''
+        Returns dict with lats, lons, lats_e, lons_e, and each data aray subsetted
+    '''
+    lati,loni=lat_lon_range(
+
 def list_days(day0,dayn=None,month=False):
     '''
         return list of days from day0 to dayn, or just day0

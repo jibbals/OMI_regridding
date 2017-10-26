@@ -46,7 +46,7 @@ __VERBOSE__=True # For file-wide print statements
 
 # MAP GC TAVG output to nicer names:
 _iga='IJ-AVG-$_'
-_bxh='BXHGHT-S_'
+_bxh='BXHGHT-$_'
 _GC_tavg_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     # IJ_AVGs: in ppbv, except isop (ppbC)
     _iga+'NO':'NO', _iga+'O3':'O3', _iga+'MVK':'MVK', _iga+'MACR':'MACR',
@@ -54,6 +54,8 @@ _GC_tavg_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     _iga+'NO2':'NO2', _iga+'ISOP':'isop', _iga+'CH2O':'hcho',
     # Biogenic sources: atoms C/cm2/s
     'BIOGSRCE_ISOP':'E_isop_bio',
+    # burning sources: atoms C/cm2/s
+    'BIOBSRCE_ISOP':'E_isop_burn',
     # Other diagnostics:
     'PEDGE-$_PSURF':'psurf',
     _bxh+'BXHEIGHT':'boxH', # metres
@@ -95,20 +97,20 @@ class GC_tavg:
 
         # Initialise to zeros:
         self.run=run
-        self.hcho  = 0      #PPBV
-        self.isop  = 0      #PPBC (=PPBV*5)
-        self.O_hcho= 0      # column hcho molec/cm2 
-        self.boxH  = 0      #box heights (m)
-        self.psurf = 0      #pressure surfaces (hPa)
-        self.area  = 0      #XY grid area (m2)
-        self.N_air = 0      #air dens (molec_air/m3)
-        self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
+        #self.hcho  = 0      #PPBV
+        #self.isop  = 0      #PPBC (=PPBV*5)
+        #self.O_hcho= 0      # column hcho molec/cm2 
+        #self.boxH  = 0      #box heights (m)
+        #self.psurf = 0      #pressure surfaces (hPa)
+        #self.area  = 0      #XY grid area (m2)
+        #self.N_air = 0      #air dens (molec_air/m3)
+        #self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
         self.attrs={}       # Attributes from bpch file
 
         data,attrs = gcfio.read_tavg(date,run=run,keys=keys)
 
 
-        # Data has shape like [[time,]lev,lat,lon]
+        # Data has shape like [[time,]lat,lon[,lev]]
         # Save the data to this class.
         for key in data.keys():
             if key in _GC_tavg_to_nice.keys():
@@ -119,10 +121,13 @@ class GC_tavg:
                 self.attrs[key]=attrs[key]
 
             if __VERBOSE__:
-                print("GC_output reading %s %s"%(key,data[key].shape))
+                print("GC_tavg reading %s %s"%(key,data[key].shape))
         
         # If possible calculate the column hcho too
         # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
+        n_dims=len(np.shape(self.hcho))
+        print("n_dims = %d, hcho=%.2e"%(n_dims,np.mean(self.hcho)))
+        self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
         
         # add some peripheral stuff
         self.n_lats=len(self.lats)
@@ -212,7 +217,7 @@ class GC_tavg:
                 if __VERBOSE__:
                     print("Slope has already been modelled, re-returning")
                 return self.modelled_slope
-
+        
         hcho = self.get_trop_columns(keys=['hcho'])['hcho']
         isop = self.E_isop_bio # Atom C/cm2/s
 
@@ -247,7 +252,7 @@ class GC_tavg:
                 reg[yi, xi] = r
 
         if __VERBOSE__:
-            print('GC_output.model_yield() calculates avg. slope of %.2e'%np.nanmean(slope))
+            print('GC_tavg.model_yield() calculates avg. slope of %.2e'%np.nanmean(slope))
 
         # Return all the data and the lats/lons of our subregion:
                             # lats and lons for slope, (and region for later)
@@ -318,26 +323,32 @@ class GC_tavg:
         return data
 
     def month_average(self, keys=['hcho','isop']):
-        ''' Average the time dimension '''
+        ''' Average the time dimension
+            data shape like [time, lon, lat, lev]
+        '''
         out={}
-        if self.UCX: #UCX already month averaged
-            for v in keys:
-                attr=getattr(self,v)
-                out[v]=attr
-            return out
-        n_t=len(self.taus)
-        for v in keys:
-            attr=getattr(self, v)
-            dims=np.shape(attr)
-            if (dims[-1]==n_t) or (dims[-1]==len(self.E_taus)):
-                out[v]=np.nanmean(attr, axis=len(dims)-1) # average the last dimension
-
+        for k in keys:
+            data=getattr(self,k)
+            print('ma')
+            print(np.mean(data))
+            if self._has_time_dim:
+                data=np.nanmean(data,axis=0)
+            print(np.mean(data))
+            print('ma')
+            out[k]=data
+            
         return out
     def get_surface(self, keys=['hcho']):
-        ''' Get the surface layer'''
+        ''' Get the surface layer
+            data shape like [time,lon,lat,lev]
+        '''
         out={}
         for v in keys:
-            out[v]=(getattr(self,v))[0]
+            if self._has_time_dim:
+                out[v]=(getattr(self,v))[:,:,:,0]
+            else:
+                out[v]=(getattr(self,v))[:,:,0]
+
         return out
 
     def _get_region(self,aus=False, region=None):
@@ -363,9 +374,18 @@ def check_units():
     '''
     N_ave=6.02214086*1e23 # molecs/mol
     airkg= 28.97*1e-3 # ~ kg/mol of dry air
-    gc=GC_output(datetime(2005,1,1))
+    gc=GC_tavg(datetime(2005,1,1))
+    #data in form [time,lon,lat,lev]
+    gcm=gc.month_average(keys=['hcho','N_air'])
+    hcho=gcm['hcho']
+    nair=gcm['N_air']
+    
+    # Mean surface HCHO in ppbv
+    hcho=np.mean(hcho[:,:,0])
+    print("Surface HCHO in ppbv: %6.2f"%hcho)
+    
     # N_air is molec/m3 in User manual, and ncfile: check it's sensible:
-    nair=np.mean(gc.N_air[0]) # surface only
+    nair=np.mean(nair[:,:,0])
     airmass=nair/N_ave * airkg  # kg/m3 at surface
     print("Mean surface N_air=%e molec/m3"%nair)
     print(" = %.3e mole/m3, = %4.2f kg/m3"%(nair/N_ave, airmass ))
@@ -373,7 +393,7 @@ def check_units():
 
     # Boxheight is in metres in User manual and ncfile: check surface height
     print("Mean surface boxH=%.2fm"%np.mean(gc.boxH[0]))
-    assert (np.mean(gc.boxH[0]) > 10) and (np.mean(gc.boxH[0]) < 500), "surface level should be around 100m"
+    assert (np.mean(gc.boxH[:,:,:,0]) > 10) and (np.mean(gc.boxH[:,:,:,0]) < 500), "surface level should be around 100m"
 
     # Isop is ppbC in manual , with 5 mole C / mole tracer (?), and 12 g/mole
     trop_cols=gc.get_trop_columns(keys=['hcho','isop'])
@@ -389,7 +409,7 @@ def check_units():
 def check_diag():
     '''
     '''
-    gc=GC_output(datetime(2005,1,1))
+    gc=GC_tavg(datetime(2005,1,1))
     E_isop_hourly=gc.E_isop_bio
     print(E_isop_hourly.shape())
     E_isop=gc.get_daily_E_isop()

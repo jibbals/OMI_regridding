@@ -90,15 +90,64 @@ def regularbounds(x,fix=False):
 
     return newx
 
+def basicmap(data, lats, lons, latlon=True,
+              aus=False, region=__GLOBALREGION__, linear=False,
+              pname=None,title=None,suptitle=None):
+    '''
+        Pass in data[lat,lon], lats[lat], lons[lon]
+    '''
+    if __VERBOSE__:
+        print("basicmap called: %s"%str(title))
+        #print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
 
-def createmap(data, lats, lons, edges=False ,
+    # Create a basemap map with region as inputted
+    if aus: region=__AUSREGION__
+    lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
+    m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
+              resolution='i', projection='merc')
+
+    ## basemap pcolormesh uses data edges
+    ##
+    
+    # Make edges into 2D meshed grid
+    mlons,mlats=np.meshgrid(lons,lats)
+
+    #force nan into any pixel with nan results, so color is not plotted there...
+    #mdata=np.ma.masked_invalid(data) # mask non-finite elements    
+    #mdata=data # masking occasionally throws up all over your face
+    
+    cs=m.pcolormesh(mlons, mlats, data, latlon=latlon)
+    
+    # draw coastline and equator(no latlon labels)
+    m.drawcoastlines()
+    m.drawparallels([0],labels=[0,0,0,0])
+
+    # add titles and cbar label
+    if title is not None:
+        plt.title(title)
+    if suptitle is not None:
+        plt.suptitle(suptitle)
+    cbargs={'size':'5%','pad':'1%','extend':'both'}
+    cb=m.colorbar(cs,"bottom", **cbargs)
+
+    # if a plot name is given, save and close figure
+    if pname is not None:
+        plt.savefig(pname)
+        print("Saved "+pname)
+        plt.close()
+        return
+
+    # if no colorbar is wanted then don't return one (can be set externally)
+    return m, cs, cb
+
+def createmap(data, lats, lons, edges=False,  
               vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
               clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
               pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None, fillcontinents=None):
     '''
-        Pass in data[lati,loni], lats[lati], lons[loni]
+        Pass in data[lat,lon], lats[lat], lons[lon]
     '''
     if __VERBOSE__:
         print("createmap called: %s"%str(title))
@@ -168,7 +217,7 @@ def createmap(data, lats, lons, edges=False ,
         data[data<=0]=np.NaN
 
     #force nan into any pixel with nan results, so color is not plotted there...
-    mdata=np.ma.masked_invalid(data) # mask non-finite elements
+    mdata=np.ma.masked_invalid(data) # mask non-finite elements    
     #mdata=data # masking occasionally throws up all over your face
 
     if __VERBOSE__:
@@ -237,7 +286,7 @@ def plot_swath(day, region=__AUSREGION__, reprocessed=False,
               cmapname=cmapname, fillcontinents=fillcontinents)
 
 
-def plot_rec(bmap, inlimits, color=None, linewidth=None):
+def plot_rec(bmap, inlimits, color=None, linewidth=1):
     '''
     Plot rectangle on basemap(arg 0) using [lat0,lon0,lat1,lon1](arg 1)
     '''

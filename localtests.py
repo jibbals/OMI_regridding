@@ -35,17 +35,23 @@ __VERBOSE__=True
 #####
 d0=datetime(2005,1,1)
 region=pp.__AUSREGION__
-fname='Data/GC_Output/geos5_2x25_tropchem/satellite_output/ts_satellite_omi.20050101.bpch'
-dname='Data/GC_Output/geos5_2x25_tropchem/satellite_output/diaginfo.dat'
-tname='Data/GC_Output/geos5_2x25_tropchem/satellite_output/tracerinfo.dat'
-keys=GC_fio.__sat_mainkeys__
 
+dstr=d0.strftime("%Y%m%d")
+yyyymm=d0.strftime("%Y%m")
 
-#sat=GC_fio.read_bpch(fname,keys=keys)
+satnames="Data/GC_Output/geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s*.bpch"%yyyymm
+tracfile='Data/GC_Output/geos5_2x25_tropchem/satellite_output/tracerinfo.dat'
+diagfile='Data/GC_Output/geos5_2x25_tropchem/satellite_output/diaginfo.dat'
 
-sat=xbpch.open_bpchdataset(fname,tracerinfo_file=tname,diaginfo_file=dname,decode_cf=False)
-sat=GC_fio.read_bpch(fname,keys)
-print(sat.keys())
+# READ MULTIPLE SAT OUT FILES:
+# dask needs to be explicitely true
+sat_m=xbpch.open_mfbpchdataset(satnames,tracerinfo_file=tracfile,diaginfo_file=diagfile, decode_cf=False,dask=True)
+sat_d=None
+print(sat_m.coords)
+print(sat_d)
+
+pname='testplot.png'
+
 
 
 

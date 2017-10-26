@@ -184,6 +184,27 @@ def lat_lon_range(lats,lons,region):
     loninds=np.intersect1d(loninds1,loninds2, assume_unique=True)
     return latinds, loninds
 
+def lat_lon_subset(lats,lons,region, data=[]):
+    '''
+        Returns dict with lats, lons, lats_e, lons_e, and each data aray subsetted
+        data should be list of arrays
+        Returned list will be list of arrays [lats,lons] along with lats, lats_e...
+    '''
+    lati,loni=lat_lon_range(lats,lons,region)
+    lats_m,lons_m = lats[lati],lons[loni]
+    lats_e=edges_from_mids(lats_m)
+    lons_e=edges_from_mids(lons_m)
+    out={'lats':lats_m,'lons':lons_m,'lats_e':lats_e,'lons_e':lons_e,
+         'data':[], }
+    for arr in data:
+        # if lats is second dimension:
+        if (len(lats) != len(lons)) and (len(lats)==np.shape(arr)[1]):
+            arr=arr.T # make it arr[lats,lons]
+        arr=arr[lati,:]
+        arr=arr[:,loni]
+        out['data'].append(arr)
+    return out
+
 def list_days(day0,dayn=None,month=False):
     '''
         return list of days from day0 to dayn, or just day0

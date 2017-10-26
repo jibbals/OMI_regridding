@@ -22,7 +22,7 @@ import utilities.utilities as util
 import utilities.plotting as pp
 from utilities import GMAO
 #from utilities import fio
-from classes.GC_class import GC_output # GC trac_avg class
+from classes.GC_class import GC_tavg # GC trac_avg class
 from classes.omhchorp import omhchorp # OMI product class
 from classes.E_new import E_new # E_new class
 
@@ -77,21 +77,20 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
         Plot the time series of E_new, eventually compare against MEGAN, etc..
     '''
     # Regions I'm averaging over:
-    Aus=[-40,112,-11,153]
-    WA=[-36,114,-14,128]
-    SEA=[-39,144,-29,153]
-    subs=[WA,Aus,SEA]
-    labels=['WA','Aus','SEA']
-    colors=['aqua','magenta','teal']
+    #Aus=[-40,112,-11,153]
+    NA     = GMAO.edges_containing_region([-21,115,-11,150])
+    SWA    = GMAO.edges_containing_region([-36,114,-29,128])
+    SEA    = GMAO.edges_containing_region([-39,144,-29,153])
+    print(NA,SWA,SEA)
+    subs   = [SWA,NA,SEA]
+    labels = ['SWA','NA','SEA']
+    colors = ['teal','magenta','aqua']
 
     # Draw them if you want
     if drawmap:
         plt.figure()
         region=pp.__AUSREGION__
 
-        Aus=GMAO.edges_containing_region(Aus)
-        WA=GMAO.edges_containing_region(WA)
-        SEA=GMAO.edges_containing_region(SEA)
         pp.displaymap(region=region, subregions=subs,
                       labels=labels,colors=colors)
 
@@ -216,7 +215,7 @@ def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
 
     ## READ DATA
     if GC is None:
-        GC=GC_output(date=month)
+        GC=GC_tavg(date=month)
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=True)
 
@@ -326,7 +325,7 @@ def All_maps(month=datetime(2005,1,1),GC=None, OMI=None, ignorePP=True, region=p
     ##
     ## READ DATA
     if GC is None:
-        GC=GC_output(date=month)
+        GC=GC_tavg(date=month)
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=ignorePP)
 
@@ -357,7 +356,7 @@ def print_megan_comparison(month=datetime(2005,1,1), GC=None, OMI=None,
 
     ## READ DATA
     if GC is None:
-        GC=GC_output(date=month)
+        GC=GC_tavg(date=month)
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=True)
 
@@ -467,7 +466,7 @@ if __name__=='__main__':
 #
 #        for month in [datetime(2005,1,1), datetime(2005,2,1)]:
 #            # Read month of data
-#            GC=GC_output(date=month)
+#            GC=GC_tavg(date=month)
 #            OMI=omhchorp(day0=month,dayn=util.last_day(month),ignorePP=True)
 #
 #            # Run plots and print outputs

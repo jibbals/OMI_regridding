@@ -48,9 +48,10 @@ paths = _datapaths()
 
 # Make these nice name dictionaries in GC_Output class file
 __tavg_mainkeys__=['lev','lon','lat','time',
-                   'IJ-AVG-$_ISOP','IJ-AVG-$_CH2O','BIOGSRCE_ISOP',
+                   'IJ-AVG-$_ISOP','IJ-AVG-$_CH2O','BIOGSRCE_ISOP', 'BIOBSRCE_CH20',
                    'PEDGE-$_PSURF','BXHGHT-$_BXHEIGHT','BXHGHT-$_AD',
-                   'BXHGHT-$_AVGW','BXHGHT-$_N(AIR)','DXYP_DXYP']
+                   'BXHGHT-$_AVGW','BXHGHT-$_N(AIR)','DXYP_DXYP',
+                   'TR-PAUSE_TP-LEVEL']
 
 __sat_mainkeys__=['lev','lon','lat',
                   'IJ-AVG-$_ISOP','IJ-AVG-$_CH2O',
@@ -110,6 +111,10 @@ def read_bpch(path,keys):
             continue
         data[key]=np.array(ds[key])
         attrs[key]=ds[key].attrs
+        if 'scale' in attrs[key].keys():
+            data[key] = data[key]*float(attrs[key]['scale'])
+            if __VERBOSE__:
+                print("%s scaled by %.2e"%(key,float(attrs[key]['scale'])))
 
     return data,attrs
 

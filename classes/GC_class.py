@@ -20,11 +20,11 @@ from scipy.constants import N_A as N_avegadro
 #import matplotlib.pyplot as plt
 #from matplotlib.pyplot import cm
 
-## Read in including path from parent folder
-#import os,sys,inspect
-#currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-#parentdir = os.path.dirname(currentdir)
-#sys.path.insert(0,parentdir)
+# Read in including path from parent folder
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0,parentdir)
 
 # 'local' modules
 import utilities.GC_fio as gcfio
@@ -36,7 +36,7 @@ import utilities.GMAO as gmao
 #from classes.variable_names_mapped import GC_trac_avg
 
 # remove the parent folder from path. [optional]
-#sys.path.pop(0)
+sys.path.pop(0)
 
 ##################
 #####GLOBALS######
@@ -46,14 +46,16 @@ __VERBOSE__=True # For file-wide print statements
 
 # MAP GC TAVG output to nicer names:
 _iga='IJ-AVG-$_'
-_bxh='BXHGHT-S_'
-_GC_tavg_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
+_bxh='BXHGHT-$_'
+_GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     # IJ_AVGs: in ppbv, except isop (ppbC)
     _iga+'NO':'NO', _iga+'O3':'O3', _iga+'MVK':'MVK', _iga+'MACR':'MACR',
     _iga+'ISOPN':'isopn', _iga+'IEPOX':'iepox', _iga+'NO2':'NO2', _iga+'NO3':'NO3',
     _iga+'NO2':'NO2', _iga+'ISOP':'isop', _iga+'CH2O':'hcho',
     # Biogenic sources: atoms C/cm2/s
     'BIOGSRCE_ISOP':'E_isop_bio',
+    # burning sources: atoms C/cm2/s
+    'BIOBSRCE_CH2O':'E_hcho_burn',
     # Other diagnostics:
     'PEDGE-$_PSURF':'psurf',
     _bxh+'BXHEIGHT':'boxH', # metres
@@ -62,6 +64,7 @@ _GC_tavg_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     _bxh+'N(AIR)':'N_air', # Air density: molec/m3
     'DXYP_DXYP':'area', # gridbox surface area: m2
     'TR-PAUSE_TP-LEVEL':'tplev',
+    'TR-PAUSE_TPLEV':'tplev', # this one is added to satellite output manually
     'TR-PAUSE_TP-HGHT':'tpH', # trop height: km
     'TR-PAUSE_TP-PRESS':'tpP', # trop Pressure: mb
     # Many more in trac_avg_yyyymm.nc, not read here yet...
@@ -76,9 +79,74 @@ class GC_common:
     '''
         Class for GEOS-Chem output, inherited by tavg and sat
     '''
-    #def __init__(self):
-    #    #do nothing
-    #    self.dstr=''
+    def __init__(self, date, keys, run='tropchem'):
+        ''' Read data for ONE MONTH into self
+            run= 'tropchem'|'halfisop'|'UCX'
+        '''
+        self.dstr=date.strftime("%Y%m")
+
+        # Initialise to zeros:
+        self.run=run
+        #self.hcho  = 0      #PPBV
+        #self.isop  = 0      #PPBC (=PPBV*5)
+        #self.O_hcho= 0      # column hcho molec/cm2
+        #self.boxH  = 0      #box heights (m)
+        #self.psurf = 0      #pressure surfaces (hPa)
+        #self.area  = 0      #XY grid area (m2)
+        #self.N_air = 0      #air dens (molec_air/m3)
+        #self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
+        self.attrs={}       # Attributes from bpch file
+
+        data,attrs = gcfio.read_tavg(date,run=run,keys=keys)
+
+        # Data has shape like [[time,]lon,lat[,lev]]
+
+        # Save the data to this class.
+        for key in data.keys():
+            if key in _GC_names_to_nice.keys():
+                setattr(self, _GC_names_to_nice[key], data[key])
+                self.attrs[_GC_names_to_nice[key]] = attrs[key]
+            else:
+                setattr(self, key, data[key])
+                self.attrs[key]=attrs[key]
+
+            if __VERBOSE__:
+                print("GC_tavg reading %s %s"%(key,data[key].shape))
+
+        # If possible calculate the column hcho too
+        # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
+        n_dims=len(np.shape(self.hcho))
+        print("n_dims = %d, hcho=%.2e"%(n_dims,np.mean(self.hcho)))
+        self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
+
+        # add some peripheral stuff
+        self.n_lats=len(self.lats)
+        self.n_lons=len(self.lons)
+
+        # Convert from numpy.datetime64 to datetime
+        # '2005-01-01T00:00:00.000000000'
+        if not hasattr(self,'time'):
+            self.time=[date.strftime("%Y-%m-%dT%H:%M:%S.000000000")]
+        self.dates=[datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in self.time]
+
+
+        #self._has_time_dim = len(self.E_isop_bio.shape) > 2
+        self._has_time_dim = len(self.dates) > 1
+
+        # Determine emissions in kg/s from atom_C / cm2 / s
+        if isinstance(self.E_isop_bio,type(np.array(0))):
+            E=self.E_isop_bio # atom C / cm2 / s
+            SA=self.area * 1e-6  # m2 -> km2
+            # kg/atom_isop = grams/mole * mole/molec * kg/gram
+            kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
+            #          isop/C * cm2/km2 * km2 * kg/isop
+            conversion= 1./5.0 * 1e10 * SA * kg_per_atom
+            self.E_isop_bio_kgs=E*conversion
+
+        assert all(self.lats == gmao.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
+        self.lats_e=gmao.lats_e
+        assert all(self.lons == gmao.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"
+        self.lons_e=gmao.lons_e
 
     # Common Functions:
     def date_index(self, date):
@@ -116,22 +184,24 @@ class GC_common:
             dims=np.array(np.shape(X))
             if __VERBOSE__:
                 print("%s has shape %s"%(key,str(dims)))
-            lati=1;loni=2; timei=0
-            out=np.zeros(dims[[lati,loni]])
-            if len(dims)==4:
-                lati=2; loni=3
-                out=np.zeros(dims[[timei, lati, loni]])
+            # Which index is time,lon,lat,lev?
+            timei=0; loni=1; lati=2
+            out=np.zeros(dims[[timei,loni,lati]])
+            if dims[0] > 40: # no time dimension
+                lati=1; loni=0
+                out=np.zeros(dims[[loni, lati]])
 
-            for lat in range(dims[lati]):
-                for lon in range(dims[loni]):
+            for lat in range(dims[lati]): # loop over lats
+                for lon in range(dims[loni]): # loop over lons
                     try:
                         if len(dims)==3:
-                            tropi=trop[lat,lon]
-                            out[lat,lon]=np.sum(X[0:tropi,lat,lon])+extra[lat,lon]*X[tropi,lat,lon]
+                            tropi=trop[lon,lat]
+                            out[lon,lat]=np.sum(X[lon,lat,0:tropi])+extra[lon,lat] * X[lon,lat,tropi]
                         else:
-                            for t in range(dims[0]):
-                                tropi=trop[t,lat,lon]
-                                out[t,lat,lon]= np.sum(X[t,0:tropi,lat,lon])+extra[t,lat,lon]*X[t,tropi,lat,lon]
+                            for t in range(dims[timei]):
+                                tropi=trop[t,lon,lat]
+                                out[t,lon,lat] = np.sum(X[t,lon,lat,0:tropi]) + \
+                                    extra[t,lon,lat] * X[t,lon,lat,tropi]
                     except IndexError as ie:
                         print((tropi, lat, lon))
                         print("dims: %s"%str(dims))
@@ -147,24 +217,23 @@ class GC_common:
     def month_average(self, keys=['hcho','isop']):
         ''' Average the time dimension '''
         out={}
-        if self.UCX: #UCX already month averaged
-            for v in keys:
-                attr=getattr(self,v)
-                out[v]=attr
-            return out
-        n_t=len(self.taus)
+        n_t=len(self.dates)
         for v in keys:
-            attr=getattr(self, v)
-            dims=np.shape(attr)
-            if (dims[-1]==n_t) or (dims[-1]==len(self.E_taus)):
-                out[v]=np.nanmean(attr, axis=len(dims)-1) # average the last dimension
-
+            data=getattr(self, v)
+            dims=np.shape(data)
+            if self._has_time_dim:
+                out[v]=np.nanmean(data, axis=0) # average the time dim
+            else:
+                out[v]=data
         return out
     def get_surface(self, keys=['hcho']):
         ''' Get the surface layer'''
         out={}
         for v in keys:
-            out[v]=(getattr(self,v))[0]
+            if self._has_time_dim:
+                out[v]=(getattr(self,v))[:,:,:,0]
+            else:
+                out[v]=(getattr(self,v))[:,:,0]
         return out
 
     def _get_region(self,aus=False, region=None):
@@ -193,12 +262,12 @@ class GC_common:
         try:
             for k in keys:
                 out[k] = getattr(self, k)
-                dims=len(out[k].shape)
-                if dims==4:
+                ndims=len(out[k].shape)
+                if ndims==4:
                     out[k] = out[k][:,:,lati,:]
                     out[k] = out[k][:,loni,:,:]
-                elif dims==3:
-                    if outk.shape[0] < 40:
+                elif ndims==3:
+                    if out[k].shape[0] < 40:
                         out[k] = out[k][:,loni,:]
                         out[k] = out[k][:,:,lati]
                     else:
@@ -229,74 +298,25 @@ class GC_tavg(GC_common):
         self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
-    def __init__(self, date, run='tropchem', keys=gcfio.__tavg_mainkeys__):
-        ''' Read data for ONE MONTH into self
-            run= 'tropchem'|'halfisop'|'UCX'
-        '''
-        self.dstr=date.strftime("%Y%m")
+    def __init__(self,date,keys=gcfio.__tavg_mainkeys__,run='tropchem'):
+        # Call GC_common initialiser with tavg_mainkeys and tropchem by default
+        super(GC_tavg,self).__init__(date,keys=keys,run=run)
 
-        # Initialise to zeros:
-        self.run=run
-        self.hcho  = 0      #PPBV
-        self.isop  = 0      #PPBC (=PPBV*5)
-        self.O_hcho= 0      # column hcho molec/cm2
-        self.boxH  = 0      #box heights (m)
-        self.psurf = 0      #pressure surfaces (hPa)
-        self.area  = 0      #XY grid area (m2)
-        self.N_air = 0      #air dens (molec_air/m3)
-        self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
-        self.attrs={}       # Attributes from bpch file
-
-        data,attrs = gcfio.read_tavg(date,run=run,keys=keys)
+    #TODO: define method to create a GC fire mask
+    #def firemask(self,):
 
 
-        # Data has shape like [[time,]lon,lat[,lev]]
-        # Save the data to this class.
-        for key in data.keys():
-            if key in _GC_tavg_to_nice.keys():
-                setattr(self, _GC_tavg_to_nice[key], data[key])
-                self.attrs[_GC_tavg_to_nice[key]] = attrs[key]
-            else:
-                setattr(self, key, data[key])
-                self.attrs[key]=attrs[key]
-
-            if __VERBOSE__:
-                print("GC_output reading %s %s"%(key,data[key].shape))
-
-        # If possible calculate the column hcho too
-        # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
-
-        # add some peripheral stuff
-        self.n_lats=len(self.lats)
-        self.n_lons=len(self.lons)
-
-        # Convert from numpy.datetime64 to datetime
-        # '2005-01-01T00:00:00.000000000'
-        if not hasattr(self,'time'):
-            self.time=[date.strftime("%Y-%m-%dT%H:%M:%S.000000000")]
-        self.dates=[datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in self.time]
-
-
-        #self._has_time_dim = len(self.E_isop_bio.shape) > 2
-        self._has_time_dim = len(self.dates) > 1
-
-        # Determine emissions in kg/s from atom_C / cm2 / s
-        if isinstance(self.E_isop_bio,type(np.array(0))):
-            E=self.E_isop_bio # atom C / cm2 / s
-            SA=self.area * 1e-6  # m2 -> km2
-            # kg/atom_isop = grams/mole * mole/molec * kg/gram
-            kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
-            #          isop/C * cm2/km2 * km2 * kg/isop
-            conversion= 1./5.0 * 1e10 * SA * kg_per_atom
-            self.E_isop_bio_kgs=E*conversion
-
-        assert all(self.lats == gmao.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
-        self.lats_e=gmao.lats_e
-        assert all(self.lons == gmao.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"
-        self.lons_e=gmao.lons_e
-
-
-
+class GC_sat(GC_common):
+    '''
+        Class for reading and manipulating satellite overpass output!
+    '''
+    def __init__(self,date,keys=gcfio.__sat_mainkeys__,run='tropchem'):
+        super(GC_sat,self).__init__(date,keys=keys,run=run)
+        # fix TR-PAUSE_TPLEV output:
+        if len(self.tplev.shape)==3:
+            self.tplev=self.tplev[:,:,0]
+        if len(self.tplev.shape)==4:
+            self.tplev=self.tplev[:,:,:,0]
 
 
     def model_slope(self, region=pp.__AUSREGION__):
@@ -354,7 +374,7 @@ class GC_tavg(GC_common):
                 reg[yi, xi] = r
 
         if __VERBOSE__:
-            print('GC_output.model_yield() calculates avg. slope of %.2e'%np.nanmean(slope))
+            print('GC_tavg.model_yield() calculates avg. slope of %.2e'%np.nanmean(slope))
 
         # Return all the data and the lats/lons of our subregion:
                             # lats and lons for slope, (and region for later)
@@ -364,11 +384,6 @@ class GC_tavg(GC_common):
                              # regression, background, and slope
                              'r':reg, 'b':bg, 'slope':slope}
         return self.modelled_slope
-
-
-
-
-
 ################
 ###FUNCTIONS####
 ################
@@ -384,8 +399,18 @@ def check_units():
     N_ave=6.02214086*1e23 # molecs/mol
     airkg= 28.97*1e-3 # ~ kg/mol of dry air
     gc=GC_tavg(datetime(2005,1,1))
+
+    #data in form [time,lon,lat,lev]
+    gcm=gc.month_average(keys=['hcho','N_air'])
+    hcho=gcm['hcho']
+    nair=gcm['N_air']
+
+    # Mean surface HCHO in ppbv
+    hcho=np.mean(hcho[:,:,0])
+    print("Surface HCHO in ppbv: %6.2f"%hcho)
+
     # N_air is molec/m3 in User manual, and ncfile: check it's sensible:
-    nair=np.mean(gc.N_air[0]) # surface only
+    nair=np.mean(nair[:,:,0])
     airmass=nair/N_ave * airkg  # kg/m3 at surface
     print("Mean surface N_air=%e molec/m3"%nair)
     print(" = %.3e mole/m3, = %4.2f kg/m3"%(nair/N_ave, airmass ))
@@ -393,7 +418,7 @@ def check_units():
 
     # Boxheight is in metres in User manual and ncfile: check surface height
     print("Mean surface boxH=%.2fm"%np.mean(gc.boxH[0]))
-    assert (np.mean(gc.boxH[0]) > 10) and (np.mean(gc.boxH[0]) < 500), "surface level should be around 100m"
+    assert (np.mean(gc.boxH[:,:,:,0]) > 10) and (np.mean(gc.boxH[:,:,:,0]) < 500), "surface level should be around 100m"
 
     # Isop is ppbC in manual , with 5 mole C / mole tracer (?), and 12 g/mole
     trop_cols=gc.get_trop_columns(keys=['hcho','isop'])

@@ -46,10 +46,20 @@ def _datapaths():
 
 paths = _datapaths()
 
+# Make these nice name dictionaries in GC_Output class file
 __tavg_mainkeys__=['lev','lon','lat','time',
                    'IJ-AVG-$_ISOP','IJ-AVG-$_CH2O','BIOGSRCE_ISOP',
                    'PEDGE-$_PSURF','BXHGHT-$_BXHEIGHT','BXHGHT-$_AD',
                    'BXHGHT-$_AVGW','BXHGHT-$_N(AIR)','DXYP_DXYP']
+
+__sat_mainkeys__=['lev','lon','lat',
+                  'IJ-AVG-$_ISOP','IJ-AVG-$_CH2O',
+                  'BIOGSRCE_ISOP',
+                  'PEDGE-$_PSURF','BXHGHT-$_BXHEIGHT',
+                  'TIME-SER_AIRDEN', #'BXHGHT-$_AD',
+                  'TR-PAUSE_TPLEV', # Added satellite output for ppamf
+                  'CHEM-L=$_OH',
+                  ]
 
 ################
 ###FUNCTIONS####
@@ -67,7 +77,7 @@ def read_bpch(path,keys):
     tracinf='/'.join(splt)
     splt[-1]='diaginfo.dat'
     diaginf='/'.join(splt)
-    
+
     # Improve read performance by only reading requested fields:
     fields=set(); categories=set()
     for key in keys:
@@ -84,7 +94,7 @@ def read_bpch(path,keys):
     # get bpch file:
     data={}
     attrs={}
-    ds=open_bpchdataset(path, 
+    ds=open_bpchdataset(path,
                         fields=list(fields), categories=list(categories),
                         tracerinfo_file=tracinf,diaginfo_file=diaginf, decode_cf=False)
 
@@ -92,7 +102,7 @@ def read_bpch(path,keys):
     for key in ds.coords.keys():
         data[key]=np.array(ds.coords[key]) # could also keep xarray or dask array
         attrs[key]=ds[key].attrs
-    
+
     # then read keys
     for key in keys:
         if key not in ds:

@@ -20,11 +20,11 @@ from scipy.constants import N_A as N_avegadro
 #import matplotlib.pyplot as plt
 #from matplotlib.pyplot import cm
 
-# Read in including path from parent folder
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0,parentdir)
+## Read in including path from parent folder
+#import os,sys,inspect
+#currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+#parentdir = os.path.dirname(currentdir)
+#sys.path.insert(0,parentdir)
 
 # 'local' modules
 import utilities.GC_fio as gcfio
@@ -36,7 +36,7 @@ import utilities.GMAO as gmao
 #from classes.variable_names_mapped import GC_trac_avg
 
 # remove the parent folder from path. [optional]
-sys.path.pop(0)
+#sys.path.pop(0)
 
 ##################
 #####GLOBALS######
@@ -72,192 +72,19 @@ _GC_tavg_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
 #####CLASS######
 ################
 
-class GC_tavg:
+class GC_common:
     '''
-        Class holding and manipulating tropchem GC output
-        # tropchem dims [[lev,] lat, lon[, time]]
-        # UCX dims: lev = 72; alt059 = 59; lat = 91; lon = 144;
-        # LATS AND LONS ARE BOX MIDPOINTS
-        self.hcho  = PPBV
-        self.isop  = PPBC (=PPBV*5)
-        self.boxH  = box heights (m)
-        self.psurf = pressure surfaces (hPa)
-        self.area  = XY grid area (m2)
-        self.N_air = air dens (molec_air/m3)
-        self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
-
+        Class for GEOS-Chem output, inherited by tavg and sat
     '''
-    def __init__(self, date, run='tropchem', keys=gcfio.__tavg_mainkeys__):
-        ''' Read data for ONE MONTH into self 
-            run= 'tropchem'|'halfisop'|'UCX'
-        '''
-        self.dstr=date.strftime("%Y%m")
+    #def __init__(self):
+    #    #do nothing
+    #    self.dstr=''
 
-        # Initialise to zeros:
-        self.run=run
-        self.hcho  = 0      #PPBV
-        self.isop  = 0      #PPBC (=PPBV*5)
-        self.O_hcho= 0      # column hcho molec/cm2 
-        self.boxH  = 0      #box heights (m)
-        self.psurf = 0      #pressure surfaces (hPa)
-        self.area  = 0      #XY grid area (m2)
-        self.N_air = 0      #air dens (molec_air/m3)
-        self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
-        self.attrs={}       # Attributes from bpch file
-
-        data,attrs = gcfio.read_tavg(date,run=run,keys=keys)
-
-
-        # Data has shape like [[time,]lev,lat,lon]
-        # Save the data to this class.
-        for key in data.keys():
-            if key in _GC_tavg_to_nice.keys():
-                setattr(self, _GC_tavg_to_nice[key], data[key])
-                self.attrs[_GC_tavg_to_nice[key]] = attrs[key]
-            else:
-                setattr(self, key, data[key])
-                self.attrs[key]=attrs[key]
-
-            if __VERBOSE__:
-                print("GC_output reading %s %s"%(key,data[key].shape))
-        
-        # If possible calculate the column hcho too
-        # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
-        
-        # add some peripheral stuff
-        self.n_lats=len(self.lats)
-        self.n_lons=len(self.lons)
-
-        # Convert from numpy.datetime64 to datetime
-        # '2005-01-01T00:00:00.000000000'
-        if not hasattr(self,'time'):
-            self.time=[date.strftime("%Y-%m-%dT%H:%M:%S.000000000")]
-        self.dates=[datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in self.time]
-
-
-        #self._has_time_dim = len(self.E_isop_bio.shape) > 2
-        self._has_time_dim = len(self.dates) > 1
-
-        # Determine emissions in kg/s from atom_C / cm2 / s
-        if isinstance(self.E_isop_bio,type(np.array(0))):
-            E=self.E_isop_bio # atom C / cm2 / s
-            SA=self.area * 1e-6  # m2 -> km2
-            # kg/atom_isop = grams/mole * mole/molec * kg/gram
-            kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
-            #          isop/C * cm2/km2 * km2 * kg/isop
-            conversion= 1./5.0 * 1e10 * SA * kg_per_atom
-            self.E_isop_bio_kgs=E*conversion
-
-        assert all(self.lats == gmao.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
-        self.lats_e=gmao.lats_e
-        assert all(self.lons == gmao.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"
-        self.lons_e=gmao.lons_e
-
+    # Common Functions:
     def date_index(self, date):
         ''' Return index of date '''
         whr=np.where(np.array(self.dates) == date) # returns (matches_array,something)
         return whr[0][0] # We just want the match
-
-    def get_field(self, keys=['hcho', 'E_isop_bio'], region=pp.__AUSREGION__):
-        '''
-        Return fields subset to a specific region [S W N E]
-        '''
-        lati, loni = util.lat_lon_range(self.lats,self.lons,region)
-        lati_e = np.append(lati,np.max(lati)+1)
-        loni_e = np.append(loni,np.max(loni)+1)
-        out={'lats':self.lats[lati],
-             'lons':self.lons[loni],
-             'lats_e':self.lats_e[lati_e],
-             'lons_e':self.lons_e[loni_e],
-             'lati':lati,
-             'loni':loni}
-
-        try:
-            for k in keys:
-                out[k] = getattr(self, k)
-                dims=len(out[k].shape)
-                if dims==4:
-                    out[k] = out[k][:,:,lati,:]
-                    out[k] = out[k][:,:,:,loni]
-                elif dims==3:
-                    out[k] = out[k][:,lati,:]
-                    out[k] = out[k][:,:,loni]
-                else:
-                    out[k] = out[k][lati,:]
-                    out[k] = out[k][:,loni]
-        except IndexError as ie:
-            print(k)
-            print(np.shape(out[k]))
-            print(np.shape(lati),np.shape(loni))
-            raise ie
-        return out
-
-    def model_slope(self, region=pp.__AUSREGION__):
-        '''
-            Use RMA regression between E_isop and tropcol_HCHO to determine S:
-                HCHO = S * E_isop + b
-            Notes:
-                Slope = Yield_isop / k_hcho
-                HCHO: molec/cm2
-                E_isop: Atom C/cm2/s
-
-
-            Return {'lats','lons','r':reg, 'b':bg, 'slope':slope}
-
-        '''
-        # if this calc is already done, short cut it
-        if hasattr(self, 'modelled_slope'):
-            # unless we're looking at a new area
-            if self.modelled_slope['region'] == region:
-                if __VERBOSE__:
-                    print("Slope has already been modelled, re-returning")
-                return self.modelled_slope
-
-        hcho = self.get_trop_columns(keys=['hcho'])['hcho']
-        isop = self.E_isop_bio # Atom C/cm2/s
-
-        lats,lons = self.lats, self.lons
-        lati,loni = util.lat_lon_range(lats,lons,region=region)
-
-        isop = isop[:, lati, :]
-        isop = isop[:, :, loni]
-        hcho = hcho[:, lati, :]
-        hcho = hcho[:, :, loni]
-
-        sublats, sublons = lats[lati], lons[loni]
-        n_x = len(loni)
-        n_y = len(lati)
-        slope  = np.zeros([n_y,n_x]) + np.NaN
-        bg     = np.zeros([n_y,n_x]) + np.NaN
-        reg    = np.zeros([n_y,n_x]) + np.NaN
-
-        for xi in range(n_x):
-            for yi in range(n_y):
-                # Y = m X + B
-                X=isop[:, yi, xi]
-                Y=hcho[:, yi, xi]
-
-                # Skip ocean or no emissions squares:
-                if np.isclose(np.mean(X), 0.0): continue
-
-                # get regression
-                m, b, r, CI1, CI2=RMA(X, Y)
-                slope[yi, xi] = m
-                bg[yi, xi] = b
-                reg[yi, xi] = r
-
-        if __VERBOSE__:
-            print('GC_output.model_yield() calculates avg. slope of %.2e'%np.nanmean(slope))
-
-        # Return all the data and the lats/lons of our subregion:
-                            # lats and lons for slope, (and region for later)
-        self.modelled_slope={'lats':sublats,'lons':sublons, 'region':region,
-                             # indexes of lats/lons for slope
-                             'lati':lati, 'loni':loni,
-                             # regression, background, and slope
-                             'r':reg, 'b':bg, 'slope':slope}
-        return self.modelled_slope
-
 
     def ppbv_to_molec_cm2(self,keys=['hcho'],metres=False):
         ''' return dictionary with data in format molecules/cm2 [or /m2]'''
@@ -348,6 +175,199 @@ class GC_tavg:
                 region=__AUSREGION__
         return region
 
+    def get_field(self, keys=['hcho', 'E_isop_bio'], region=pp.__AUSREGION__):
+        '''
+        Return fields subset to a specific region [S W N E]
+        '''
+        lati, loni = util.lat_lon_range(self.lats,self.lons,region)
+        # TODO use edges from mids function (utils?)
+        lati_e = np.append(lati,np.max(lati)+1)
+        loni_e = np.append(loni,np.max(loni)+1)
+        out={'lats':self.lats[lati],
+             'lons':self.lons[loni],
+             'lats_e':self.lats_e[lati_e],
+             'lons_e':self.lons_e[loni_e],
+             'lati':lati,
+             'loni':loni}
+        # DATA LIKE [[time,]lon,lat[,lev]]
+        try:
+            for k in keys:
+                out[k] = getattr(self, k)
+                dims=len(out[k].shape)
+                if dims==4:
+                    out[k] = out[k][:,:,lati,:]
+                    out[k] = out[k][:,loni,:,:]
+                elif dims==3:
+                    if outk.shape[0] < 40:
+                        out[k] = out[k][:,loni,:]
+                        out[k] = out[k][:,:,lati]
+                    else:
+                        out[k] = out[k][loni,:,:]
+                        out[k] = out[k][:,lati,:]
+                else:
+                    out[k] = out[k][loni,:]
+                    out[k] = out[k][:,lati]
+        except IndexError as ie:
+            print(k)
+            print(np.shape(out[k]))
+            print(np.shape(lati),np.shape(loni))
+            raise ie
+        return out
+
+class GC_tavg(GC_common):
+    '''
+        Class holding and manipulating tropchem GC output
+        # tropchem dims [time,lon,lat,lev]
+        # UCX dims: lev = 72; alt059 = 59; lat = 91; lon = 144;
+        # LATS AND LONS ARE BOX MIDPOINTS
+        self.hcho  = PPBV
+        self.isop  = PPBC (=PPBV*5)
+        self.boxH  = box heights (m)
+        self.psurf = pressure surfaces (hPa)
+        self.area  = XY grid area (m2)
+        self.N_air = air dens (molec_air/m3)
+        self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
+
+    '''
+    def __init__(self, date, run='tropchem', keys=gcfio.__tavg_mainkeys__):
+        ''' Read data for ONE MONTH into self
+            run= 'tropchem'|'halfisop'|'UCX'
+        '''
+        self.dstr=date.strftime("%Y%m")
+
+        # Initialise to zeros:
+        self.run=run
+        self.hcho  = 0      #PPBV
+        self.isop  = 0      #PPBC (=PPBV*5)
+        self.O_hcho= 0      # column hcho molec/cm2
+        self.boxH  = 0      #box heights (m)
+        self.psurf = 0      #pressure surfaces (hPa)
+        self.area  = 0      #XY grid area (m2)
+        self.N_air = 0      #air dens (molec_air/m3)
+        self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
+        self.attrs={}       # Attributes from bpch file
+
+        data,attrs = gcfio.read_tavg(date,run=run,keys=keys)
+
+
+        # Data has shape like [[time,]lon,lat[,lev]]
+        # Save the data to this class.
+        for key in data.keys():
+            if key in _GC_tavg_to_nice.keys():
+                setattr(self, _GC_tavg_to_nice[key], data[key])
+                self.attrs[_GC_tavg_to_nice[key]] = attrs[key]
+            else:
+                setattr(self, key, data[key])
+                self.attrs[key]=attrs[key]
+
+            if __VERBOSE__:
+                print("GC_output reading %s %s"%(key,data[key].shape))
+
+        # If possible calculate the column hcho too
+        # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
+
+        # add some peripheral stuff
+        self.n_lats=len(self.lats)
+        self.n_lons=len(self.lons)
+
+        # Convert from numpy.datetime64 to datetime
+        # '2005-01-01T00:00:00.000000000'
+        if not hasattr(self,'time'):
+            self.time=[date.strftime("%Y-%m-%dT%H:%M:%S.000000000")]
+        self.dates=[datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in self.time]
+
+
+        #self._has_time_dim = len(self.E_isop_bio.shape) > 2
+        self._has_time_dim = len(self.dates) > 1
+
+        # Determine emissions in kg/s from atom_C / cm2 / s
+        if isinstance(self.E_isop_bio,type(np.array(0))):
+            E=self.E_isop_bio # atom C / cm2 / s
+            SA=self.area * 1e-6  # m2 -> km2
+            # kg/atom_isop = grams/mole * mole/molec * kg/gram
+            kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
+            #          isop/C * cm2/km2 * km2 * kg/isop
+            conversion= 1./5.0 * 1e10 * SA * kg_per_atom
+            self.E_isop_bio_kgs=E*conversion
+
+        assert all(self.lats == gmao.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
+        self.lats_e=gmao.lats_e
+        assert all(self.lons == gmao.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"
+        self.lons_e=gmao.lons_e
+
+
+
+
+
+    def model_slope(self, region=pp.__AUSREGION__):
+        '''
+            Use RMA regression between E_isop and tropcol_HCHO to determine S:
+                HCHO = S * E_isop + b
+            Notes:
+                Slope = Yield_isop / k_hcho
+                HCHO: molec/cm2
+                E_isop: Atom C/cm2/s
+
+
+            Return {'lats','lons','r':reg, 'b':bg, 'slope':slope}
+
+        '''
+        # if this calc is already done, short cut it
+        if hasattr(self, 'modelled_slope'):
+            # unless we're looking at a new area
+            if self.modelled_slope['region'] == region:
+                if __VERBOSE__:
+                    print("Slope has already been modelled, re-returning")
+                return self.modelled_slope
+
+        hcho = self.get_trop_columns(keys=['hcho'])['hcho']
+        isop = self.E_isop_bio # Atom C/cm2/s
+
+        lats,lons = self.lats, self.lons
+        lati,loni = util.lat_lon_range(lats,lons,region=region)
+
+        isop = isop[:, lati, :]
+        isop = isop[:, :, loni]
+        hcho = hcho[:, lati, :]
+        hcho = hcho[:, :, loni]
+
+        sublats, sublons = lats[lati], lons[loni]
+        n_x = len(loni)
+        n_y = len(lati)
+        slope  = np.zeros([n_y,n_x]) + np.NaN
+        bg     = np.zeros([n_y,n_x]) + np.NaN
+        reg    = np.zeros([n_y,n_x]) + np.NaN
+
+        for xi in range(n_x):
+            for yi in range(n_y):
+                # Y = m X + B
+                X=isop[:, yi, xi]
+                Y=hcho[:, yi, xi]
+
+                # Skip ocean or no emissions squares:
+                if np.isclose(np.mean(X), 0.0): continue
+
+                # get regression
+                m, b, r, CI1, CI2=RMA(X, Y)
+                slope[yi, xi] = m
+                bg[yi, xi] = b
+                reg[yi, xi] = r
+
+        if __VERBOSE__:
+            print('GC_output.model_yield() calculates avg. slope of %.2e'%np.nanmean(slope))
+
+        # Return all the data and the lats/lons of our subregion:
+                            # lats and lons for slope, (and region for later)
+        self.modelled_slope={'lats':sublats,'lons':sublons, 'region':region,
+                             # indexes of lats/lons for slope
+                             'lati':lati, 'loni':loni,
+                             # regression, background, and slope
+                             'r':reg, 'b':bg, 'slope':slope}
+        return self.modelled_slope
+
+
+
+
 
 ################
 ###FUNCTIONS####
@@ -363,7 +383,7 @@ def check_units():
     '''
     N_ave=6.02214086*1e23 # molecs/mol
     airkg= 28.97*1e-3 # ~ kg/mol of dry air
-    gc=GC_output(datetime(2005,1,1))
+    gc=GC_tavg(datetime(2005,1,1))
     # N_air is molec/m3 in User manual, and ncfile: check it's sensible:
     nair=np.mean(gc.N_air[0]) # surface only
     airmass=nair/N_ave * airkg  # kg/m3 at surface
@@ -389,7 +409,7 @@ def check_units():
 def check_diag():
     '''
     '''
-    gc=GC_output(datetime(2005,1,1))
+    gc=GC_tavg(datetime(2005,1,1))
     E_isop_hourly=gc.E_isop_bio
     print(E_isop_hourly.shape())
     E_isop=gc.get_daily_E_isop()

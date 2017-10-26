@@ -32,7 +32,7 @@ import utilities.utilities as util
 from utilities import plotting as pp
 from utilities.plotting import __AUSREGION__
 from utilities.JesseRegression import RMA
-import utilities.GMAO as gmao
+import utilities.GMAO as GMAO
 #from classes.variable_names_mapped import GC_trac_avg
 
 # remove the parent folder from path. [optional]
@@ -61,7 +61,8 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     _bxh+'BXHEIGHT':'boxH', # metres
     _bxh+'AD':'AD', # air mass in grid box, kg
     _bxh+'AVGW':'avgW', # Mixing ratio of H2O vapor, v/v
-    _bxh+'N(AIR)':'N_air', # Air density: molec/m3
+    _bxh+'N(AIR)':'N_air', # Air density: molec/m3 from tavg output
+    'TIME-SER_AIRDEN':'N_air', # Air density: molec/cm3 from satellite output
     'DXYP_DXYP':'area', # gridbox surface area: m2
     'TR-PAUSE_TP-LEVEL':'tplev',
     'TR-PAUSE_TPLEV':'tplev', # this one is added to satellite output manually
@@ -79,14 +80,17 @@ class GC_common:
     '''
         Class for GEOS-Chem output, inherited by tavg and sat
     '''
-    def __init__(self, date, keys, run='tropchem'):
+    def __init__(self, date, path, keys, nlevs=47):
         ''' Read data for ONE MONTH into self
             run= 'tropchem'|'halfisop'|'UCX'
+            output= 'satellite'|'tavg'
         '''
         self.dstr=date.strftime("%Y%m")
-
+        self.nlats=91
+        self.nlons=144
+        self.nlevs=nlevs
+        
         # Initialise to zeros:
-        self.run=run
         #self.hcho  = 0      #PPBV
         #self.isop  = 0      #PPBC (=PPBV*5)
         #self.O_hcho= 0      # column hcho molec/cm2
@@ -97,31 +101,61 @@ class GC_common:
         #self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
         self.attrs={}       # Attributes from bpch file
 
-        data,attrs = gcfio.read_tavg(date,run=run,keys=keys)
+        multi= '*' in path
+        data,attrs = gcfio.read_bpch(path,keys=keys,multi=multi)
 
         # Data has shape like [[time,]lon,lat[,lev]]
-
+        
+        
         # Save the data to this class.
         for key in data.keys():
+            # Make data into this shape: [[time,]lat,lon[,lev]]
+            arr=data[key]
+            arrs=np.array(arr.shape)
+            n_dims=len(arrs)
+            
+            # For simplicity lets force the dimensions to be time,lat,lon,lev
+            if n_dims>1:
+                lati=np.argwhere(arrs==self.nlats)[0,0]
+                loni=np.argwhere(arrs==self.nlons)[0,0]
+                newshape=(lati,loni)
+                
+                # do we have time and level dimensions?
+                ti=np.argwhere(arrs<35)
+                levi=np.argwhere(arrs==self.nlevs)
+                
+                if len(ti)==1 and len(levi)==1:
+                    newshape=(ti[0,0],lati,loni,levi[0,0])
+                elif len(ti)==0 and len(levi)==1:
+                    newshape=(lati,loni,levi[0,0])
+                elif len(ti)==1 and len(levi)==0:
+                    newshape=(ti[0,0],lati,loni)
+                print(key, " Before transform: ",arrs)
+                arr=np.transpose(arr,axes=newshape)
+                print("after transform: ",np.shape(arr))
+                
             if key in _GC_names_to_nice.keys():
-                setattr(self, _GC_names_to_nice[key], data[key])
+                if key == 'TIME-SER_AIRDEN':
+                    #assert attrs[key]['units']=='molec/cm3', 'time-ser_airden not in molec/cm3???'
+                    # update satellite air-density to match tavg units...
+                    arr=arr*1e-6
+                    attrs[key]['units']='molec/m3'
+                setattr(self, _GC_names_to_nice[key], arr)
                 self.attrs[_GC_names_to_nice[key]] = attrs[key]
             else:
-                setattr(self, key, data[key])
+                setattr(self, key, arr)
                 self.attrs[key]=attrs[key]
 
             if __VERBOSE__:
                 print("GC_tavg reading %s %s"%(key,data[key].shape))
-
+                
+        if not hasattr(self,'area'):
+            self.area=GMAO.area_m2
         # If possible calculate the column hcho too
         # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
         n_dims=len(np.shape(self.hcho))
         print("n_dims = %d, hcho=%.2e"%(n_dims,np.mean(self.hcho)))
         self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
-
-        # add some peripheral stuff
-        self.n_lats=len(self.lats)
-        self.n_lons=len(self.lons)
 
         # Convert from numpy.datetime64 to datetime
         # '2005-01-01T00:00:00.000000000'
@@ -143,10 +177,10 @@ class GC_common:
             conversion= 1./5.0 * 1e10 * SA * kg_per_atom
             self.E_isop_bio_kgs=E*conversion
 
-        assert all(self.lats == gmao.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
-        self.lats_e=gmao.lats_e
-        assert all(self.lons == gmao.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"
-        self.lons_e=gmao.lons_e
+        assert all(self.lats == GMAO.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
+        self.lats_e=GMAO.lats_e
+        assert all(self.lons == GMAO.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"
+        self.lons_e=GMAO.lons_e
 
     # Common Functions:
     def date_index(self, date):
@@ -298,9 +332,16 @@ class GC_tavg(GC_common):
         self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
-    def __init__(self,date,keys=gcfio.__tavg_mainkeys__,run='tropchem'):
+    def __init__(self,date,keys=gcfio.__tavg_mainkeys__,run='tropchem',nlevs=47):
         # Call GC_common initialiser with tavg_mainkeys and tropchem by default
-        super(GC_tavg,self).__init__(date,keys=keys,run=run)
+        
+        # Determine path of file:
+        dstr=date.strftime("%Y%m%d0000")
+        pathd={'tropchem':'Data/GC_Output/geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
+               'halfisop':'Data/GC_Output/geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
+               'UCX':'Data/GC_Output/UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s'}
+        path=pathd[run]%dstr
+        super(GC_tavg,self).__init__(date,path=path,keys=keys,nlevs=nlevs)
 
     #TODO: define method to create a GC fire mask
     #def firemask(self,):
@@ -310,8 +351,16 @@ class GC_sat(GC_common):
     '''
         Class for reading and manipulating satellite overpass output!
     '''
-    def __init__(self,date,keys=gcfio.__sat_mainkeys__,run='tropchem'):
-        super(GC_sat,self).__init__(date,keys=keys,run=run)
+    def __init__(self,date, keys=gcfio.__sat_mainkeys__, run='tropchem',nlevs=47):
+        
+        # Determine path of files:
+        dstr=date.strftime("%Y%m*")
+        pathd={'tropchem':'Data/GC_Output/geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s.bpch',
+               'halfisop':'Data/GC_Output/geos5_2x25_tropchem_halfisoprene/satellite_output/ts_satellite.%s.bpch',
+               'UCX':'Data/GC_Output/UCX_geos5_2x25/satellite_output/ts_satellite.%s.bpch'}
+        path=pathd[run]%dstr
+        super(GC_sat,self).__init__(date, path=path, keys=keys, nlevs=nlevs)
+        
         # fix TR-PAUSE_TPLEV output:
         if len(self.tplev.shape)==3:
             self.tplev=self.tplev[:,:,0]

@@ -6,7 +6,7 @@ Reading from GEOS-Chem methods are defined here
 '''
 ## Modules
 #import netCDF4 as nc
-from xbpch import open_bpchdataset
+from xbpch import open_bpchdataset, open_mfbpchdataset
 import numpy as np
 from datetime import datetime
 from pathlib import Path
@@ -67,7 +67,7 @@ __sat_mainkeys__=['lev','lon','lat',
 ################
 
 
-def read_bpch(path,keys):
+def read_bpch(path,keys,multi=False):
     '''
         Read  generic bpch file into dictionary
         keys = keys you want to read
@@ -95,9 +95,13 @@ def read_bpch(path,keys):
     # get bpch file:
     data={}
     attrs={}
-    ds=open_bpchdataset(path,
-                        fields=list(fields), categories=list(categories),
-                        tracerinfo_file=tracinf,diaginfo_file=diaginf, decode_cf=False)
+    bpchargs={'fields':list(fields), 'categories':list(categories),
+              'tracerinfo_file':tracinf,'diaginfo_file':diaginf, 
+              'decode_cf':False,'dask':True}
+    if not multi:
+        ds=open_bpchdataset(path,**bpchargs)
+    else:
+        ds=open_mfbpchdataset(path,**bpchargs)
 
     # First read coordinates:
     for key in ds.coords.keys():
@@ -117,21 +121,6 @@ def read_bpch(path,keys):
                 print("%s scaled by %.2e"%(key,float(attrs[key]['scale'])))
 
     return data,attrs
-
-def read_tavg(date,run='tropchem',keys=__tavg_mainkeys__):
-    '''
-        Read tracer avg file for particular date
-        run = ['tropchem'|'halfisop'|'UCX']
-    '''
-    # Determine path of file:
-    dstr=date.strftime("%Y%m%d0000")
-    pathd={'tropchem':'Data/GC_Output/geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
-           'halfisop':'Data/GC_Output/geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
-           'UCX':'Data/GC_Output/UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s'}
-    path=pathd[run]%dstr
-
-    # grab data from bpch:
-    return read_bpch(path,keys)
 
 
 #def read_trac_avg_nc(date=datetime(2005,1,1), runtype='tropchem', fname=None):

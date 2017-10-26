@@ -449,7 +449,7 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
     args['clabel']="%"
     createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
 
-def add_grid_to_map(m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=1.0, dashes=[1000,1], labels=[0,0,0,0]):
+def add_grid_to_map(m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=1.0, dashes=[1000,1], labels=[0,0,0,0],xy1=None):
     '''
     Overlay a grid onto the thingy
     Inputs:
@@ -461,13 +461,19 @@ def add_grid_to_map(m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=
         dashes: [on,off] for dash pattern
         label: [left,right,top,bottom] to be labelled
     '''
+    if xy1 is None:
+        xy1 = (180.0001,90.0001)
+    else:
+        xy1[0]=xy1[0]+0.0001
+        xy1[1]=xy1[1]+0.0001
     # lats
-    y=np.arange(xy0[0], 180.0001, xyres[0])
+    y=np.arange(xy0[0], xy1[0], xyres[0])
     # lons
-    x=np.arange(xy0[1], 90.0001, xyres[1])
+    x=np.arange(xy0[1], xy1[1], xyres[1])
     # add grid to map
     m.drawparallels(x, color=color, linewidth=linewidth, dashes=dashes, labels=labels)
     m.drawmeridians(y, color=color, linewidth=linewidth, dashes=dashes, labels=labels)
+    #drawmeridians(meridians, color=’k’, linewidth=1.0, zorder=None, dashes=[1, 1], labels=[0, 0, 0, 0], labelstyle=None, fmt=’%g’, xoffset=None, yoffset=None, ax=None, latmax=None, **kwargs)
 
 def displaymap(region=__AUSREGION__, subregions=[], labels=[], colors=[],
                fontsize='small', bluemarble=True,drawstates=True):

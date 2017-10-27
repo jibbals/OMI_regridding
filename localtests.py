@@ -59,8 +59,7 @@ diagfile='Data/GC_Output/geos5_2x25_tropchem/satellite_output/diaginfo.dat'
 #print(tavg)
 
 sat=GC_sat(d0)
-
-print(sat)
+print(sat) # should show data from satellite output!
 
 pname='testplot.png'
 

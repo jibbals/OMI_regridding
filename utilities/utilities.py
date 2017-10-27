@@ -22,7 +22,8 @@ from mpl_toolkits.basemap import maskoceans #
 ### GLOBALS ###
 ###############
 __VERBOSE__=False
-isoprene_grams_per_mole=60.06+8.08 # C5H8
+__grams_per_mole__={'isop':60.06+8.08, # C5H8
+                    'hcho':30.02598}
 
 
 ###############

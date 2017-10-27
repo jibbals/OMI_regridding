@@ -23,7 +23,7 @@ from scipy.constants import N_A as N_avegadro
 
 # local imports
 from utilities.JesseRegression import RMA
-from classes.GC_class import GC_tavg # Class reading GC output
+from classes.GC_class import GC_sat # Class reading GC output
 from classes.omhchorp import omhchorp # class reading OMHCHORP
 from utilities import fio as fio
 import utilities.plotting as pp
@@ -85,7 +85,7 @@ def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
         print("GC data %s"%str(GC.hcho.shape))
         print("OMI data %s"%str(OMI.VCC.shape))
 
-    omilats0, omilons0=OMI.lats,OMI.lons
+    omilats0, omilons0 = OMI.lats, OMI.lons
     omi_lats, omi_lons= omilats0.copy(), omilons0.copy()
     omi_SA=OMI.surface_areas # in km^2
 
@@ -184,7 +184,7 @@ def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
     # [atom C / cm2 / s ] * 1/5 * cm2/km2 * km2 * kg/atom_isop
     # = isoprene kg/s
     # kg/atom_isop = grams/mole * mole/molec * kg/gram
-    kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
+    kg_per_atom = util.__grams_per_mole__['isop'] * 1.0/N_avegadro * 1e-3
     conversion= 1./5.0 * 1e10 * omi_SA * kg_per_atom
     E_isop_kgs=E_new*conversion
     GC_E_isop_kgs=GC_E_isop*conversion
@@ -217,7 +217,7 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     ## Read data for this date unless it's been passed in
     ##
     if GC is None:
-        GC=GC_tavg(date=day0)
+        GC=GC_sat(date=day0)
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
 
@@ -349,7 +349,7 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     # newE in atom C / cm2 / s  |||  * 1/5 * cm2/km2 * km2 * kg/atom_isop
     # = isoprene kg/s
     # kg/atom_isop = grams/mole * mole/molec * kg/gram
-    kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
+    kg_per_atom = util.__grams_per_mole__['isop'] * 1.0/N_avegadro * 1e-3
     conversion= 1./5.0 * 1e10 * SA * kg_per_atom
     E_isop_kgs=E_new*conversion
     attrs["E_isop_kg"]={"units":"kg/s",
@@ -385,7 +385,7 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
     if GC is None:
-        GC=GC_tavg(date=day0)
+        GC=GC_sat(date=day0) # data like [time,lat,lon,lev]
 
     # Read each day then save the month
     #
@@ -444,7 +444,7 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     #
     for month in months:
         # Read GC month:
-        GC=GC_tavg(date=month)
+        GC=GC_sat(date=month)
 
         # save the month of emissions
         store_emissions_month(month=month, GC=GC, OMI=OMI,
@@ -460,8 +460,8 @@ def smearing(month, plot=False):
     '''
     region=pp.__AUSREGION__
 
-    full=GC_tavg(month, run='tropchem')
-    half=GC_tavg(month, run='halfisop') # month avg right now
+    full=GC_sat(month, run='tropchem')
+    half=GC_sat(month, run='halfisop') # month avg right now
 
     lats=full.lats
     lons=full.lons

@@ -104,12 +104,12 @@ class GC_common:
         multi= '*' in path
         data,attrs = gcfio.read_bpch(path,keys=keys,multi=multi)
 
-        # Data has shape like [[time,]lon,lat[,lev]]
+        # Data could have any shape, we fix to time,lat,lon,lev
         
-        
-        # Save the data to this class.
+        # for each key in thefile
         for key in data.keys():
-            # Make data into this shape: [[time,]lat,lon[,lev]]
+            
+            # grab array and shape
             arr=data[key]
             arrs=np.array(arr.shape)
             n_dims=len(arrs)
@@ -130,9 +130,9 @@ class GC_common:
                     newshape=(lati,loni,levi[0,0])
                 elif len(ti)==1 and len(levi)==0:
                     newshape=(ti[0,0],lati,loni)
-                print(key, " Before transform: ",arrs)
                 arr=np.transpose(arr,axes=newshape)
-                print("after transform: ",np.shape(arr))
+                if __VERBOSE__:
+                    print(key,arrs," -> ",np.shape(arr))
                 
             if key in _GC_names_to_nice.keys():
                 if key == 'TIME-SER_AIRDEN':
@@ -149,33 +149,23 @@ class GC_common:
             if __VERBOSE__:
                 print("GC_tavg reading %s %s"%(key,data[key].shape))
                 
+        # Grab area if file doesn't have it
         if not hasattr(self,'area'):
             self.area=GMAO.area_m2
-        # If possible calculate the column hcho too
+        
         # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
         n_dims=len(np.shape(self.hcho))
         print("n_dims = %d, hcho=%.2e"%(n_dims,np.mean(self.hcho)))
         self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
-
+        
         # Convert from numpy.datetime64 to datetime
         # '2005-01-01T00:00:00.000000000'
         if not hasattr(self,'time'):
             self.time=[date.strftime("%Y-%m-%dT%H:%M:%S.000000000")]
         self.dates=[datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in self.time]
-
-
-        #self._has_time_dim = len(self.E_isop_bio.shape) > 2
+        
+        # flag to see if class has time dimension
         self._has_time_dim = len(self.dates) > 1
-
-        # Determine emissions in kg/s from atom_C / cm2 / s
-        if isinstance(self.E_isop_bio,type(np.array(0))):
-            E=self.E_isop_bio # atom C / cm2 / s
-            SA=self.area * 1e-6  # m2 -> km2
-            # kg/atom_isop = grams/mole * mole/molec * kg/gram
-            kg_per_atom = util.isoprene_grams_per_mole * 1.0/N_avegadro * 1e-3
-            #          isop/C * cm2/km2 * km2 * kg/isop
-            conversion= 1./5.0 * 1e10 * SA * kg_per_atom
-            self.E_isop_bio_kgs=E*conversion
 
         assert all(self.lats == GMAO.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
         self.lats_e=GMAO.lats_e
@@ -218,24 +208,24 @@ class GC_common:
             dims=np.array(np.shape(X))
             if __VERBOSE__:
                 print("%s has shape %s"%(key,str(dims)))
-            # Which index is time,lon,lat,lev?
+            # Which index is time,lat,lon,lev?
             timei=0; loni=1; lati=2
-            out=np.zeros(dims[[timei,loni,lati]])
+            out=np.zeros(dims[[timei,lati,loni]])
             if dims[0] > 40: # no time dimension
-                lati=1; loni=0
-                out=np.zeros(dims[[loni, lati]])
+                lati=0; loni=1
+                out=np.zeros(dims[[lati, loni]])
 
             for lat in range(dims[lati]): # loop over lats
                 for lon in range(dims[loni]): # loop over lons
                     try:
                         if len(dims)==3:
-                            tropi=trop[lon,lat]
-                            out[lon,lat]=np.sum(X[lon,lat,0:tropi])+extra[lon,lat] * X[lon,lat,tropi]
+                            tropi=trop[lat,lon]
+                            out[lat,lon]=np.sum(X[lat,lon,0:tropi])+extra[lat,lon] * X[lat,lon,tropi]
                         else:
                             for t in range(dims[timei]):
-                                tropi=trop[t,lon,lat]
-                                out[t,lon,lat] = np.sum(X[t,lon,lat,0:tropi]) + \
-                                    extra[t,lon,lat] * X[t,lon,lat,tropi]
+                                tropi=trop[t,lat,lon]
+                                out[t,lat,lon] = np.sum(X[t,lat,lon,0:tropi]) + \
+                                    extra[t,lat,lon] * X[t,lat,lon,tropi]
                     except IndexError as ie:
                         print((tropi, lat, lon))
                         print("dims: %s"%str(dims))
@@ -247,19 +237,18 @@ class GC_common:
 
             data[key]=out
         return data
-
+    
     def month_average(self, keys=['hcho','isop']):
         ''' Average the time dimension '''
         out={}
-        n_t=len(self.dates)
         for v in keys:
             data=getattr(self, v)
-            dims=np.shape(data)
             if self._has_time_dim:
                 out[v]=np.nanmean(data, axis=0) # average the time dim
             else:
                 out[v]=data
         return out
+    
     def get_surface(self, keys=['hcho']):
         ''' Get the surface layer'''
         out={}
@@ -269,14 +258,6 @@ class GC_common:
             else:
                 out[v]=(getattr(self,v))[:,:,0]
         return out
-
-    def _get_region(self,aus=False, region=None):
-        ''' region for plotting '''
-        if region is None:
-            region=[-89,-179,89,179]
-            if aus:
-                region=__AUSREGION__
-        return region
 
     def get_field(self, keys=['hcho', 'E_isop_bio'], region=pp.__AUSREGION__):
         '''
@@ -292,35 +273,61 @@ class GC_common:
              'lons_e':self.lons_e[loni_e],
              'lati':lati,
              'loni':loni}
-        # DATA LIKE [[time,]lon,lat[,lev]]
+        # DATA LIKE [[time,]lat,lon[,lev]]
         try:
             for k in keys:
                 out[k] = getattr(self, k)
                 ndims=len(out[k].shape)
                 if ndims==4:
-                    out[k] = out[k][:,:,lati,:]
-                    out[k] = out[k][:,loni,:,:]
+                    out[k] = out[k][:,:,loni,:]
+                    out[k] = out[k][:,lati,:,:]
                 elif ndims==3:
                     if out[k].shape[0] < 40:
-                        out[k] = out[k][:,loni,:]
-                        out[k] = out[k][:,:,lati]
-                    else:
-                        out[k] = out[k][loni,:,:]
                         out[k] = out[k][:,lati,:]
+                        out[k] = out[k][:,:,loni]
+                    else:
+                        out[k] = out[k][lati,:,:]
+                        out[k] = out[k][:,loni,:]
                 else:
-                    out[k] = out[k][loni,:]
-                    out[k] = out[k][:,lati]
+                    out[k] = out[k][lati,:]
+                    out[k] = out[k][:,loni]
         except IndexError as ie:
             print(k)
             print(np.shape(out[k]))
             print(np.shape(lati),np.shape(loni))
             raise ie
         return out
+    
+    def _get_region(self,aus=False, region=None):
+        ''' region for plotting '''
+        if region is None:
+            region=[-89,-179,89,179]
+            if aus:
+                region=__AUSREGION__
+        return region
+    
+    def _set_E_isop_bio_kgs(self):
+        # Determine emissions in kg/s from atom_C / cm2 / s
+        E=self.E_isop_bio * 0.2 # atom C -> atom isop
+        gpm=util.__grams_per_mole__['isop']
+        SA=self.area * 1e-6  # m2 -> km2
+        # kg/atom_isop = grams/mole * mole/molec * kg/gram
+        kg_per_atom = gpm * 1.0/N_avegadro * 1e-3
+        # cm2/km2 * km2 * kg/isop
+        conversion= 1e10 * SA * kg_per_atom
+        
+        if self._has_time_dim:
+            self.E_isop_bio_kgs = np.zeros(np.shape(E))
+            for t in range(len(self.dates)):
+                self.E_isop_bio_kgs[t]=E[t] * conversion
+        else:
+            self.E_isop_bio_kgs=E * conversion
+        self.attrs['E_isop_bio_kgs']={'units':'kg/s',}
 
 class GC_tavg(GC_common):
     '''
         Class holding and manipulating tropchem GC output
-        # tropchem dims [time,lon,lat,lev]
+        # tropchem dims [time,lat,lon,lev]
         # UCX dims: lev = 72; alt059 = 59; lat = 91; lon = 144;
         # LATS AND LONS ARE BOX MIDPOINTS
         self.hcho  = PPBV
@@ -342,6 +349,9 @@ class GC_tavg(GC_common):
                'UCX':'Data/GC_Output/UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s'}
         path=pathd[run]%dstr
         super(GC_tavg,self).__init__(date,path=path,keys=keys,nlevs=nlevs)
+        
+        # add E_isop_bio_kgs:
+        self._set_E_isop_bio_kgs()
 
     #TODO: define method to create a GC fire mask
     #def firemask(self,):
@@ -366,6 +376,22 @@ class GC_sat(GC_common):
             self.tplev=self.tplev[:,:,0]
         if len(self.tplev.shape)==4:
             self.tplev=self.tplev[:,:,:,0]
+            
+        # fix emissions shape:
+        if hasattr(self, 'E_isop_bio'):
+            E=self.E_isop_bio
+            Eshape=np.shape(E)
+            
+            if Eshape[-1] == self.nlevs:
+                if __VERBOSE__:
+                    print('fixing E_isop_bio shape to [[t,]lat,lon] from ',Eshape)
+                if len(Eshape)==3:
+                    self.E_isop_bio = E[:,:,0]
+                elif len(Eshape)==4:
+                    self.E_isop_bio = E[:,:,:,0]
+        
+            # also calculate emissions in kg/s
+            self._set_E_isop_bio_kgs()
 
 
     def model_slope(self, region=pp.__AUSREGION__):
@@ -437,7 +463,7 @@ class GC_sat(GC_common):
 ###FUNCTIONS####
 ################
 
-def check_units():
+def check_units(d=datetime(2005,1,1)):
     '''
         N_air (molecs/m3)
         boxH (m)
@@ -447,9 +473,9 @@ def check_units():
     '''
     N_ave=6.02214086*1e23 # molecs/mol
     airkg= 28.97*1e-3 # ~ kg/mol of dry air
-    gc=GC_tavg(datetime(2005,1,1))
+    gc=GC_tavg(d)
 
-    #data in form [time,lon,lat,lev]
+    #data in form [time,lat,lon,lev]
     gcm=gc.month_average(keys=['hcho','N_air'])
     hcho=gcm['hcho']
     nair=gcm['N_air']
@@ -480,10 +506,10 @@ def check_units():
 
     # E_isop_bio is atom_C/cm2/s, around 5e12?
 
-def check_diag():
+def check_diag(d=datetime(2005,1,1)):
     '''
     '''
-    gc=GC_tavg(datetime(2005,1,1))
+    gc=GC_tavg(d)
     E_isop_hourly=gc.E_isop_bio
     print(E_isop_hourly.shape())
     E_isop=gc.get_daily_E_isop()
@@ -492,5 +518,5 @@ def check_diag():
 
 if __name__=='__main__':
     #check_diag()
-    check_units()
+    check_units(datetime(2005,2,1))
 

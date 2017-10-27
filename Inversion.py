@@ -410,6 +410,8 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     outdata['lats_e']=util.edges_from_mids(outdata['lats'])
     outdata['lons_e']=util.edges_from_mids(outdata['lons'])
 
+    outdata['smearing']=smearing(month,plot=False,region=region)
+    outattrs['smearing']={'desc':'smearing for %s'%mstr}
     # Save data into month of daily averages
     # TODO: keep OMI counts from earlier...
     keys_to_save=['E_isop', 'E_isop_kg','background',
@@ -453,12 +455,11 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     if __VERBOSE__:
         print("Inversion.store_emissions() now finished")
 
-def smearing(month, plot=False):
+def smearing(month, plot=False,region=pp.__AUSREGION__):
     '''
         Read full and half isop bpch output, calculate smearing
         S = d column_HCHO / d E_isop
     '''
-    region=pp.__AUSREGION__
 
     full=GC_sat(month, run='tropchem')
     half=GC_sat(month, run='halfisop') # month avg right now
@@ -510,6 +511,5 @@ if __name__=='__main__':
 
     day0=datetime(2005,1,1)
     dayn=datetime(2005,5,1)
-    #store_emissions(day0=day0,dayn=dayn)
-    smearing(day0,plot=True)
-
+    
+    store_emissions(day0=day0,dayn=dayn)

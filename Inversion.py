@@ -23,7 +23,7 @@ from scipy.constants import N_A as N_avegadro
 
 # local imports
 from utilities.JesseRegression import RMA
-from classes.GC_class import GC_sat # Class reading GC output
+from classes.GC_class import GC_sat, GC_tavg # Class reading GC output
 from classes.omhchorp import omhchorp # class reading OMHCHORP
 from utilities import fio as fio
 import utilities.plotting as pp
@@ -33,7 +33,7 @@ import utilities.utilities as util
 ### GLOBALS ###
 ###############
 __VERBOSE__=True
-__DEBUG__=False
+__DEBUG__=True
 
 ###############
 ### METHODS ###
@@ -82,8 +82,10 @@ def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
         # Check the dims of our stuff
         print()
         print("Calculating emissions for %s"%dstr)
-        print("GC data %s"%str(GC.hcho.shape))
-        print("OMI data %s"%str(OMI.VCC.shape))
+        print("GC data %s"%str(GC.hcho.shape)) # [t,lat,lon,lev]
+        print("nanmean:",np.nanmean(GC.hcho))
+        print("OMI data %s"%str(OMI.VCC.shape)) # [t, lat, lon]
+        print("nanmean:",np.nanmean(OMI.VCC))
 
     omilats0, omilons0 = OMI.lats, OMI.lons
     omi_lats, omi_lons= omilats0.copy(), omilons0.copy()
@@ -447,7 +449,7 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     for month in months:
         # Read GC month:
         GC=GC_sat(date=month)
-
+        print('mean gc_sat.hcho',np.nanmean(GC.hcho))
         # save the month of emissions
         store_emissions_month(month=month, GC=GC, OMI=OMI,
                               region=region, ignorePP=ignorePP)
@@ -459,10 +461,11 @@ def smearing(month, plot=False,region=pp.__AUSREGION__):
     '''
         Read full and half isop bpch output, calculate smearing
         S = d column_HCHO / d E_isop
+        For now uses tavg instead of overpass times
     '''
 
-    full=GC_sat(month, run='tropchem')
-    half=GC_sat(month, run='halfisop') # month avg right now
+    full=GC_tavg(month, run='tropchem')
+    half=GC_tavg(month, run='halfisop') # month avg right now
 
     lats=full.lats
     lons=full.lons
@@ -510,6 +513,8 @@ if __name__=='__main__':
     print('Inversion has been run')
 
     day0=datetime(2005,1,1)
-    dayn=datetime(2005,5,1)
-    
+    dayn=datetime(2005,4,30)
     store_emissions(day0=day0,dayn=dayn)
+    #for day in [datetime(2005,9,1),datetime(2005,10,1),datetime(2005,11,1),datetime(2005,12,1),]:
+    #    #smearing(day0)
+    #    store_emissions(day0=day)

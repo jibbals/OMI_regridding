@@ -17,6 +17,7 @@ History:
 import numpy as np
 from datetime import datetime
 from scipy.constants import N_A as N_avegadro
+from glob import glob
 #import matplotlib.pyplot as plt
 #from matplotlib.pyplot import cm
 
@@ -176,6 +177,10 @@ class GC_common:
     def date_index(self, date):
         ''' Return index of date '''
         whr=np.where(np.array(self.dates) == date) # returns (matches_array,something)
+        #print(date, 'from', self.dates)
+        if len(whr[0])==0:
+            print (date, 'not in', self.dates)
+            
         return whr[0][0] # We just want the match
 
     def ppbv_to_molec_cm2(self,keys=['hcho'],metres=False):
@@ -195,6 +200,8 @@ class GC_common:
         '''
             Return tropospheric column amounts in molec/cm2 [or molec/m2]
         '''
+        if __VERBOSE__:
+            print('retrieving trop column for ',keys)
         data={}
 
         # where is tropopause and how much of next box we want
@@ -209,7 +216,7 @@ class GC_common:
             if __VERBOSE__:
                 print("%s has shape %s"%(key,str(dims)))
             # Which index is time,lat,lon,lev?
-            timei=0; loni=1; lati=2
+            timei=0;lati=1;loni=2
             out=np.zeros(dims[[timei,lati,loni]])
             if dims[0] > 40: # no time dimension
                 lati=0; loni=1
@@ -392,6 +399,13 @@ class GC_sat(GC_common):
         
             # also calculate emissions in kg/s
             self._set_E_isop_bio_kgs()
+        # fix dates:
+        files=glob(path)
+        if len(files) > 1:
+            self._has_time_dim=True
+            #ASSUME WE HAVE ALL DAYS IN THIS MONTH:
+            self.dates=util.list_days(day0=date, month=True)
+                
 
 
     def model_slope(self, region=pp.__AUSREGION__):
@@ -404,7 +418,7 @@ class GC_sat(GC_common):
                 E_isop: Atom C/cm2/s
 
 
-            Return {'lats','lons','r':reg, 'b':bg, 'slope':slope}
+            Return {'lats','lons','r':regression, 'b':bg, 'slope':slope}
 
         '''
         # if this calc is already done, short cut it

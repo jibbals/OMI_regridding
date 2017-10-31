@@ -84,7 +84,8 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
     print(NA,SWA,SEA)
     subs   = [SWA,NA,SEA]
     labels = ['SWA','NA','SEA']
-    colors = ['teal','magenta','aqua']
+    colors = ['chartreuse','magenta','aqua']
+    linewidths=[2,2,2]
 
     # Draw them if you want
     if drawmap:
@@ -92,7 +93,7 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
         region=pp.__AUSREGION__
 
         pp.displaymap(region=region, subregions=subs,
-                      labels=labels,colors=colors)
+                      labels=labels, linewidths=linewidths, colors=colors)
 
         regionname='Figs/regionmap.png'
         plt.title("Regions for E_isop analysis")

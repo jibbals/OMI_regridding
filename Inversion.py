@@ -412,7 +412,7 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     outdata['lats_e']=util.edges_from_mids(outdata['lats'])
     outdata['lons_e']=util.edges_from_mids(outdata['lons'])
 
-    outdata['smearing']=smearing(month,plot=False,region=region)
+    outdata['smearing']=smearing(month,plot=True,region=region)
     outattrs['smearing']={'desc':'smearing for %s'%mstr}
     # Save data into month of daily averages
     # TODO: keep OMI counts from earlier...
@@ -448,8 +448,9 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     #
     for month in months:
         # Read GC month:
-        GC=GC_sat(date=month)
-        print('mean gc_sat.hcho',np.nanmean(GC.hcho))
+        # TODO: Use GC=GC_sat(date=month)
+        GC=GC_tavg(date=month)
+        print('mean gc_tavg.hcho',np.nanmean(GC.hcho))
         # save the month of emissions
         store_emissions_month(month=month, GC=GC, OMI=OMI,
                               region=region, ignorePP=ignorePP)
@@ -457,7 +458,7 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     if __VERBOSE__:
         print("Inversion.store_emissions() now finished")
 
-def smearing(month, plot=False,region=pp.__AUSREGION__):
+def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
     '''
         Read full and half isop bpch output, calculate smearing
         S = d column_HCHO / d E_isop
@@ -493,7 +494,7 @@ def smearing(month, plot=False,region=pp.__AUSREGION__):
 
     print("emissions from Full,Half:",np.sum(f_E_isop),np.sum(h_E_isop))
     print("O_hcho from Full, Half:",np.sum(f_hcho),np.sum(h_hcho))
-    S[f_E_isop == 0.0] = np.NaN
+    S[f_E_isop <= thresh] = np.NaN
 
     print("S shape:",S.shape)
     print("Average S:",np.nanmean(S))
@@ -504,8 +505,9 @@ def smearing(month, plot=False,region=pp.__AUSREGION__):
 
         #pp.createmap(f_hcho,lats,lons,latlon=True,edges=False,linear=True,pname=pname,title='f_hcho')
         # lie about edges...
-        pp.createmap(S,lats_e,lons_e, latlon=True, edges=True, region=region, linear=False,
-                    clabel='S', pname=pname, title='Smearing %s'%dstr)
+        pp.createmap(S,lats_e,lons_e, latlon=True, edges=True, region=pp.__AUSREGION__,
+                     linear=True,vmin=1000,vmax=10000,
+                     clabel='S', pname=pname, title='Smearing %s'%dstr)
 
     return S
 
@@ -513,7 +515,7 @@ if __name__=='__main__':
     print('Inversion has been run')
 
     day0=datetime(2005,1,1)
-    dayn=datetime(2005,4,30)
+    dayn=None # datetime(2005,4,30)
     store_emissions(day0=day0,dayn=dayn)
     #for day in [datetime(2005,9,1),datetime(2005,10,1),datetime(2005,11,1),datetime(2005,12,1),]:
     #    #smearing(day0)

@@ -173,11 +173,13 @@ def map_E_gc(month, GC, clims=[1e11,5e12], region=pp.__AUSREGION__,
     lons_e=E_GC_sub['lons_e']
 
     title=r'E$_{GC}$ %s'%month.strftime("%Y, %b")
+    pname='Figs/E_MEGAN_%s.png'%month.strftime("%Y%m")
     # We need to specify the edges since GC is not fully regular
     pp.createmap(Egc, lats_e, lons_e, edges=True, title=title,
                  vmin=clims[0], vmax=clims[1], smoothed=smoothed,
                  clabel=r'Atoms C cm$^{-2}$ s$^{-1}$',
-                 cmapname=cmapname, linear=linear, region=region)
+                 cmapname=cmapname, linear=linear, region=region,
+                 pname=pname)
 
 def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
               smoothed=False, linear=True,
@@ -458,7 +460,8 @@ if __name__=='__main__':
     regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
 
     d0=datetime(2005,1,1); dn=datetime(2005,12,31)
-    E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
+    #E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
+    map_E_gc(month=d0,GC=GC_tavg(d0))
     #check_E_new(dn=datetime(2005,2,1))
 
 #    for region in regions:

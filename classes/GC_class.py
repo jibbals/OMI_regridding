@@ -90,7 +90,7 @@ class GC_common:
         self.nlats=91
         self.nlons=144
         self.nlevs=nlevs
-        
+
         # Initialise to zeros:
         #self.hcho  = 0      #PPBV
         #self.isop  = 0      #PPBC (=PPBV*5)
@@ -106,25 +106,25 @@ class GC_common:
         data,attrs = gcfio.read_bpch(path,keys=keys,multi=multi)
 
         # Data could have any shape, we fix to time,lat,lon,lev
-        
+
         # for each key in thefile
         for key in data.keys():
-            
+
             # grab array and shape
             arr=data[key]
             arrs=np.array(arr.shape)
             n_dims=len(arrs)
-            
+
             # For simplicity lets force the dimensions to be time,lat,lon,lev
             if n_dims>1:
                 lati=np.argwhere(arrs==self.nlats)[0,0]
                 loni=np.argwhere(arrs==self.nlons)[0,0]
                 newshape=(lati,loni)
-                
+
                 # do we have time and level dimensions?
                 ti=np.argwhere(arrs<35)
                 levi=np.argwhere(arrs==self.nlevs)
-                
+
                 if len(ti)==1 and len(levi)==1:
                     newshape=(ti[0,0],lati,loni,levi[0,0])
                 elif len(ti)==0 and len(levi)==1:
@@ -134,7 +134,7 @@ class GC_common:
                 arr=np.transpose(arr,axes=newshape)
                 if __VERBOSE__:
                     print(key,arrs," -> ",np.shape(arr))
-                
+
             if key in _GC_names_to_nice.keys():
                 if key == 'TIME-SER_AIRDEN':
                     #assert attrs[key]['units']=='molec/cm3', 'time-ser_airden not in molec/cm3???'
@@ -149,22 +149,22 @@ class GC_common:
 
             if __VERBOSE__:
                 print("GC_tavg reading %s %s"%(key,data[key].shape))
-                
+
         # Grab area if file doesn't have it
         if not hasattr(self,'area'):
             self.area=GMAO.area_m2
-        
+
         # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
         n_dims=len(np.shape(self.hcho))
         print("n_dims = %d, hcho=%.2e"%(n_dims,np.mean(self.hcho)))
         self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
-        
+
         # Convert from numpy.datetime64 to datetime
         # '2005-01-01T00:00:00.000000000'
         if not hasattr(self,'time'):
             self.time=[date.strftime("%Y-%m-%dT%H:%M:%S.000000000")]
         self.dates=[datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in self.time]
-        
+
         # flag to see if class has time dimension
         self._has_time_dim = len(self.dates) > 1
 
@@ -180,7 +180,7 @@ class GC_common:
         #print(date, 'from', self.dates)
         if len(whr[0])==0:
             print (date, 'not in', self.dates)
-            
+
         return whr[0][0] # We just want the match
 
     def ppbv_to_molec_cm2(self,keys=['hcho'],metres=False):
@@ -244,7 +244,7 @@ class GC_common:
 
             data[key]=out
         return data
-    
+
     def month_average(self, keys=['hcho','isop']):
         ''' Average the time dimension '''
         out={}
@@ -255,7 +255,7 @@ class GC_common:
             else:
                 out[v]=data
         return out
-    
+
     def get_surface(self, keys=['hcho']):
         ''' Get the surface layer'''
         out={}
@@ -304,109 +304,6 @@ class GC_common:
             print(np.shape(lati),np.shape(loni))
             raise ie
         return out
-    
-    def _get_region(self,aus=False, region=None):
-        ''' region for plotting '''
-        if region is None:
-            region=[-89,-179,89,179]
-            if aus:
-                region=__AUSREGION__
-        return region
-    
-    def _set_E_isop_bio_kgs(self):
-        # Determine emissions in kg/s from atom_C / cm2 / s
-        E=self.E_isop_bio * 0.2 # atom C -> atom isop
-        gpm=util.__grams_per_mole__['isop']
-        SA=self.area * 1e-6  # m2 -> km2
-        # kg/atom_isop = grams/mole * mole/molec * kg/gram
-        kg_per_atom = gpm * 1.0/N_avegadro * 1e-3
-        # cm2/km2 * km2 * kg/isop
-        conversion= 1e10 * SA * kg_per_atom
-        
-        if self._has_time_dim:
-            self.E_isop_bio_kgs = np.zeros(np.shape(E))
-            for t in range(len(self.dates)):
-                self.E_isop_bio_kgs[t]=E[t] * conversion
-        else:
-            self.E_isop_bio_kgs=E * conversion
-        self.attrs['E_isop_bio_kgs']={'units':'kg/s',}
-
-class GC_tavg(GC_common):
-    '''
-        Class holding and manipulating tropchem GC output
-        # tropchem dims [time,lat,lon,lev]
-        # UCX dims: lev = 72; alt059 = 59; lat = 91; lon = 144;
-        # LATS AND LONS ARE BOX MIDPOINTS
-        self.hcho  = PPBV
-        self.isop  = PPBC (=PPBV*5)
-        self.boxH  = box heights (m)
-        self.psurf = pressure surfaces (hPa)
-        self.area  = XY grid area (m2)
-        self.N_air = air dens (molec_air/m3)
-        self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
-
-    '''
-    def __init__(self,date,keys=gcfio.__tavg_mainkeys__,run='tropchem',nlevs=47):
-        # Call GC_common initialiser with tavg_mainkeys and tropchem by default
-        
-        # Determine path of file:
-        dstr=date.strftime("%Y%m%d0000")
-        pathd={'tropchem':'Data/GC_Output/geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
-               'halfisop':'Data/GC_Output/geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
-               'UCX':'Data/GC_Output/UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s'}
-        path=pathd[run]%dstr
-        super(GC_tavg,self).__init__(date,path=path,keys=keys,nlevs=nlevs)
-        
-        # add E_isop_bio_kgs:
-        self._set_E_isop_bio_kgs()
-
-    #TODO: define method to create a GC fire mask
-    #def firemask(self,):
-
-
-class GC_sat(GC_common):
-    '''
-        Class for reading and manipulating satellite overpass output!
-    '''
-    def __init__(self,date, keys=gcfio.__sat_mainkeys__, run='tropchem',nlevs=47):
-        
-        # Determine path of files:
-        dstr=date.strftime("%Y%m*")
-        pathd={'tropchem':'Data/GC_Output/geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s.bpch',
-               'halfisop':'Data/GC_Output/geos5_2x25_tropchem_halfisoprene/satellite_output/ts_satellite.%s.bpch',
-               'UCX':'Data/GC_Output/UCX_geos5_2x25/satellite_output/ts_satellite.%s.bpch'}
-        path=pathd[run]%dstr
-        super(GC_sat,self).__init__(date, path=path, keys=keys, nlevs=nlevs)
-        
-        # fix TR-PAUSE_TPLEV output:
-        if len(self.tplev.shape)==3:
-            self.tplev=self.tplev[:,:,0]
-        if len(self.tplev.shape)==4:
-            self.tplev=self.tplev[:,:,:,0]
-            
-        # fix emissions shape:
-        if hasattr(self, 'E_isop_bio'):
-            E=self.E_isop_bio
-            Eshape=np.shape(E)
-            
-            if Eshape[-1] == self.nlevs:
-                if __VERBOSE__:
-                    print('fixing E_isop_bio shape to [[t,]lat,lon] from ',Eshape)
-                if len(Eshape)==3:
-                    self.E_isop_bio = E[:,:,0]
-                elif len(Eshape)==4:
-                    self.E_isop_bio = E[:,:,:,0]
-        
-            # also calculate emissions in kg/s
-            self._set_E_isop_bio_kgs()
-        # fix dates:
-        files=glob(path)
-        if len(files) > 1:
-            self._has_time_dim=True
-            #ASSUME WE HAVE ALL DAYS IN THIS MONTH:
-            self.dates=util.list_days(day0=date, month=True)
-                
-
 
     def model_slope(self, region=pp.__AUSREGION__):
         '''
@@ -473,6 +370,109 @@ class GC_sat(GC_common):
                              # regression, background, and slope
                              'r':reg, 'b':bg, 'slope':slope}
         return self.modelled_slope
+
+    def _get_region(self,aus=False, region=None):
+        ''' region for plotting '''
+        if region is None:
+            region=[-89,-179,89,179]
+            if aus:
+                region=__AUSREGION__
+        return region
+
+    def _set_E_isop_bio_kgs(self):
+        # Determine emissions in kg/s from atom_C / cm2 / s
+        E=self.E_isop_bio * 0.2 # atom C -> atom isop
+        gpm=util.__grams_per_mole__['isop']
+        SA=self.area * 1e-6  # m2 -> km2
+        # kg/atom_isop = grams/mole * mole/molec * kg/gram
+        kg_per_atom = gpm * 1.0/N_avegadro * 1e-3
+        # cm2/km2 * km2 * kg/isop
+        conversion= 1e10 * SA * kg_per_atom
+
+        if self._has_time_dim:
+            self.E_isop_bio_kgs = np.zeros(np.shape(E))
+            for t in range(len(self.dates)):
+                self.E_isop_bio_kgs[t]=E[t] * conversion
+        else:
+            self.E_isop_bio_kgs=E * conversion
+        self.attrs['E_isop_bio_kgs']={'units':'kg/s',}
+
+class GC_tavg(GC_common):
+    '''
+        Class holding and manipulating tropchem GC output
+        # tropchem dims [time,lat,lon,lev]
+        # UCX dims: lev = 72; alt059 = 59; lat = 91; lon = 144;
+        # LATS AND LONS ARE BOX MIDPOINTS
+        self.hcho  = PPBV
+        self.isop  = PPBC (=PPBV*5)
+        self.boxH  = box heights (m)
+        self.psurf = pressure surfaces (hPa)
+        self.area  = XY grid area (m2)
+        self.N_air = air dens (molec_air/m3)
+        self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
+
+    '''
+    def __init__(self,date,keys=gcfio.__tavg_mainkeys__,run='tropchem',nlevs=47):
+        # Call GC_common initialiser with tavg_mainkeys and tropchem by default
+
+        # Determine path of file:
+        dstr=date.strftime("%Y%m%d0000")
+        pathd={'tropchem':'Data/GC_Output/geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
+               'halfisop':'Data/GC_Output/geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
+               'UCX':'Data/GC_Output/UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s'}
+        path=pathd[run]%dstr
+        super(GC_tavg,self).__init__(date,path=path,keys=keys,nlevs=nlevs)
+
+        # add E_isop_bio_kgs:
+        self._set_E_isop_bio_kgs()
+
+    #TODO: define method to create a GC fire mask
+    #def firemask(self,):
+
+
+class GC_sat(GC_common):
+    '''
+        Class for reading and manipulating satellite overpass output!
+    '''
+    def __init__(self,date, keys=gcfio.__sat_mainkeys__, run='tropchem',nlevs=47):
+
+        # Determine path of files:
+        dstr=date.strftime("%Y%m*")
+        pathd={'tropchem':'Data/GC_Output/geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s.bpch',
+               'halfisop':'Data/GC_Output/geos5_2x25_tropchem_halfisoprene/satellite_output/ts_satellite.%s.bpch',
+               'UCX':'Data/GC_Output/UCX_geos5_2x25/satellite_output/ts_satellite.%s.bpch'}
+        path=pathd[run]%dstr
+        super(GC_sat,self).__init__(date, path=path, keys=keys, nlevs=nlevs)
+
+        # fix TR-PAUSE_TPLEV output:
+        if len(self.tplev.shape)==3:
+            self.tplev=self.tplev[:,:,0]
+        if len(self.tplev.shape)==4:
+            self.tplev=self.tplev[:,:,:,0]
+
+        # fix emissions shape:
+        if hasattr(self, 'E_isop_bio'):
+            E=self.E_isop_bio
+            Eshape=np.shape(E)
+            print('Eshape:',Eshape,np.nanmax(E))
+
+            if Eshape[-1] == self.nlevs:
+                if __VERBOSE__:
+                    print('fixing E_isop_bio shape to [[t,]lat,lon] from ',Eshape)
+                if len(Eshape)==3:
+                    self.E_isop_bio = E[:,:,0]
+                elif len(Eshape)==4:
+                    self.E_isop_bio = E[:,:,:,0]
+
+            # also calculate emissions in kg/s
+            self._set_E_isop_bio_kgs()
+        # fix dates:
+        files=glob(path)
+        if len(files) > 1:
+            self._has_time_dim=True
+            #ASSUME WE HAVE ALL DAYS IN THIS MONTH:
+            self.dates=util.list_days(day0=date, month=True)
+
 ################
 ###FUNCTIONS####
 ################

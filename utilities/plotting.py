@@ -108,16 +108,16 @@ def basicmap(data, lats, lons, latlon=True,
 
     ## basemap pcolormesh uses data edges
     ##
-    
+
     # Make edges into 2D meshed grid
     mlons,mlats=np.meshgrid(lons,lats)
 
     #force nan into any pixel with nan results, so color is not plotted there...
-    #mdata=np.ma.masked_invalid(data) # mask non-finite elements    
+    #mdata=np.ma.masked_invalid(data) # mask non-finite elements
     #mdata=data # masking occasionally throws up all over your face
-    
+
     cs=m.pcolormesh(mlons, mlats, data, latlon=latlon)
-    
+
     # draw coastline and equator(no latlon labels)
     m.drawcoastlines()
     m.drawparallels([0],labels=[0,0,0,0])
@@ -140,7 +140,7 @@ def basicmap(data, lats, lons, latlon=True,
     # if no colorbar is wanted then don't return one (can be set externally)
     return m, cs, cb
 
-def createmap(data, lats, lons, edges=False,  
+def createmap(data, lats, lons, edges=False,
               vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
               clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
@@ -217,7 +217,7 @@ def createmap(data, lats, lons, edges=False,
         data[data<=0]=np.NaN
 
     #force nan into any pixel with nan results, so color is not plotted there...
-    mdata=np.ma.masked_invalid(data) # mask non-finite elements    
+    mdata=np.ma.masked_invalid(data) # mask non-finite elements
     #mdata=data # masking occasionally throws up all over your face
 
     if __VERBOSE__:
@@ -261,7 +261,7 @@ def createmap(data, lats, lons, edges=False,
 
 def plot_swath(day, region=__AUSREGION__, reprocessed=False,
               edges=False , vmin=None, vmax=None,
-              aus=False, linear=False, clabel='molec/cm2', colorbar=True,
+              aus=False, linear=True, clabel='molec/cm2', colorbar=True,
               cbarfmt=None, cbarxtickrot=None,
               pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None, fillcontinents=None):
@@ -505,5 +505,9 @@ def displaymap(region=__AUSREGION__, subregions=[], labels=[], colors=[],
 
 
 if __name__=='__main__':
+    InitMatplotlib()
     from datetime import datetime
-    plot_swath(datetime(2005,1,20),title="neg_swath",pname="Figs/Checks/neg_swath.png")
+    plot_swath(datetime(2005,1,10),title="eg_swaths",
+               pname="Figs/Checks/eg_swaths.png",
+               vmin=2.0e15, vmax=2.0e16, cmapname='YlOrBr',
+               region=__GLOBALREGION__)#[-65.,-30.0,35.,170.],)

@@ -149,12 +149,13 @@ def createmap(data, lats, lons, edges=False,
     '''
         Pass in data[lat,lon], lats[lat], lons[lon]
     '''
-    if __VERBOSE__:
-        print("createmap called: %s"%str(title))
-        #print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
 
     # Create a basemap map with region as inputted
     if aus: region=__AUSREGION__
+    if __VERBOSE__:
+        print("createmap called over %s (S,W,N,E)"%str(region))
+        #print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
+    
     lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
     m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
               resolution='i', projection='merc')
@@ -259,7 +260,8 @@ def createmap(data, lats, lons, edges=False,
     # if no colorbar is wanted then don't return one (can be set externally)
     return m, cs, cb
 
-def plot_swath(day, region=__AUSREGION__, reprocessed=False,
+def plot_swath(day, reprocessed=False,
+              oneday=True, region=__AUSREGION__,
               edges=False , vmin=None, vmax=None,
               aus=False, linear=True, clabel='molec/cm2', colorbar=True,
               cbarfmt=None, cbarxtickrot=None,
@@ -272,7 +274,7 @@ def plot_swath(day, region=__AUSREGION__, reprocessed=False,
 
     #swaths=fio.read_omhcho_day(day)
     dkey=['VC_OMI_RSC','VCC'][reprocessed]
-    swaths=fio.read_omhchorp(day,oneday=True,keylist=[dkey,'latitude','longitude'])
+    swaths=fio.read_omhchorp(day,oneday=oneday,keylist=[dkey,'latitude','longitude'])
     data=swaths[dkey]
     lats=swaths['latitude']
     lons=swaths['longitude']
@@ -475,7 +477,8 @@ def add_grid_to_map(m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=
     m.drawmeridians(y, color=color, linewidth=linewidth, dashes=dashes, labels=labels)
     #drawmeridians(meridians, color=’k’, linewidth=1.0, zorder=None, dashes=[1, 1], labels=[0, 0, 0, 0], labelstyle=None, fmt=’%g’, xoffset=None, yoffset=None, ax=None, latmax=None, **kwargs)
 
-def displaymap(region=__AUSREGION__, subregions=[], labels=[], colors=[],
+def displaymap(region=__AUSREGION__,
+               subregions=[], labels=[], colors=[], linewidths=[],
                fontsize='small', bluemarble=True,drawstates=True):
     '''
         regions are [lat,lon,lat,lon]
@@ -492,22 +495,30 @@ def displaymap(region=__AUSREGION__, subregions=[], labels=[], colors=[],
 
     # Add lats/lons to map
     add_grid_to_map(m,xy0=(-10,-80),xyres=(10,10),dashes=[1,1e6],labels=[1,0,0,1])
-
+    for r in subregions:
+        if len(labels)<len(r):
+            labels.append('')
+        if len(colors)<len(r):
+            colors.append('k')
+        if len(linewidths)<len(r):
+            linewidths.append(1)
     # add subregions and little lables:
-    for r,l,c in zip(subregions, labels,colors):
-        plot_rec(m,r,color=c)
+    for r,l,c,lw in zip(subregions, labels, colors, linewidths):
+        plot_rec(m,r,color=c, linewidth=lw)
         lon,lat=r[1],r[2]
         x,y = m(lon,lat)
-        plt.text(x+100,y-100,l,fontsize=fontsize,color=c)
+        plt.text(x+100,y-130,l,fontsize=fontsize,color=c)
 
     return m
 
 
 
 if __name__=='__main__':
+    print('plotting called!')
     InitMatplotlib()
     from datetime import datetime
     plot_swath(datetime(2005,1,10),title="eg_swaths",
                pname="Figs/Checks/eg_swaths.png",
                vmin=2.0e15, vmax=2.0e16, cmapname='YlOrBr',
                region=__GLOBALREGION__)#[-65.,-30.0,35.,170.],)
+    print('done')

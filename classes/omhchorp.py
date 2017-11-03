@@ -27,6 +27,8 @@ sys.path.insert(0,os.path.dirname(currentdir))
 # my file reading library
 from utilities import fio
 import utilities.utilities as util
+from utilities import plotting as pp
+
 sys.path.pop(0)
 
 ###############
@@ -332,6 +334,12 @@ class omhchorp:
                 print("time_average... Flat:%.2e  VS  actual: %.2e"%(np.nanmean(flat[key]),np.nanmean(actual[key])))
 
         return ret
+
+    def plot_map(self,key='VCC',day=None,dayn=None,region=pp.__AUSREGION__):
+        '''
+            plot key over region averaged on day [to dayn]
+        '''
+        print("TODO:")
 
 if __name__=='__main__':
 

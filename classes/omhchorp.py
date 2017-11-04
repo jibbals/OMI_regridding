@@ -35,7 +35,7 @@ sys.path.pop(0)
 ### GLOBALS ###
 ###############
 
-__VERBOSE__=False
+__VERBOSE__=True
 __DEBUG__=False
 
 # Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
@@ -87,6 +87,8 @@ class omhchorp:
                 setattr(self, k, np.array(struct[0][k]))
             else:
                 setattr(self, k, np.array([struct[j][k] for j in range(nt)]))
+            if __VERBOSE__:
+                print("Read from omhchorp: ",k, getattr(self,k).shape)
 
         # Reference Sector Correction latitudes don't change with time
         self.lats_RSC=struct[0]['RSC_latitude'] # rsc latitude bins
@@ -102,10 +104,8 @@ class omhchorp:
             self.VCC_PP[screened]=np.NaN
 
         mlons,mlats=np.meshgrid(self.lons,self.lats)
-
-        # True over ocean squares:
-        check_arr=[self.VCC[0],self.VCC][dayn is None] # array with no time dim
-        self.oceanmask=maskoceans(mlons,mlats,check_arr,inlands=False).mask
+        
+        self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=0).mask
         self.background=self.get_background_array()
 
     def apply_fire_mask(self, use_8day_mask=False):
@@ -220,7 +220,7 @@ class omhchorp:
         if self.n_times>1:
             # average this stuff over the time dim
             if __VERBOSE__:
-                dstrs=tuple(self.dates[0].strftime('%Y%m%d'),self.dates[-1].strftime('%Y%m%d'))
+                dstrs=tuple([self.dates[0].strftime('%Y%m%d'),self.dates[-1].strftime('%Y%m%d')])
                 print("omhchorp.get_background_array() averaging over %s-%s"%dstrs)
             oceanVCC=self.VCC[:,:,oceanlons]
             oceanVCC=np.nanmean(oceanVCC,axis=0)

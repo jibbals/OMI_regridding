@@ -33,6 +33,13 @@ import Inversion
 ###############
 __VERBOSE__=True
 
+NA     = GMAO.edges_containing_region([-21,115,-11,150])
+SWA    = GMAO.edges_containing_region([-36,114,-29,128])
+SEA    = GMAO.edges_containing_region([-39,144,-29,153])
+subs   = [SWA,NA,SEA]
+labels = ['SWA','NA','SEA']
+colors = ['chartreuse','magenta','aqua']
+
 ###############
 ### Methods ###
 ###############
@@ -78,13 +85,9 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
     '''
     # Regions I'm averaging over:
     #Aus=[-40,112,-11,153]
-    NA     = GMAO.edges_containing_region([-21,115,-11,150])
-    SWA    = GMAO.edges_containing_region([-36,114,-29,128])
-    SEA    = GMAO.edges_containing_region([-39,144,-29,153])
-    print(NA,SWA,SEA)
-    subs   = [SWA,NA,SEA]
-    labels = ['SWA','NA','SEA']
-    colors = ['chartreuse','magenta','aqua']
+    
+    
+    
     linewidths=[2,2,2]
 
     # Draw them if you want
@@ -452,6 +455,30 @@ def plot_comparison_table():
     print('SAVED FIGURE %s'%pname)
     plt.close()
 
+def megan_regression():
+    
+    for month in [datetime(2005,1,1),datetime(2005,2,1),datetime(2005,3,1)]:
+        d0=month; dn=util.last_day(d0)
+        dstr=month.strftime('%b')
+        ymd=month.strftime('%Y%m%d')
+        Enew=E_new(day0=d0,dayn=dn)
+        plt.figure()
+        ii=0
+        for reg,c in zip(subs,colors):
+            plt.subplot(131+ii)
+            Enew.plot_regression(d0,dn,region=reg,**{'color':c})
+            ii=ii+1
+            
+            if ii==1:
+                plt.ylabel('E_isop')
+            if ii==2:
+                plt.xlabel('MEGAN')
+        plt.suptitle(dstr)
+        pname='Figs/Regression_'+ymd+'.png'
+        plt.savefig(pname)
+        print('Saved',pname)
+        plt.close()
+        
 if __name__=='__main__':
 
     # try running
@@ -461,8 +488,9 @@ if __name__=='__main__':
     regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
 
     d0=datetime(2005,1,1); dn=datetime(2005,12,31)
+    megan_regression()
     #E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
-    map_E_gc(month=d0,GC=GC_tavg(d0))
+    #map_E_gc(month=d0,GC=GC_tavg(d0))
     #check_E_new(dn=datetime(2005,2,1))
 
 #    for region in regions:

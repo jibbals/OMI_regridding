@@ -25,7 +25,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 sys.path.insert(0,os.path.dirname(currentdir))
 
 # my file reading library
-from utilities import fio
+from utilities import fio, JesseRegression
 import utilities.utilities as util
 from utilities import plotting as pp
 sys.path.pop(0)
@@ -120,6 +120,7 @@ class E_new:
         for d in datelist:
             ret.append(np.where(np.array(self.dates)==d)[0][0])
         return ret
+    
     def plot_map(self, day, dayn=None, key='E_isop', region=pp.__AUSREGION__):
         '''
             plot map of key over region for day (or averaged from day to dayn)
@@ -137,3 +138,26 @@ class E_new:
                      clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
               pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None, fillcontinents=None)
+    
+    
+    def plot_regression(self, day0,dayn, region=pp.__AUSREGION__, deseasonalise=False, **ppargs):
+        '''
+            plot regression of E_isop and GC_E_isop from day0 to dayn
+            Limit to region
+            optionally deseasonalise using monthly averages  
+        '''
+        # Get time series:
+        dates, E_isop    = self.get_series('E_isop',region=region)
+        dates, GC_E_isop = self.get_series('GC_E_isop', region=region)
+        # average over space
+        E_isop_ts    = np.nanmean(E_isop,axis=(1,2))
+        GC_E_isop_ts = np.nanmean(GC_E_isop,axis=(1,2))
+        
+        # Regression over desired time
+        di = self.date_indices(util.list_days(day,dayn))
+        x = GC_E_isop_ts[di]; y=E_isop_ts[di]
+        pp.plot_corellation(x,y,logscale=False,lims=[min(y),max(x)],*ppargs)
+        m,b,r,p,sterr = JesseRegression.RMA(x,y) # y = mx + b
+        
+        return [x,y]
+        

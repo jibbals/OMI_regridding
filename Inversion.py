@@ -514,8 +514,8 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
 if __name__=='__main__':
     print('Inversion has been run')
 
-    day0=datetime(2005,1,1)
-    dayn=None # datetime(2005,4,30)
+    day0=datetime(2005,9,1)
+    dayn=datetime(2005,12,31)
     store_emissions(day0=day0,dayn=dayn)
     #for day in [datetime(2005,9,1),datetime(2005,10,1),datetime(2005,11,1),datetime(2005,12,1),]:
     #    #smearing(day0)

@@ -38,7 +38,7 @@ SWA    = GMAO.edges_containing_region([-36,114,-29,128])
 SEA    = GMAO.edges_containing_region([-39,144,-29,153])
 subs   = [SWA,NA,SEA]
 labels = ['SWA','NA','SEA']
-colors = ['chartreuse','magenta','aqua']
+colours = ['chartreuse','magenta','aqua']
 
 ###############
 ### Methods ###
@@ -96,7 +96,7 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
         region=pp.__AUSREGION__
 
         pp.displaymap(region=region, subregions=subs,
-                      labels=labels, linewidths=linewidths, colors=colors)
+                      labels=labels, linewidths=linewidths, colors=colours)
 
         regionname='Figs/regionmap.png'
         plt.title("Regions for E_isop analysis")
@@ -111,20 +111,20 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
     # Read data
     Enew=E_new(d0,dn,dkeys=['E_isop','GC_E_isop'])
 
-    for i,rc in enumerate(zip(subs,colors)):
+    for i,rc in enumerate(zip(subs,colours)):
         ax.append(plt.subplot(131+i))
-        region,color=rc
+        region,colour=rc
         ptsargs={'dfmt':"%b",'color':'k'}
 
         dates, E_isop=Enew.get_series('E_isop',region=region)
         dates, GC_E_isop=Enew.get_series('GC_E_isop',region=region)
         units=Enew.attributes['E_isop']['units']
 
-        # Plot time series (dots with color of region)
+        # Plot time series (dots with colour of region)
         pp.plot_time_series(dates,E_isop,
                             linestyle='None', marker='.',
                             label=[None,'daily estimate'][i==1],
-                            color=color)
+                            color=colour)
 
         # Add monthly average line
         monthly=util.monthly_averaged(dates,E_isop)
@@ -415,8 +415,8 @@ def plot_comparison_table():
     values = np.arange(0, 2500, 500)
     value_increment = 1000
 
-    # Get some pastel shades for the colors
-    colors = plt.cm.BuPu(np.linspace(0, 0.5, len(rows)))
+    # Get some pastel shades for the colours
+    colours = plt.cm.BuPu(np.linspace(0, 0.5, len(rows)))
     n_rows = len(data)
 
     index = np.arange(len(columns)) + 0.3
@@ -428,17 +428,17 @@ def plot_comparison_table():
     # Plot bars and create text labels for the table
     cell_text = []
     for row in range(n_rows):
-        plt.bar(index, data[row], bar_width, bottom=y_offset, color=colors[row])
+        plt.bar(index, data[row], bar_width, bottom=y_offset, color=colours[row])
         y_offset = y_offset + data[row]
         cell_text.append(['%1.1f' % (x/1000.0) for x in y_offset])
-    # Reverse colors and text labels to display the last value at the top.
-    colors = colors[::-1]
+    # Reverse colours and text labels to display the last value at the top.
+    colours = colours[::-1]
     cell_text.reverse()
 
     # Add a table at the bottom of the axes
     the_table = plt.table(cellText=cell_text,
                           rowLabels=rows,
-                          rowColours=colors,
+                          rowColours=colours,
                           colLabels=columns,
                           loc='bottom')
 
@@ -457,23 +457,29 @@ def plot_comparison_table():
 
 def megan_regression():
     
-    for month in [datetime(2005,1,1),datetime(2005,2,1),datetime(2005,3,1)]:
+    d0=datetime(2005,1,1)
+    dn=datetime(2005,12,1)
+    for month in util.list_months(d0,dn):
         d0=month; dn=util.last_day(d0)
-        dstr=month.strftime('%b')
+        dstr=month.strftime('%b, %Y')
         ymd=month.strftime('%Y%m%d')
         Enew=E_new(day0=d0,dayn=dn)
-        plt.figure()
+        f,axes=plt.subplots(1,3,figsize=(18,7),sharey=True,squeeze=True)
         ii=0
-        for reg,c in zip(subs,colors):
-            plt.subplot(131+ii)
-            Enew.plot_regression(d0,dn,region=reg,**{'color':c})
-            ii=ii+1
+        ppargs={'legendfont':14}
+        for reg,c in zip(subs,colours):
+            plt.sca(axes[ii])
+            ppargs['colour']=c
+            ppargs['linecolour']=c
+            Enew.plot_regression(d0,dn,region=reg,**ppargs)
+            plt.title(labels[ii])
             
+            ii=ii+1
             if ii==1:
                 plt.ylabel('E_isop')
             if ii==2:
                 plt.xlabel('MEGAN')
-        plt.suptitle(dstr)
+        plt.suptitle(dstr,fontsize=24)
         pname='Figs/Regression_'+ymd+'.png'
         plt.savefig(pname)
         print('Saved',pname)
@@ -489,7 +495,7 @@ if __name__=='__main__':
 
     d0=datetime(2005,1,1); dn=datetime(2005,12,31)
     megan_regression()
-    #E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
+    E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
     #map_E_gc(month=d0,GC=GC_tavg(d0))
     #check_E_new(dn=datetime(2005,2,1))
 

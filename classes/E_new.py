@@ -14,7 +14,7 @@ Created on Fri Sep  8 14:41:53 2017
 #matplotlib.use('Agg')
 #import matplotlib.pyplot as plt
 from mpl_toolkits.basemap import maskoceans #Basemap, maskoceans
-#from matplotlib.colors import LogNorm # lognormal color bar
+#from matplotlib.colors import LogNorm # lognormal colour bar
 
 import numpy as np
 from datetime import datetime#, timedelta
@@ -34,11 +34,11 @@ sys.path.pop(0)
 ### GLOBALS ###
 ###############
 
-__VERBOSE__=False
+__VERBOSE__=True
 __DEBUG__=False
-__E_new_keys__=['E_isop','E_isop_kg','GC_E_isop,','GC_E_isop_kg',
+__E_new_keys__=['E_isop','E_isop_kg','GC_E_isop','GC_E_isop_kg',
                 'GC_background', 'GC_slope', 'background', 'lats',
-                'lats_e', 'lons', 'lons_e', 'time',]
+                'lats_e', 'lons', 'lons_e', 'time','smearing']
 
 # Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
 # Change to -175 to avoid crossing the 179 -> -179 boundary?
@@ -149,14 +149,18 @@ class E_new:
         # Get time series:
         dates, E_isop    = self.get_series('E_isop',region=region)
         dates, GC_E_isop = self.get_series('GC_E_isop', region=region)
-        # average over space
-        E_isop_ts    = np.nanmean(E_isop,axis=(1,2))
-        GC_E_isop_ts = np.nanmean(GC_E_isop,axis=(1,2))
         
         # Regression over desired time
-        di = self.date_indices(util.list_days(day,dayn))
-        x = GC_E_isop_ts[di]; y=E_isop_ts[di]
-        pp.plot_corellation(x,y,logscale=False,lims=[min(y),max(x)],*ppargs)
+        di = self.date_indices(util.list_days(day0,dayn))
+        x = GC_E_isop[di]; y=E_isop[di]
+        
+        # Add limits if not there already
+        if not 'lims' in ppargs:
+            ppargs['lims']=[-0.4e12,3.5e12]
+        
+        # Plot the regression
+        
+        pp.plot_corellation(x,y,logscale=False,**ppargs)
         m,b,r,p,sterr = JesseRegression.RMA(x,y) # y = mx + b
         
         return [x,y]

@@ -3,7 +3,7 @@
 #PBS -q express
 #PBS -N script
 #PBS -l walltime=00:30:00
-#PBS -l mem=25000MB
+#PBS -l mem=35000MB
 #PBS -l cput=01:00:00
 #PBS -l wd
 #PBS -l ncpus=2

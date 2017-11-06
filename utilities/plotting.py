@@ -314,7 +314,8 @@ def plot_rec(bmap, inlimits, color=None, linewidth=1):
     x,y=bmap(xs,ys)
     bmap.plot(x, y, latlon=False, color=color, linewidth=linewidth)
 
-def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True,
+def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, 
+                     legend=True, legendfont=22,
                      colour='k',linecolour='r', diag=True, oceanmask=None,
                      verbose=False):
     X=np.array(X)
@@ -323,10 +324,10 @@ def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True,
     lims0=np.array(lims); lims=np.array(lims)
 
     if oceanmask is None:
-        plt.scatter(X[~nans], Y[~nans])
+        plt.scatter(X[~nans], Y[~nans],color=colour)
         m,b,r,CI1,CI2=RMA(X[~nans], Y[~nans]) # get regression
         plt.plot(lims, m*np.array(lims)+b,color=linecolour,
-                 label='Y = %.5fX + %.2e, r=%.5f, n=%d'%(m,b,r,np.sum(~nans)))
+                 label='Y = %.5fX + %.2e\n r=%.5f\n n=%d'%(m,b,r,np.sum(~nans)))
     else:
         omask=~(nans+~oceanmask ) # true where not nan or land
         lmask=~(nans+oceanmask ) # true where not nan or ocean
@@ -357,12 +358,12 @@ def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, legend=True,
         print('min, max land Y: %.3e,%.3e'%(np.min(Y[lmask]),np.max(Y[lmask])) )
 
     if legend:
-        plt.legend(loc=2,scatterpoints=1, fontsize=22,frameon=False)
+        plt.legend(loc=2,scatterpoints=1, fontsize=legendfont,frameon=False)
     if logscale:
         plt.yscale('log'); plt.xscale('log')
     plt.ylim(lims0); plt.xlim(lims0)
     if diag:
-        plt.plot(lims0,lims0,'--',color=colour,label='1-1') # plot the 1-1 line for comparison
+        plt.plot(lims0,lims0,'--',color='k',label='1-1') # plot the 1-1 line for comparison
 
 def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', xticks=None, **pltargs):
     ''' plot values over datetimes '''

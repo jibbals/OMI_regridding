@@ -105,14 +105,13 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
         plt.close()
 
     pp.InitMatplotlib() # set up plotting defaults
-    plt.figure(figsize=(16,7))
-    ax=[]
+    f,ax=plt.subplots(1,3,figsize=(16,7),sharex=True,sharey=True,squeeze=True)
 
     # Read data
     Enew=E_new(d0,dn,dkeys=['E_isop','GC_E_isop'])
 
     for i,rc in enumerate(zip(subs,colours)):
-        ax.append(plt.subplot(131+i))
+        plt.sca(ax[i])  # ax.append(plt.subplot(131+i))
         region,colour=rc
         ptsargs={'dfmt':"%b",'color':'k'}
 
@@ -455,10 +454,13 @@ def plot_comparison_table():
     print('SAVED FIGURE %s'%pname)
     plt.close()
 
-def megan_regression():
-    
+def megan_monthly_regression():
+    '''
+    monthly regression of my product vs MEGAN E_isop_biog
+    '''
     d0=datetime(2005,1,1)
     dn=datetime(2005,12,1)
+    # do each month
     for month in util.list_months(d0,dn):
         d0=month; dn=util.last_day(d0)
         dstr=month.strftime('%b, %Y')
@@ -484,7 +486,32 @@ def megan_regression():
         plt.savefig(pname)
         print('Saved',pname)
         plt.close()
-        
+
+def megan_SEA_regression():
+    '''
+    Close look at SEA region vs MEGAN
+    '''
+    ds0=datetime(2005,1,1); ds1=util.last_day(datetime(2005,2,1))
+    dw0=datetime(2005,6,1); dw1=datetime(2005,8,31)
+    region=SEA
+    # summer
+    E_summer=E_new(ds0,ds1)
+    E_winter=E_new(dw0,dw1)
+    f=plt.figure(figsize=(14,14))#,sharex=True,squeeze=True)
+    
+    ppargs={'colour':'red','linecolour':'red','diag':False,'legend':False}
+    E_summer.plot_regression(ds0,ds1,region=region,**ppargs)
+    ppargs['colour']='aqua'
+    ppargs['linecolour']='aqua'
+    E_winter.plot_regression(dw0,dw1,region=region,**ppargs)
+    plt.title('SEA Summer (JF) vs Winter (JJA), 2005')
+    plt.legend(loc='best')
+    plt.xlabel('MEGAN')
+    plt.ylabel('Satellite based')
+    pname='Figs/Regression_SEA_2005.png'
+    plt.savefig(pname)
+    print("Saved: ",pname)
+     
 if __name__=='__main__':
 
     # try running
@@ -494,8 +521,8 @@ if __name__=='__main__':
     regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
 
     d0=datetime(2005,1,1); dn=datetime(2005,12,31)
-    megan_regression()
-    E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
+    megan_SEA_regression()
+    #E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
     #map_E_gc(month=d0,GC=GC_tavg(d0))
     #check_E_new(dn=datetime(2005,2,1))
 

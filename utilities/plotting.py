@@ -327,7 +327,7 @@ def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True,
         plt.scatter(X[~nans], Y[~nans],color=colour)
         m,b,r,CI1,CI2=RMA(X[~nans], Y[~nans]) # get regression
         plt.plot(lims, m*np.array(lims)+b,color=linecolour,
-                 label='Y = %.5fX + %.2e\n r=%.5f\n n=%d'%(m,b,r,np.sum(~nans)))
+                 label='Y = %.5fX + %.2e\n r=%.5f, n=%d'%(m,b,r,np.sum(~nans)))
     else:
         omask=~(nans+~oceanmask ) # true where not nan or land
         lmask=~(nans+oceanmask ) # true where not nan or ocean

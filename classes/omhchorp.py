@@ -83,8 +83,8 @@ class omhchorp:
 
         # Set all the data arrays in the same way, [[time],lat,lon]
         for k in fio.__OMHCHORP_KEYS__:
-            if dayn is None: # one day only, no time dimension
-                setattr(self, k, np.array(struct[0][k]))
+            if nt ==1: # one day only, no time dimension
+                setattr(self, k, np.squeeze(np.array(struct[0][k])))
             else:
                 setattr(self, k, np.array([struct[j][k] for j in range(nt)]))
             if __VERBOSE__:
@@ -104,11 +104,12 @@ class omhchorp:
             self.VCC_PP[screened]=np.NaN
 
         mlons,mlats=np.meshgrid(self.lons,self.lats)
-        
+
         self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=0).mask
         self.background=self.get_background_array()
+        #self.apply_fire_mask()
 
-    def apply_fire_mask(self, use_8day_mask=False):
+    def apply_fire_mask(self, use_8day_mask=True):
         ''' nanify arrays which are fire affected. '''
         mask = [self.fire_mask_16, self.fire_mask_8][use_8day_mask]
         for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,
@@ -306,6 +307,12 @@ class omhchorp:
         ret={}
         dates=np.array(self.dates)
 
+        if len(dates)==1:
+            # one day only, no time dim
+            for key in keys:
+                ret[key]=getattr(self,key)
+            return ret
+
         # option to do whole month:
         if month:
             dayn=util.last_day(day0)
@@ -335,18 +342,34 @@ class omhchorp:
 
         return ret
 
-    def plot_map(self,key='VCC',day=None,dayn=None,region=pp.__AUSREGION__):
+    def plot_map(self,key='VCC',day0=None,dayn=None,region=pp.__AUSREGION__,**cmargs):
         '''
             plot key over region averaged on day [to dayn]
         '''
-        print("TODO:")
+
+        if day0 is None:
+            day0=self.dates[0]
+        if dayn is None:
+            dayn=day
+        data=self.time_averaged(day0,dayn,keys=[key,],)[key]
+        lati,loni=util.lat_lon_range(self.lats,self.lons,region=region)
+        data=data[lati,:]
+        data=data[:,loni]
+        lats=self.lats[lati]
+        lons=self.lons[loni]
+
+        return pp.createmap(data, lats, lons, edges=False, latlon=True,
+              region=region, linear=True, **cmargs)
+
 
 if __name__=='__main__':
 
     om=omhchorp(datetime(2005,1,1))
     print("One day data shape: %s"%str(om.VCC.shape))
+    om.plot_map(**{'pname':'map_test_1.png'})
     om=omhchorp(datetime(2005,1,1), dayn=datetime(2005,1,4))
     print("4 day data shape: %s"%str(om.VCC.shape))
+    om.plot_map(**{'pname':'map_test_2.png'})
 
     landinds=om.inds_subset(maskocean=True)
     ausinds=om.inds_aus(maskocean=True)
@@ -354,3 +377,5 @@ if __name__=='__main__':
     print("%d land elements"%np.sum(landinds))
     print("%d australia land elements"%np.sum(ausinds))
 
+    om=omhchorp(datetime(2005,1,1),datetime(2005,1,31))
+    om.plot_map(**{'pname':'map_test_3.png'})

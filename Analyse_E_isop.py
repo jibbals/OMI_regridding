@@ -85,9 +85,9 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
     '''
     # Regions I'm averaging over:
     #Aus=[-40,112,-11,153]
-    
-    
-    
+
+
+
     linewidths=[2,2,2]
 
     # Draw them if you want
@@ -313,7 +313,7 @@ def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     # corellation
 
     #Convert both arrays to same dimensions for correllation?
-    #pp.plot_corellation()
+    #pp.plot_regression()
 
 
 def All_maps(month=datetime(2005,1,1),GC=None, OMI=None, ignorePP=True, region=pp.__AUSREGION__):
@@ -475,7 +475,7 @@ def megan_monthly_regression():
             ppargs['linecolour']=c
             Enew.plot_regression(d0,dn,region=reg,**ppargs)
             plt.title(labels[ii])
-            
+
             ii=ii+1
             if ii==1:
                 plt.ylabel('E_isop')
@@ -497,21 +497,23 @@ def megan_SEA_regression():
     # summer
     E_summer=E_new(ds0,ds1)
     E_winter=E_new(dw0,dw1)
-    f=plt.figure(figsize=(14,14))#,sharex=True,squeeze=True)
-    
-    ppargs={'colour':'red','linecolour':'red','diag':False,'legend':False}
-    E_summer.plot_regression(ds0,ds1,region=region,**ppargs)
-    ppargs['colour']='aqua'
-    ppargs['linecolour']='aqua'
-    E_winter.plot_regression(dw0,dw1,region=region,**ppargs)
-    plt.title('SEA Summer (JF) vs Winter (JJA), 2005')
-    plt.legend(loc='best')
-    plt.xlabel('MEGAN')
-    plt.ylabel('Satellite based')
-    pname='Figs/Regression_SEA_2005.png'
-    plt.savefig(pname)
-    print("Saved: ",pname)
-     
+    plt.figure(figsize=(14,14))#,sharex=True,squeeze=True)
+    for ds in [True,False]:
+        ppargs={'colour':'red','linecolour':'red','diag':False,'legend':False}
+        E_summer.plot_regression(ds0,ds1,region=region,deseasonalise=ds,**ppargs)
+        ppargs['colour']='aqua'
+        ppargs['linecolour']='aqua'
+        E_winter.plot_regression(dw0,dw1,region=region,deseasonalise=ds,**ppargs)
+        plt.title('SEA Summer (JF) vs Winter (JJA), 2005')
+        plt.legend(loc='best')
+        plt.xlabel('MEGAN')
+        plt.ylabel('Satellite based')
+        pname='Figs/Regression_SEA_2005%s.png'%['','_DS'][ds]
+        plt.savefig(pname)
+        plt.close()
+        print("Saved: ",pname)
+
+
 if __name__=='__main__':
 
     # try running

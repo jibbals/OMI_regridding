@@ -13,7 +13,7 @@ from utilities import plotting as pp
 from utilities.JesseRegression import RMA
 from classes.omhchorp import omhchorp as omrp
 from classes.gchcho import match_bottom_levels
-from classes.GC_class import GC_output
+from classes.GC_class import GC_tavg
 
 import numpy as np
 from numpy.ma import MaskedArray as ma
@@ -69,7 +69,7 @@ def smearing_calculation(date=datetime(2005,1,1)):
     '''
     region=pp.__AUSREGION__
     # READ normal and halfisop run outputs:
-    full=GC_output(date)
+    full=GC_tavg(date)
     half=None
 
 def check_HEMCO_restarts():
@@ -299,6 +299,17 @@ def Test_Uncertainty(date=datetime(2005,1,1)):
     #    Row1: 8 day unc vs DeSmedt calculated
     #    Row2: relative difference of top two,
     # First calculate the DeSmedt method
+
+def plot_swaths(region=pp.__AUSREGION__):
+    '''
+    plot swaths
+    '''
+    d0=datetime(2005,1,1)
+    for dn in [datetime(2005,1,1),datetime(2005,1,8),datetime(2005,1,31)]:
+        om=omrp(d0,dn)
+        pname='Figs/swath_%s.png'%dn.strftime("%Y%m%d")
+        cmargs={'pname':pname}
+        om.plot_map(day0=d0,dayn=dn,**cmargs)
 
 def look_at_swaths(date=datetime(2005,1,1), lllat=-80, lllon=-179, urlat=80, urlon=179, pltname=""):
     '''
@@ -1649,8 +1660,9 @@ if __name__ == '__main__':
     #Summary_Single_Profile()
 
     # GEOS Chem trop vs ucx restarts
-    check_HEMCO_restarts()
+    #check_HEMCO_restarts()
 
+    plot_swaths()
     # AMF tests and correlations
     #Check_OMI_AMF()
     #Check_AMF()

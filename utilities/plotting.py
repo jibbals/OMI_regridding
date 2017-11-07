@@ -155,7 +155,7 @@ def createmap(data, lats, lons, edges=False,
     if __VERBOSE__:
         print("createmap called over %s (S,W,N,E)"%str(region))
         #print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
-    
+
     lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
     m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
               resolution='i', projection='merc')
@@ -314,7 +314,7 @@ def plot_rec(bmap, inlimits, color=None, linewidth=1):
     x,y=bmap(xs,ys)
     bmap.plot(x, y, latlon=False, color=color, linewidth=linewidth)
 
-def plot_corellation(X,Y, lims=[1e12,2e17], logscale=True, 
+def plot_regression(X,Y, lims=[1e12,2e17], logscale=True,
                      legend=True, legendfont=22,
                      colour='k',linecolour='r', diag=True, oceanmask=None,
                      verbose=False):

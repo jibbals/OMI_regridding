@@ -54,11 +54,13 @@ class E_new:
         '''
             Read E_new from day0 to dayn
             if dkeys is set then only those datakeys will be saved
+            data should be ----- ([date,]lat,lon[,lev])
         '''
 
         # day0=datetime(2005,1,1); dayn=datetime(2005,3,1)
         # Get list of months including requested data
         months=util.list_months(day0,dayn)
+
         n_months=len(months)
         E_new_list=[]
 
@@ -86,6 +88,28 @@ class E_new:
         # True over ocean squares
         mlons,mlats=np.meshgrid(self.lons,self.lats)
         self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=False).mask
+
+    def get_season(self,key,region,maskocean=True):
+        '''
+            Monthly average of key over region
+        '''
+        # Get months in class
+        months=util.list_months(self.dates[0],self.dates[-1])
+
+        # initialise array
+        mavg=np.zeros(len(months))+np.NaN
+
+        # grab time series over region
+        dates,arr=self.get_series(key=key,region=region,maskocean=maskocean,testplot=False)
+
+        # average of each month
+        for i,m in enumerate(months):
+            di=self.date_indices(util.list_days(m,month=True))
+            # Average of the month:
+            mavg[i]=np.nanmean(arr[di])
+            # deseasonalised data:
+            arr[di]=arr[di]-mavg[i]
+        return mavg, arr
 
     def get_series(self, key, region, maskocean=True, testplot=False):
         '''
@@ -120,7 +144,7 @@ class E_new:
         for d in datelist:
             ret.append(np.where(np.array(self.dates)==d)[0][0])
         return ret
-    
+
     def plot_map(self, day, dayn=None, key='E_isop', region=pp.__AUSREGION__):
         '''
             plot map of key over region for day (or averaged from day to dayn)
@@ -138,30 +162,36 @@ class E_new:
                      clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
               pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None, fillcontinents=None)
-    
-    
+
+
     def plot_regression(self, day0,dayn, region=pp.__AUSREGION__, deseasonalise=False, **ppargs):
         '''
             plot regression of E_isop and GC_E_isop from day0 to dayn
             Limit to region
-            optionally deseasonalise using monthly averages  
+            optionally deseasonalise using monthly averages
         '''
         # Get time series:
         dates, E_isop    = self.get_series('E_isop',region=region)
         dates, GC_E_isop = self.get_series('GC_E_isop', region=region)
-        
+
+        if deseasonalise:
+            season,E_isop    = self.get_season('E_isop',region=region,maskocean=True)
+            season,GC_E_isop = self.get_season('GC_E_isop',region=region,maskocean=True)
+
         # Regression over desired time
         di = self.date_indices(util.list_days(day0,dayn))
         x = GC_E_isop[di]; y=E_isop[di]
-        
+
         # Add limits if not there already
         if not 'lims' in ppargs:
             ppargs['lims']=[-0.4e12,3.5e12]
-        
+            if deseasonalise:
+                ppargs['lims']=[-2e12,2e12]
+
         # Plot the regression
-        
-        pp.plot_corellation(x,y,logscale=False,**ppargs)
+
+        pp.plot_regression(x,y,logscale=False,**ppargs)
         m,b,r,p,sterr = JesseRegression.RMA(x,y) # y = mx + b
-        
+
         return [x,y]
-        
+

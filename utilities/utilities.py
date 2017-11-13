@@ -12,11 +12,12 @@ Created on Thu Jul  6 11:36:52 2017
 ### LIBRARIES/MODULES ########
 ##############################
 # imports:
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import calendar
 import numpy as np
 from scipy.interpolate import griddata # for regrid function
 from mpl_toolkits.basemap import maskoceans #
+
 
 ###############
 ### GLOBALS ###
@@ -301,3 +302,9 @@ def regrid(data,lats,lons,newlats,newlons):
     assert np.shape(interp)== (len(newlats),len(newlons)), "Regridded shape new lats/lons!"
 
     return interp
+
+def utc_to_local(utc_dt):
+    '''
+        Convert utc time tom local time (of computer I guess?)
+    '''
+    return utc_dt.replace(tzinfo=timezone.utc).astimezone(tz=None)

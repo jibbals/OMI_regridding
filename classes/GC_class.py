@@ -102,7 +102,7 @@ class GC_common:
         #self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
         self.attrs={}       # Attributes from bpch file
 
-        multi= '*' in path
+        multi = '*' in path
         data,attrs = gcfio.read_bpch(path,keys=keys,multi=multi)
 
         # Data could have any shape, we fix to time,lat,lon,lev

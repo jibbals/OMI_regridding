@@ -15,14 +15,14 @@ import matplotlib.pyplot as plt
 # local modules
 import utilities.utilities as util
 import utilities.plotting as pp
-from utilities import GMAO
-from utilities import GC_fio
+from utilities import GMAO,GC_fio,fio
+
 
 from classes.E_new import E_new # E_new class
 from classes.GC_class import GC_sat, GC_tavg
 from classes.gchcho import gchcho
 import xbpch
-
+import xarray
 
 ###############
 ### Globals ###
@@ -45,24 +45,21 @@ satname="Data/GC_Output/geos5_2x25_tropchem/satellite_output/ts_satellite_omi.20
 satnames="Data/GC_Output/geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s*.bpch"%yyyymm
 tracfile='Data/GC_Output/geos5_2x25_tropchem/satellite_output/tracerinfo.dat'
 diagfile='Data/GC_Output/geos5_2x25_tropchem/satellite_output/diaginfo.dat'
+Hemco_diag="Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog.200501010100.nc"
 
-# READ MULTIPLE SAT OUT FILES:
-# dask needs to be explicitely true
-#sat_m=xbpch.open_mfbpchdataset(satnames,tracerinfo_file=tracfile,diaginfo_file=diagfile, decode_cf=False,dask=True)
-#sat_m['TIME-SER_AIRDEN'].attrs
-#print(sat_m)
+#HD=fio.read_netcdf(Hemco_diags)
+#print(HD)
+#
+#Hemco_diags="Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog.200501*.nc"
+#HD=xarray.open_mfdataset(Hemco_diags)
+#print(HD)
 
-#sat_d=xbpch.open_bpchdataset(satname,tracerinfo_file=tracfile,diaginfo_file=diagfile, decode_cf=False)
-#print(sat_d)
-
-#tavg=GC_tavg(d0)
-#print(tavg)
-
-sat=GC_sat(d0)
-print(sat) # should show data from satellite output!
-
-pname='testplot.png'
-
-
+dat,att=GC_fio.read_Hemco_diags(d0)
+e=dat['ISOP_BIOG']
+a=att['ISOP_BIOG']
+e.shape # time, lat, lon
+np.nanmean(e)
+for k in a:
+    print(k,':',a[k])
 
 

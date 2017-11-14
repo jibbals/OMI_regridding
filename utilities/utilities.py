@@ -85,6 +85,10 @@ def date_from_gregorian(greg):
         return([d0+timedelta(seconds=int(greg*3600)),])
     return([d0+timedelta(seconds=int(hr*3600)) for hr in greg])
 
+def datetimes_from_np_datetime64(times):
+    # '2005-01-01T00:00:00.000000000'
+    return [datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in times]
+
 def edges_from_mids(x,fix=False):
     '''
         Take a lat or lon vector input and return the edges
@@ -227,6 +231,26 @@ def list_months(day0,dayn):
     # Just pull out entries with day==1
     months=[d for d in days if d.day==1]
     return months
+
+def local_time_offsets(lons,n_lats=0, astimedeltas=False):
+    '''
+        GMT is 12PM, AEST is + 10 hours, etc...
+        offset by one hour every 15 degrees
+    '''
+    offset = np.array(lons) // 15
+
+    if n_lats > 0:
+        # lats,lons
+        offset=np.transpose(np.repeat(offset[:,np.newaxis],n_lats,axis=1))
+
+    if astimedeltas:
+        # hours to ms
+        offset=offset * 3600 * 1000
+        timedeltas=np.array(offset, dtype='timedelta64[ms]')
+        return timedeltas
+
+    return offset
+
 
 def monthly_averaged(dates,data):
     '''

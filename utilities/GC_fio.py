@@ -136,9 +136,9 @@ def read_Hemco_diags(day,month=False):
     '''
     fpre='Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog.'
     fend=day.strftime(["%Y%m%d","%Y%m"][month]) + "*.nc"
-    ds = xarray.open_mfdataset(fpre+fend)
+    with xarray.open_mfdataset(fpre+fend) as ds:
+        data,attrs=dataset_to_dicts(ds,['ISOP_BIOG'])
 
-    data,attrs=dataset_to_dicts(ds,['ISOP_BIOG'])
     return data,attrs
 
 

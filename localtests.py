@@ -56,10 +56,17 @@ Hemco_diag="Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog.
 
 dat,att=GC_fio.read_Hemco_diags(d0)
 e=dat['ISOP_BIOG']
+lons=dat['lon']
 a=att['ISOP_BIOG']
 e.shape # time, lat, lon
 np.nanmean(e)
 for k in a:
     print(k,':',a[k])
+for k in dat:
+    print(k, ':', dat[k].shape)
+
+offset=util.local_time_offsets(lons)
+
+
 
 

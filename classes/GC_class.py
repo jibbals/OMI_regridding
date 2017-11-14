@@ -28,7 +28,7 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0,parentdir)
 
 # 'local' modules
-import utilities.GC_fio as gcfio
+from utilities import GC_fio
 import utilities.utilities as util
 from utilities import plotting as pp
 from utilities.plotting import __AUSREGION__
@@ -44,6 +44,16 @@ sys.path.pop(0)
 ##################
 
 __VERBOSE__=True # For file-wide print statements
+
+# filepaths:
+rdir='Data/GC_Output/'
+sat_path  = {'tropchem':rdir+'geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s.bpch',
+             'halfisop':rdir+'geos5_2x25_tropchem_halfisoprene/satellite_output/ts_satellite.%s.bpch',
+             'UCX':rdir+'UCX_geos5_2x25/satellite_output/ts_satellite.%s.bpch',
+             'biogenic':rdir+'geos5_2x25_tropchem_biogenic/sat_biogenic.%s.bpch',}
+tavg_path = {'tropchem':rdir+'geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
+             'halfisop':rdir+'geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
+             'UCX':rdir+'UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s'}
 
 # MAP GC TAVG output to nicer names:
 _iga='IJ-AVG-$_'
@@ -103,7 +113,7 @@ class GC_common:
         self.attrs={}       # Attributes from bpch file
 
         multi = '*' in path
-        data,attrs = gcfio.read_bpch(path,keys=keys,multi=multi)
+        data,attrs = GC_fio.read_bpch(path,keys=keys,multi=multi)
 
         # Data could have any shape, we fix to time,lat,lon,lev
 
@@ -160,10 +170,9 @@ class GC_common:
         self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
 
         # Convert from numpy.datetime64 to datetime
-        # '2005-01-01T00:00:00.000000000'
         if not hasattr(self,'time'):
-            self.time=[date.strftime("%Y-%m-%dT%H:%M:%S.000000000")]
-        self.dates=[datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in self.time]
+            self.times=[date.strftime("%Y-%m-%dT%H:%M:%S.000000000")]
+        self.dates=util.datetimes_from_np_datetime64(self.time)
 
         # flag to see if class has time dimension
         self._has_time_dim = len(self.dates) > 1
@@ -412,15 +421,13 @@ class GC_tavg(GC_common):
         self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
-    def __init__(self,date,keys=gcfio.__tavg_mainkeys__,run='tropchem',nlevs=47):
+    def __init__(self,date,keys=GC_fio.__tavg_mainkeys__,run='tropchem',nlevs=47):
         # Call GC_common initialiser with tavg_mainkeys and tropchem by default
 
         # Determine path of file:
         dstr=date.strftime("%Y%m%d0000")
-        pathd={'tropchem':'Data/GC_Output/geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
-               'halfisop':'Data/GC_Output/geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
-               'UCX':'Data/GC_Output/UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s'}
-        path=pathd[run]%dstr
+
+        path=tavg_path[run]%dstr
         super(GC_tavg,self).__init__(date,path=path,keys=keys,nlevs=nlevs)
 
         # add E_isop_bio_kgs:
@@ -434,14 +441,12 @@ class GC_sat(GC_common):
     '''
         Class for reading and manipulating satellite overpass output!
     '''
-    def __init__(self,date, keys=gcfio.__sat_mainkeys__, run='tropchem',nlevs=47):
+    def __init__(self,date, keys=GC_fio.__sat_mainkeys__, run='tropchem',nlevs=47):
 
         # Determine path of files:
         dstr=date.strftime("%Y%m*")
-        pathd={'tropchem':'Data/GC_Output/geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s.bpch',
-               'halfisop':'Data/GC_Output/geos5_2x25_tropchem_halfisoprene/satellite_output/ts_satellite.%s.bpch',
-               'UCX':'Data/GC_Output/UCX_geos5_2x25/satellite_output/ts_satellite.%s.bpch'}
-        path=pathd[run]%dstr
+
+        path=sat_path[run]%dstr
         super(GC_sat,self).__init__(date, path=path, keys=keys, nlevs=nlevs)
 
         # fix TR-PAUSE_TPLEV output:
@@ -472,6 +477,73 @@ class GC_sat(GC_common):
             self._has_time_dim=True
             #ASSUME WE HAVE ALL DAYS IN THIS MONTH:
             self.dates=util.list_days(day0=date, month=True)
+
+
+class Hemco_diag(GC_common):
+    '''
+        class just for Hemco_diag output and manipulation
+    '''
+    def __init__(self,day0,month=False):
+
+        if __VERBOSE__:
+            print('Reading Hemco_diag files:')
+
+        # read the netcdf files
+        data,attrs=GC_fio.read_Hemco_diags(day0,month=month)
+        self.attrs=attrs
+        self.attrs['E_isop_bio']=attrs['ISOP_BIOG']
+        self.E_isop_bio = data['ISOP_BIOG']
+        self.lats=data['lat']
+        self.lons=data['lon']
+        self.times=data['time']
+        self.dates=util.datetimes_from_np_datetime64(self.times)
+        self.n_dates=len(self.dates)
+
+        # times and local times:
+        self.local_time_offset=util.local_time_offsets(self.lons,
+                                                       n_lats=len(self.lats),
+                                                       astimedeltas=False)
+
+        if __VERBOSE__:
+            for k in data:
+                print('  %10s %10s %s'%(k, attrs[k], data[k].shape))
+
+    def daily_LT_averaged(self,hour=13):
+        '''
+            Average over an hour of each day
+        '''
+        # Need to get a daily output time dimension
+        days=util.list_days(self.dates[0],self.dates[-1])
+        di=0
+        prior_day=days[0]
+
+        isop=self.E_isop_bio
+        out=np.zeros([len(days),len(self.lats),len(self.lons)])+np.NaN
+        sanity=np.zeros(out.shape)
+        LTO=self.local_time_offset
+        for i,date in enumerate(self.dates):
+            GMT=date.hour-12 # current GMT in 12h time
+            if date.day > prior_day.day:
+                di=di+1
+                prior_day=date
+            # local time is gmt+offset
+            LT=GMT+LTO
+            out[di][LT==hour] = isop[i,LT==hour]
+            sanity[di][LT==hour] = sanity[di][LT==hour]+1
+        if not all(sanity==1) or any(np.isnan(out)):
+            print('ERROR: should get one hour from each day!')
+            print(self.lons)
+            print(sanity[0,0,:])
+            assert False, ''
+        return np.squeeze(out)
+
+
+
+
+
+
+
+
 
 ################
 ###FUNCTIONS####

@@ -176,6 +176,13 @@ def last_day(date):
     dayn=datetime(date.year,date.month,lastday)
     return dayn
 
+def lat_lon_index(lat,lon,lats,lons):
+    ''' lat,lon index from lats,lons    '''
+    with np.errstate(invalid='ignore'):
+            latind=(np.abs(lats-lat)).argmin()
+            lonind=(np.abs(lons-lon)).argmin()
+    return(latind,lonind)
+
 def lat_lon_range(lats,lons,region):
     '''
     returns indices of lats, lons which are within region: list=[S,W,N,E]
@@ -241,7 +248,7 @@ def local_time_offsets(lons,n_lats=0, astimedeltas=False):
 
     if n_lats > 0:
         # lats,lons
-        offset=np.transpose(np.repeat(offset[:,np.newaxis],n_lats,axis=1))
+        offset=np.transpose(np.repeat(offset[:,np.newaxis],n_lats,axis=1)).astype(int)
 
     if astimedeltas:
         # hours to ms

@@ -9,8 +9,9 @@ Reading from GEOS-Chem methods are defined here
 from xbpch import open_bpchdataset, open_mfbpchdataset
 import xarray # for xarray reading of netcdf (hemco diags)
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
+from glob import glob
 
 # Add parent folder to path
 #import os,sys,inspect
@@ -134,9 +135,19 @@ def read_Hemco_diags(day,month=False):
     '''
         Read Hemco diag output, one day or month at a time
     '''
+    # match all files with YYYYMM[DD] tag
     fpre='Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog.'
     fend=day.strftime(["%Y%m%d","%Y%m"][month]) + "*.nc"
-    with xarray.open_mfdataset(fpre+fend) as ds:
+
+    # also get zero hour of next day:
+    nextday=[day,util.last_day(day)][month] + timedelta(days=1)
+    fend2=nextday.strftime("%Y%m%d0000") + ".nc"
+
+    files=glob(fpre+fend) # match wildcard into list of file names
+    files.append(fpre+fend2) # add final hour
+    files.sort() # make sure they're sorted or the data gets read in poorly
+
+    with xarray.open_mfdataset(files) as ds:
         data,attrs=dataset_to_dicts(ds,['ISOP_BIOG'])
 
     return data,attrs

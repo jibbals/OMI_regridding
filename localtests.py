@@ -19,7 +19,7 @@ from utilities import GMAO,GC_fio,fio
 
 
 from classes.E_new import E_new # E_new class
-from classes.GC_class import GC_sat, GC_tavg
+from classes import GC_class
 from classes.gchcho import gchcho
 import xbpch
 import xarray
@@ -47,12 +47,6 @@ tracfile='Data/GC_Output/geos5_2x25_tropchem/satellite_output/tracerinfo.dat'
 diagfile='Data/GC_Output/geos5_2x25_tropchem/satellite_output/diaginfo.dat'
 Hemco_diag="Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog.200501010100.nc"
 
-#HD=fio.read_netcdf(Hemco_diags)
-#print(HD)
-#
-#Hemco_diags="Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog.200501*.nc"
-#HD=xarray.open_mfdataset(Hemco_diags)
-#print(HD)
 
 dat,att=GC_fio.read_Hemco_diags(d0)
 e=dat['ISOP_BIOG']
@@ -65,8 +59,12 @@ for k in a:
 for k in dat:
     print(k, ':', dat[k].shape)
 
-offset=util.local_time_offsets(lons)
 
-
-
+hd=GC_class.Hemco_diag(d0,month=False)
+#hd.plot_daily_emissions_cycle()
+enew=hd.daily_LT_averaged()
+lats=hd.lats
+lons=hd.lons
+pp.basicmap(enew,lats,lons,aus=True,pname='test.png')
+print(np.nanmean(enew))
 

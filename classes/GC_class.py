@@ -15,7 +15,7 @@ History:
 ###############
 
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 from scipy.constants import N_A as N_avegadro
 from glob import glob
 #import matplotlib.pyplot as plt
@@ -191,6 +191,9 @@ class GC_common:
             print (date, 'not in', self.dates)
 
         return whr[0][0] # We just want the match
+    def lat_lon_index(self,lat,lon):
+        '''  return lati, loni '''
+        return util.lat_lon_index(lat,lon,self.lats,self.lons)
 
     def ppbv_to_molec_cm2(self,keys=['hcho'],metres=False):
         ''' return dictionary with data in format molecules/cm2 [or /m2]'''
@@ -498,6 +501,7 @@ class Hemco_diag(GC_common):
         self.times=data['time']
         self.dates=util.datetimes_from_np_datetime64(self.times)
         self.n_dates=len(self.dates)
+        self.n_days=len(util.list_days(self.dates[0],self.dates[-1]))
 
         # times and local times:
         self.local_time_offset=util.local_time_offsets(self.lons,
@@ -506,36 +510,90 @@ class Hemco_diag(GC_common):
 
         if __VERBOSE__:
             for k in data:
-                print('  %10s %10s %s'%(k, attrs[k], data[k].shape))
+                print('  %10s %10s %s'%(k, data[k].shape, attrs[k]))
 
     def daily_LT_averaged(self,hour=13):
         '''
             Average over an hour of each day
+            input hour of 1pm gives data from 1pm-2pm
         '''
+        # need to subtract an hour from each of our datetimes:
+        dates=np.array(self.dates) - timedelta(seconds=3600)
+        # this undoes the problem of our 24th hour being stored in
+        # the following day's 00th hour
+
         # Need to get a daily output time dimension
-        days=util.list_days(self.dates[0],self.dates[-1])
+        days=util.list_days(dates[0],dates[-1])
         di=0
         prior_day=days[0]
+
+        print(days)
 
         isop=self.E_isop_bio
         out=np.zeros([len(days),len(self.lats),len(self.lons)])+np.NaN
         sanity=np.zeros(out.shape)
         LTO=self.local_time_offset
-        for i,date in enumerate(self.dates):
-            GMT=date.hour-12 # current GMT in 12h time
+        for i,date in enumerate(dates):
+            GMT=date.hour # current GMT
             if date.day > prior_day.day:
                 di=di+1
                 prior_day=date
             # local time is gmt+offset
-            LT=GMT+LTO
+            LT=(GMT+LTO) % 24
             out[di][LT==hour] = isop[i,LT==hour]
             sanity[di][LT==hour] = sanity[di][LT==hour]+1
-        if not all(sanity==1) or any(np.isnan(out)):
+        if (not np.all(sanity==1)) or (np.any(np.isnan(out))):
             print('ERROR: should get one hour from each day!')
             print(self.lons)
             print(sanity[0,0,:])
             assert False, ''
         return np.squeeze(out)
+
+    def plot_daily_emissions_cycle(self,lat=-31,lon=150,pname=None):
+        ''' take a month and plot the emissions over the day'''
+
+        import matplotlib.pyplot as plt
+
+        if pname is None:
+            pname='Figs/GC/E_megan_%s.png'%self.dates[0].strftime("%Y%m")
+
+        assert self.n_days > 1, "plot needs more than one day"
+
+        # lat lon gives us one grid box
+        lati,loni=self.lat_lon_index(lat,lon)
+        offset=self.local_time_offset[0,loni] # get time offset from longitude
+
+        # figure, first do whole timeline:
+        f, (a0, a1) = plt.subplots(2,1, gridspec_kw = {'height_ratios':[1, 4]})
+        plt.sca(a0)
+        plt.plot(self.E_isop_bio[:,lati,loni])
+        plt.tick_params(
+            axis='x',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom='off',      # ticks along the bottom edge are off
+            top='off',         # ticks along the top edge are off
+            labelbottom='off') # labels along the bottom edge are off
+
+        plt.sca(a1)
+        arr=np.zeros([24,self.n_days])
+        for i in range(self.n_days):
+
+            dinds=np.arange(i*24,(i+1)*24)
+
+            # rotate for nicer view (LOCAL TIME)
+            ltinds=np.roll(dinds,offset)
+            # 11th hour ... 35th hour
+            arr[dinds % 24,i]=self.E_isop_bio[ltinds,lati,loni]
+
+            # for now just plot
+            plt.plot(np.arange(24),self.E_isop_bio[ltinds,lati,loni])
+        plt.ylabel('E_isop_biogenic [kgC/cm2/s]')
+        plt.xlabel('hour(LT)')
+        plt.suptitle(self.dates[0].strftime("%b %Y"))
+        plt.tight_layout()
+        plt.savefig(pname)
+        print("SAVED FIGURE:",pname)
+
 
 
 
@@ -605,4 +663,6 @@ def check_diag(d=datetime(2005,1,1)):
 if __name__=='__main__':
     #check_diag()
     check_units(datetime(2005,2,1))
+
+
 

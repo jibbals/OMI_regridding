@@ -23,7 +23,7 @@ from scipy.constants import N_A as N_avegadro
 
 # local imports
 from utilities.JesseRegression import RMA
-from classes.GC_class import GC_sat, GC_tavg # Class reading GC output
+from classes import GC_class  # Class reading GC output
 from classes.omhchorp import omhchorp # class reading OMHCHORP
 from utilities import fio as fio
 import utilities.plotting as pp
@@ -70,14 +70,18 @@ def Yield(H, k_H, I, k_I):
     #Return the yields
     return Y
 
-def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
+
+def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
     '''
         Return one day of emissions estimates
             Uses one month of GEOS-Chem (GC) estimated 'slope' for Y_hcho
             uses one day of OMI HCHO
+            Use biogenic run for GC_biog
     '''
     dstr=day.strftime("%Y%m%d")
     attrs={} # attributes dict for meta data
+    GC=GC_biog.sat_out
+
     if __VERBOSE__:
         # Check the dims of our stuff
         print()
@@ -92,19 +96,23 @@ def Emissions_1day(day, GC, OMI, region=pp.__AUSREGION__):
     omi_SA=OMI.surface_areas # in km^2
 
     # Get GC_isoprene for this day also
-    GC_E_isop=GC.get_field(keys=['E_isop_bio',],region=region)['E_isop_bio']
+    GC_days, GC_E_isop = GC_biog.hemco.daily_LT_averaged(hour=13)
+    # subset to region
+    GC_E_isop = util.lat_lon_subset(GC.lats,GC.lons,region=region,data=[GC_E_isop])['data'][0]
+
+    #GC_E_isop=GC.get_field(keys=['E_isop_bio',],region=region)['E_isop_bio']
     if __DEBUG__:
         print("GC_E_isop.shape before and after dateindex")
         print(GC_E_isop.shape)
-    GC_E_isop=GC_E_isop[GC.date_index(day)] # only want one day of E_isop_GC
+    GC_E_isop=GC_E_isop[util.date_index(day,GC_days)] # only want one day of E_isop_GC
     if __DEBUG__:
         print(GC_E_isop.shape)
-    attrs['GC_E_isop']={'units':'atom C/cm2/s',
-                      'desc' :'biogenic isoprene emissions from MEGAN/GEOS-Chem'}
+    attrs['GC_E_isop'] = GC_biog.hemco.attrs['E_isop_bio']
+    attrs['GC_E_isop']['desc']='biogenic isoprene emissions from MEGAN/GEOS-Chem'
 
     # model slope between HCHO and E_isop:
     # This also returns the lats and lons for just this region.
-    S_model=GC.model_slope(region=region) # in seconds I think
+    S_model=GC_biog.model_slope(region=region) # in seconds I think
     GC_slope=S_model['slope']
     GC_lats, GC_lons=S_model['lats'], S_model['lons']
 
@@ -387,7 +395,7 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
     if GC is None:
-        GC=GC_sat(date=day0) # data like [time,lat,lon,lev]
+        GC=GC_class.GC_biogenic(day0) # data like [time,lat,lon,lev]
 
     # Read each day then save the month
     #
@@ -449,8 +457,8 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     for month in months:
         # Read GC month:
         # TODO: Use GC=GC_sat(date=month)
-        GC=GC_tavg(date=month)
-        print('mean gc_tavg.hcho',np.nanmean(GC.hcho))
+        GC=GC_class.GC_biogenic(month)
+        print('mean gc_tavg.hcho',np.nanmean(GC.sat_out.hcho))
         # save the month of emissions
         store_emissions_month(month=month, GC=GC, OMI=OMI,
                               region=region, ignorePP=ignorePP)
@@ -514,8 +522,8 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
 if __name__=='__main__':
     print('Inversion has been run')
 
-    day0=datetime(2005,9,1)
-    dayn=datetime(2005,12,31)
+    day0=datetime(2005,1,1)
+    dayn=datetime(2005,2,28)
     store_emissions(day0=day0,dayn=dayn)
     #for day in [datetime(2005,9,1),datetime(2005,10,1),datetime(2005,11,1),datetime(2005,12,1),]:
     #    #smearing(day0)

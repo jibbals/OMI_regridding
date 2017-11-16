@@ -63,8 +63,9 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     _iga+'NO':'NO', _iga+'O3':'O3', _iga+'MVK':'MVK', _iga+'MACR':'MACR',
     _iga+'ISOPN':'isopn', _iga+'IEPOX':'iepox', _iga+'NO2':'NO2', _iga+'NO3':'NO3',
     _iga+'NO2':'NO2', _iga+'ISOP':'isop', _iga+'CH2O':'hcho',
-    # Biogenic sources: atoms C/cm2/s
-    'BIOGSRCE_ISOP':'E_isop_bio',
+    # Biogenic sources:
+    #'BIOGSRCE_ISOP':'E_isop_bio', # atoms C/cm2/s
+    'ISOP_BIOG':'E_isop_bio', # kgC/cm2/s (from Hemco_diagnostic output)
     # burning sources: atoms C/cm2/s
     'BIOBSRCE_CH2O':'E_hcho_burn',
     # Other diagnostics:
@@ -87,16 +88,16 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
 #####CLASS######
 ################
 
-class GC_common:
+class GC_base:
     '''
         Class for GEOS-Chem output, inherited by tavg and sat
     '''
-    def __init__(self, date, path, keys, nlevs=47):
+    def __init__(self, data,attrs, nlevs=47):
         ''' Read data for ONE MONTH into self
             run= 'tropchem'|'halfisop'|'UCX'
             output= 'satellite'|'tavg'
         '''
-        self.dstr=date.strftime("%Y%m")
+
         self.nlats=91
         self.nlons=144
         self.nlevs=nlevs
@@ -112,11 +113,7 @@ class GC_common:
         #self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
         self.attrs={}       # Attributes from bpch file
 
-        multi = '*' in path
-        data,attrs = GC_fio.read_bpch(path,keys=keys,multi=multi)
-
         # Data could have any shape, we fix to time,lat,lon,lev
-
         # for each key in thefile
         for key in data.keys():
 
@@ -141,6 +138,7 @@ class GC_common:
                     newshape=(lati,loni,levi[0,0])
                 elif len(ti)==1 and len(levi)==0:
                     newshape=(ti[0,0],lati,loni)
+                print(arr.shape, newshape)
                 arr=np.transpose(arr,axes=newshape)
                 if __VERBOSE__:
                     print(key,arrs," -> ",np.shape(arr))
@@ -164,15 +162,18 @@ class GC_common:
         if not hasattr(self,'area'):
             self.area=GMAO.area_m2
 
+        # Calculate total columns hcho
         # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
-        n_dims=len(np.shape(self.hcho))
-        print("n_dims = %d, hcho=%.2e"%(n_dims,np.mean(self.hcho)))
-        self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
+        if hasattr(self,'hcho'):
+            n_dims=len(np.shape(self.hcho))
+            print("n_dims = %d, hcho=%.2e"%(n_dims,np.mean(self.hcho)))
+            self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
 
         # Convert from numpy.datetime64 to datetime
         if not hasattr(self,'time'):
-            self.times=[date.strftime("%Y-%m-%dT%H:%M:%S.000000000")]
+            self.times=[attrs['init_date'].strftime("%Y-%m-%dT%H:%M:%S.000000000")]
         self.dates=util.datetimes_from_np_datetime64(self.time)
+        self.dstr=self.dates[0].strftime("%Y%m")
 
         # flag to see if class has time dimension
         self._has_time_dim = len(self.dates) > 1
@@ -185,12 +186,8 @@ class GC_common:
     # Common Functions:
     def date_index(self, date):
         ''' Return index of date '''
-        whr=np.where(np.array(self.dates) == date) # returns (matches_array,something)
-        #print(date, 'from', self.dates)
-        if len(whr[0])==0:
-            print (date, 'not in', self.dates)
+        return util.date_index(date,self.dates)
 
-        return whr[0][0] # We just want the match
     def lat_lon_index(self,lat,lon):
         '''  return lati, loni '''
         return util.lat_lon_index(lat,lon,self.lats,self.lons)
@@ -317,7 +314,7 @@ class GC_common:
             raise ie
         return out
 
-    def model_slope(self, region=pp.__AUSREGION__):
+    def model_slope(self, region=pp.__AUSREGION__, overpass_hour=13):
         '''
             Use RMA regression between E_isop and tropcol_HCHO to determine S:
                 HCHO = S * E_isop + b
@@ -338,8 +335,12 @@ class GC_common:
                     print("Slope has already been modelled, re-returning")
                 return self.modelled_slope
 
+        # Read MEGAN outputs from biogenic run:
+        megan=Hemco_diag(self.dates[0], month=True)
+        isop = megan.daily_LT_averaged(hour=overpass_hour) # lat/lon kgC/cm2/s [days,lat,lon]
+        # use hcho from calling class
         hcho = self.get_trop_columns(keys=['hcho'])['hcho']
-        isop = self.E_isop_bio # Atom C/cm2/s
+        # used to be atom C/cm2/s
 
         lats,lons = self.lats, self.lons
         lati,loni = util.lat_lon_range(lats,lons,region=region)
@@ -409,7 +410,7 @@ class GC_common:
             self.E_isop_bio_kgs=E * conversion
         self.attrs['E_isop_bio_kgs']={'units':'kg/s',}
 
-class GC_tavg(GC_common):
+class GC_tavg(GC_base):
     '''
         Class holding and manipulating tropchem GC output
         # tropchem dims [time,lat,lon,lev]
@@ -425,13 +426,15 @@ class GC_tavg(GC_common):
 
     '''
     def __init__(self,date,keys=GC_fio.__tavg_mainkeys__,run='tropchem',nlevs=47):
-        # Call GC_common initialiser with tavg_mainkeys and tropchem by default
+        # Call GC_base initialiser with tavg_mainkeys and tropchem by default
 
         # Determine path of file:
-        dstr=date.strftime("%Y%m%d0000")
+        dstr = date.strftime("%Y%m%d0000")
+        path = tavg_path[run]%dstr
 
-        path=tavg_path[run]%dstr
-        super(GC_tavg,self).__init__(date,path=path,keys=keys,nlevs=nlevs)
+        # read data/attrs and initialise class:
+        data,attrs = GC_fio.read_bpch(path,keys=keys,multi='*' in path)
+        super(GC_tavg,self).__init__(date,data,attrs,nlevs=nlevs)
 
         # add E_isop_bio_kgs:
         self._set_E_isop_bio_kgs()
@@ -440,7 +443,7 @@ class GC_tavg(GC_common):
     #def firemask(self,):
 
 
-class GC_sat(GC_common):
+class GC_sat(GC_base):
     '''
         Class for reading and manipulating satellite overpass output!
     '''
@@ -448,9 +451,12 @@ class GC_sat(GC_common):
 
         # Determine path of files:
         dstr=date.strftime("%Y%m*")
-
         path=sat_path[run]%dstr
-        super(GC_sat,self).__init__(date, path=path, keys=keys, nlevs=nlevs)
+
+        # read data/attrs and initialise class:
+        data,attrs = GC_fio.read_bpch(path,keys=keys,multi='*' in path)
+        attrs['init_date']=date
+        super(GC_sat,self).__init__(data,attrs,nlevs=nlevs)
 
         # fix TR-PAUSE_TPLEV output:
         if len(self.tplev.shape)==3:
@@ -482,7 +488,7 @@ class GC_sat(GC_common):
             self.dates=util.list_days(day0=date, month=True)
 
 
-class Hemco_diag(GC_common):
+class Hemco_diag(GC_base):
     '''
         class just for Hemco_diag output and manipulation
     '''
@@ -491,15 +497,12 @@ class Hemco_diag(GC_common):
         if __VERBOSE__:
             print('Reading Hemco_diag files:')
 
-        # read the netcdf files
+        # read data/attrs and initialise class:
         data,attrs=GC_fio.read_Hemco_diags(day0,month=month)
-        self.attrs=attrs
-        self.attrs['E_isop_bio']=attrs['ISOP_BIOG']
-        self.E_isop_bio = data['ISOP_BIOG']
-        self.lats=data['lat']
-        self.lons=data['lon']
-        self.times=data['time']
-        self.dates=util.datetimes_from_np_datetime64(self.times)
+        attrs['init_date']=day0
+        attrs['n_dims']=len(np.shape(data['ISOP_BIOG']))
+        super(Hemco_diag,self).__init__(data,attrs)
+
         self.n_dates=len(self.dates)
         self.n_days=len(util.list_days(self.dates[0],self.dates[-1]))
 
@@ -547,7 +550,7 @@ class Hemco_diag(GC_common):
             print(self.lons)
             print(sanity[0,0,:])
             assert False, ''
-        return np.squeeze(out)
+        return days, np.squeeze(out)
 
     def plot_daily_emissions_cycle(self,lat=-31,lon=150,pname=None):
         ''' take a month and plot the emissions over the day'''
@@ -594,14 +597,90 @@ class Hemco_diag(GC_common):
         plt.savefig(pname)
         print("SAVED FIGURE:",pname)
 
+class GC_biogenic:
+    def __init__(self,month): #=datetime(2005,1,1)):
+        '''  Read biogenic output and hemco for e_isop and o_hcho  '''
+
+        # first get hemco output for this month
+        self.hemco=Hemco_diag(month,month=True)
+        # also get satellite output
+        self.sat_out=GC_sat(month,run='biogenic')
+
+    def model_slope(self, region=pp.__AUSREGION__, overpass_hour=13):
+        '''
+            Use RMA regression between E_isop and tropcol_HCHO to determine S:
+                HCHO = S * E_isop + b
+            Notes:
+                Slope = Yield_isop / k_hcho
+                HCHO: molec/cm2
+                E_isop: kgC/cm2/s
 
 
+            Return {'lats','lons','r':regression, 'b':bg, 'slope':slope}
 
+        '''
+        # if this calc is already done, short cut it
+        if hasattr(self, 'modelled_slope'):
+            # unless we're looking at a new area
+            if self.modelled_slope['region'] == region:
+                if __VERBOSE__:
+                    print("Slope has already been modelled, re-returning")
+                return self.modelled_slope
 
+        # Read MEGAN outputs from biogenic run:
+        megan=self.hemco
+        # satellite output for hcho concentrations:
+        sat_out=self.sat_out
 
+        # grab satellite overpass E_isop and trop column hcho
+        isop = megan.daily_LT_averaged(hour=overpass_hour) # lat/lon kgC/cm2/s [days,lat,lon]
+        hcho = sat_out.get_trop_columns(keys=['hcho'])['hcho']
 
+        # what lats and lons do we want?
+        lats,lons = sat_out.lats, sat_out.lons
+        lati,loni = util.lat_lon_range(lats,lons,region=region)
 
+        # subset the data
+        isop = isop[:, lati, :]
+        isop = isop[:, :, loni]
+        hcho = hcho[:, lati, :]
+        hcho = hcho[:, :, loni]
+        sublats, sublons = lats[lati], lons[loni]
 
+        # arrays to hold the month's slope, background, and regression coeff
+        n_x = len(loni)
+        n_y = len(lati)
+        slope  = np.zeros([n_y,n_x]) + np.NaN
+        bg     = np.zeros([n_y,n_x]) + np.NaN
+        reg    = np.zeros([n_y,n_x]) + np.NaN
+
+        # regression for each lat/lon gives us slope
+        for xi in range(n_x):
+            for yi in range(n_y):
+                # Y = m X + B
+                X=isop[:, yi, xi]
+                Y=hcho[:, yi, xi]
+
+                # Skip ocean or no emissions squares:
+                if np.isclose(np.mean(X), 0.0): continue
+
+                # get regression
+                m, b, r, CI1, CI2=RMA(X, Y)
+                slope[yi, xi] = m
+                bg[yi, xi] = b
+                reg[yi, xi] = r
+
+        if __VERBOSE__:
+            print('GC_tavg.model_yield() calculates avg. slope of %.2e'%np.nanmean(slope))
+
+        # Return all the data and the lats/lons of our subregion:
+                            # lats and lons for slope, (and region for later)
+        self.modelled_slope={'lats':sublats,'lons':sublons, 'region':region,
+                             # indexes of lats/lons for slope
+                             'lati':lati, 'loni':loni,
+                             # regression, background, and slope
+                             'r':reg, 'b':bg, 'slope':slope}
+        return self.modelled_slope
 
 ################
 ###FUNCTIONS####

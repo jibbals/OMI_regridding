@@ -85,6 +85,14 @@ def date_from_gregorian(greg):
         return([d0+timedelta(seconds=int(greg*3600)),])
     return([d0+timedelta(seconds=int(hr*3600)) for hr in greg])
 
+def date_index(date,dates):
+
+    whr=np.where(np.array(dates) == date) # returns (matches_array,something)
+    if len(whr[0])==0:
+        print (date, 'not in', self.dates)
+
+    return whr[0][0] # We just want the match
+
 def datetimes_from_np_datetime64(times):
     # '2005-01-01T00:00:00.000000000'
     return [datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in times]

@@ -62,9 +62,9 @@ for k in dat:
 
 hd=GC_class.Hemco_diag(d0,month=False)
 #hd.plot_daily_emissions_cycle()
-enew=hd.daily_LT_averaged()
+emeg=hd.daily_LT_averaged()
 lats=hd.lats
 lons=hd.lons
-pp.basicmap(enew,lats,lons,aus=True,pname='test.png')
-print(np.nanmean(enew))
+pp.basicmap(emeg,lats,lons,aus=True,pname='test.png')
+print(np.nanmean(emeg))
 

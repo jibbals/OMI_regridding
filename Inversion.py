@@ -97,8 +97,6 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
 
     # Get GC_isoprene for this day also
     GC_days, GC_E_isop = GC_biog.hemco.daily_LT_averaged(hour=13)
-    # subset to region
-    GC_E_isop = util.lat_lon_subset(GC.lats,GC.lons,region=region,data=[GC_E_isop])['data'][0]
 
     #GC_E_isop=GC.get_field(keys=['E_isop_bio',],region=region)['E_isop_bio']
     if __DEBUG__:
@@ -109,6 +107,9 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
         print(GC_E_isop.shape)
     attrs['GC_E_isop'] = GC_biog.hemco.attrs['E_isop_bio']
     attrs['GC_E_isop']['desc']='biogenic isoprene emissions from MEGAN/GEOS-Chem'
+
+    # subset to region
+    GC_E_isop = util.lat_lon_subset(GC.lats,GC.lons,region=region,data=[GC_E_isop])['data'][0]
 
     # model slope between HCHO and E_isop:
     # This also returns the lats and lons for just this region.
@@ -401,7 +402,7 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     #
     Emiss=[]
     for day in days:
-        Emiss.append(Emissions_1day(day=day, GC=GC, OMI=OMI, region=region))
+        Emiss.append(Emissions_1day(day=day, GC_biog=GC, OMI=OMI, region=region))
 
     outattrs=Emiss[0]['attributes'] # get one copy of attributes is required
 
@@ -473,8 +474,8 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
         For now uses tavg instead of overpass times
     '''
 
-    full=GC_tavg(month, run='tropchem')
-    half=GC_tavg(month, run='halfisop') # month avg right now
+    full=GC_class.GC_tavg(month, run='tropchem')
+    half=GC_class.GC_tavg(month, run='halfisop') # month avg right now
 
     lats=full.lats
     lons=full.lons

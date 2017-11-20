@@ -22,7 +22,7 @@ from mpl_toolkits.basemap import maskoceans #
 ###############
 ### GLOBALS ###
 ###############
-__VERBOSE__=False
+__VERBOSE__=True
 __grams_per_mole__={'isop':60.06+8.08, # C5H8
                     'hcho':30.02598}
 
@@ -93,9 +93,12 @@ def date_index(date,dates):
 
     return whr[0][0] # We just want the match
 
-def datetimes_from_np_datetime64(times):
+def datetimes_from_np_datetime64(times, reverse=False):
     # '2005-01-01T00:00:00.000000000'
+    if reverse:
+        return [np.datetime64(d.strftime('%Y-%m-%dT%H:%M:%S.000000000')) for d in times]
     return [datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in times]
+
 
 def edges_from_mids(x,fix=False):
     '''
@@ -341,6 +344,50 @@ def regrid(data,lats,lons,newlats,newlons):
     assert np.shape(interp)== (len(newlats),len(newlons)), "Regridded shape new lats/lons!"
 
     return interp
+
+def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
+    ''' return reference to data array with time,lat,lon,lev dims '''
+
+    # grab array and shape
+    shp=np.array(data.shape)
+    n_dims=len(shp)
+
+    if __VERBOSE__:
+        print("changing shape:",shp,'->',ntimes,nlats,nlons,nlevs)
+
+    if ntimes is None:
+        ntimes = -1
+    if nlevs is None:
+        nlevs = -2
+
+    # make sure data is not square
+    if len(set([ntimes,nlats,nlons,nlevs])) < 4:
+        print("ERROR: could not reshape data array")
+        print(shp,'->',ntimes,nlats,nlons,nlevs)
+        return data
+
+    if n_dims>1:
+        lati=np.argwhere(shp==nlats)[0,0]
+        loni=np.argwhere(shp==nlons)[0,0]
+        newshape=(lati,loni)
+
+        # do we have time and level dimensions?
+        ti=np.argwhere(shp==ntimes)
+        levi=np.argwhere(shp==nlevs)
+
+        if len(ti)==1 and len(levi)==1:
+            newshape=(ti[0,0],lati,loni,levi[0,0])
+        elif len(ti)==0 and len(levi)==1:
+            newshape=(lati,loni,levi[0,0])
+        elif len(ti)==1 and len(levi)==0:
+            newshape=(ti[0,0],lati,loni)
+
+        arr=np.transpose(data,axes=newshape)
+        if __VERBOSE__:
+            print('changed data array shape:',shp," -> ",np.shape(arr))
+
+    return arr
+
 
 def utc_to_local(utc_dt):
     '''

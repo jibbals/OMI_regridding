@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 import utilities.utilities as util
 import utilities.plotting as pp
 from utilities import GMAO,GC_fio,fio
+import Inversion
 
 
 from classes.E_new import E_new # E_new class
@@ -46,25 +47,35 @@ satnames="Data/GC_Output/geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%
 tracfile='Data/GC_Output/geos5_2x25_tropchem/satellite_output/tracerinfo.dat'
 diagfile='Data/GC_Output/geos5_2x25_tropchem/satellite_output/diaginfo.dat'
 Hemco_diag="Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog.200501010100.nc"
+biosat_files="Data/GC_Output/geos5_2x25_tropchem_biogenic/satellite_output/sat_biogenic.%s*.bpch"%yyyymm
 
+dat,attr=GC_fio.read_bpch(path=biosat_files,keys=GC_fio.__sat_mainkeys__,multi=True)
+dat['IJ-AVG-$_CH2O'].shape
 
-dat,att=GC_fio.read_Hemco_diags(d0)
-e=dat['ISOP_BIOG']
-lons=dat['lon']
-a=att['ISOP_BIOG']
-e.shape # time, lat, lon
-np.nanmean(e)
-for k in a:
-    print(k,':',a[k])
-for k in dat:
-    print(k, ':', dat[k].shape)
+Inversion.smearing(d0)
 
+#GC=GC_class.GC_sat(d0,run='biogenic')
+#GC=GC_class.GC_biogenic(d0)
+#print(GC)
 
-hd=GC_class.Hemco_diag(d0,month=False)
-#hd.plot_daily_emissions_cycle()
-emeg=hd.daily_LT_averaged()
-lats=hd.lats
-lons=hd.lons
-pp.basicmap(emeg,lats,lons,aus=True,pname='test.png')
-print(np.nanmean(emeg))
+#
+#dat,att=GC_fio.read_Hemco_diags(d0)
+#e=dat['ISOP_BIOG']
+#lons=dat['lon']
+#a=att['ISOP_BIOG']
+#e.shape # time, lat, lon
+#np.nanmean(e)
+#for k in a:
+#    print(k,':',a[k])
+#for k in dat:
+#    print(k, ':', dat[k].shape)
+#
+#
+#hd=GC_class.Hemco_diag(d0,month=False)
+##hd.plot_daily_emissions_cycle()
+#days,E_megan=hd.daily_LT_averaged()
+#lats=hd.lats
+#lons=hd.lons
+#pp.basicmap(E_megan,lats,lons,aus=True,pname='test.png')
+#print(np.nanmean(E_megan))
 

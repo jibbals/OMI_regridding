@@ -112,6 +112,8 @@ class omhchorp:
     def apply_fire_mask(self, use_8day_mask=True):
         ''' nanify arrays which are fire affected. '''
         mask = [self.fire_mask_16, self.fire_mask_8][use_8day_mask]
+        print ("fire mask:",mask.shape,np.nansum(mask))
+
         for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,
                     self.VC_OMI,self.VC_OMI_RSC,self.VCC,
                     self.col_uncertainty_OMI]:

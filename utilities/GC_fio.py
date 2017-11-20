@@ -55,7 +55,7 @@ __tavg_mainkeys__=['lev','lon','lat','time',
                    'BXHGHT-$_AVGW','BXHGHT-$_N(AIR)','DXYP_DXYP',
                    'TR-PAUSE_TP-LEVEL']
 
-__sat_mainkeys__=['lev','lon','lat',
+__sat_mainkeys__=['lev','lon','lat','time',
                   'IJ-AVG-$_ISOP','IJ-AVG-$_CH2O',
                   'BIOGSRCE_ISOP',
                   'PEDGE-$_PSURF','BXHGHT-$_BXHEIGHT',
@@ -122,10 +122,10 @@ def read_bpch(path,keys,multi=False):
     bpchargs={'fields':list(fields), 'categories':list(categories),
               'tracerinfo_file':tracinf,'diaginfo_file':diaginf,
               'decode_cf':False,'dask':True}
-    if not multi:
-        ds=open_bpchdataset(path,**bpchargs)
-    else:
+    if multi:
         ds=open_mfbpchdataset(path,**bpchargs)
+    else:
+        ds=open_bpchdataset(path,**bpchargs)
 
     data,attrs=dataset_to_dicts(ds,keys)
 

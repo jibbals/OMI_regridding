@@ -50,7 +50,7 @@ rdir='Data/GC_Output/'
 sat_path  = {'tropchem':rdir+'geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s.bpch',
              'halfisop':rdir+'geos5_2x25_tropchem_halfisoprene/satellite_output/ts_satellite.%s.bpch',
              'UCX':rdir+'UCX_geos5_2x25/satellite_output/ts_satellite.%s.bpch',
-             'biogenic':rdir+'geos5_2x25_tropchem_biogenic/sat_biogenic.%s.bpch',}
+             'biogenic':rdir+'geos5_2x25_tropchem_biogenic/satellite_output/sat_biogenic.%s.bpch',}
 tavg_path = {'tropchem':rdir+'geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'halfisop':rdir+'geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'UCX':rdir+'UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s'}
@@ -64,7 +64,7 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     _iga+'ISOPN':'isopn', _iga+'IEPOX':'iepox', _iga+'NO2':'NO2', _iga+'NO3':'NO3',
     _iga+'NO2':'NO2', _iga+'ISOP':'isop', _iga+'CH2O':'hcho',
     # Biogenic sources:
-    #'BIOGSRCE_ISOP':'E_isop_bio', # atoms C/cm2/s
+    'BIOGSRCE_ISOP':'E_isop_bio', # atoms C/cm2/s
     'ISOP_BIOG':'E_isop_bio', # kgC/cm2/s (from Hemco_diagnostic output)
     # burning sources: atoms C/cm2/s
     'BIOBSRCE_CH2O':'E_hcho_burn',
@@ -97,7 +97,9 @@ class GC_base:
             run= 'tropchem'|'halfisop'|'UCX'
             output= 'satellite'|'tavg'
         '''
-
+        self.ntimes=1
+        if 'time' in data:
+            self.ntimes=len(data['time'])
         self.nlats=91
         self.nlons=144
         self.nlevs=nlevs
@@ -117,31 +119,10 @@ class GC_base:
         # for each key in thefile
         for key in data.keys():
 
-            # grab array and shape
+            # Make sure array has dims: [[time,]lats,lons[,levs]]
             arr=data[key]
-            arrs=np.array(arr.shape)
-            n_dims=len(arrs)
-
-            # For simplicity lets force the dimensions to be time,lat,lon,lev
-            if n_dims>1:
-                lati=np.argwhere(arrs==self.nlats)[0,0]
-                loni=np.argwhere(arrs==self.nlons)[0,0]
-                newshape=(lati,loni)
-
-                # do we have time and level dimensions?
-                ti=np.argwhere(arrs<35)
-                levi=np.argwhere(arrs==self.nlevs)
-
-                if len(ti)==1 and len(levi)==1:
-                    newshape=(ti[0,0],lati,loni,levi[0,0])
-                elif len(ti)==0 and len(levi)==1:
-                    newshape=(lati,loni,levi[0,0])
-                elif len(ti)==1 and len(levi)==0:
-                    newshape=(ti[0,0],lati,loni)
-                print(arr.shape, newshape)
-                arr=np.transpose(arr,axes=newshape)
-                if __VERBOSE__:
-                    print(key,arrs," -> ",np.shape(arr))
+            if len(arr.shape) > 1:
+                arr = util.reshape_time_lat_lon_lev(arr,self.ntimes,self.nlats,self.nlons,self.nlevs)
 
             if key in _GC_names_to_nice.keys():
                 if key == 'TIME-SER_AIRDEN':
@@ -171,7 +152,7 @@ class GC_base:
 
         # Convert from numpy.datetime64 to datetime
         if not hasattr(self,'time'):
-            self.times=[attrs['init_date'].strftime("%Y-%m-%dT%H:%M:%S.000000000")]
+            self.time=[attrs['init_date'].strftime("%Y-%m-%dT%H:%M:%S.000000000")]
         self.dates=util.datetimes_from_np_datetime64(self.time)
         self.dstr=self.dates[0].strftime("%Y%m")
 
@@ -434,13 +415,13 @@ class GC_tavg(GC_base):
 
         # read data/attrs and initialise class:
         data,attrs = GC_fio.read_bpch(path,keys=keys,multi='*' in path)
-        super(GC_tavg,self).__init__(date,data,attrs,nlevs=nlevs)
+        attrs['init_date']=date
+
+        super(GC_tavg,self).__init__(data,attrs,nlevs=nlevs)
 
         # add E_isop_bio_kgs:
-        self._set_E_isop_bio_kgs()
-
-    #TODO: define method to create a GC fire mask
-    #def firemask(self,):
+        if hasattr(self,'E_isop_bio'):
+            self._set_E_isop_bio_kgs()
 
 
 class GC_sat(GC_base):
@@ -455,14 +436,27 @@ class GC_sat(GC_base):
 
         # read data/attrs and initialise class:
         data,attrs = GC_fio.read_bpch(path,keys=keys,multi='*' in path)
+
+        # may need to handle missing time dim...
+        if not 'time' in data:
+            tmp=data['IJ-AVG-$_CH2O']
+            dates=[date]
+            times=util.datetimes_from_np_datetime64(dates,reverse=True)
+            if len(tmp.shape) == 4:
+                dates=util.list_days(date,month=True)
+                times=util.datetimes_from_np_datetime64(dates,reverse=True)
+            data['time']=np.array(times)
+            attrs['time']={'desc':'Overpass date (np.datetime64)'}
+
         attrs['init_date']=date
         super(GC_sat,self).__init__(data,attrs,nlevs=nlevs)
 
         # fix TR-PAUSE_TPLEV output:
-        if len(self.tplev.shape)==3:
-            self.tplev=self.tplev[:,:,0]
-        if len(self.tplev.shape)==4:
-            self.tplev=self.tplev[:,:,:,0]
+        if hasattr(self,'tplev'):
+            if len(self.tplev.shape)==3:
+                self.tplev=self.tplev[:,:,0]
+            if len(self.tplev.shape)==4:
+                self.tplev=self.tplev[:,:,:,0]
 
         # fix emissions shape:
         if hasattr(self, 'E_isop_bio'):
@@ -520,6 +514,7 @@ class Hemco_diag(GC_base):
             Average over an hour of each day
             input hour of 1pm gives data from 1pm-2pm
         '''
+
         # need to subtract an hour from each of our datetimes:
         dates=np.array(self.dates) - timedelta(seconds=3600)
         # this undoes the problem of our 24th hour being stored in
@@ -530,7 +525,10 @@ class Hemco_diag(GC_base):
         di=0
         prior_day=days[0]
 
-        print(days)
+        # if this has already been calculated then return that.
+        if hasattr(self, 'E_isop_bio_LT'):
+            if self.attrs['E_isop_bio_LT']['hour'] == hour:
+                return days, self.E_isop_bio_LT
 
         isop=self.E_isop_bio
         out=np.zeros([len(days),len(self.lats),len(self.lons)])+np.NaN
@@ -543,13 +541,17 @@ class Hemco_diag(GC_base):
                 prior_day=date
             # local time is gmt+offset
             LT=(GMT+LTO) % 24
-            out[di][LT==hour] = isop[i,LT==hour]
-            sanity[di][LT==hour] = sanity[di][LT==hour]+1
+            out[di,LT==hour] = isop[i,LT==hour]
+            sanity[di,LT==hour] = sanity[di,LT==hour]+1
         if (not np.all(sanity==1)) or (np.any(np.isnan(out))):
             print('ERROR: should get one hour from each day!')
             print(self.lons)
             print(sanity[0,0,:])
             assert False, ''
+
+        self.E_isop_bio_LT=out
+        self.attrs['E_isop_bio_LT']={'desc':'map for each day of global data at specific hour local time',
+                                     'hour':hour}
         return days, np.squeeze(out)
 
     def plot_daily_emissions_cycle(self,lat=-31,lon=150,pname=None):
@@ -633,7 +635,7 @@ class GC_biogenic:
         sat_out=self.sat_out
 
         # grab satellite overpass E_isop and trop column hcho
-        isop = megan.daily_LT_averaged(hour=overpass_hour) # lat/lon kgC/cm2/s [days,lat,lon]
+        days,isop = megan.daily_LT_averaged(hour=overpass_hour) # lat/lon kgC/cm2/s [days,lat,lon]
         hcho = sat_out.get_trop_columns(keys=['hcho'])['hcho']
 
         # what lats and lons do we want?

@@ -515,7 +515,7 @@ class Hemco_diag(GC_base):
             input hour of 1pm gives data from 1pm-2pm
         '''
 
-        # need to subtract an hour from each of our datetimes:
+        # need to subtract half an hour from each of our datetimes, putting 24 hour into each 'day'
         dates=np.array(self.dates) - timedelta(seconds=3600)
         # this undoes the problem of our 24th hour being stored in
         # the following day's 00th hour
@@ -537,17 +537,23 @@ class Hemco_diag(GC_base):
         for i,date in enumerate(dates):
             GMT=date.hour # current GMT
             if (date.day > prior_day.day) or (date.month > prior_day.month) or (date.year > prior_day.year):
-                di=di+1
                 prior_day=date
-            # local time is gmt+offset
-            LT=(GMT+LTO) % 24
+                print('    next day:')
+                if (not np.all(sanity[di]==1)) or (np.any(np.isnan(out[di]))):
+                    print('ERROR: should get one hour from each day!')
+                    print(date, hour, GMT)
+                    print(sanity[di,0,:])
+                    print(dates[0::12], days)
+                    assert False, ''
+                di=di+1
+            # local time is gmt+offset (24 hour time)
+            LT=(GMT+LTO + 24) % 24 # 91,144 (lats by lons)
+
+            print(date.strftime('%m%dT%H'),'   lon matches:',np.sum(LT[0,:]==hour))
+            print(LT[0,:])
             out[di,LT==hour] = isop[i,LT==hour]
             sanity[di,LT==hour] = sanity[di,LT==hour]+1
-        if (not np.all(sanity==1)) or (np.any(np.isnan(out))):
-            print('ERROR: should get one hour from each day!')
-            print(self.lons)
-            print(sanity[0,0,:])
-            assert False, ''
+
 
         self.E_isop_bio_LT=out
         self.attrs['E_isop_bio_LT']={'desc':'map for each day of global data at specific hour local time',
@@ -617,16 +623,16 @@ class GC_biogenic:
                 HCHO: molec/cm2
                 E_isop: kgC/cm2/s
                     Converted to atom C/cm2/s in script..
-                    
+
 
 
             Return {'lats','lons','r':regression, 'b':bg, 'slope':slope}
 
         '''
-        # 
+        #
         if __VERBOSE__:
             print('model_slope called for biogenic class')
-        
+
         # if this calc is already done, short cut it
         if hasattr(self, 'modelled_slope'):
             # unless we're looking at a new area
@@ -639,7 +645,7 @@ class GC_biogenic:
         megan=self.hemco
         # satellite output for hcho concentrations:
         sat_out=self.sat_out
-        
+
         # grab satellite overpass E_isop and trop column hcho
         days,isop = megan.daily_LT_averaged(hour=overpass_hour) # lat/lon kgC/cm2/s [days,lat,lon]
         hcho = sat_out.get_trop_columns(keys=['hcho'])['hcho']
@@ -654,15 +660,15 @@ class GC_biogenic:
         hcho = hcho[:, lati, :]
         hcho = hcho[:, :, loni]
         sublats, sublons = lats[lati], lons[loni]
-        
+
         # molec/cm2/s from kgC/cm2/s:
         # kgC / (gram/mole * mole/molec) * 1000
         gram_per_molec = util.__grams_per_mole__['isop'] / N_Avogadro
         isop=isop * 1e3 /gram_per_molec
         isop=isop* 5.0 # molec isop -> atom C
-        
+
         print("nanmeans in slope function::",np.nanmean(isop),np.nanmean(hcho))
-        
+
         # arrays to hold the month's slope, background, and regression coeff
         n_x = len(loni)
         n_y = len(lati)

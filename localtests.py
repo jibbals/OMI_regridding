@@ -52,7 +52,7 @@ biosat_files="Data/GC_Output/geos5_2x25_tropchem_biogenic/satellite_output/sat_b
 dat,attr=GC_fio.read_bpch(path=biosat_files,keys=GC_fio.__sat_mainkeys__,multi=True)
 dat['IJ-AVG-$_CH2O'].shape
 
-Inversion.smearing(d0)
+Inversion.store_emissions_month(d1)
 
 #GC=GC_class.GC_sat(d0,run='biogenic')
 #GC=GC_class.GC_biogenic(d0)

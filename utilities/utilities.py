@@ -89,7 +89,7 @@ def date_index(date,dates):
 
     whr=np.where(np.array(dates) == date) # returns (matches_array,something)
     if len(whr[0])==0:
-        print (date, 'not in', self.dates)
+        print (date, 'not in', dates)
 
     return whr[0][0] # We just want the match
 
@@ -322,7 +322,7 @@ def regrid(data,lats,lons,newlats,newlons):
     Assumes a regular grid, and that boundaries are compatible!!
     '''
     if __VERBOSE__:
-        print("utilities.regrid transforming %s to %s"%(str((len(lons),len(lats))),str((len(newlons),len(newlats)))))
+        print("utilities.regrid transforming %s to %s"%(str((len(lats),len(lons))),str((len(newlats),len(newlons)))))
         print("data input looks like %s"%str(np.shape(data)))
     interp=None
     # if no resolution change then just throw back input

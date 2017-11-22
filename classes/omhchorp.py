@@ -335,7 +335,8 @@ class omhchorp:
         flat={}
         for key in keys:
             data=getattr(self,key)[dinds]
-            actual[key]=np.nansum(data*entries, axis=0)/totentries
+            with np.errstate(divide='ignore', invalid='ignore'):
+                actual[key]=np.nansum(data*entries, axis=0)/totentries
             flat[key]=np.nanmean(data, axis=0)
             ret[key]=[flat[key],actual[key]][weighted]
             #TODO: remove once checked

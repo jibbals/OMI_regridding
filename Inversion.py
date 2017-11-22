@@ -109,7 +109,13 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
     attrs['GC_E_isop']['desc']='biogenic isoprene emissions from MEGAN/GEOS-Chem'
 
     # subset to region
+    if __DEBUG__:
+        print('shape and mean before and after subsetting GC_E_isop:')
+        print(np.shape(GC_E_isop), np.nanmean(GC_E_isop))
     GC_E_isop = util.lat_lon_subset(GC.lats,GC.lons,region=region,data=[GC_E_isop])['data'][0]
+    
+    if __DEBUG__:
+        print(np.shape(GC_E_isop), np.nanmean(GC_E_isop))
 
     # model slope between HCHO and E_isop:
     # This also returns the lats and lons for just this region.
@@ -152,8 +158,9 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
     slope_after=np.nanmean(GC_slope)
     attrs["GC_slope"]={"units":"s",
         "desc":"\"VC_H=S*E_i+B\" slope (S) between HCHO_GC (molec/cm2) and E_Isop_GC (atom c/cm2/s)"}
-
-    check=100.0*np.abs((slope_after-slope_before)/slope_before)
+    
+    with np.errstate(divide='ignore', invalid='ignore'):
+        check=100.0*np.abs((slope_after-slope_before)/slope_before)
 
     # If the grids are compatible then slope shouldn't change from regridding
     if check > 1:
@@ -449,17 +456,20 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     if __VERBOSE__:
         print("Running Inversion.store_emissions()")
 
-    # Grab all reprocessed data:
-    OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
 
     months=util.list_months(day0,dayn)
     # save each month seperately
     #
     for month in months:
+        
+        # Grab reprocessed data for the month:
+        OMI=omhchorp(day0=month,dayn=util.last_day(month), ignorePP=ignorePP)
+        print('mean HCHO column from omhchorp',np.nanmean(OMI.VCC))
+        
         # Read GC month:
-        # TODO: Use GC=GC_sat(date=month)
         GC=GC_class.GC_biogenic(month)
-        print('mean gc_tavg.hcho',np.nanmean(GC.sat_out.hcho))
+        print('mean surface hcho from GC_biogenic run:',np.nanmean(GC.sat_out.hcho[:,:,:,0]))
+        
         # save the month of emissions
         store_emissions_month(month=month, GC=GC, OMI=OMI,
                               region=region, ignorePP=ignorePP)
@@ -490,6 +500,8 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
     h_E_isop=half_month['E_isop_bio'] # molec/cm2/s
 
     dlist=[f_hcho,h_hcho,f_E_isop,h_E_isop]
+    for ddata in dlist:
+        print('nanmean ',np.nanmean(ddata))
     sub=util.lat_lon_subset(lats,lons,region,dlist)
     lats=sub['lats']; lons=sub['lons']
     lats_e=sub['lats_e']; lons_e=sub['lons_e']
@@ -497,6 +509,8 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
     h_hcho=sub['data'][1]
     f_E_isop=sub['data'][2]
     h_E_isop=sub['data'][3]
+    for ddata in [f_hcho,h_hcho,f_E_isop,h_E_isop]:
+        print('nanmean after subsetting',np.nanmean(ddata))
 
     S= (f_hcho - h_hcho) / (f_E_isop - h_E_isop) # s
 

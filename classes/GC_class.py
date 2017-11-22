@@ -16,7 +16,7 @@ History:
 
 import numpy as np
 from datetime import datetime, timedelta
-from scipy.constants import N_A as N_avegadro
+from scipy.constants import N_A as N_Avogadro
 from glob import glob
 #import matplotlib.pyplot as plt
 #from matplotlib.pyplot import cm
@@ -379,7 +379,7 @@ class GC_base:
         gpm=util.__grams_per_mole__['isop']
         SA=self.area * 1e-6  # m2 -> km2
         # kg/atom_isop = grams/mole * mole/molec * kg/gram
-        kg_per_atom = gpm * 1.0/N_avegadro * 1e-3
+        kg_per_atom = gpm * 1.0/N_Avogadro * 1e-3
         # cm2/km2 * km2 * kg/isop
         conversion= 1e10 * SA * kg_per_atom
 
@@ -536,7 +536,7 @@ class Hemco_diag(GC_base):
         LTO=self.local_time_offset
         for i,date in enumerate(dates):
             GMT=date.hour # current GMT
-            if date.day > prior_day.day:
+            if (date.day > prior_day.day) or (date.month > prior_day.month) or (date.year > prior_day.year):
                 di=di+1
                 prior_day=date
             # local time is gmt+offset
@@ -616,11 +616,17 @@ class GC_biogenic:
                 Slope = Yield_isop / k_hcho
                 HCHO: molec/cm2
                 E_isop: kgC/cm2/s
+                    Converted to atom C/cm2/s in script..
+                    
 
 
             Return {'lats','lons','r':regression, 'b':bg, 'slope':slope}
 
         '''
+        # 
+        if __VERBOSE__:
+            print('model_slope called for biogenic class')
+        
         # if this calc is already done, short cut it
         if hasattr(self, 'modelled_slope'):
             # unless we're looking at a new area
@@ -633,7 +639,7 @@ class GC_biogenic:
         megan=self.hemco
         # satellite output for hcho concentrations:
         sat_out=self.sat_out
-
+        
         # grab satellite overpass E_isop and trop column hcho
         days,isop = megan.daily_LT_averaged(hour=overpass_hour) # lat/lon kgC/cm2/s [days,lat,lon]
         hcho = sat_out.get_trop_columns(keys=['hcho'])['hcho']
@@ -641,14 +647,22 @@ class GC_biogenic:
         # what lats and lons do we want?
         lats,lons = sat_out.lats, sat_out.lons
         lati,loni = util.lat_lon_range(lats,lons,region=region)
-
+        assert all(sat_out.lats == megan.lats), "output lats don't match"
         # subset the data
         isop = isop[:, lati, :]
         isop = isop[:, :, loni]
         hcho = hcho[:, lati, :]
         hcho = hcho[:, :, loni]
         sublats, sublons = lats[lati], lons[loni]
-
+        
+        # molec/cm2/s from kgC/cm2/s:
+        # kgC / (gram/mole * mole/molec) * 1000
+        gram_per_molec = util.__grams_per_mole__['isop'] / N_Avogadro
+        isop=isop * 1e3 /gram_per_molec
+        isop=isop* 5.0 # molec isop -> atom C
+        
+        print("nanmeans in slope function::",np.nanmean(isop),np.nanmean(hcho))
+        
         # arrays to hold the month's slope, background, and regression coeff
         n_x = len(loni)
         n_y = len(lati)
@@ -664,6 +678,7 @@ class GC_biogenic:
                 Y=hcho[:, yi, xi]
 
                 # Skip ocean or no emissions squares:
+                # When using kgC/cm2/s, we are always close to zero (1e-11 order)
                 if np.isclose(np.mean(X), 0.0): continue
 
                 # get regression

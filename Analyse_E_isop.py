@@ -524,7 +524,7 @@ if __name__=='__main__':
 
     d0=datetime(2005,1,1); dn=datetime(2005,12,31)
     megan_SEA_regression()
-    #E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
+    E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
     #map_E_gc(month=d0,GC=GC_tavg(d0))
     #check_E_new(dn=datetime(2005,2,1))
 

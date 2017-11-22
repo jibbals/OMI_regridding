@@ -505,6 +505,11 @@ class Hemco_diag(GC_base):
                                                        n_lats=len(self.lats),
                                                        astimedeltas=False)
 
+        # for conversion from kgC/m2/s to atomC/cm2/s
+        # g/kg * m2/cm2 / (gram/mole * mole/molec)
+        gram_per_molec = util.__grams_per_mole__['carbon'] / N_Avogadro
+        self.kgC_per_m2_to_atomC_per_cm2 = 1e3 * 1e-4 / gram_per_molec
+
         if __VERBOSE__:
             for k in data:
                 print('  %10s %10s %s'%(k, data[k].shape, attrs[k]))
@@ -538,7 +543,7 @@ class Hemco_diag(GC_base):
             GMT=date.hour # current GMT
             if (date.day > prior_day.day) or (date.month > prior_day.month) or (date.year > prior_day.year):
                 prior_day=date
-                print('    next day:')
+                #print('    next day:')
                 if (not np.all(sanity[di]==1)) or (np.any(np.isnan(out[di]))):
                     print('ERROR: should get one hour from each day!')
                     print(date, hour, GMT)
@@ -549,8 +554,8 @@ class Hemco_diag(GC_base):
             # local time is gmt+offset (24 hour time)
             LT=(GMT+LTO + 24) % 24 # 91,144 (lats by lons)
 
-            print(date.strftime('%m%dT%H'),'   lon matches:',np.sum(LT[0,:]==hour))
-            print(LT[0,:])
+            #print(date.strftime('%m%dT%H'),'   lon matches:',np.sum(LT[0,:]==hour))
+
             out[di,LT==hour] = isop[i,LT==hour]
             sanity[di,LT==hour] = sanity[di,LT==hour]+1
 
@@ -608,7 +613,6 @@ class Hemco_diag(GC_base):
 class GC_biogenic:
     def __init__(self,month): #=datetime(2005,1,1)):
         '''  Read biogenic output and hemco for e_isop and o_hcho  '''
-
         # first get hemco output for this month
         self.hemco=Hemco_diag(month,month=True)
         # also get satellite output
@@ -622,9 +626,7 @@ class GC_biogenic:
                 Slope = Yield_isop / k_hcho
                 HCHO: molec/cm2
                 E_isop: kgC/cm2/s
-                    Converted to atom C/cm2/s in script..
-
-
+                    Converted to atom C/cm2/s in script.
 
             Return {'lats','lons','r':regression, 'b':bg, 'slope':slope}
 
@@ -661,11 +663,8 @@ class GC_biogenic:
         hcho = hcho[:, :, loni]
         sublats, sublons = lats[lati], lons[loni]
 
-        # molec/cm2/s from kgC/cm2/s:
-        # kgC / (gram/mole * mole/molec) * 1000
-        gram_per_molec = util.__grams_per_mole__['isop'] / N_Avogadro
-        isop=isop * 1e3 /gram_per_molec
-        isop=isop* 5.0 # molec isop -> atom C
+        # Convert to atomC/cm2/s
+        isop=isop * self.hemco.kgC_per_m2_to_atomC_per_cm2
 
         print("nanmeans in slope function::",np.nanmean(isop),np.nanmean(hcho))
 

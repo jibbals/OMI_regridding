@@ -21,9 +21,9 @@ import matplotlib.cm as cm
 
 # local imports:
 import utilities.plotting as pp
-from utilities.GC_fio import get_tropchem_data, get_UCX_data
+from utilities import GC_fio
 from utilities.JesseRegression import RMA
-from classes.GC_class import GC_output
+from classes import GC_class
 from classes.gchcho import gchcho
 
 ##################
@@ -33,6 +33,29 @@ from classes.gchcho import gchcho
 ################
 ###FUNCTIONS####
 ################
+
+def biogenic_vs_tavg():
+    '''
+
+    '''
+    d0=datetime(2005,1,1)
+    region=pp.__AUSREGION__
+
+    dstr=d0.strftime("%Y%m%d")
+    yyyymm=d0.strftime("%Y%m")
+
+    # GC hemco diagnostics for one day:
+    HD=GC_class.Hemco_diag(d0)
+    days,isop=HD.daily_LT_averaged()
+    isop=isop*HD.kgC_per_m2_to_atomC_per_cm2
+    m,cs,cb=pp.basicmap(isop,HD.lats,HD.lons,linear=True)
+    cs.set_clim(0,np.nanmax(isop)*0.9)
+
+    # GC tavg for same day:
+    GC_class.GC_tavg(d0)
+
+
+
 
 def check_smearing():
     '''
@@ -46,22 +69,22 @@ def check_tropchem_monthly():
     '''
     # Read month of daily averages
     trop_mavg_fromdays=get_tropchem_data(date=datetime(2005,1,1),runtype='tropchem',monthavg=True)
-    
+
     # read monthly average:
     trop_mavg=get_tropchem_data(date=datetime(2005,1,1),runtype='tropchem', fname='trac_avg_200501_month.nc')
-    
+
     print("Keys in daily output")
     print(trop_mavg_fromdays.keys())
     print("Keys in monthly output")
     print(trop_mavg.keys())
-    
+
     for key in ['E_isop_bio','hcho','isop','N_air']:
         print(key)
         print('from days, from monthly')
         mavg=trop_mavg[key] ;davg=trop_mavg_fromdays[key]
         print(davg.shape,mavg.shape)
         print(np.nanmean(davg),np.nanmean(mavg))
-    
+
     # Also compare against UCX month average?
 
 def compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
@@ -72,7 +95,7 @@ def compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
     '''
     ymstr=date.strftime("%Y%m")
     region=pp.__GLOBALREGION__
-    
+
     # Read the netcdf files (output specified for this test)
     # UCX FILE:
     #ucx=GC_output(date,UCX=True, fname='UCX_trac_avg_20050101.nc')
@@ -83,7 +106,7 @@ def compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
         trp_fname,ucx_fname=fnames#
         trp=GC_output(date,UCX=False, monthavg=True, fname=trp_fname)
         ucx=GC_output(date,UCX=True, fname=ucx_fname)
-    
+
     lats_all=ucx.lats
     lons_all=ucx.lons
 
@@ -101,7 +124,7 @@ def compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
             'O3'        :r'ppbv',
             'NO2'       :r'ppbv',}
     cbarfmt={}; cbarxtickrot={}
-    rlims={'hcho'       :(-20,20),   
+    rlims={'hcho'       :(-20,20),
            'E_isop_bio' :(-50,50),
            'OH'         :(-50,50),
            'isop'       :(-70,70),
@@ -122,7 +145,7 @@ def compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
     for key in keys:
         cbarfmt[key]=None; cbarxtickrot[key]=None
     cbarfmt['OH']="%.1e"; cbarxtickrot['OH']=30
-    
+
     ucx_data=ucx.get_field(keys=keys,region=region)
     trp_data=trp.get_field(keys=keys,region=region)
     lats=ucx_data['lats'];lons=ucx_data['lons']
@@ -321,17 +344,17 @@ if __name__=='__main__':
     pp.InitMatplotlib()
     #check_shapefactors()
     #check_tropchem_monthly()
-    
+    biogenic_vs_tavg()
     # Compare explicit dates:
-    for cdate in [ datetime(2004,7,1), ]:
-        yymm=cdate.strftime("%Y%m")
-        fnames= [ "trac_avg_%s.nc"%yymm, "trac_avg_UCX_%s.nc"%yymm] 
-        compare_tc_ucx(cdate,fnames=fnames)
-    
+    #    for cdate in [ datetime(2004,7,1), ]:
+    #        yymm=cdate.strftime("%Y%m")
+    #        fnames= [ "trac_avg_%s.nc"%yymm, "trac_avg_UCX_%s.nc"%yymm]
+    #        compare_tc_ucx(cdate,fnames=fnames)
+
     #compare_tc_ucx(datetime(2005,1,1),
     #               fnames=['trac_avg_200501_month.nc','trac_avg_UCX_200501.nc'],
     #               suffix='_rerun')
-    
+
     #compare_surface_tc_ucx()
     #compare_tc_ucx()
 

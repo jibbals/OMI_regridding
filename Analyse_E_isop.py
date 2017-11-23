@@ -134,6 +134,10 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
         xticks=mdates[0::2]
         mstd=monthly['std'];
 
+        print(region)
+        print(monthly)
+        print(GC_E_monthly)
+        
         # Plot monthly average and std:
         pp.plot_time_series(mdates,E_monthly, linewidth=2.0,
                             label=[None,'monthly avg.'][i==1],

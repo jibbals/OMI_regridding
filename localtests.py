@@ -56,10 +56,11 @@ dat['IJ-AVG-$_CH2O'].shape
 
 GC=GC_class.Hemco_diag(d0)
 days,isop=GC.daily_LT_averaged()
+
 isop=isop*GC.kgC_per_m2_to_atomC_per_cm2
 np.nanmean(isop)
-m,cs,cb=pp.basicmap(isop,GC.lats,GC.lons,linear=True)
-cs.set_clim(0,np.nanmax(isop)*0.9)
+#m,cs,cb=pp.basicmap(isop,GC.lats,GC.lons,linear=True)
+#cs.set_clim(0,np.nanmax(isop)*0.9)
 #GC=GC_class.GC_sat(d0,run='biogenic')
 #GC=GC_class.GC_biogenic(d0)
 #print(GC)

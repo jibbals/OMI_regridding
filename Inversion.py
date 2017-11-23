@@ -512,8 +512,9 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
     for ddata in [f_hcho,h_hcho,f_E_isop,h_E_isop]:
         print('nanmean after subsetting',np.nanmean(ddata))
 
-    S= (f_hcho - h_hcho) / (f_E_isop - h_E_isop) # s
-
+    # where emissions are zero, smearing is infinite, ignore warning:
+    with np.seterr(divide='ignore'):
+        S = (f_hcho - h_hcho) / (f_E_isop - h_E_isop) # s
 
     print("emissions from Full,Half:",np.sum(f_E_isop),np.sum(h_E_isop))
     print("O_hcho from Full, Half:",np.sum(f_hcho),np.sum(h_hcho))

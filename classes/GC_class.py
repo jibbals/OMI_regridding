@@ -520,7 +520,8 @@ class Hemco_diag(GC_base):
             input hour of 1pm gives data from 1pm-2pm
         '''
 
-        # need to subtract half an hour from each of our datetimes, putting 24 hour into each 'day'
+        # need to subtract an hour from each of our datetimes, putting 24 hour into each 'day'
+        # this makes 0500 represent 0500-0600 instead of 0400-0500 as it is in output files
         dates=np.array(self.dates) - timedelta(seconds=3600)
         # this undoes the problem of our 24th hour being stored in
         # the following day's 00th hour
@@ -543,7 +544,6 @@ class Hemco_diag(GC_base):
             GMT=date.hour # current GMT
             if (date.day > prior_day.day) or (date.month > prior_day.month) or (date.year > prior_day.year):
                 prior_day=date
-                #print('    next day:')
                 if (not np.all(sanity[di]==1)) or (np.any(np.isnan(out[di]))):
                     print('ERROR: should get one hour from each day!')
                     print(date, hour, GMT)
@@ -666,7 +666,7 @@ class GC_biogenic:
         # Convert to atomC/cm2/s
         isop=isop * self.hemco.kgC_per_m2_to_atomC_per_cm2
 
-        print("nanmeans in slope function::",np.nanmean(isop),np.nanmean(hcho))
+        print("nanmeans in slope function (isop, hcho in atomC/cm2[/s]):",np.nanmean(isop),np.nanmean(hcho))
 
         # arrays to hold the month's slope, background, and regression coeff
         n_x = len(loni)

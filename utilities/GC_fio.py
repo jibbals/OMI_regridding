@@ -149,7 +149,10 @@ def read_Hemco_diags(day,month=False):
     files.sort() # make sure they're sorted or the data gets read in poorly
 
     # and remove the zero hour of the first day (avg of prior hour)
-    del files[0]
+    # if it is a zero hour from prior day
+    if '0000.nc' in files[0]:
+        del files[0]
+    
 
     with xarray.open_mfdataset(files) as ds:
         data,attrs=dataset_to_dicts(ds,['ISOP_BIOG'])

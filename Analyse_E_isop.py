@@ -135,7 +135,7 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
         mstd=monthly['std'];
 
         print(region)
-        print(monthly)
+        print(E_monthly)
         print(GC_E_monthly)
         
         # Plot monthly average and std:

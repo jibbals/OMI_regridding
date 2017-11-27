@@ -22,7 +22,7 @@ from mpl_toolkits.basemap import maskoceans #
 ###############
 ### GLOBALS ###
 ###############
-__VERBOSE__=True
+__VERBOSE__=False
 __grams_per_mole__={'isop':60.06+8.08, # C5H8
                     'hcho':30.02598,
                     'carbon':12.01}
@@ -353,8 +353,8 @@ def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
     shp=np.array(data.shape)
     n_dims=len(shp)
 
-    if __VERBOSE__:
-        print("changing shape:",shp,'->',ntimes,nlats,nlons,nlevs)
+    #if __VERBOSE__:
+    #    print("changing shape:",shp,'->',ntimes,nlats,nlons,nlevs)
 
     if ntimes is None:
         ntimes = -1

@@ -85,11 +85,11 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
     if __VERBOSE__:
         # Check the dims of our stuff
         print()
-        print("Calculating emissions for %s"%dstr)
-        print("GC data %s"%str(GC.hcho.shape)) # [t,lat,lon,lev]
-        print("nanmean:",np.nanmean(GC.hcho))
+        print("Calculating emissions for %s"%dstr) 
+        print("GC data %s "%str(GC.hcho.shape)) # [t,lat,lon,lev]
+        print("nanmean:",np.nanmean(GC.hcho),GC.attrs['hcho']) # should be molecs/cm2
         print("OMI data %s"%str(OMI.VCC.shape)) # [t, lat, lon]
-        print("nanmean:",np.nanmean(OMI.VCC))
+        print("nanmean:",np.nanmean(OMI.VCC),'molecs/cm2')# should be molecs/cm2
 
     omilats0, omilons0 = OMI.lats, OMI.lons
     omi_lats, omi_lons= omilats0.copy(), omilons0.copy()
@@ -483,6 +483,8 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
         S = d column_HCHO / d E_isop
         For now uses tavg instead of overpass times
     '''
+    if __VERBOSE__: 
+        print('calculating smearing over ',region,' in month ',month)
 
     full=GC_class.GC_tavg(month, run='tropchem')
     half=GC_class.GC_tavg(month, run='halfisop') # month avg right now
@@ -500,8 +502,8 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
     h_E_isop=half_month['E_isop_bio'] # molec/cm2/s
 
     dlist=[f_hcho,h_hcho,f_E_isop,h_E_isop]
-    for ddata in dlist:
-        print('nanmean ',np.nanmean(ddata))
+    #for ddata in dlist:
+    #    print('nanmean ',np.nanmean(ddata))
     sub=util.lat_lon_subset(lats,lons,region,dlist)
     lats=sub['lats']; lons=sub['lons']
     lats_e=sub['lats_e']; lons_e=sub['lons_e']
@@ -509,15 +511,15 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
     h_hcho=sub['data'][1]
     f_E_isop=sub['data'][2]
     h_E_isop=sub['data'][3]
-    for ddata in [f_hcho,h_hcho,f_E_isop,h_E_isop]:
-        print('nanmean after subsetting',np.nanmean(ddata))
+    #for ddata in [f_hcho,h_hcho,f_E_isop,h_E_isop]:
+    #    print('nanmean after subsetting',np.nanmean(ddata))
 
     # where emissions are zero, smearing is infinite, ignore warning:
-    with np.seterr(divide='ignore'):
+    with np.errstate(divide='ignore'):
         S = (f_hcho - h_hcho) / (f_E_isop - h_E_isop) # s
 
-    print("emissions from Full,Half:",np.sum(f_E_isop),np.sum(h_E_isop))
-    print("O_hcho from Full, Half:",np.sum(f_hcho),np.sum(h_hcho))
+    #print("emissions from Full,Half:",np.sum(f_E_isop),np.sum(h_E_isop))
+    #print("O_hcho from Full, Half:",np.sum(f_hcho),np.sum(h_hcho))
     S[f_E_isop <= thresh] = np.NaN
 
     print("S shape:",S.shape)
@@ -529,7 +531,7 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
 
         #pp.createmap(f_hcho,lats,lons,latlon=True,edges=False,linear=True,pname=pname,title='f_hcho')
         # lie about edges...
-        pp.createmap(S,lats_e,lons_e, latlon=True, edges=True, region=pp.__AUSREGION__,
+        pp.createmap(S,lats,lons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
                      linear=True,vmin=1000,vmax=10000,
                      clabel='S', pname=pname, title='Smearing %s'%dstr)
 

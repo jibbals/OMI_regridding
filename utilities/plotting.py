@@ -92,7 +92,8 @@ def regularbounds(x,fix=False):
 
 def basicmap(data, lats, lons, latlon=True,
               aus=False, region=__GLOBALREGION__, linear=False,
-              pname=None,title=None,suptitle=None):
+              pname=None,title=None,suptitle=None,
+              vmin=None,vmax=None,colorbar=True):
     '''
         Pass in data[lat,lon], lats[lat], lons[lon]
     '''
@@ -112,11 +113,18 @@ def basicmap(data, lats, lons, latlon=True,
     # Make edges into 2D meshed grid
     mlons,mlats=np.meshgrid(lons,lats)
 
-    #force nan into any pixel with nan results, so color is not plotted there...
-    #mdata=np.ma.masked_invalid(data) # mask non-finite elements
-    #mdata=data # masking occasionally throws up all over your face
+    norm=None
+    if not linear:
+        if __VERBOSE__:print("createmap() is removing negatives")
+        norm=LogNorm()
+        data[data<=0.0]=np.NaN
 
-    cs=m.pcolormesh(mlons, mlats, data, latlon=latlon)
+    cs=m.pcolormesh(mlons, mlats, data, latlon=latlon, norm=norm)
+    if vmin is None:
+        vmin = np.nanmin(data) + np.abs(np.nanmin(data))*0.1
+    if vmax is None:
+        vmax = np.nanmax(data) - np.abs(np.nanmax(data))*0.1
+    cs.set_clim(vmin,vmax)
 
     # draw coastline and equator(no latlon labels)
     m.drawcoastlines()
@@ -127,8 +135,10 @@ def basicmap(data, lats, lons, latlon=True,
         plt.title(title)
     if suptitle is not None:
         plt.suptitle(suptitle)
-    cbargs={'size':'5%','pad':'1%','extend':'both'}
-    cb=m.colorbar(cs,"bottom", **cbargs)
+    cb=None
+    if colorbar:
+        cbargs={'size':'5%','pad':'1%','extend':'both'}
+        cb=m.colorbar(cs,"bottom", **cbargs)
 
     # if a plot name is given, save and close figure
     if pname is not None:
@@ -140,7 +150,7 @@ def basicmap(data, lats, lons, latlon=True,
     # if no colorbar is wanted then don't return one (can be set externally)
     return m, cs, cb
 
-def createmap(data, lats, lons, edges=False,
+def createmap(data, lats, lons, make_edges=False, GC_shift=False,
               vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
               clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
@@ -169,17 +179,26 @@ def createmap(data, lats, lons, edges=False,
     ## basemap pcolormesh uses data edges
     ##
     lats_e,lons_e=lats,lons
-    if not edges:
+    lats_m,lons_m=lats,lons
+    if make_edges:
         if __VERBOSE__: print("Making edges from lat/lon mids")
         nlat,nlon=len(lats), len(lons)
         lats_e=regularbounds(lats)
         lons_e=regularbounds(lons)
         assert nlat == len(lats_e)-1, "regularbounds failed: %d -> %d"%(nlat, len(lats_e))
         assert nlon == len(lons_e)-1, "regularbounds failed: %d -> %d"%(nlon, len(lons_e))
-
-    ## midpoints, derive simply from edges
-    lats=(lats_e[0:-1] + lats_e[1:])/2.0
-    lons=(lons_e[0:-1] + lons_e[1:])/2.0
+        ## midpoints, derive simply from edges
+        lons_m=(lats_e[0:-1] + lats_e[1:])/2.0
+        lats_m=(lons_e[0:-1] + lons_e[1:])/2.0
+    elif GC_shift: # GC output is generally shifted a box to the right(east)
+        latres=lats[6]-lats[5]
+        lonres=lons[6]-lons[5]
+        lats=lats-latres/2.0
+        lons=lons-lonres/2.0
+        lats[lats < -89.9] = -89.9
+        lats[lats > 89.9]  =  89.9
+        lats_e,lons_e=lats,lons
+        lats_m,lons_m=lats,lons
 
     ## interpolate for smoothed output if desired
     ##
@@ -189,8 +208,8 @@ def createmap(data, lats, lons, edges=False,
         # 'increase' resolution
         nlats = factor*data.shape[0]
         nlons = factor*data.shape[1]
-        lonsi = np.linspace(lons[0],lons[-1],nlons)
-        latsi = np.linspace(lats[0],lats[-1],nlats)
+        lonsi = np.linspace(lons_m[0],lons[-1],nlons)
+        latsi = np.linspace(lats_m[0],lats[-1],nlats)
 
         # also increase resolution of our edge lats/lons
         lats_e=regularbounds(latsi);
@@ -201,9 +220,11 @@ def createmap(data, lats, lons, edges=False,
 
     # Make edges into 2D meshed grid
     mlons_e,mlats_e=np.meshgrid(lons_e,lats_e)
+    #x_e,y_e=m(lons_e,lats_e)
 
-    errmsg="pcolormesh needs edges for lat/lon (array: %s, lats:%s)"%(str(np.shape(data)),str(np.shape(mlats_e)))
-    assert mlats_e.shape[0] == data.shape[0] + 1, errmsg
+    errmsg="pcolormesh likes edges for lat/lon (array: %s, lats:%s)"%(str(np.shape(data)),str(np.shape(mlats_e)))
+    if __VERBOSE__:
+        print(errmsg)
 
     if cmapname is None:
         cmapname = matplotlib.rcParams['image.cmap']

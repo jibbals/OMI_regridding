@@ -38,21 +38,46 @@ def biogenic_vs_tavg():
     '''
 
     '''
+    # plot stuff
     d0=datetime(2005,1,1)
-    region=pp.__AUSREGION__
-
+    args={'region':[-60,0,20,170],
+          'clabel':'atom C/cm2/s', 
+          'linear':False,
+          'make_edges':False,
+          'GC_shift':True,
+          'smoothed':False,
+          'vmin':1e5, 'vmax':1e13,
+          'cmapname':'rainbow',}
+    
     dstr=d0.strftime("%Y%m%d")
     yyyymm=d0.strftime("%Y%m")
 
+    # GC tavg for same day:
+    tavg=GC_class.GC_tavg(d0)
+    e_isop_bio=tavg.E_isop_bio[0] # average over time axis
+    lats=tavg.lats
+    lons=tavg.lons
+    plt.figure(figsize=(11,10))
+    plt.subplot(221)
+    m,cs,cb=pp.createmap(e_isop_bio,lats,lons, **args)
+    
+    plt.subplot(222)
     # GC hemco diagnostics for one day:
     HD=GC_class.Hemco_diag(d0)
-    days,isop=HD.daily_LT_averaged()
-    isop=isop*HD.kgC_per_m2_to_atomC_per_cm2
-    m,cs,cb=pp.basicmap(isop,HD.lats,HD.lons,linear=True)
-    cs.set_clim(0,np.nanmax(isop)*0.9)
-
-    # GC tavg for same day:
-    GC_class.GC_tavg(d0)
+    days,hdisop=HD.daily_LT_averaged()
+    hdisop=hdisop*HD.kgC_per_m2_to_atomC_per_cm2
+    m,cs,cb=pp.createmap(hdisop,lats,lons,**args)
+    
+    plt.subplot(212)
+    with np.errstate(divide='ignore',invalid='ignore'):
+        ratio=hdisop/e_isop_bio
+    args['linear']=True; args['clabel']='overpass/dayavg'
+    args['vmin']=0.0; args['vmax']=5
+    pp.createmap(ratio,lats,lons,**args)
+    
+    pname='Figs/Hemco_Vs_tavg.png'
+    plt.savefig(pname)
+    print('Saved figure ',pname)
 
 
 

@@ -361,7 +361,7 @@ class omhchorp:
         lats=self.lats[lati]
         lons=self.lons[loni]
 
-        return pp.createmap(data, lats, lons, edges=False, latlon=True,
+        return pp.createmap(data, lats, lons, make_edges=False, latlon=True,
               region=region, linear=True, **cmargs)
 
 

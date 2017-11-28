@@ -56,13 +56,13 @@ tavg_path = {'tropchem':rdir+'geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_t
              'UCX':rdir+'UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s'}
 
 # MAP GC TAVG output to nicer names:
-_iga='IJ-AVG-$_'
+_ija='IJ-AVG-$_'
 _bxh='BXHGHT-$_'
 _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     # IJ_AVGs: in ppbv, except isop (ppbC)
-    _iga+'NO':'NO', _iga+'O3':'O3', _iga+'MVK':'MVK', _iga+'MACR':'MACR',
-    _iga+'ISOPN':'isopn', _iga+'IEPOX':'iepox', _iga+'NO2':'NO2', _iga+'NO3':'NO3',
-    _iga+'NO2':'NO2', _iga+'ISOP':'isop', _iga+'CH2O':'hcho',
+    _ija+'NO':'NO', _ija+'O3':'O3', _ija+'MVK':'MVK', _ija+'MACR':'MACR',
+    _ija+'ISOPN':'isopn', _ija+'IEPOX':'iepox', _ija+'NO2':'NO2', _ija+'NO3':'NO3',
+    _ija+'NO2':'NO2', _ija+'ISOP':'isop', _ija+'CH2O':'hcho',
     # Biogenic sources:
     'BIOGSRCE_ISOP':'E_isop_bio', # atoms C/cm2/s
     'ISOP_BIOG':'E_isop_bio', # kgC/cm2/s (from Hemco_diagnostic output)
@@ -149,6 +149,7 @@ class GC_base:
             n_dims=len(np.shape(self.hcho))
             print("n_dims = %d, hcho=%.2e"%(n_dims,np.mean(self.hcho)))
             self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
+            self.attrs['O_hcho']={'units':'molec/cm2','desc':'Total column HCHO'}
 
         # Convert from numpy.datetime64 to datetime
         if not hasattr(self,'time'):
@@ -364,6 +365,17 @@ class GC_base:
                              # regression, background, and slope
                              'r':reg, 'b':bg, 'slope':slope}
         return self.modelled_slope
+
+    def plot_hcho_columns(self, region=pp.__AUSREGION__):
+        ''' plot map of hcho columns over a region '''
+        data=self.O_hcho
+
+        data=self.time_averaged(day0,dayn,keys=[key,],)[key]
+        lati,loni=util.lat_lon_range(self.lats,self.lons,region=region)
+        data=data[lati,:]
+        data=data[:,loni]
+        lats=self.lats[lati]
+        lons=self.lons[loni]
 
     def _get_region(self,aus=False, region=None):
         ''' region for plotting '''
@@ -721,27 +733,27 @@ def check_units(d=datetime(2005,1,1)):
     for gc in [GC_tavg(d), GC_sat(d)]:
         print('---')
         print('')
-    
+
         #data in form [time,lat,lon,lev]
         gcm=gc.month_average(keys=['hcho','N_air'])
         hcho=gcm['hcho']
         nair=gcm['N_air']
-    
+
         # Mean surface HCHO in ppbv
         hcho=np.mean(hcho[:,:,0])
         print("Surface HCHO in ppbv: %6.2f"%hcho)
-    
+
         # N_air is molec/m3 in User manual, and ncfile: check it's sensible:
         nair=np.mean(nair[:,:,0])
         airmass=nair/N_ave * airkg  # kg/m3 at surface
         print("Mean surface N_air=%e molec/m3"%nair)
         print(" = %.3e mole/m3, = %4.2f kg/m3"%(nair/N_ave, airmass ))
         assert (airmass > 0.9) and (airmass < 1.5), "surface airmass should be around 1.25kg/m3"
-    
+
         # Boxheight is in metres in User manual and ncfile: check surface height
         print("Mean surface boxH=%.2fm"%np.mean(gc.boxH[:,:,:,0]))
         assert (np.mean(gc.boxH[:,:,:,0]) > 10) and (np.mean(gc.boxH[:,:,:,0]) < 500), "surface level should be around 100m"
-    
+
         # Isop is ppbC in manual , with 5 mole C / mole tracer (?), and 12 g/mole
         trop_cols=gc.get_trop_columns(keys=['hcho','isop'])
         trop_isop=trop_cols['isop']
@@ -750,9 +762,9 @@ def check_units(d=datetime(2005,1,1)):
         trop_hcho=trop_cols['hcho']
         print("Tropospheric HCHO %s mean = %.2e molec/cm2"%(str(trop_hcho.shape),np.nanmean(trop_hcho)))
         print("What's expected for this ~1e15?")
-    
+
         # E_isop_bio is atom_C/cm2/s, around 5e12?
-        
+
 
 def check_diag(d=datetime(2005,1,1)):
     '''

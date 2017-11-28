@@ -49,11 +49,16 @@ diagfile='Data/GC_Output/geos5_2x25_tropchem/satellite_output/diaginfo.dat'
 Hemco_diag="Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog.200501010100.nc"
 biosat_files="Data/GC_Output/geos5_2x25_tropchem_biogenic/satellite_output/sat_biogenic.%s*.bpch"%yyyymm
 
-dat,attr=GC_fio.read_bpch(path=biosat_files,keys=GC_fio.__sat_mainkeys__,multi=True)
-dat['IJ-AVG-$_CH2O'].shape
+#dat,attr=GC_fio.read_bpch(path=biosat_files,keys=GC_fio.__sat_mainkeys__,multi=True)
+#dat['IJ-AVG-$_CH2O'].shape
 
 #Inversion.store_emissions_month(d1)
 
+# test GC_tavg plotting
+GC=GC_class.GC_sat(d0,)
+pp.createmap(GC.O_hcho[0],GC.lats,GC.lons,aus=True,GC_shift=True)
+
+# test stupid LT avg function
 GC=GC_class.Hemco_diag(d0)
 days,isop=GC.daily_LT_averaged()
 

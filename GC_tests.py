@@ -37,6 +37,22 @@ from classes.gchcho import gchcho
 ###FUNCTIONS####
 ################
 
+def GC_vs_OMI(month=datetime(2005,1,1)):
+    '''
+    Plot comparison of month of GC output vs month of omhcho
+    '''
+    # READ GC
+    GC=GC_class.GC_sat(month)
+    # READ OMI
+
+
+    plt.figure(figsize=(12,12))
+    plt.subplot(221)
+    pp.createmap(GC.O_hcho[0],GC.lats,GC.lons,aus=True,GC_shift=True,title='GC')
+
+    plt.subplot(222)
+
+
 def compare_to_campaigns(d0=datetime(2005,1,31), de=datetime(2005,6,1), dfmt='%b %d'):
     ''' compare to SPS, MUMBA, more for GC season vs time shifted campaigns '''
 

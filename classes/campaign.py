@@ -43,6 +43,8 @@ class campaign:
         self.lon=0.0
         self.hcho=np.NaN # numpy array of measured hcho []
         self.isop=np.NaN # '' isoprene []
+        #self.attrs={'hcho':{'units':'ppb','DL':np.NaN},
+        #            'isop':{'units':'ppb','DL':np.NaN},}
         self.hcho_units='ppb'
         self.isop_units='ppb'
         self.hcho_detection_limit=np.NaN
@@ -55,18 +57,21 @@ class campaign:
             # units are unlisted in the doi
         '''
 
-        # TODO: remove ../ when not testing any more
-        self.fpath='../Data/campaigns/SPS%d/SPS%d_PTRMS.csv'%(number,number)
+        # data
+        self.fpath='Data/campaigns/SPS%d/SPS%d_PTRMS.csv'%(number,number)
         data=fio.read_csv(self.fpath)
         # PTRMS names the columns with m/z ratio, we use
         #   HCHO = 31, ISOP = 69
         h_key='m/z 31'
         i_key='m/z 69'
 
+        self.lat,self.lon=-33.8688, 151.2093 # sydney lat/lon
+
         # First row is detection limits
         self.hcho_detection_limit=float(data[h_key][0])
         self.isop_detection_limit=float(data[i_key][0])
-        
+
+
         # second row is empty in sps1
         # last row is empty
         start=[1,2][number==1]
@@ -103,7 +108,7 @@ class campaign:
             #plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', **pltargs)
             pp.plot_time_series(dates, data, dfmt='%d %b', label=key,color=c)
             plt.plot([dates[0],dates[-1]], [dlim,dlim], color=c, linestyle='--')
-            
+
         plt.ylabel('[%s]'%self.hcho_units)
         plt.title(title)
         plt.legend()

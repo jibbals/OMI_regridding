@@ -8,6 +8,7 @@ Run from main project directory or else imports will not work
 ## Modules
 import matplotlib
 matplotlib.use('Agg') # don't actually display any plots, just create them
+from matplotlib import gridspec
 
 # module for hdf eos 5
 #import h5py
@@ -23,7 +24,9 @@ import matplotlib.cm as cm
 import utilities.plotting as pp
 from utilities import GC_fio
 from utilities.JesseRegression import RMA
+from utilities import utilities as util
 from classes import GC_class
+from classes.campaign import campaign
 from classes.gchcho import gchcho
 
 ##################
@@ -34,21 +37,101 @@ from classes.gchcho import gchcho
 ###FUNCTIONS####
 ################
 
-def biogenic_vs_tavg():
-    '''
+def compare_to_campaigns(d0=datetime(2005,1,31), de=datetime(2005,6,1), dfmt='%b %d'):
+    ''' compare to SPS, MUMBA, more for GC season vs time shifted campaigns '''
 
-    '''
+    # Read campaigns:
+    SPS1=campaign()
+    SPS2=campaign()
+    SPS1.read_SPS(1)
+    SPS2.read_SPS(2)
+
+    # Read GEOS-Chem:
+    GC_paths=GC_fio.paths[0]+'/trac_avg*2005*0000'
+    GCd,GCa=GC_fio.read_bpch(GC_paths,['IJ-AVG-$_ISOP','IJ-AVG-$_CH2O'],multi=True)
+
+    # GC dates in datetime format
+    GCdates=util.datetimes_from_np_datetime64(GCd['time'])
+    # colocated with sydney gridbox
+    lati,loni=util.lat_lon_index(SPS1.lat,SPS1.lon,GCd['lat'],GCd['lon'])
+    GChcho=GCd['IJ-AVG-$_CH2O'][:,loni,lati,0]
+    GCisop=GCd['IJ-AVG-$_ISOP'][:,loni,lati,0]/5.0 # ppbC to ppb
+
+    # plot setup
+    f=plt.figure(figsize=(12,10))
+    gs = gridspec.GridSpec(2, 2, height_ratios=[2, 3])
+    ax1,ax2=plt.subplot(gs[0,0]),plt.subplot(gs[0,1])
+    ax3,ax4=plt.subplot(gs[1,0],sharey=ax2),plt.subplot(gs[1,1],sharey=ax2)
+
+    # GC data:
+    # first plot is HCHO
+    plt.sca(ax1)
+    pp.plot_time_series(GCdates,GChcho,ylabel='HCHO [ppb]', legend=False, title='HCHO', xtickrot=30, dfmt=dfmt,
+                     label='GEOS-Chem',color='red')
+
+    # second plot is ISOP
+    for ax in [ax2,ax3,ax4]:
+        plt.sca(ax)
+        pp.plot_time_series(GCdates,GCisop,ylabel='ISOP [ppb]', legend=False, title='Isop', xtickrot=30, dfmt=dfmt,
+                         label='GEOS-Chem',color='red',linewidth=3)
+
+    # loop over plotting hcho and isop
+    labels=['SPS1','SPS2']
+    markers=['x','+']
+    for i,c in enumerate([SPS1,SPS2]):
+        # shift dates to 2005
+        dates= [d.replace(year=2005) for d in c.dates]
+
+        #plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', **pltargs)
+        # campaign hcho
+        plt.sca(ax1)
+        pp.plot_time_series(dates,c.hcho,ylabel='HCHO [ppb]', legend=False, title='HCHO', xtickrot=30, dfmt=dfmt,
+                     label=labels[i],color='k',marker=markers[i])
+
+        # campaign isop
+        plt.sca(ax2)
+        pp.plot_time_series(dates,c.isop,ylabel='Isop [ppb]', legend=False, title='Isoprene', xtickrot=30, dfmt=dfmt,
+                     label=labels[i], color='k', marker=markers[i])
+
+        # isoprene closeup
+        plt.sca([ax3,ax4][i==1])
+        pp.plot_time_series(dates,c.isop,ylabel='Isop [ppb]', legend=False, title='Isoprene '+labels[i], xtickrot=30, dfmt=dfmt,
+                     color='k', marker=markers[i], linewidth=2)
+        plt.gca().set_xlim([dates[0],dates[-1]])
+
+    # Legend and prettiness
+    plt.sca(ax1)
+    plt.legend(loc='best',fontsize=12)
+    #plt.suptitle("GEOS-Chem vs campaigns, 2005",fontsize=30)
+    f.subplots_adjust(hspace=.35)
+
+    # subset to desired dates:
+    for ax in [ax1,ax2]:
+        ax.set_xlim([d0,de])
+
+    # Halve how many ticks are shown
+    for ax in [ax1,ax2,ax3,ax4]:
+        ax.set_xticks(ax.get_xticks()[::2])
+
+    # save the figure:
+    pname='Figs/GC_vs_Campaigns_%s-%s.png'%(d0.strftime("%Y%m%d"),de.strftime("%Y%m%d"))
+    plt.savefig(pname)
+    plt.close()
+    print('SAVED: ',pname)
+
+def biogenic_vs_tavg():
+    '''    '''
     # plot stuff
     d0=datetime(2005,1,1)
     args={'region':[-60,0,20,170],
-          'clabel':'atom C/cm2/s', 
+          'clabel':'atom C/cm2/s',
           'linear':False,
           'make_edges':False,
           'GC_shift':True,
           'smoothed':False,
           'vmin':1e5, 'vmax':1e13,
           'cmapname':'rainbow',}
-    
+
     dstr=d0.strftime("%Y%m%d")
     yyyymm=d0.strftime("%Y%m")
 
@@ -60,21 +143,21 @@ def biogenic_vs_tavg():
     plt.figure(figsize=(11,10))
     plt.subplot(221)
     m,cs,cb=pp.createmap(e_isop_bio,lats,lons, **args)
-    
+
     plt.subplot(222)
     # GC hemco diagnostics for one day:
     HD=GC_class.Hemco_diag(d0)
     days,hdisop=HD.daily_LT_averaged()
     hdisop=hdisop*HD.kgC_per_m2_to_atomC_per_cm2
     m,cs,cb=pp.createmap(hdisop,lats,lons,**args)
-    
+
     plt.subplot(212)
     with np.errstate(divide='ignore',invalid='ignore'):
         ratio=hdisop/e_isop_bio
     args['linear']=True; args['clabel']='overpass/dayavg'
     args['vmin']=0.0; args['vmax']=5
     pp.createmap(ratio,lats,lons,**args)
-    
+
     pname='Figs/Hemco_Vs_tavg.png'
     plt.savefig(pname)
     print('Saved figure ',pname)
@@ -367,9 +450,10 @@ def check_shapefactors(date=datetime(2005,1,1)):
 # If this script is run directly:
 if __name__=='__main__':
     pp.InitMatplotlib()
+    compare_to_campaigns()
     #check_shapefactors()
     #check_tropchem_monthly()
-    biogenic_vs_tavg()
+    #biogenic_vs_tavg()
     # Compare explicit dates:
     #    for cdate in [ datetime(2004,7,1), ]:
     #        yymm=cdate.strftime("%Y%m")

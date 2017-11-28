@@ -87,19 +87,24 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
         print()
         print("Calculating emissions for %s"%dstr) 
         print("GC data %s "%str(GC.hcho.shape)) # [t,lat,lon,lev]
-        print("nanmean:",np.nanmean(GC.hcho),GC.attrs['hcho']) # should be molecs/cm2
+        print("nanmean:",np.nanmean(GC.hcho),GC.attrs['hcho']['unit']) # should be molecs/cm2
         print("OMI data %s"%str(OMI.VCC.shape)) # [t, lat, lon]
         print("nanmean:",np.nanmean(OMI.VCC),'molecs/cm2')# should be molecs/cm2
 
     omilats0, omilons0 = OMI.lats, OMI.lons
     omi_lats, omi_lons= omilats0.copy(), omilons0.copy()
     omi_SA=OMI.surface_areas # in km^2
-
+    
+    if __DEBUG__:
+        GC_E_isop=GC_biog.hemco.E_isop_bio
+        print("GC_E_isop%s before LT averaging:"%str(np.shape(GC_E_isop)),np.nanmean(GC_E_isop))
     # Get GC_isoprene for this day also
     GC_days, GC_E_isop = GC_biog.hemco.daily_LT_averaged(hour=13)
 
     #GC_E_isop=GC.get_field(keys=['E_isop_bio',],region=region)['E_isop_bio']
     if __DEBUG__:
+        print("GC_E_isop%s after LT averaging:"%str(np.shape(GC_E_isop)),np.nanmean(GC_E_isop))
+        
         print("GC_E_isop.shape before and after dateindex")
         print(GC_E_isop.shape)
     GC_E_isop=GC_E_isop[util.date_index(day,GC_days)] # only want one day of E_isop_GC
@@ -464,11 +469,11 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
         
         # Grab reprocessed data for the month:
         OMI=omhchorp(day0=month,dayn=util.last_day(month), ignorePP=ignorePP)
-        print('mean HCHO column from omhchorp',np.nanmean(OMI.VCC))
+        print('mean HCHO column [molec/cm2] from omhchorp',np.nanmean(OMI.VCC))
         
         # Read GC month:
         GC=GC_class.GC_biogenic(month)
-        print('mean surface hcho from GC_biogenic run:',np.nanmean(GC.sat_out.hcho[:,:,:,0]))
+        print('mean surface hcho [ppb] from GC_biogenic run:',np.nanmean(GC.sat_out.hcho[:,:,:,0]))
         
         # save the month of emissions
         store_emissions_month(month=month, GC=GC, OMI=OMI,

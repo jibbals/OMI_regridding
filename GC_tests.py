@@ -26,6 +26,7 @@ from utilities import GC_fio
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
 from classes import GC_class
+from classes.omhchorp import omhchorp
 from classes.campaign import campaign
 from classes.gchcho import gchcho
 
@@ -44,7 +45,7 @@ def GC_vs_OMI(month=datetime(2005,1,1)):
     # READ GC
     GC=GC_class.GC_sat(month)
     # READ OMI
-
+    OMI=omhchorp(month,dayn=util.last_day(month),keylist=['VCC'])
 
     plt.figure(figsize=(12,12))
     plt.subplot(221)
@@ -466,7 +467,8 @@ def check_shapefactors(date=datetime(2005,1,1)):
 # If this script is run directly:
 if __name__=='__main__':
     pp.InitMatplotlib()
-    compare_to_campaigns()
+    GC_vs_OMI()
+    #compare_to_campaigns()
     #check_shapefactors()
     #check_tropchem_monthly()
     #biogenic_vs_tavg()

@@ -65,6 +65,13 @@ class omhchorp:
         # Read the days we want to analyse:
         daylist = util.list_days(day0, dayn) # includes last day.
         struct = []
+
+        # make sure coords are in the keylist.
+        coords=['latitude','longitude',]
+        for coord in coords:
+            if not coord in keylist:
+                keylist.append(coord)
+
         for day in daylist:
             struct.append(fio.read_omhchorp(date=day, oneday=True,
                                             latres=latres, lonres=lonres,
@@ -82,7 +89,7 @@ class omhchorp:
         self.n_times=nt
 
         # Set all the data arrays in the same way, [[time],lat,lon]
-        for k in fio.__OMHCHORP_KEYS__:
+        for k in keylist:
             if nt ==1: # one day only, no time dimension
                 setattr(self, k, np.squeeze(np.array(struct[0][k])))
             else:
@@ -91,8 +98,10 @@ class omhchorp:
                 print("Read from omhchorp: ",k, getattr(self,k).shape)
 
         # Reference Sector Correction latitudes don't change with time
-        self.lats_RSC=struct[0]['RSC_latitude'] # rsc latitude bins
-        self.RSC_region=struct[0]['RSC_region']
+        if 'RSC_latitude' in keylist:
+            self.lats_RSC=struct[0]['RSC_latitude'] # rsc latitude bins
+        if 'RSC_region' in keylist:
+            self.RSC_region=struct[0]['RSC_region']
 
         # remove small and negative AMFs
         if not ignorePP:
@@ -106,7 +115,8 @@ class omhchorp:
         mlons,mlats=np.meshgrid(self.lons,self.lats)
 
         self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=0).mask
-        self.background=self.get_background_array()
+        if 'VCC' in keylist:
+            self.background=self.get_background_array()
         #self.apply_fire_mask()
 
     def apply_fire_mask(self, use_8day_mask=True):

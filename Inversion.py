@@ -97,13 +97,15 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
     
     if __DEBUG__:
         GC_E_isop=GC_biog.hemco.E_isop_bio
-        print("GC_E_isop%s before LT averaging:"%str(np.shape(GC_E_isop)),np.nanmean(GC_E_isop))
+        print("GC_E_isop%s [%s] before LT averaging:"%(str(np.shape(GC_E_isop)),GC_biog.hemco.attrs['E_isop_bio']['units']),np.nanmean(GC_E_isop))
+        print("    non zero only:",np.nanmean(GC_E_isop[GC_E_isop > 0]))
     # Get GC_isoprene for this day also
     GC_days, GC_E_isop = GC_biog.hemco.daily_LT_averaged(hour=13)
 
     #GC_E_isop=GC.get_field(keys=['E_isop_bio',],region=region)['E_isop_bio']
     if __DEBUG__:
         print("GC_E_isop%s after LT averaging:"%str(np.shape(GC_E_isop)),np.nanmean(GC_E_isop))
+        print("    non zero only:",np.nanmean(GC_E_isop[GC_E_isop > 0]))
         
         print("GC_E_isop.shape before and after dateindex")
         print(GC_E_isop.shape)

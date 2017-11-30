@@ -38,21 +38,38 @@ from classes.gchcho import gchcho
 ###FUNCTIONS####
 ################
 
-def GC_vs_OMI(month=datetime(2005,1,1)):
+def GC_vs_OMI(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     '''
     Plot comparison of month of GC output vs month of omhcho
     '''
+    # READ OMI
+    dayn=util.last_day(month)
+    OMI=omhchorp(month,dayn=dayn)
     # READ GC
     GC=GC_class.GC_sat(month)
-    # READ OMI
-    OMI=omhchorp(month,dayn=util.last_day(month),keylist=['VCC'])
-
+    
+    # Check data
+    print ('OMI (VCC) molec/cm2',OMI.VCC.shape)
+    OMIhcho=OMI.time_averaged(month,dayn,keys=['VCC'])['VCC']# molec/cm2
+    print('month average globally:',np.nanmean(OMIhcho))
+    
+    print("GC (O_hcho)",GC.attrs['O_hcho']['units'], GC.O_hcho.shape)
+    GChcho=np.nanmean(GC.O_hcho,axis=0) # time averaged for the month
+    print("month average globally:",np.nanmean(GChcho))
+    
     plt.figure(figsize=(12,12))
     plt.subplot(221)
-    pp.createmap(GC.O_hcho[0],GC.lats,GC.lons,aus=True,GC_shift=True,title='GC')
+    pp.createmap(GC.O_hcho[0],GC.lats,GC.lons,aus=True,GC_shift=True,
+                 title='GC O_hcho', clabel=GC.attrs['O_hcho']['units'])
 
     plt.subplot(222)
-
+    OMI.plot_map(key='VCC',day0=month,dayn=dayn,region=region,
+                 title='VCC',clabel='molec/cm2')
+    
+    pname='test.png'
+    plt.savefig(pname)
+    print("SAVED ",pname)
+    
 
 def compare_to_campaigns(d0=datetime(2005,1,31), de=datetime(2005,6,1), dfmt='%b %d'):
     ''' compare to SPS, MUMBA, more for GC season vs time shifted campaigns '''

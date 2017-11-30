@@ -147,8 +147,9 @@ class GC_base:
         # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
         if hasattr(self,'hcho'):
             n_dims=len(np.shape(self.hcho))
-            print("n_dims = %d, hcho=%.2e"%(n_dims,np.mean(self.hcho)))
+            print("CHECK:hcho dims = %s, hcho=%.2e"%(str(np.shape(self.hcho)),np.mean(self.hcho)))
             self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
+            print("CHECK:O_hcho dims = %s, O_hcho=%.2e"%(str(self.O_hcho.shape),np.mean(self.O_hcho)))
             self.attrs['O_hcho']={'units':'molec/cm2','desc':'Total column HCHO'}
 
         # Convert from numpy.datetime64 to datetime

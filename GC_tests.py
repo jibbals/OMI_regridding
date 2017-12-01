@@ -47,29 +47,47 @@ def GC_vs_OMI(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     OMI=omhchorp(month,dayn=dayn)
     # READ GC
     GC=GC_class.GC_sat(month)
-    
+
     # Check data
     print ('OMI (VCC) molec/cm2',OMI.VCC.shape)
     OMIhcho=OMI.time_averaged(month,dayn,keys=['VCC'])['VCC']# molec/cm2
     print('month average globally:',np.nanmean(OMIhcho))
-    
+
     print("GC (O_hcho)",GC.attrs['O_hcho']['units'], GC.O_hcho.shape)
     GChcho=np.nanmean(GC.O_hcho,axis=0) # time averaged for the month
     print("month average globally:",np.nanmean(GChcho))
-    
+
     plt.figure(figsize=(12,12))
     plt.subplot(221)
-    pp.createmap(GC.O_hcho[0],GC.lats,GC.lons,aus=True,GC_shift=True,
+    pp.createmap(GChcho,GC.lats,GC.lons,aus=True,GC_shift=True, linear=True,
                  title='GC O_hcho', clabel=GC.attrs['O_hcho']['units'])
 
     plt.subplot(222)
-    OMI.plot_map(key='VCC',day0=month,dayn=dayn,region=region,
+    pp.createmap(OMIhcho,OMI.lats,OMI.lons,aus=True, linear=True,
                  title='VCC',clabel='molec/cm2')
-    
+
+    OMI_lr = OMI.lower_resolution(key='VCC',dates=[month,dayn])
+    OMIhcho= OMI_lr['VCC']
+    lats,lons=OMI_lr['lats'],OMI_lr['lons']
+    assert lats==GC.lats, 'lats mismatch..'
+    assert lons==GC.lons, 'lons mismatch..'
+
+    diff=OMIhcho-GChcho
+    rdiff=(OMIhcho-GChcho)/GChcho
+
+    plt.subplot(223)
+    pp.createmap(diff,lats,lons, aus=True, GC_shift=True, linear=True,
+                 title='OMI - GC')
+
+    plt.subplot(224)
+    pp.createmap(rdiff,lats,lons, aus=True, GC_shift=True,
+                 vmin=-2.0, vmax=2.0, linear=True,
+                 title='(OMI - GC)/GC')
+
     pname='test.png'
     plt.savefig(pname)
     print("SAVED ",pname)
-    
+
 
 def compare_to_campaigns(d0=datetime(2005,1,31), de=datetime(2005,6,1), dfmt='%b %d'):
     ''' compare to SPS, MUMBA, more for GC season vs time shifted campaigns '''

@@ -124,12 +124,27 @@ class GC_base:
             if len(arr.shape) > 1:
                 arr = util.reshape_time_lat_lon_lev(arr,self.ntimes,self.nlats,self.nlons,self.nlevs)
 
+            # Fix air density units to molec/m3, in case they are in molec/cm3
+            if key == 'TIME-SER_AIRDEN':
+                surf_air=np.nanmean(arr[:,:,:,0])
+                if __VERBOSE__:
+                    print(key,np.shape(arr),'surface N_air:',surf_air)
+                if key in attrs:
+                    print("attrs:",attrs[key])
+                    if 'unit' in attrs[key]:
+                        # we want molec/m3
+                        attrs[key]['orig_unit']=attrs[key]['unit']
+                else:
+                    if __VERBOSE__:
+                        print(key,' has no attributes!!, assuming molec/cm3 or molec/m3')
+                    attrs[key]={'units':'molec/m3'}
+
+                if surf_air < 1e23: # probably molec/cm3
+                    arr=arr*1e6
+
+                attrs[key]['units']='molec/m3'
+
             if key in _GC_names_to_nice.keys():
-                if key == 'TIME-SER_AIRDEN':
-                    #assert attrs[key]['units']=='molec/cm3', 'time-ser_airden not in molec/cm3???'
-                    # update satellite air-density to match tavg units...
-                    arr=arr*1e-6
-                    attrs[key]['units']='molec/m3'
                 setattr(self, _GC_names_to_nice[key], arr)
                 self.attrs[_GC_names_to_nice[key]] = attrs[key]
             else:
@@ -175,17 +190,19 @@ class GC_base:
         '''  return lati, loni '''
         return util.lat_lon_index(lat,lon,self.lats,self.lons)
 
-    def ppbv_to_molec_cm2(self,keys=['hcho'],metres=False):
+    def ppbv_to_molec_cm2(self,keys=['hcho']):
         ''' return dictionary with data in format molecules/cm2 [or /m2]'''
         out={}
+        N_air=self.N_air
+
         for k in keys:
             ppbv=getattr(self,k)
             if k=='isop':
                 ppbv=ppbv/5.0 # ppb carbon to ppb isoprene
 
-            # ppbv * 1e-9 * molec_air/m3 * m * [m2/cm2]
-            scale=[1e-4, 1.0][metres]
-            out[k] = ppbv * 1e-9 * self.N_air * self.boxH * scale # molec/area
+            # ppbv * 1e-9 * molec_air/m3 * boxH(m) * m2/cm2
+            scale=0.0
+            out[k] = ppbv * 1e-9 * N_air * self.boxH * 1e-4 # molec/cm2
         return out
 
     def get_trop_columns(self, keys=['hcho'], metres=False):

@@ -21,6 +21,7 @@ import Inversion
 
 from classes.E_new import E_new # E_new class
 from classes import GC_class
+from classes.omhchorp import omhchorp
 from classes.gchcho import gchcho
 import xbpch
 import xarray
@@ -56,14 +57,69 @@ biosat_files="Data/GC_Output/geos5_2x25_tropchem_biogenic/satellite_output/sat_b
 
 # test GC_tavg plotting
 GC=GC_class.GC_sat(d0,)
-pp.createmap(GC.O_hcho[0],GC.lats,GC.lons,aus=True,GC_shift=True)
+
+#plt.subplot(121)
+#pp.createmap(GC.O_hcho[0],GC.lats,GC.lons,aus=True,GC_shift=True,
+#             title='O_hcho',clabel=GC.attrs['O_hcho']['units'])
+#plt.subplot(122)
+#pp.createmap(GC.N_air[0,:,:,0],GC.lats,GC.lons,aus=True,GC_shift=True,
+#             clabel=GC.attrs['N_air']['units'], title='N_air',
+#             linear=True)
+
+# READ OMI
+month=d0
+dayn=util.last_day(month)
+OMI=omhchorp(month,dayn=dayn)
+
+# Check data
+print ('OMI (VCC) molec/cm2',OMI.VCC.shape)
+OMIhcho=OMI.time_averaged(month,dayn,keys=['VCC'])['VCC']# molec/cm2
+print('month average globally:',np.nanmean(OMIhcho))
+
+print("GC (O_hcho)",GC.attrs['O_hcho']['units'], GC.O_hcho.shape)
+GChcho=np.nanmean(GC.O_hcho,axis=0) # time averaged for the month
+print("month average globally:",np.nanmean(GChcho))
+
+plt.figure(figsize=(12,12))
+plt.subplot(221)
+pp.createmap(GChcho,GC.lats,GC.lons,aus=True,GC_shift=True, linear=True,
+             title='GC O_hcho', clabel=GC.attrs['O_hcho']['units'])
+
+plt.subplot(222)
+pp.createmap(OMIhcho,OMI.lats,OMI.lons,aus=True, linear=True,
+             title='VCC',clabel='molec/cm2')
+
+# regrid GChcho onto higher resolution
+lats,lons=OMI.lats,OMI.lons
+GChcho=util.regrid(GChcho,GC.lats,GC.lons,lats,lons)
+
+diff=OMIhcho-GChcho
+rdiff=(OMIhcho-GChcho)/GChcho
+
+plt.subplot(223)
+pp.createmap(diff,lats,lons, aus=True, GC_shift=True, linear=True,
+             title='OMI - GC')
+
+plt.subplot(224)
+pp.createmap(rdiff,lats,lons, aus=True, GC_shift=True,
+             vmin=-2.0, vmax=2.0, linear=True,
+             title='(OMI - GC)/GC')
+
+pname='test.png'
+plt.savefig(pname)
+print("SAVED ",pname)
+
+plt.subplot(223)
+
+
+
 
 # test stupid LT avg function
-GC=GC_class.Hemco_diag(d0)
-days,isop=GC.daily_LT_averaged()
-
-isop=isop*GC.kgC_per_m2_to_atomC_per_cm2
-np.nanmean(isop)
+#GC=GC_class.Hemco_diag(d0)
+#days,isop=GC.daily_LT_averaged()
+#
+#isop=isop*GC.kgC_per_m2_to_atomC_per_cm2
+#np.nanmean(isop)
 #m,cs,cb=pp.basicmap(isop,GC.lats,GC.lons,linear=True)
 #cs.set_clim(0,np.nanmax(isop)*0.9)
 #GC=GC_class.GC_sat(d0,run='biogenic')

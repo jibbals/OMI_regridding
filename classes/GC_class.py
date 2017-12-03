@@ -205,9 +205,9 @@ class GC_base:
             out[k] = ppbv * 1e-9 * N_air * self.boxH * 1e-4 # molec/cm2
         return out
 
-    def get_trop_columns(self, keys=['hcho'], metres=False):
+    def get_trop_columns(self, keys=['hcho']):
         '''
-            Return tropospheric column amounts in molec/cm2 [or molec/m2]
+            Return tropospheric column amounts in molec/cm2
         '''
         if __VERBOSE__:
             print('retrieving trop column for ',keys)
@@ -217,7 +217,7 @@ class GC_base:
         trop=np.floor(self.tplev).astype(int)
         extra=self.tplev - trop
 
-        Xdata=self.ppbv_to_molec_cm2(keys=keys,metres=metres)
+        Xdata=self.ppbv_to_molec_cm2(keys=keys)
         # for each key, work out trop columns
         for key in keys:
             X=Xdata[key]

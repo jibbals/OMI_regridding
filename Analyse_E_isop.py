@@ -155,9 +155,12 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
                             markeredgewidth=3, marker='x', linewidth=2,
                             label=[None,'monthly avg. (MEGAN)'][i==1],
                             **ptsargs)
-
-
-        plt.ylim([-0.5e12, 4e12])
+        
+        # zero line:
+        plt.plot([mdates[0],mdates[-1]],[0.0,0.0],linestyle='--',linewidth=1)
+        # ylims
+        plt.ylim([-0.5e12, 8e12])
+        # labels
         plt.title(labels[i])
         if i==1: plt.legend(loc='best',prop={'size': 10})
 

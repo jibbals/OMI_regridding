@@ -318,6 +318,7 @@ class omhchorp:
             # one day only, no time dim
             for key in keys:
                 ret[key]=getattr(self,key)
+            ret['gridentries']=self.gridentries
             return ret
 
         # option to do whole month:

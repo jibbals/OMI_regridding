@@ -137,7 +137,7 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
         print(region)
         print(E_monthly)
         print(GC_E_monthly)
-        
+
         # Plot monthly average and std:
         pp.plot_time_series(mdates,E_monthly, linewidth=2.0,
                             label=[None,'monthly avg.'][i==1],
@@ -157,7 +157,7 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
                             **ptsargs)
 
 
-        plt.ylim([-0.5e12, 3e12])
+        plt.ylim([-0.5e12, 4e12])
         plt.title(labels[i])
         if i==1: plt.legend(loc='best',prop={'size': 10})
 

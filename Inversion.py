@@ -85,16 +85,16 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
     if __VERBOSE__:
         # Check the dims of our stuff
         print()
-        print("Calculating emissions for %s"%dstr) 
+        print("Calculating emissions for %s"%dstr)
         print("GC data %s "%str(GC.hcho.shape)) # [t,lat,lon,lev]
-        print("nanmean:",np.nanmean(GC.hcho),GC.attrs['hcho']['unit']) # should be molecs/cm2
+        print("nanmean:",np.nanmean(GC.hcho),GC.attrs['hcho']['units']) # should be molecs/cm2
         print("OMI data %s"%str(OMI.VCC.shape)) # [t, lat, lon]
         print("nanmean:",np.nanmean(OMI.VCC),'molecs/cm2')# should be molecs/cm2
 
     omilats0, omilons0 = OMI.lats, OMI.lons
     omi_lats, omi_lons= omilats0.copy(), omilons0.copy()
     omi_SA=OMI.surface_areas # in km^2
-    
+
     if __DEBUG__:
         GC_E_isop=GC_biog.hemco.E_isop_bio
         print("GC_E_isop%s [%s] before LT averaging:"%(str(np.shape(GC_E_isop)),GC_biog.hemco.attrs['E_isop_bio']['units']),np.nanmean(GC_E_isop))
@@ -106,7 +106,7 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
     if __DEBUG__:
         print("GC_E_isop%s after LT averaging:"%str(np.shape(GC_E_isop)),np.nanmean(GC_E_isop))
         print("    non zero only:",np.nanmean(GC_E_isop[GC_E_isop > 0]))
-        
+
         print("GC_E_isop.shape before and after dateindex")
         print(GC_E_isop.shape)
     GC_E_isop=GC_E_isop[util.date_index(day,GC_days)] # only want one day of E_isop_GC
@@ -120,7 +120,7 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
         print('shape and mean before and after subsetting GC_E_isop:')
         print(np.shape(GC_E_isop), np.nanmean(GC_E_isop))
     GC_E_isop = util.lat_lon_subset(GC.lats,GC.lons,region=region,data=[GC_E_isop])['data'][0]
-    
+
     if __DEBUG__:
         print(np.shape(GC_E_isop), np.nanmean(GC_E_isop))
 
@@ -165,7 +165,7 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
     slope_after=np.nanmean(GC_slope)
     attrs["GC_slope"]={"units":"s",
         "desc":"\"VC_H=S*E_i+B\" slope (S) between HCHO_GC (molec/cm2) and E_Isop_GC (atom c/cm2/s)"}
-    
+
     with np.errstate(divide='ignore', invalid='ignore'):
         check=100.0*np.abs((slope_after-slope_before)/slope_before)
 
@@ -468,15 +468,15 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     # save each month seperately
     #
     for month in months:
-        
+
         # Grab reprocessed data for the month:
         OMI=omhchorp(day0=month,dayn=util.last_day(month), ignorePP=ignorePP)
         print('mean HCHO column [molec/cm2] from omhchorp',np.nanmean(OMI.VCC))
-        
+
         # Read GC month:
         GC=GC_class.GC_biogenic(month)
         print('mean surface hcho [ppb] from GC_biogenic run:',np.nanmean(GC.sat_out.hcho[:,:,:,0]))
-        
+
         # save the month of emissions
         store_emissions_month(month=month, GC=GC, OMI=OMI,
                               region=region, ignorePP=ignorePP)
@@ -490,7 +490,7 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
         S = d column_HCHO / d E_isop
         For now uses tavg instead of overpass times
     '''
-    if __VERBOSE__: 
+    if __VERBOSE__:
         print('calculating smearing over ',region,' in month ',month)
 
     full=GC_class.GC_tavg(month, run='tropchem')

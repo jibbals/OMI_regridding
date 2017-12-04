@@ -144,12 +144,18 @@ class GC_base:
 
                 attrs[key]['units']='molec/m3'
 
+            nkey=key
             if key in _GC_names_to_nice.keys():
-                setattr(self, _GC_names_to_nice[key], arr)
-                self.attrs[_GC_names_to_nice[key]] = attrs[key]
-            else:
-                setattr(self, key, arr)
-                self.attrs[key]=attrs[key]
+                nkey=_GC_names_to_nice[key]
+            setattr(self, nkey, arr)
+            # just use 'units' not 'unit'
+            if 'unit' in attrs[key]:
+                attrs[key]['units'] = attrs[key]['unit'] # save unit to units
+                attrs[key].pop('unit',None) # delete 'unit' attribute
+
+            self.attrs[nkey] = attrs[key]
+
+
 
             if __VERBOSE__:
                 print("GC_tavg reading %s %s"%(key,data[key].shape))
@@ -162,10 +168,11 @@ class GC_base:
         # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
         if hasattr(self,'hcho'):
             n_dims=len(np.shape(self.hcho))
-            print("CHECK:hcho dims = %s, hcho=%.2e"%(str(np.shape(self.hcho)),np.mean(self.hcho)))
+            print("CHECK:hcho %s, mean = %.2e %s"%(str(np.shape(self.hcho)),np.mean(self.hcho),self.attrs['hcho']['units']))
             self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
-            print("CHECK:O_hcho dims = %s, O_hcho=%.2e"%(str(self.O_hcho.shape),np.mean(self.O_hcho)))
             self.attrs['O_hcho']={'units':'molec/cm2','desc':'Total column HCHO'}
+            print("CHECK:O_hcho %s, mean=%.2e %s"%(str(self.O_hcho.shape),np.mean(self.O_hcho),self.attrs['O_hcho']['units']))
+
 
         # Convert from numpy.datetime64 to datetime
         if not hasattr(self,'time'):
@@ -540,6 +547,11 @@ class Hemco_diag(GC_base):
         gram_per_molec = util.__grams_per_mole__['carbon'] / N_Avogadro
         self.kgC_per_m2_to_atomC_per_cm2 = 1e3 * 1e-4 / gram_per_molec
 
+        # make E_isop_bio into atom C/cm2/s
+        assert self.attrs['E_isop_bio']['units']=='kgC/m2/s', 'E_isop_bio units are %s'%self.attrs['E_isop_bio']['units']
+        self.E_isop_bio = self.E_isop_bio*self.kgC_per_m2_to_atomC_per_cm2
+        self.attrs['E_isop_bio']['units']='atomC/cm2/s'
+
         if __VERBOSE__:
             for k in data:
                 print('  %10s %10s %s'%(k, data[k].shape, attrs[k]))
@@ -592,7 +604,8 @@ class Hemco_diag(GC_base):
 
         self.E_isop_bio_LT=out
         self.attrs['E_isop_bio_LT']={'desc':'map for each day of global data at specific hour local time',
-                                     'hour':hour}
+                                     'hour':hour,
+                                     'units':self.attrs['E_isop_bio']['units']}
         return days, np.squeeze(out)
 
     def plot_daily_emissions_cycle(self,lat=-31,lon=150,pname=None):
@@ -679,7 +692,10 @@ class GC_biogenic:
         sat_out=self.sat_out
 
         # grab satellite overpass E_isop and trop column hcho
-        days,isop = megan.daily_LT_averaged(hour=overpass_hour) # lat/lon kgC/cm2/s [days,lat,lon]
+        days,isop = megan.daily_LT_averaged(hour=overpass_hour) # lat/lon kgC/cm2/s [days,lat,lon]?
+        # isop should be atom C/cm2/s
+        assert megan.attrs['E_isop_bio']['units'] == 'atomC/cm2/s', 'units are bad in E_isop_bio %s'%megan.attrs['E_isop_bio']['units']
+
         hcho = sat_out.get_trop_columns(keys=['hcho'])['hcho'] # ppbv -> molec/cm2
 
         # what lats and lons do we want?
@@ -694,9 +710,12 @@ class GC_biogenic:
         sublats, sublons = lats[lati], lons[loni]
 
         # Convert to atomC/cm2/s
-        isop=isop * self.hemco.kgC_per_m2_to_atomC_per_cm2
+        #isop=isop * self.hemco.kgC_per_m2_to_atomC_per_cm2
+        #assert self.hemco.attrs['E_isop_bio']['units'] == 'kgC/cm2/s', 'units are bad for E_isop_bio (%s)'%self.hemco.attrs['E_isop_bio']
 
-        print("nanmeans in slope function (E_isop and trop_hcho in atomC/cm2[/s]):",np.nanmean(isop),np.nanmean(hcho))
+        print("in slope function: ")
+        print("  nanmean E_isop = %.2e %s"%(np.nanmean(isop),'atom C/cm2/s'))
+        print("  nanmean trop_hcho = %.2e %s"%(np.nanmean(hcho),'molec/cm2'))
 
         # arrays to hold the month's slope, background, and regression coeff
         n_x = len(loni)

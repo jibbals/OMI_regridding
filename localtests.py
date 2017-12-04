@@ -42,6 +42,7 @@ region=pp.__AUSREGION__
 dstr=d0.strftime("%Y%m%d")
 yyyymm=d0.strftime("%Y%m")
 
+pp.InitMatplotlib()
 
 satname="Data/GC_Output/geos5_2x25_tropchem/satellite_output/ts_satellite_omi.20050101.bpch"
 satnames="Data/GC_Output/geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s*.bpch"%yyyymm
@@ -83,36 +84,37 @@ print("month average globally:",np.nanmean(GChcho))
 plt.figure(figsize=(12,12))
 plt.subplot(221)
 pp.createmap(GChcho,GC.lats,GC.lons,aus=True,GC_shift=True, linear=True,
-             title='GC O_hcho', clabel=GC.attrs['O_hcho']['units'])
+             vmin=0,vmax=2e16, cmapname='rainbow',
+             title=r'GC $\Omega_{HCHO}$', clabel=r'molec cm$^{-2}$')
 
 plt.subplot(222)
 pp.createmap(OMIhcho,OMI.lats,OMI.lons,aus=True, linear=True,
-             title='VCC',clabel='molec/cm2')
+             vmin=0,vmax=2e16, cmapname='rainbow',
+             title=r'OMI $\Omega_{HCHO}$',clabel=r'molec cm$^{-2}$')
 
 # regrid GChcho onto higher resolution
 lats,lons=OMI.lats,OMI.lons
 GChcho=util.regrid(GChcho,GC.lats,GC.lons,lats,lons)
 
-diff=OMIhcho-GChcho
-rdiff=(OMIhcho-GChcho)/GChcho
+diff=GChcho-OMIhcho
+rdiff=(GChcho-OMIhcho)/OMIhcho
 
-plt.subplot(223)
-pp.createmap(diff,lats,lons, aus=True, GC_shift=True, linear=True,
-             title='OMI - GC')
+plt.subplot(212)
+pp.createmap(diff,lats,lons, region=[-50,100,-5,170], GC_shift=True, linear=True,
+             vmin=-1.5e16, vmax=1.5e16, cmapname='seismic',
+             title='GC - OMI')
 
-plt.subplot(224)
-pp.createmap(rdiff,lats,lons, aus=True, GC_shift=True,
-             vmin=-2.0, vmax=2.0, linear=True,
-             title='(OMI - GC)/GC')
-
-pname='test.png'
+#plt.subplot(224)
+#pp.createmap(rdiff,lats,lons, aus=True, GC_shift=True, linear=True,
+#             vmin=-1.5, vmax=1.5,cmapname='seismic',
+#             title='(GC - OMI)/OMI')
+#plt.suptitle("GEOS-Chem vs OMI total column HCHO")
+plt.tight_layout()
+plt.subplots_adjust(hspace=0.2)
+pname='Figs/GC_vs_OMI_hcho.png'
 plt.savefig(pname)
 print("SAVED ",pname)
-
-plt.subplot(223)
-
-
-
+plt.close()
 
 # test stupid LT avg function
 #GC=GC_class.Hemco_diag(d0)

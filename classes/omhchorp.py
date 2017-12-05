@@ -114,15 +114,25 @@ class omhchorp:
             self.background=self.get_background_array()
         #self.apply_fire_mask()
 
-    def apply_fire_mask(self, use_8day_mask=True):
+    def apply_fire_mask(self, key='VCC', use_8day_mask=True):
         ''' nanify arrays which are fire affected. '''
         mask = [self.fire_mask_16, self.fire_mask_8][use_8day_mask]
         print ("fire mask:",mask.shape,np.nansum(mask))
-
-        for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,
-                    self.VC_OMI,self.VC_OMI_RSC,self.VCC,
-                    self.col_uncertainty_OMI]:
-            arr[mask]=np.NaN
+        print(np.nansum(mask>0))
+        
+        data=getattr(self,key)
+            
+        print(key, data.shape, ' before firemask:',np.nanmean(data))
+        
+        #if len(data.shape) == 3:
+        #    for i in range(data.shape[0]): # loop over time dim
+        data[mask>0]=np.NaN
+        print('     after firemask:',np.nanmean(data))
+        
+        #for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,
+        #            self.VC_OMI,self.VC_OMI_RSC,self.VCC,
+        #            self.col_uncertainty_OMI]:
+        #    arr[mask]=np.NaN
 
     def inds_subset(self, lat0=None, lat1=None, lon0=None, lon1=None, maskocean=False, maskland=False):
         ''' return indices of lat, lon arrays within input box '''

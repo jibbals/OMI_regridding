@@ -388,6 +388,7 @@ def Emissions(day0, dayn, GC = None, OMI = None,
             'attributes':attrs}
 
 def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
+                          remove_fires_from_OMI=True,
                           region=pp.__GLOBALREGION__, ignorePP=True):
     '''
         Store a month of new emissions estimates into an he5 file
@@ -411,6 +412,10 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
         OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
     if GC is None:
         GC=GC_class.GC_biogenic(day0) # data like [time,lat,lon,lev]
+
+    # If we're removing fires:
+    if remove_fires_from_OMI:
+        OMI.apply_fire_mask('VCC')
 
     # Read each day then save the month
     #

@@ -53,9 +53,15 @@ biosat_files="Data/GC_Output/geos5_2x25_tropchem_biogenic/satellite_output/sat_b
 
 ###
 # read biogenic output
-GC=GC_class.GC_biogenic(d0)
-MS=GC.model_slope()
 OMI=omhchorp(d0,)
+print('before:: ',np.nanmean(OMI.VCC))
+OMI.apply_fire_mask('VCC')
+print('after:: ',np.nanmean(OMI.VCC))
 
-enew=Inversion.Emissions_1day(d0,GC,OMI)
-enew.keys()
+pp.createmap(OMI.fire_mask_8,OMI.lats,OMI.lons,linear=True)
+plt.savefig('test_fires.png')
+#GC=GC_class.GC_biogenic(d0)
+#MS=GC.model_slope()
+
+#enew=Inversion.Emissions_1day(d0,GC,OMI)
+#enew.keys()

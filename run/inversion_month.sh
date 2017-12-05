@@ -20,11 +20,11 @@ if [ -z ${PBS_O_LOGNAME} ] || [ -z ${MONTH} ]; then
         echo "   to save E_new fOR 200505 "
     else
         echo "qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh"
-        read -r -p "run that command? [y/N] " response
-        response=${response,,}    # tolower
-        if [[ "$response" =~ ^(yes|y)$ ]]; then
-            qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh
-        fi
+        #read -r -p "run that command? [y/N] " response
+        #response=${response,,}    # tolower
+        #if [[ "$response" =~ ^(yes|y)$ ]]; then
+        qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh
+        #fi
     fi
     exit 0
 fi

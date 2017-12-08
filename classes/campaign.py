@@ -98,7 +98,7 @@ class campaign:
         #self.dates=[datetime.strptime('%d/%m/%Y %H',d) for d in dates]
 
         #print(data)
-    def plot_series(self,title,pname):
+    def plot_series(self,title=None,pname=None):
 
         dates=self.dates
 
@@ -111,10 +111,11 @@ class campaign:
 
         plt.ylabel('[%s]'%self.hcho_units)
         plt.title(title)
-        plt.legend()
-        plt.savefig(pname)
-        print("Saved %s"%pname)
-        plt.close()
+        if pname is not None:
+            plt.legend()
+            plt.savefig(pname)
+            print("Saved %s"%pname)
+            plt.close()
 
 if __name__=='__main__':
     sps=campaign()

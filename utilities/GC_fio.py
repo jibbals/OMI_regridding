@@ -131,23 +131,27 @@ def read_bpch(path,keys,multi=False):
 
     return data,attrs
 
-def read_Hemco_diags(day,month=False):
+def read_Hemco_diags(d0,d1=None,month=False):
     '''
         Read Hemco diag output, one day or month at a time
     '''
     # match all files with YYYYMM[DD] tag
     fpre='Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog.'
-    fend=day.strftime(["%Y%m%d","%Y%m"][month]) + "*.nc"
-
+    dlist=util.list_days(d0,d1,month=month)
+    # for each day: glob matching files to list
+    files=[]
+    for day in dlist:
+        fend=day.strftime("%Y%m%d") + "*.nc"
+        files.extend(glob(fpre+fend))
+    
     # also get zero hour of next day:
-    nextday=[day,util.last_day(day)][month] + timedelta(days=1)
+    nextday=dlist[-1] + timedelta(days=1)
     fend2=nextday.strftime("%Y%m%d0000") + ".nc"
 
 
-    files=glob(fpre+fend) # match wildcard into list of file names
-    files.append(fpre+fend2) # add final hour
+    files.extend(glob(fpre+fend2)) # add final hour
     files.sort() # make sure they're sorted or the data gets read in poorly
-
+    print(files)
     # and remove the zero hour of the first day (avg of prior hour)
     # if it is a zero hour from prior day
     if '0000.nc' in files[0]:

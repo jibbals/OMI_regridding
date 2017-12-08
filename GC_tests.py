@@ -171,6 +171,56 @@ def compare_to_campaigns(d0=datetime(2005,1,31), de=datetime(2005,6,1), dfmt='%b
     plt.close()
     print('SAVED: ',pname)
 
+def compare_to_campaigns_daily_cycle():
+        
+    # Read campaigns:
+    SPS1=campaign()
+    SPS2=campaign()
+    SPS1.read_SPS(1)
+    SPS2.read_SPS(2)
+    lat,lon=SPS1.lat,SPS1.lon
+    
+    d0,d1=SPS1.dates[0],SPS1.dates[-1]
+    d2,d3=SPS2.dates[0],SPS2.dates[-1]
+    
+    print('SPS1:',d0,d1)
+    print('SPS2:',d2,d3)
+    
+    d0 = d0.replace(year=2005)
+    d1 = d1.replace(year=2005)
+    d2 = d2.replace(year=2005)
+    d3 = d3.replace(year=2005)
+        
+    print('GC1:',d0,d1)
+    print('GC2:',d2,d3)
+    
+    # Read GEOS-Chem:
+    GC1=GC_class.Hemco_diag(d0,d1,month=False)
+    lati,loni=GC1.lat_lon_index(lat,lon)
+    GC1_E_isop=GC1.E_isop_bio[:,lati,loni]
+    gcoffset=GC1.local_time_offset[lati,loni]
+    gcdates=[]
+    for date in GC1.dates:
+        gcdates.append(date+timedelta(seconds=3600*gcoffset))
+    # figure, first do whole timeline:
+    f, (a0, a1) = plt.subplots(2,1, gridspec_kw = {'height_ratios':[1, 4]})
+    plt.sca(a0)
+    plt.plot(SPS1.isop, color='k')
+    plt.plot(np.arange(gcoffset,len(GC1_E_isop)+gcoffset), GC1_E_isop, color='r')
+    
+    plt.tick_params(
+        axis='x',          # changes apply to the x-axis
+        which='both',      # both major and minor ticks are affected
+        bottom='off',      # ticks along the bottom edge are off
+        top='off',         # ticks along the top edge are off
+        labelbottom='off') # labels along the bottom edge are off
+        
+    # then show daily cycle
+    plt.sca(a1)
+    pp.plot_daily_cycle(SPS1.dates,SPS1.isop,houroffset=0) # already local time
+    pp.plot_daily_cycle(GC1.dates,GC1.E_isop_bio,houroffset=gcoffset)
+    
+
 def biogenic_vs_tavg():
     '''    '''
     # plot stuff
@@ -502,7 +552,8 @@ def check_shapefactors(date=datetime(2005,1,1)):
 # If this script is run directly:
 if __name__=='__main__':
     pp.InitMatplotlib()
-    GC_vs_OMI()
+    #GC_vs_OMI()
+    compare_to_campaigns_daily_cycle()
     #compare_to_campaigns()
     #check_shapefactors()
     #check_tropchem_monthly()

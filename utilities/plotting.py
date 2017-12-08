@@ -26,6 +26,7 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 sys.path.insert(0,os.path.dirname(currentdir))
 
 from utilities.JesseRegression import RMA
+from utilities import utilities as util
 from utilities.utilities import regrid
 import utilities.fio as fio
 sys.path.pop(0)
@@ -533,6 +534,40 @@ def displaymap(region=__AUSREGION__,
 
     return m
 
+def plot_daily_cycle(dates, data, houroffset=0, color='k', overplot=False):
+    '''
+    Daily cycle from inputs:
+        dates: list of datetimes
+        data: corresponding data
+        houroffset: roll the array for local time matching
+    '''
+    
+    d0=dates[0]
+    dE=dates[-1]
+    n_days=len(util.list_days(d0,dE,month=False))
+    
+    # split data into 24xn_days array
+    arr=np.zeros([24, n_days])
+    for i in range(n_days):
+
+        dinds=np.arange(i*24,(i+1)*24)
+
+        # rotate for nicer view (LOCAL TIME)
+        # EG: 11th hour ... 35th hour if houroffset is 11
+        ltinds=np.roll(dinds, houroffset)
+        
+        arr[dinds % 24,i]=data[ltinds]
+
+        # for now just plot
+        plt.plot(np.arange(24),data[ltinds], color=color)
+    
+    return arr
+    #plt.ylabel('E_isop_biogenic [kgC/cm2/s]')
+    #plt.xlabel('hour(LT)')
+    #plt.suptitle(self.dates[0].strftime("%b %Y"))
+    #plt.tight_layout()
+    #plt.savefig(pname)
+    #print("SAVED FIGURE:",pname)
 
 
 if __name__=='__main__':

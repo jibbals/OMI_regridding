@@ -523,13 +523,13 @@ class Hemco_diag(GC_base):
     '''
         class just for Hemco_diag output and manipulation
     '''
-    def __init__(self,day0,month=False):
+    def __init__(self,day0, dayn=None, month=False):
 
         if __VERBOSE__:
             print('Reading Hemco_diag files:')
 
         # read data/attrs and initialise class:
-        data,attrs=GC_fio.read_Hemco_diags(day0,month=month)
+        data,attrs=GC_fio.read_Hemco_diags(day0,dayn,month=month)
         attrs['init_date']=day0
         attrs['n_dims']=len(np.shape(data['ISOP_BIOG']))
         super(Hemco_diag,self).__init__(data,attrs)
@@ -608,11 +608,10 @@ class Hemco_diag(GC_base):
                                      'units':self.attrs['E_isop_bio']['units']}
         return days, np.squeeze(out)
 
-    def plot_daily_emissions_cycle(self,lat=-31,lon=150,pname=None):
+    def plot_daily_emissions_cycle(self,lat=-31,lon=150,pname=None,color='r'):
         ''' take a month and plot the emissions over the day'''
-
         import matplotlib.pyplot as plt
-
+        
         if pname is None:
             pname='Figs/GC/E_megan_%s.png'%self.dates[0].strftime("%Y%m")
 
@@ -621,31 +620,25 @@ class Hemco_diag(GC_base):
         # lat lon gives us one grid box
         lati,loni=self.lat_lon_index(lat,lon)
         offset=self.local_time_offset[0,loni] # get time offset from longitude
-
+        
+        data=self.E_isop_bio[:,lati,loni]
+        
         # figure, first do whole timeline:
         f, (a0, a1) = plt.subplots(2,1, gridspec_kw = {'height_ratios':[1, 4]})
         plt.sca(a0)
-        plt.plot(self.E_isop_bio[:,lati,loni])
+        plt.plot(data, color=color)
         plt.tick_params(
             axis='x',          # changes apply to the x-axis
             which='both',      # both major and minor ticks are affected
             bottom='off',      # ticks along the bottom edge are off
             top='off',         # ticks along the top edge are off
             labelbottom='off') # labels along the bottom edge are off
-
+        
+        # then show daily cycle
         plt.sca(a1)
-        arr=np.zeros([24,self.n_days])
-        for i in range(self.n_days):
-
-            dinds=np.arange(i*24,(i+1)*24)
-
-            # rotate for nicer view (LOCAL TIME)
-            ltinds=np.roll(dinds,offset)
-            # 11th hour ... 35th hour
-            arr[dinds % 24,i]=self.E_isop_bio[ltinds,lati,loni]
-
-            # for now just plot
-            plt.plot(np.arange(24),self.E_isop_bio[ltinds,lati,loni])
+        pp.plot_daily_cycle(self.dates,data,houroffset=offset)
+        #arr=np.zeros([24,self.n_days])
+        
         plt.ylabel('E_isop_biogenic [kgC/cm2/s]')
         plt.xlabel('hour(LT)')
         plt.suptitle(self.dates[0].strftime("%b %Y"))

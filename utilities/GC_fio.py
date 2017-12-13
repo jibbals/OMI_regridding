@@ -151,7 +151,7 @@ def read_Hemco_diags(d0,d1=None,month=False):
 
     files.extend(glob(fpre+fend2)) # add final hour
     files.sort() # make sure they're sorted or the data gets read in poorly
-    print(files)
+    #print(files)
     # and remove the zero hour of the first day (avg of prior hour)
     # if it is a zero hour from prior day
     if '0000.nc' in files[0]:

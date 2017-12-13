@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 #import matplotlib.colors as mcolors #, colormapping
 from matplotlib.colors import LogNorm # for lognormal colour bar
+from datetime import timedelta
 
 # Add parent folder to path
 import os,sys,inspect
@@ -541,25 +542,29 @@ def plot_daily_cycle(dates, data, houroffset=0, color='k', overplot=False):
         data: corresponding data
         houroffset: roll the array for local time matching
     '''
-    
+    dates=[d+timedelta(seconds=int(3600*houroffset)) for d in dates]
     d0=dates[0]
     dE=dates[-1]
-    n_days=len(util.list_days(d0,dE,month=False))
     
+    n_days=len(util.list_days(d0,dE,month=False))
+    hours=np.array([d.hour for d in dates])
+    days=np.array([d.day for d in dates])
     # split data into 24xn_days array
-    arr=np.zeros([24, n_days])
+    arr=np.zeros([24, n_days]) + np.NaN
     for i in range(n_days):
-
-        dinds=np.arange(i*24,(i+1)*24)
-
+        
+        #dinds=np.arange(i*24,(i+1)*24)
+        # match hours in this day
+        dinds = np.where(days==(i+1))[0]
+        dhours = hours[dinds]
         # rotate for nicer view (LOCAL TIME)
         # EG: 11th hour ... 35th hour if houroffset is 11
-        ltinds=np.roll(dinds, houroffset)
-        
-        arr[dinds % 24,i]=data[ltinds]
+        #print(dinds)
+        print(dinds)
+        arr[dinds % 24,i]=data[dinds]
 
         # for now just plot
-        plt.plot(np.arange(24),data[ltinds], color=color)
+        plt.plot(dhours,data[dinds], color=color)
     
     return arr
     #plt.ylabel('E_isop_biogenic [kgC/cm2/s]')

@@ -578,7 +578,7 @@ class Hemco_diag(GC_base):
             if self.attrs['E_isop_bio_LT']['hour'] == hour:
                 return days, self.E_isop_bio_LT
 
-        isop=self.E_isop_bio
+        isop=self.E_isop_bio # atomC/cm2/s
         out=np.zeros([len(days),len(self.lats),len(self.lons)])+np.NaN
         sanity=np.zeros(out.shape)
         LTO=self.local_time_offset
@@ -602,7 +602,7 @@ class Hemco_diag(GC_base):
             sanity[di,LT==hour] = sanity[di,LT==hour]+1
 
 
-        self.E_isop_bio_LT=out
+        self.E_isop_bio_LT=np.squeeze(out)
         self.attrs['E_isop_bio_LT']={'desc':'map for each day of global data at specific hour local time',
                                      'hour':hour,
                                      'units':self.attrs['E_isop_bio']['units']}

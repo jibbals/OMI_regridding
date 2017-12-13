@@ -84,7 +84,7 @@ def GC_vs_OMI(month=datetime(2005,1,1),region=pp.__AUSREGION__):
                  vmin=-2.0, vmax=2.0, linear=True,
                  title='(OMI - GC)/GC')
 
-    pname='test.png'
+    pname='Figs/GC_vs_OMI_hcho.png'
     plt.savefig(pname)
     print("SAVED ",pname)
 
@@ -201,24 +201,36 @@ def compare_to_campaigns_daily_cycle():
     gcoffset=GC1.local_time_offset[lati,loni]
     gcdates=[]
     for date in GC1.dates:
-        gcdates.append(date+timedelta(seconds=3600*gcoffset))
+        gcdates.append(date+timedelta(seconds=int(3600*gcoffset)))
     # figure, first do whole timeline:
-    f, (a0, a1) = plt.subplots(2,1, gridspec_kw = {'height_ratios':[1, 4]})
+    f, axes = plt.subplots(2,2, gridspec_kw = {'height_ratios':[1, 4]})
+    a0, a1, a2, a3 = axes[0,0],axes[0,1],axes[1,0],axes[1,1]
     plt.sca(a0)
     plt.plot(SPS1.isop, color='k')
+    plt.sca(a1)
     plt.plot(np.arange(gcoffset,len(GC1_E_isop)+gcoffset), GC1_E_isop, color='r')
     
-    plt.tick_params(
-        axis='x',          # changes apply to the x-axis
-        which='both',      # both major and minor ticks are affected
-        bottom='off',      # ticks along the bottom edge are off
-        top='off',         # ticks along the top edge are off
-        labelbottom='off') # labels along the bottom edge are off
+    for ax in [a0,a1]:
+        plt.sca(ax)
+        plt.tick_params(
+            axis='x',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom='off',      # ticks along the bottom edge are off
+            top='off',         # ticks along the top edge are off
+            labelbottom='off') # labels along the bottom edge are off
         
     # then show daily cycle
-    plt.sca(a1)
-    pp.plot_daily_cycle(SPS1.dates,SPS1.isop,houroffset=0) # already local time
-    pp.plot_daily_cycle(GC1.dates,GC1.E_isop_bio,houroffset=gcoffset)
+    plt.sca(a2)
+    print(len(SPS1.dates),SPS1.isop.shape)
+    pp.plot_daily_cycle(SPS1.dates,SPS1.isop,houroffset=0, color='k') # already local time
+    plt.sca(a3)
+    pp.plot_daily_cycle(GC1.dates,GC1_E_isop,houroffset=gcoffset, color='r')
+    
+    pname='Figs/SPS1_DailyCycle.png'
+    plt.savefig(pname)
+    print('Saved ',pname)
+
+    
     
 
 def biogenic_vs_tavg():

@@ -22,7 +22,7 @@ import utilities.utilities as util
 import utilities.plotting as pp
 from utilities import GMAO
 #from utilities import fio
-from classes.GC_class import GC_tavg # GC trac_avg class
+from classes import GC_class # GC trac_avg class
 from classes.omhchorp import omhchorp # OMI product class
 from classes.E_new import E_new # E_new class
 
@@ -213,105 +213,109 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
                  clabel=r'Atoms C cm$^{-2}$ s$^{-1}$', cmapname=cmapname)
 
 
-def E_gc_VS_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
-                  ReduceOmiRes=0, smoothed=False,
+def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31), smoothed=False,
                   region=pp.__AUSREGION__):
     '''
         Plot E_gc, E_new, diff, ratio
+        Use biogenic GC output
     '''
-    dstr=month.strftime("%Y%m")
-    yyyymon=month.strftime("%Y, %b")
-    day0=month; dayn=util.last_day(month)
+    dstr=d0.strftime("%Y%m")
+    yyyymon=d0.strftime("%Y, %b")
     if __VERBOSE__:
-        print("running E_isop_plots.E_gc_VS_E_new from %s and %s"%(day0, dayn))
+        print("running Analyse_E_isop.E_gc_VS_E_new from %s and %s"%(d0, d1))
 
     ## READ DATA
-    if GC is None:
-        GC=GC_tavg(date=month)
-    if OMI is None:
-        OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=True)
-
-    ## Inversion
+    GC=GC_class.Hemco_diag(day0=d0,dayn=d1,month=False)
+    gcdays, GC_E_isop=GC.daily_LT_averaged(hour=13) # atomC/cm2/s
+    # subset to region
+    lati,loni=util.lat_lon_range(GC.lats,GC.lons,region=region)
+    latsgc=GC.lats[lati]
+    lonsgc=GC.lons[loni]
+    GC_E_isop=GC_E_isop[:,lati,:]
+    GC_E_isop=GC_E_isop[:,:,loni]
+    GC_E_isop=np.mean(GC_E_isop,axis=0) # average over time
+    
     # based on OMI using GC calculated yield (slope)
-    E_new=Inversion.Emissions(day0=day0, dayn=dayn, GC=GC, OMI=OMI,
-                              ReduceOmiRes=ReduceOmiRes, region=region)
-    newE=E_new['E_isop']
-    omilats=E_new['lats']
-    omilons=E_new['lons']
+    Enew=E_new(day0=d0, dayn=d1)
+    E_isop_new=Enew.E_isop # atom c/cm2/s
+    E_isop_new=np.nanmean(E_isop_new,axis=0) # average over time
+    omilats=Enew.lats
+    omilons=Enew.lons
 
     # GEOS-Chem over our region:
-    E_GC_sub=GC.get_field(keys=['E_isop_bio'], region=region)
-    Egc = np.mean(E_GC_sub['E_isop_bio'],axis=0) # average of the monthly values
-    latsgc=E_GC_sub['lats']
-    lonsgc=E_GC_sub['lons']
+    #E_GC_sub=GC.get_field(keys=['E_isop_bio'], region=region)['E_isop_bio']
+    #Egc = np.mean(E_GC_sub['E_isop_bio'],axis=0) # average of the monthly values
+    #latsgc=E_GC_sub['lats']
+    #lonsgc=E_GC_sub['lons']
 
     # map the lower resolution data onto the higher resolution data:
-    Egc_up=Egc
+    Egc_up=GC_E_isop
     if len(omilats) > len(latsgc):
-        Egc_up = util.regrid(Egc,latsgc,lonsgc,omilats,omilons)
+        Egc_up = util.regrid(GC_E_isop,latsgc,lonsgc,omilats,omilons)
 
 
     ## First plot maps of emissions:
     ##
     plt.figure(figsize=(16,12))
-    vlinear=True # linear flag for plot functions
-    clims=[2e11,2.5e12] # map min and max
-    amin,amax=-1e12, 3e12 # absolute diff min and max
+    vlinear=False # linear flag for plot functions
+    clims=[1e12,2e14] # map min and max
+    amin,amax=-1e12, 3.5e12 # absolute diff min and max
     rmin,rmax=0, 10 # ratio min and max
-
+    cmapname='PuRd'
+    
     # start with E_GC:
     plt.subplot(221)
-    map_E_gc(month=month, GC=GC, clims=clims, region=region,
-             linear=vlinear, smoothed=smoothed)
+    pp.createmap(GC_E_isop,latsgc,lonsgc,vmin=clims[0],vmax=clims[1],GC_shift=True,
+                 linear=vlinear,region=region,smoothed=smoothed,
+                 cmapname=cmapname)
 
     # then E_new
     plt.subplot(222)
-    map_E_new(month=month,GC=GC,OMI=OMI,clims=clims,
-              region=region, linear=vlinear, smoothed=smoothed)
+    pp.createmap(E_isop_new,omilats,omilons,vmin=clims[0],vmax=clims[1],
+                 linear=vlinear,region=region,smoothed=smoothed,
+                 cmapname=cmapname)
 
     ## Difference and ratio:
     ##
-
+    cmapname='jet'
     ## Diff map:
     plt.subplot(223)
-    title=r'E$_{GC} - $E$_{omi}$ '
+    title=r'E$_{MEGAN} - $E$_{new}$ '
     args={'region':region, 'clabel':r'atoms C cm$^{-2}$ s$^{-1}$',
           'linear':True, 'lats':omilats, 'lons':omilons,
-          'smoothed':smoothed, 'title':title, 'cmapname':'cool',
+          'smoothed':smoothed, 'title':title, 'cmapname':cmapname,
           'vmin':amin, 'vmax':amax}
-    pp.createmap(Egc_up - newE, **args)
+    pp.createmap(Egc_up - E_isop_new, **args)
 
     ## Ratio map:
     plt.subplot(224)
-    args['title']=r"$E_{GC} / E_{omi}$"
+    args['title']=r"$E_{MEGAN} / E_{OMI}$"
     args['vmin']=rmin; args['vmax']=rmax
     args['clabel']="ratio"
-    pp.createmap(Egc_up / newE, **args)
+    pp.createmap(Egc_up / E_isop_new, **args)
 
 
     # SAVE THE FIGURE:
     #
     suptitle='GEOS-Chem (gc) vs OMI for %s'%yyyymon
     plt.suptitle(suptitle)
-    fname='Figs/GC/E_Comparison_%s%s%s.png'%(dstr,
-                                             ['','_smoothed'][smoothed],
-                                             ['','_lowres'][ReduceOmiRes>0])
+    fname='Figs/GC/E_Comparison_%s%s.png'%(dstr,['','_smoothed'][smoothed])
     plt.savefig(fname)
     print("SAVED FIGURE: %s"%fname)
     plt.close()
 
     ## PRINT EXTRA INFO
     #
-    if __VERBOSE__:
-        print("GC calculations:")
-        for k,v in E_GC_sub.items():
-            print ("    %s, %s, mean=%.3e"%(k, str(v.shape), np.nanmean(v)))
-        print("OMI calculations:")
-        for k,v in E_new.items():
-            print ("    %s, %s, mean=%.3e"%(k, str(v.shape), np.nanmean(v)))
+    #if __VERBOSE__:
+        #print("GC calculations:")
+        #for k,v in :
+        #    print ("    %s, %s, mean=%.3e"%(k, str(v.shape), np.nanmean(v)))
+        #print("OMI calculations:")
+        #for k,v in Enew.items():
+        #    print ("    %s, %s, mean=%.3e"%(k, str(v.shape), np.nanmean(v)))
 
     # Print some diagnostics here.
-    for l,e in zip(['E_new','E_gc'],[newE,Egc]):
+    for l,e in zip(['Enew','E_gc'],[E_isop_new,Egc_up]):
         print("%s: %s    (%s)"%(l,str(e.shape),dstr))
         print("    Has %d nans"%np.sum(np.isnan(e)))
         print("    Has %d negatives"%np.sum(e<0))
@@ -337,7 +341,7 @@ def All_maps(month=datetime(2005,1,1),GC=None, OMI=None, ignorePP=True, region=p
     ##
     ## READ DATA
     if GC is None:
-        GC=GC_tavg(date=month)
+        GC=GC_class.GC_tavg(date=month)
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=ignorePP)
 
@@ -352,10 +356,8 @@ def All_maps(month=datetime(2005,1,1),GC=None, OMI=None, ignorePP=True, region=p
 
     ## Plot E_GC vs E_new, low and high res.
     ##
-    for ReduceOmiRes in [0,8]:
-        for smoothed in [True, False]:
-            E_gc_VS_E_new(month=month, GC=GC, OMI=OMI,
-                          ReduceOmiRes=ReduceOmiRes, smoothed=smoothed)
+    for smoothed in [True, False]:
+        E_gc_VS_E_new(d0=day0,d1=dayn, smoothed=smoothed)
 
 def print_megan_comparison(month=datetime(2005,1,1), GC=None, OMI=None,
                            ReduceOmiRes=0, region=pp.__AUSREGION__):
@@ -368,7 +370,7 @@ def print_megan_comparison(month=datetime(2005,1,1), GC=None, OMI=None,
 
     ## READ DATA
     if GC is None:
-        GC=GC_tavg(date=month)
+        GC=GC_class.GC_tavg(date=month)
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=True)
 
@@ -500,38 +502,42 @@ def megan_SEA_regression():
     '''
     ds0=datetime(2005,1,1); ds1=util.last_day(datetime(2005,2,1))
     dw0=datetime(2005,6,1); dw1=datetime(2005,8,31)
-    region=SEA
+    regions=[SEA,SWA,NA]
+    rnames=['SEA','SWA','NA']
     # summer
     E_summer=E_new(ds0,ds1)
     E_winter=E_new(dw0,dw1)
-    plt.figure(figsize=(14,14))#,sharex=True,squeeze=True)
-    for ds in [True,False]:
-        ppargs={'colour':'red','linecolour':'red','diag':False,'legend':False}
-        E_summer.plot_regression(ds0,ds1,region=region,deseasonalise=ds,**ppargs)
-        ppargs['colour']='aqua'
-        ppargs['linecolour']='aqua'
-        E_winter.plot_regression(dw0,dw1,region=region,deseasonalise=ds,**ppargs)
-        plt.title('SEA Summer (JF) vs Winter (JJA), 2005')
-        plt.legend(loc='best')
-        plt.xlabel('MEGAN')
-        plt.ylabel('Satellite based')
-        pname='Figs/Regression_SEA_2005%s.png'%['','_DS'][ds]
-        plt.savefig(pname)
-        plt.close()
-        print("Saved: ",pname)
+    for region,rname in zip(regions,rnames):
+        plt.figure(figsize=(14,14))#,sharex=True,squeeze=True)
+        for ds in [True,False]:
+            ppargs={'colour':'red','linecolour':'red','diag':False,'legend':False}
+            E_summer.plot_regression(ds0,ds1,region=region,deseasonalise=ds,**ppargs)
+            ppargs['colour']='aqua'
+            ppargs['linecolour']='aqua'
+            E_winter.plot_regression(dw0,dw1,region=region,deseasonalise=ds,**ppargs)
+            plt.title('%s Summer (JF) vs Winter (JJA), 2005'%rname)
+            plt.legend(loc='best')
+            plt.xlabel('MEGAN')
+            plt.ylabel('Satellite based')
+            pname='Figs/Regression_%s_2005%s.png'%(rname,['','_DS'][ds])
+            plt.savefig(pname)
+            plt.close()
+            print("Saved: ",pname)
 
 
 if __name__=='__main__':
 
     # try running
-    JennySEA=[-38, 145, -30, 153]
-    JennySEA_fixed=GMAO.edges_containing_region(JennySEA) # [-37, 143.75,-29, 153.75]
+    #JennySEA=[-38, 145, -30, 153]
+    #JennySEA_fixed=GMAO.edges_containing_region(JennySEA) # [-37, 143.75,-29, 153.75]
     SEAus=[-41,138.75,-25,156.25]
-    regions=pp.__AUSREGION__, SEAus, JennySEA_fixed
+    regions=pp.__AUSREGION__, SEAus#, JennySEA_fixed
 
-    d0=datetime(2005,1,1); dn=datetime(2005,12,31)
+    d0=datetime(2005,1,1); dn=datetime(2005,1,31)
+    #E_gc_VS_E_new(d0,dn)
     megan_SEA_regression()
-    E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
+    #dn=datetime(2005,12,31)
+    #E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
     #map_E_gc(month=d0,GC=GC_tavg(d0))
     #check_E_new(dn=datetime(2005,2,1))
 

@@ -73,6 +73,8 @@ class E_new:
 
         # Combine the data
         for key in E_new_list[0].keys():
+            if __VERBOSE__:
+                print("Reading ",key) 
             #print(key,np.shape(E_new_list[0][key]))
             if key in dimensions:
                 setattr(self,key,E_new_list[0][key])

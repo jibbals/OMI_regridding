@@ -39,6 +39,10 @@ d0=datetime(2005,1,1)
 d1=datetime(2005,2,1)
 region=pp.__AUSREGION__
 
+Enew=E_new(d0)
+print(Enew.E_isop.shape)
+
+
 dstr=d0.strftime("%Y%m%d")
 yyyymm=d0.strftime("%Y%m")
 

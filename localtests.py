@@ -23,6 +23,7 @@ from classes.E_new import E_new # E_new class
 from classes import GC_class
 from classes.omhchorp import omhchorp
 from classes.gchcho import gchcho
+from classes.campaign import campaign
 import xbpch
 import xarray
 
@@ -39,10 +40,18 @@ d0=datetime(2005,1,1)
 d1=datetime(2005,2,1)
 region=pp.__AUSREGION__
 
-Enew=E_new(d0)
-print(Enew.E_isop.shape)
+# Read campaigns:
+SPS1=campaign()
+SPS2=campaign()
+SPS1.read_SPS(1)
+SPS2.read_SPS(2)
 
-
+f, (ax1,ax2) = plt.subplots(1,2,sharey=True)
+plt.sca(ax1)
+SPS1.plot_series("SPS1")
+plt.sca(ax2)
+SPS2.plot_series("SPS2",'Figs/SPS_Series.png')
+pp.plot_daily_cycle(SPS1.dates,SPS1.hcho,overplot=True)
 dstr=d0.strftime("%Y%m%d")
 yyyymm=d0.strftime("%Y%m")
 

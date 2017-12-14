@@ -11,7 +11,7 @@ Plot various things and print diagnostics on Isoprene outputs
 ### Modules ###
 ###############
 # python modules
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')# don't plot on screen, send straight to file
@@ -524,6 +524,61 @@ def megan_SEA_regression():
             plt.close()
             print("Saved: ",pname)
 
+def Compare_to_daily_cycle(month=datetime(2005,1,1),lat=-33,lon=151):
+    '''
+        Compare E_new at a lat/lon to the MEGAN daily cycle at that lat lon
+    '''
+    
+    #Read E_new:
+    Enew=E_new(day0=month,dayn=util.last_day(month))
+    lati,loni=util.lat_lon_index(lat,lon,Enew.lats,Enew.lons)
+    E_isop=Enew.E_isop[:,lati,loni]
+    
+    
+    
+    # Read GEOS-Chem:
+    GC=GC_class.Hemco_diag(d0=month,d1=None,month=True)
+    lati,loni=GC.lat_lon_index(lat,lon)
+    GC_E_isop=GC.E_isop_bio[:,lati,loni]
+    gcoffset=GC.local_time_offset[lati,loni]
+    gcdates=[]
+    gcmiddays=[]
+    GC_E_isop_mids=[]
+    for i,date in enumerate(GC.dates):
+        gcdates.append(date+timedelta(seconds=int(3600*gcoffset)))
+        if date.hour+gcoffset==13:
+            gcmiddays.append(date)
+            GC_E_isop_mids.append(GC_E_isop[i])
+        
+    # figure, first do whole timeline:
+    f, axes = plt.subplots(2,1, gridspec_kw = {'height_ratios':[1, 4]})
+    a0, a1= axes[0],axes[1]
+    plt.sca(a0)
+    pp.plot_time_series(gcdates,GC_E_isop, dfmt='%d', color='r')
+    pp.plot_time_series(gcmiddays,GC_E_isop_mids, color='r',linestyle='--',linewidth=2)
+    pp.plot_time_series(Enew.dates,E_isop, color='k',linestyle='..',linewidth=2)
+    plt.sca(a1)
+    plt.plot(np.arange(gcoffset,len(GC_E_isop)+gcoffset), GC_E_isop, color='r')
+    
+    for ax in [a0,]:
+        plt.sca(ax)
+        plt.tick_params(
+            axis='x',          # changes apply to the x-axis
+            which='both',      # both major and minor ticks are affected
+            bottom='off',      # ticks along the bottom edge are off
+            top='off',         # ticks along the top edge are off
+            labelbottom='off') # labels along the bottom edge are off
+        
+    # then show daily cycle
+    plt.sca(a1)
+    
+    pp.plot_daily_cycle(GC.dates,GC_E_isop,houroffset=gcoffset, color='r')
+    for i in range(len(E_isop)):
+        pp.plot([10,14],[E_isop[i],E_isop[i]], houroffset=0,color='k')
+        
+    pname='Figs/E_new_vs_Daily_MEGAN.png'
+    plt.savefig(pname)
+    print('Saved ',pname)
 
 if __name__=='__main__':
 
@@ -535,7 +590,8 @@ if __name__=='__main__':
 
     d0=datetime(2005,1,1); dn=datetime(2005,1,31)
     #E_gc_VS_E_new(d0,dn)
-    megan_SEA_regression()
+    #megan_SEA_regression()
+    Compare_to_daily_cycle()
     #dn=datetime(2005,12,31)
     #E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
     #map_E_gc(month=d0,GC=GC_tavg(d0))

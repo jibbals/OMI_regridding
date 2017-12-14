@@ -40,6 +40,10 @@ d0=datetime(2005,1,1)
 d1=datetime(2005,2,1)
 region=pp.__AUSREGION__
 
+
+# GC hemco timeseries
+
+
 # Read campaigns:
 SPS1=campaign()
 SPS2=campaign()

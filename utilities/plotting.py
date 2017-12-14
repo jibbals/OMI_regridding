@@ -560,10 +560,10 @@ def plot_daily_cycle(dates, data, houroffset=0, color='k', overplot=False):
         # rotate for nicer view (LOCAL TIME)
         # EG: 11th hour ... 35th hour if houroffset is 11
         #print(dinds)
-        print(dinds)
-        arr[dinds % 24,i]=data[dinds]
+        arr[:,i]=data[dinds]
 
         # for now just plot
+        print('hours',dhours)
         plt.plot(dhours,data[dinds], color=color)
     
     return arr

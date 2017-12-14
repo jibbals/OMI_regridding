@@ -533,11 +533,11 @@ def Compare_to_daily_cycle(month=datetime(2005,1,1),lat=-33,lon=151):
     Enew=E_new(day0=month,dayn=util.last_day(month))
     lati,loni=util.lat_lon_index(lat,lon,Enew.lats,Enew.lons)
     E_isop=Enew.E_isop[:,lati,loni]
-    
+    Enewdates=[d.replace(hour=13) for d in Enew.dates]
     
     
     # Read GEOS-Chem:
-    GC=GC_class.Hemco_diag(d0=month,d1=None,month=True)
+    GC=GC_class.Hemco_diag(day0=month,dayn=None,month=True)
     lati,loni=GC.lat_lon_index(lat,lon)
     GC_E_isop=GC.E_isop_bio[:,lati,loni]
     gcoffset=GC.local_time_offset[lati,loni]
@@ -555,10 +555,14 @@ def Compare_to_daily_cycle(month=datetime(2005,1,1),lat=-33,lon=151):
     a0, a1= axes[0],axes[1]
     plt.sca(a0)
     pp.plot_time_series(gcdates,GC_E_isop, dfmt='%d', color='r')
-    pp.plot_time_series(gcmiddays,GC_E_isop_mids, color='r',linestyle='--',linewidth=2)
-    pp.plot_time_series(Enew.dates,E_isop, color='k',linestyle='..',linewidth=2)
-    plt.sca(a1)
-    plt.plot(np.arange(gcoffset,len(GC_E_isop)+gcoffset), GC_E_isop, color='r')
+    pp.plot_time_series([gcdates[0],gcdates[-1]],np.repeat(np.nanmean(E_isop),2),color='k',linewidth=1)
+    #pp.plot_time_series(gcmiddays,GC_E_isop_mids, color='r',linestyle='none',marker='x')
+    #print(gcmiddays)
+    #print(Enew.dates)
+    #print(Enewdates)
+    #pp.plot_time_series(Enewdates,E_isop, color='k', marker='x',linewidth=2)
+    
+    #plt.plot(np.arange(gcoffset,len(GC_E_isop)+gcoffset), GC_E_isop, color='r')
     
     for ax in [a0,]:
         plt.sca(ax)
@@ -573,12 +577,18 @@ def Compare_to_daily_cycle(month=datetime(2005,1,1),lat=-33,lon=151):
     plt.sca(a1)
     
     pp.plot_daily_cycle(GC.dates,GC_E_isop,houroffset=gcoffset, color='r')
-    for i in range(len(E_isop)):
-        pp.plot([10,14],[E_isop[i],E_isop[i]], houroffset=0,color='k')
-        
+    #for i in range(len(E_isop)):
+    #    plt.plot([10,14],[E_isop[i],E_isop[i]], color='k')
+    plt.plot([9,16],np.repeat(np.nanmean(E_isop),2),'k',linewidth=2)
+    
     pname='Figs/E_new_vs_Daily_MEGAN.png'
     plt.savefig(pname)
     print('Saved ',pname)
+    plt.close()
+    
+    pp.plot_time_series(Enewdates,E_isop, color='k', marker='x',linewidth=2)
+    pp.plot_time_series(Enewdates,Enew.GC_E_isop[:,lati,loni],color='r')
+    plt.savefig('test.png')
 
 if __name__=='__main__':
 

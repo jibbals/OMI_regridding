@@ -24,6 +24,7 @@ import csv
 # interpolation method for ND arrays
 # todo: remove once this is ported to reprocess.py
 from scipy.interpolate import griddata
+import xarray
 
 # Add parent folder to path
 import os,sys,inspect
@@ -563,6 +564,53 @@ def read_gchcho(date):
             ret_data[key] = dset[key].squeeze()
     return ret_data
 
+def read_omno2d(date0,date1=None,month=False):
+    '''
+        Read daily gridded OMNO2d data, optionally with time dimension
+    '''
+    # set date1 if not set to end of month or date0
+    if date1 is None:
+        date1=[date0, util.last_day(date0)][month]
+    
+    #vcdname='HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields/ColumnAmountNO2'
+    #vcdcsname='HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields/ColumnAmountNO2CloudScreened'
+    tropname='HDFEOS/GRIDS/ColumnAmountNO2/Data Fields/ColumnAmountNO2TropCloudScreened'
+    latname='HDFEOS/GRIDS/ColumnAmountNO2/lat'
+    lonname='HDFEOS/GRIDS/ColumnAmountNO2/lon'
+    ddir='/short/m19/satellite-data/aura/omi/OMNO2d/data/'
+    
+    dates=util.list_days(date0,date1)
+    data=np.zeros([len(dates),720,1440])+np.NaN
+    lats=np.arange(-90,90,0.25)+0.125
+    lons=np.arange(-180,180,0.25)+0.125
+    lats_e=np.arange(-180,180.001,0.25)
+    lons_e=np.arange(-90,90.001,0.25)
+    # filenames:
+    for ii, date in enumerate(dates):
+        fname=ddir+'OMI*%s*.he5'%date.strftime('%Ym%m%d')
+        fpath=glob(fname)[0]
+        if __VERBOSE__: 
+            print('reading ',fpath)
+        with h5py.File(fpath,'r') as in_f:
+            #for name in in_f[tropname]:
+            #    print (name)
+            trop=in_f[tropname].value
+            trop[trop<1e-20] = np.NaN
+            
+            data[ii]=trop
+            
+    data=np.squeeze(data)
+            
+    
+    # trop column units: molec/cm2 from ~ 1e13-1e16
+    attrs={'tropno2':{'desc':'tropospheric NO2 cloud screened for <30% cloudy pixels',
+                      'units':'molec/cm2'},
+           'lats':{'desc':'latitude midpoints'},
+           'lons':{'desc':'longitude midpoints'},
+           'dates':{'desc':'datetimes for each day of averaged pixels'}}
+    ret={'tropno2':data,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
+    return ret,attrs
+    
 
 def filter_high_latitudes(array, latres=0.25, lonres=0.3125, highest_lat=60.0):
     '''

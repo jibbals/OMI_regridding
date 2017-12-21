@@ -417,9 +417,9 @@ def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legen
         print('%s saved'%pname)
         plt.close()
 
-def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
+def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
                  clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
-                 rmin=-200.0, rmax=200., amin=None, amax=None, contourf=False,
+                 rmin=-200.0, rmax=200., amin=None, amax=None,
                  linear=False, alinear=True, rlinear=True, **pltargs):
     '''
         Plot two maps and their relative and absolute differences
@@ -454,18 +454,19 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
     f,axes=plt.subplots(2,2,figsize=(16,14))
     plt.sca(axes[0,0])
     args={'region':region, 'clabel':clabel, 'linear':linear,
-          'lats':lats, 'lons':lons, 'contourf':contourf, 'title':titles[0],
+          'lats':lats, 'lons':lons, 'title':titles[0], 'cmapname':'rainbow',
          'vmin':vmin, 'vmax':vmax}
     createmap(A, **args)
 
     plt.sca(axes[0,1])
     args['title']=titles[1]
     createmap(B, **args)
-
+    
     plt.sca(axes[1,0])
     args['title']="%s - %s"%(titles[0],titles[1])
     args['vmin']=amin; args['vmax']=amax
     args['linear']=alinear
+    args['cmapname']='bwr'
     createmap(A-B, **args)
 
     plt.sca(axes[1,1])
@@ -474,6 +475,7 @@ def compare_maps(datas,lats,lons,pname,titles=['A','B'], suptitle=None,
     args['linear']=rlinear
     args['clabel']="%"
     createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
+    return (A,B)
 
 def add_grid_to_map(m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=1.0, dashes=[1000,1], labels=[0,0,0,0],xy1=None):
     '''

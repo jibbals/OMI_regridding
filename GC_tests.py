@@ -23,12 +23,14 @@ import matplotlib.cm as cm
 # local imports:
 import utilities.plotting as pp
 from utilities import GC_fio
+from utilities import fio
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
 from classes import GC_class
 from classes.omhchorp import omhchorp
 from classes.campaign import campaign
 from classes.gchcho import gchcho
+from classes import GC_class
 
 ##################
 #####GLOBALS######
@@ -37,6 +39,43 @@ from classes.gchcho import gchcho
 ################
 ###FUNCTIONS####
 ################
+
+def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
+    '''
+    plot comparison of tropO2 from GC to OMNO2d
+    '''
+    
+    d0=month
+    d1=util.last_day(month)
+
+    data,attrs=fio.read_omno2d(d0,month=True)
+    OM_tropno2 = np.nanmean(data['tropno2'],axis=0) # Average over month axis
+    OM_lats=data['lats']
+    OM_lons=data['lons']
+    
+    GC=GC_class.GC_tavg(d0)
+    GC_tropno2=GC.get_trop_columns(['NO2'])['NO2']
+    GC_tropno2=np.nanmean(GC_tropno2,axis=0) # Average over month
+    GC_lats,GC_lons=GC.lats,GC.lons
+    
+    pname='Figs/GC/GC_vs_OMNO2_%s.png'%month.strftime('%Y%m')
+    gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_tropno2],
+                                      [GC_lats,OM_lats],[GC_lons,OM_lons],
+                                      region=region,
+                                      titles=['GC_tropno2','OM_tropno2'],
+                                      suptitle='Tropospheric NO2: 2005,Jan',
+                                      vmin=1e14,vmax=1e16, amin=-5e15,amax=5e15,
+                                      clabel='molec/cm2',pname=pname)
+    # pull out region:
+    lati,loni=util.lat_lon_range(OM_lats,OM_lons,region)
+    gc_tno2=gc_tno2[lati,:]
+    gc_tno2=gc_tno2[:,loni]
+    om_tno2=om_tno2[lati,:]
+    om_tno2=om_tno2[:,loni]
+    print()
+    print('avg of gc/om',np.nanmean(gc_tno2/om_tno2))
+    print('avg of (gc-om)/om ', np.nanmean((gc_tno2-om_tno2) / om_tno2))
+    
 
 def GC_vs_OMI(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     '''
@@ -565,7 +604,9 @@ def check_shapefactors(date=datetime(2005,1,1)):
 if __name__=='__main__':
     pp.InitMatplotlib()
     #GC_vs_OMI()
-    compare_to_campaigns_daily_cycle()
+    for month in util.list_months(datetime(2005,1,1),datetime(2005,12,1)):
+        GC_vs_OMNO2d(month=month)
+    #compare_to_campaigns_daily_cycle()
     #compare_to_campaigns()
     #check_shapefactors()
     #check_tropchem_monthly()

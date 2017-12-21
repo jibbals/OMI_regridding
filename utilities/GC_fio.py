@@ -51,6 +51,7 @@ paths = _datapaths()
 # Make these nice name dictionaries in GC_Output class file
 __tavg_mainkeys__=['lev','lon','lat','time',
                    'IJ-AVG-$_ISOP','IJ-AVG-$_CH2O','BIOGSRCE_ISOP', 'BIOBSRCE_CH20',
+                   'IJ-AVG-$_NO2',
                    'PEDGE-$_PSURF','BXHGHT-$_BXHEIGHT','BXHGHT-$_AD',
                    'BXHGHT-$_AVGW','BXHGHT-$_N(AIR)','DXYP_DXYP',
                    'TR-PAUSE_TP-LEVEL']

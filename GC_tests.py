@@ -53,18 +53,24 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     OM_lats=data['lats']
     OM_lons=data['lons']
     
-    GC=GC_class.GC_tavg(d0)
+    
+    #GC=GC_class.GC_tavg(d0)
+    GC=GC_class.GC_sat(d0)
     GC_tropno2=GC.get_trop_columns(['NO2'])['NO2']
     GC_tropno2=np.nanmean(GC_tropno2,axis=0) # Average over month
     GC_lats,GC_lons=GC.lats,GC.lons
     
-    pname='Figs/GC/GC_vs_OMNO2_%s.png'%month.strftime('%Y%m')
+    # reduce OMI resolution to that of GEOS-Chem:
+    
+    
+    pname='Figs/GC/GC_vs_OMNO2_sat_%s.png'%month.strftime('%Y%m')
     gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_tropno2],
                                       [GC_lats,OM_lats],[GC_lons,OM_lons],
                                       region=region,
                                       titles=['GC_tropno2','OM_tropno2'],
                                       suptitle='Tropospheric NO2: 2005,Jan',
-                                      vmin=1e14,vmax=1e16, amin=-5e15,amax=5e15,
+                                      vmin=1e14,vmax=1e16, amin=-1e15,amax=1e15,
+                                      rmin=-100,rmax=100,
                                       clabel='molec/cm2',pname=pname)
     # pull out region:
     lati,loni=util.lat_lon_range(OM_lats,OM_lons,region)
@@ -604,8 +610,9 @@ def check_shapefactors(date=datetime(2005,1,1)):
 if __name__=='__main__':
     pp.InitMatplotlib()
     #GC_vs_OMI()
-    for month in util.list_months(datetime(2005,1,1),datetime(2005,12,1)):
+    for month in util.list_months(datetime(2005,2,1),datetime(2005,3,1)):
         GC_vs_OMNO2d(month=month)
+    #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()
     #compare_to_campaigns()
     #check_shapefactors()

@@ -58,6 +58,7 @@ __tavg_mainkeys__=['lev','lon','lat','time',
 
 __sat_mainkeys__=['lev','lon','lat','time',
                   'IJ-AVG-$_ISOP','IJ-AVG-$_CH2O',
+                  'IJ-AVG-$_NO2', # NO2 in ppbv
                   'BIOGSRCE_ISOP',
                   'PEDGE-$_PSURF','BXHGHT-$_BXHEIGHT',
                   'TIME-SER_AIRDEN', #'BXHGHT-$_AD',

@@ -60,7 +60,6 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     GC_tropno2=np.nanmean(GC_tropno2,axis=0) # Average over month
     GC_lats,GC_lons=GC.lats,GC.lons
     
-    # reduce OMI resolution to that of GEOS-Chem:
     
     
     pname='Figs/GC/GC_vs_OMNO2_sat_%s.png'%month.strftime('%Y%m')
@@ -72,6 +71,8 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
                                       vmin=1e14,vmax=1e16, amin=-1e15,amax=1e15,
                                       rmin=-100,rmax=100,
                                       clabel='molec/cm2',pname=pname)
+    
+    
     # pull out region:
     lati,loni=util.lat_lon_range(OM_lats,OM_lons,region)
     gc_tno2=gc_tno2[lati,:]
@@ -81,6 +82,35 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     print()
     print('avg of gc/om',np.nanmean(gc_tno2/om_tno2))
     print('avg of (gc-om)/om ', np.nanmean((gc_tno2-om_tno2) / om_tno2))
+    
+    
+    lati,loni=util.lat_lon_range(GC_lats,GC_lons,region)
+    GC_tropno2=GC_tropno2[lati,:]
+    GC_tropno2=GC_tropno2[:,loni]
+    GC_lats=GC_lats[lati]
+    GC_lons=GC_lons[loni]
+    GC_lats_e=util.edges_from_mids(GC_lats)
+    GC_lons_e=util.edges_from_mids(GC_lons)
+    
+    OM_low=np.zeros([len(GC_lats),len(GC_lons)]) + np.NaN
+    # reduce OMI resolution to that of GEOS-Chem:
+    for i in range(len(GC_lats)):
+        for j in range(len(GC_lons)):
+            lati= (OM_lats >= GC_lats_e[i]) * (OM_lats < GC_lats_e[i+1])
+            loni= (OM_lons >= GC_lons_e[j]) * (OM_lons < GC_lons_e[j+1])
+            tmp=OM_tropno2[lati,:]
+            tmp=tmp[:,loni]
+            OM_low[i,j]=np.nanmean(tmp)
+    pname='Figs/GC/GC_vs_OMNO2_sat_lowres_%s.png'%month.strftime('%Y%m')
+    
+    gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_low],
+                                      [GC_lats,GC_lats],[GC_lons,GC_lons],
+                                      region=region,
+                                      titles=['GC_tropno2','OM_tropno2'],
+                                      suptitle='Tropospheric NO2: 2005,Jan',
+                                      vmin=1e14,vmax=1e16, amin=-1e15,amax=1e15,
+                                      rmin=-100,rmax=100,
+                                      clabel='molec/cm2',pname=pname)
     
 
 def GC_vs_OMI(month=datetime(2005,1,1),region=pp.__AUSREGION__):
@@ -610,7 +640,7 @@ def check_shapefactors(date=datetime(2005,1,1)):
 if __name__=='__main__':
     pp.InitMatplotlib()
     #GC_vs_OMI()
-    for month in util.list_months(datetime(2005,2,1),datetime(2005,3,1)):
+    for month in util.list_months(datetime(2005,1,1),datetime(2005,3,1)):
         GC_vs_OMNO2d(month=month)
     #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()

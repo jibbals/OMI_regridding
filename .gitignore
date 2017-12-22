@@ -9,6 +9,7 @@
 # ignore python compile files
 **/*.pyc
 __pycache__/
+**/*.swp
 
 # ignore some images
 pictures/levels_debug

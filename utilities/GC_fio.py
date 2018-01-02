@@ -64,6 +64,7 @@ __sat_mainkeys__=['lev','lon','lat','time',
                   'TIME-SER_AIRDEN', #'BXHGHT-$_AD',
                   'TR-PAUSE_TPLEV', # Added satellite output for ppamf
                   'CHEM-L=$_OH',
+                  'DAO-3D-$_TMPU', # Temperature field (Kelvin)
                   ]
 
 ################
@@ -145,7 +146,7 @@ def read_Hemco_diags(d0,d1=None,month=False):
     for day in dlist:
         fend=day.strftime("%Y%m%d") + "*.nc"
         files.extend(glob(fpre+fend))
-    
+
     # also get zero hour of next day:
     nextday=dlist[-1] + timedelta(days=1)
     fend2=nextday.strftime("%Y%m%d0000") + ".nc"
@@ -158,7 +159,7 @@ def read_Hemco_diags(d0,d1=None,month=False):
     # if it is a zero hour from prior day
     if '0000.nc' in files[0]:
         del files[0]
-    
+
 
     with xarray.open_mfdataset(files) as ds:
         data,attrs=dataset_to_dicts(ds,['ISOP_BIOG'])
@@ -214,3 +215,12 @@ def _test_trop_column_calc():
 if __name__=='__main__':
     #get_tropchem_data()
     _test_trop_column_calc()
+
+    # How to check fields
+    sat_fold='Data/GC_Output/geos5_2x25_tropchem/satellite_output/'
+    sat_file=sat_fold+'ts_satellite_omi.20050101.bpch'
+    tracinf=sat_fold+'tracerinfo.dat'
+    diaginf=sat_fold+'diaginfo.dat'
+
+    ds=xbpch.open_bpchdataset(sat_file,tracerinfo_file=tracinf,diaginfo_file=diaginf)
+    ds.keys()

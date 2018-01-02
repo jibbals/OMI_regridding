@@ -33,9 +33,9 @@ import Inversion
 ###############
 __VERBOSE__=True
 
-NA     = GMAO.edges_containing_region([-21,115,-11,150])
-SWA    = GMAO.edges_containing_region([-36,114,-29,128])
-SEA    = GMAO.edges_containing_region([-39,144,-29,153])
+NA     = util.NA
+SWA    = util.SWA
+SEA    = util.SEA
 subs   = [SWA,NA,SEA]
 labels = ['SWA','NA','SEA']
 colours = ['chartreuse','magenta','aqua']
@@ -155,7 +155,7 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
                             markeredgewidth=3, marker='x', linewidth=2,
                             label=[None,'monthly avg. (MEGAN)'][i==1],
                             **ptsargs)
-        
+
         # zero line:
         plt.plot([mdates[0],mdates[-1]],[0.0,0.0],linestyle='--',linewidth=1)
         # ylims
@@ -234,7 +234,7 @@ def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31), smoothed=False,
     GC_E_isop=GC_E_isop[:,lati,:]
     GC_E_isop=GC_E_isop[:,:,loni]
     GC_E_isop=np.mean(GC_E_isop,axis=0) # average over time
-    
+
     # based on OMI using GC calculated yield (slope)
     Enew=E_new(day0=d0, dayn=d1)
     E_isop_new=Enew.E_isop # atom c/cm2/s
@@ -262,7 +262,7 @@ def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31), smoothed=False,
     amin,amax=-1e12, 3.5e12 # absolute diff min and max
     rmin,rmax=0, 10 # ratio min and max
     cmapname='PuRd'
-    
+
     # start with E_GC:
     plt.subplot(221)
     pp.createmap(GC_E_isop,latsgc,lonsgc,vmin=clims[0],vmax=clims[1],GC_shift=True,
@@ -528,14 +528,14 @@ def Compare_to_daily_cycle(month=datetime(2005,1,1),lat=-33,lon=151):
     '''
         Compare E_new at a lat/lon to the MEGAN daily cycle at that lat lon
     '''
-    
+
     #Read E_new:
     Enew=E_new(day0=month,dayn=util.last_day(month))
     lati,loni=util.lat_lon_index(lat,lon,Enew.lats,Enew.lons)
     E_isop=Enew.E_isop[:,lati,loni]
     Enewdates=[d.replace(hour=13) for d in Enew.dates]
-    
-    
+
+
     # Read GEOS-Chem:
     GC=GC_class.Hemco_diag(day0=month,dayn=None,month=True)
     lati,loni=GC.lat_lon_index(lat,lon)
@@ -549,7 +549,7 @@ def Compare_to_daily_cycle(month=datetime(2005,1,1),lat=-33,lon=151):
         if date.hour+gcoffset==13:
             gcmiddays.append(date)
             GC_E_isop_mids.append(GC_E_isop[i])
-        
+
     # figure, first do whole timeline:
     f, axes = plt.subplots(2,1, gridspec_kw = {'height_ratios':[1, 4]})
     a0, a1= axes[0],axes[1]
@@ -561,9 +561,9 @@ def Compare_to_daily_cycle(month=datetime(2005,1,1),lat=-33,lon=151):
     #print(Enew.dates)
     #print(Enewdates)
     #pp.plot_time_series(Enewdates,E_isop, color='k', marker='x',linewidth=2)
-    
+
     #plt.plot(np.arange(gcoffset,len(GC_E_isop)+gcoffset), GC_E_isop, color='r')
-    
+
     for ax in [a0,]:
         plt.sca(ax)
         plt.tick_params(
@@ -572,20 +572,20 @@ def Compare_to_daily_cycle(month=datetime(2005,1,1),lat=-33,lon=151):
             bottom='off',      # ticks along the bottom edge are off
             top='off',         # ticks along the top edge are off
             labelbottom='off') # labels along the bottom edge are off
-        
+
     # then show daily cycle
     plt.sca(a1)
-    
+
     pp.plot_daily_cycle(GC.dates,GC_E_isop,houroffset=gcoffset, color='r')
     #for i in range(len(E_isop)):
     #    plt.plot([10,14],[E_isop[i],E_isop[i]], color='k')
     plt.plot([9,16],np.repeat(np.nanmean(E_isop),2),'k',linewidth=2)
-    
+
     pname='Figs/E_new_vs_Daily_MEGAN.png'
     plt.savefig(pname)
     print('Saved ',pname)
     plt.close()
-    
+
     pp.plot_time_series(Enewdates,E_isop, color='k', marker='x',linewidth=2)
     pp.plot_time_series(Enewdates,Enew.GC_E_isop[:,lati,loni],color='r')
     plt.savefig('test.png')

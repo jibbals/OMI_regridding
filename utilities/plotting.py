@@ -92,6 +92,37 @@ def regularbounds(x,fix=False):
 
     return newx
 
+def add_rectangle(bmap, limits, color='k', linewidth=1):
+    '''
+    Plot rectangle on basemap(arg 0) using [lat0,lon0,lat1,lon1](arg 1)
+    '''
+    # lat lon pairs for each corner
+    ll = [ limits[0], limits[1]]
+    ul = [ limits[2], limits[1]]
+    ur = [ limits[2], limits[3]]
+    lr = [ limits[0], limits[3]]
+    # shape to draw lats(y) and lons(x)
+    ys = [ll[0], ul[0],
+          ul[0], ur[0],
+          ur[0], lr[0],
+          lr[0], ll[0]]
+    xs = [ll[1], ul[1],
+          ul[1], ur[1],
+          ur[1], lr[1],
+          lr[1], ll[1]]
+    bmap.plot(xs, ys, latlon = True, color=color, linewidth=linewidth)
+
+def add_regression(X,Y,label=None, color='r'):
+    '''
+    plots RMA between X and Y
+    '''
+    m,b,r,ci1,ci2 = RMA(np.array(X),np.array(Y))
+    xx= np.array([np.nanmin(X), np.nanmax(X)])
+    if label is None:
+        label='Y = %.2fX + %.2f ; r=%.2f'%(m,b,r)
+    plt.plot(xx,m*xx + b,color=color,label=label)
+
+
 def basicmap(data, lats, lons, latlon=True,
               aus=False, region=__GLOBALREGION__, linear=False,
               pname=None,title=None,suptitle=None,
@@ -156,6 +187,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=False,
               vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
               clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
+              cbarorient='bottom',
               pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None, fillcontinents=None):
     '''
@@ -266,8 +298,9 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=False,
         plt.suptitle(suptitle)
     cb=None
     if colorbar:
-        cbargs={'size':'5%','pad':'1%','extend':'both','format':cbarfmt}
-        cb=m.colorbar(cs,"bottom", **cbargs)
+        cbargs={'format':cbarfmt,
+                'size':'5%', 'pad':'1%', 'extend':'both'}
+        cb=m.colorbar(cs, cbarorient, **cbargs)
         if clabel is not None:
             cb.set_label(clabel)
         if cbarxtickrot is not None:
@@ -461,7 +494,7 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     plt.sca(axes[0,1])
     args['title']=titles[1]
     createmap(B, **args)
-    
+
     plt.sca(axes[1,0])
     args['title']="%s - %s"%(titles[0],titles[1])
     args['vmin']=amin; args['vmax']=amax
@@ -547,14 +580,14 @@ def plot_daily_cycle(dates, data, houroffset=0, color='k', overplot=False):
     dates=[d+timedelta(seconds=int(3600*houroffset)) for d in dates]
     d0=dates[0]
     dE=dates[-1]
-    
+
     n_days=len(util.list_days(d0,dE,month=False))
     hours=np.array([d.hour for d in dates])
     days=np.array([d.day for d in dates])
     # split data into 24xn_days array
     arr=np.zeros([24, n_days]) + np.NaN
     for i in range(n_days):
-        
+
         #dinds=np.arange(i*24,(i+1)*24)
         # match hours in this day
         dinds = np.where(days==(i+1))[0]
@@ -567,7 +600,7 @@ def plot_daily_cycle(dates, data, houroffset=0, color='k', overplot=False):
         # for now just plot
         print('hours',dhours)
         plt.plot(dhours,data[dinds], color=color)
-    
+
     return arr
     #plt.ylabel('E_isop_biogenic [kgC/cm2/s]')
     #plt.xlabel('hour(LT)')

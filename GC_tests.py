@@ -36,15 +36,99 @@ from classes import GC_class
 #####GLOBALS######
 ##################
 
+
+NA     = util.NA
+SWA    = util.SWA
+SEA    = util.SEA
+subs   = [SWA,NA,SEA]
+labels = ['SWA','NA','SEA']
+colours = ['chartreuse','magenta','aqua']
+
 ################
 ###FUNCTIONS####
 ################
+
+def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regionplus=pp.__AUSREGION__):
+    '''
+    Plot comparison of temperature over region
+    and over time in the region
+    Plots look at surface level only
+
+    d1 not yet implemented, just looks at month of d0
+    '''
+    gc=GC_class.GC_sat(d0,)
+    plt.figure(figsize=[12,12])
+    ym=d0.strftime('%b, %Y')
+    ymd=d0.strftime('%Y%m%d')
+
+    # region + view area
+    if regionplus is None:
+        regionplus=np.array(region)+np.array([-10,-15,10,15])
+
+    # Temperature avg:
+    temp=gc.temp[:,:,:,0] # surface
+    surfmeantemp=np.mean(temp,axis=0)
+    lati,loni=util.lat_lon_range(gc.lats,gc.lons,regionplus)
+    smt=surfmeantemp[lati,:]
+    smt=smt[:,loni]
+    tmin,tmax=np.min(smt),np.max(smt)
+
+    # First plot temp map of region
+    ax0=plt.subplot(211)
+    m,cs,cb=pp.createmap(surfmeantemp, gc.lats, gc.lons,
+                         region=regionplus, cmapname='rainbow',
+                         cbarorient='right',
+                         vmin=tmin,vmax=tmax,
+                         GC_shift=True, linear=True,
+                         title='Temperature '+ym, clabel='Kelvin')
+    pp.add_rectangle(m,region,)
+
+    # Second do gridsquare scatter plot
+    ax1=plt.subplot(212)
+
+    lati,loni=util.lat_lon_range(gc.lats,gc.lons,region)
+    colors = cm.rainbow(np.linspace(0, 1, len(lati)*len(loni)))
+
+    ii=0
+    tt,hh=[],[]
+    for y in lati:
+        for x in loni:
+
+            # Add dot to map
+            plt.sca(ax0)
+            mx,my = m(gc.lons[x], gc.lats[y])
+            m.plot(mx, my, 'o', markersize=5, color=colors[ii])
+
+            # Gridbox scatter plot
+            iitemp=gc.temp[:,y,x,0]
+            iihcho=gc.hcho[:,y,x,0]
+            plt.sca(ax1)
+            plt.scatter(iitemp, iihcho, color=colors[ii])
+
+            # create full list for regression
+            tt.extend(list(iitemp))
+            hh.extend(list(iihcho))
+            ii=ii+1
+
+
+    pp.add_regression(tt,hh)
+    plt.legend(loc='upper left', fontsize=14)
+
+    plt.title('Scatter (coloured by gridsquare)')
+    plt.xlabel('Kelvin')
+    #plt.xlim([280,320]) # temp
+    plt.ylabel('HCHO ppbv')
+    #plt.ylim() # hcho ppbv
+    pname='Figs/GC/HCHO_vs_temp_%s_%s.png'%(regionlabel,ymd)
+    plt.savefig(pname)
+    plt.close()
+    print('Saved ',pname)
 
 def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     '''
     plot comparison of tropO2 from GC to OMNO2d
     '''
-    
+
     d0=month
     d1=util.last_day(month)
 
@@ -52,16 +136,16 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     OM_tropno2 = np.nanmean(data['tropno2'],axis=0) # Average over month axis
     OM_lats=data['lats']
     OM_lons=data['lons']
-    
-    
+
+
     #GC=GC_class.GC_tavg(d0)
     GC=GC_class.GC_sat(d0)
     GC_tropno2=GC.get_trop_columns(['NO2'])['NO2']
     GC_tropno2=np.nanmean(GC_tropno2,axis=0) # Average over month
     GC_lats,GC_lons=GC.lats,GC.lons
-    
-    
-    
+
+
+
     pname='Figs/GC/GC_vs_OMNO2_sat_%s.png'%month.strftime('%Y%m')
     gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_tropno2],
                                       [GC_lats,OM_lats],[GC_lons,OM_lons],
@@ -71,8 +155,8 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
                                       vmin=1e14,vmax=1e16, amin=-1e15,amax=1e15,
                                       rmin=-100,rmax=100,
                                       clabel='molec/cm2',pname=pname)
-    
-    
+
+
     # pull out region:
     lati,loni=util.lat_lon_range(OM_lats,OM_lons,region)
     gc_tno2=gc_tno2[lati,:]
@@ -82,8 +166,8 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     print()
     print('avg of gc/om',np.nanmean(gc_tno2/om_tno2))
     print('avg of (gc-om)/om ', np.nanmean((gc_tno2-om_tno2) / om_tno2))
-    
-    
+
+
     lati,loni=util.lat_lon_range(GC_lats,GC_lons,region)
     GC_tropno2=GC_tropno2[lati,:]
     GC_tropno2=GC_tropno2[:,loni]
@@ -91,7 +175,7 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     GC_lons=GC_lons[loni]
     GC_lats_e=util.edges_from_mids(GC_lats)
     GC_lons_e=util.edges_from_mids(GC_lons)
-    
+
     OM_low=np.zeros([len(GC_lats),len(GC_lons)]) + np.NaN
     # reduce OMI resolution to that of GEOS-Chem:
     for i in range(len(GC_lats)):
@@ -102,7 +186,7 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
             tmp=tmp[:,loni]
             OM_low[i,j]=np.nanmean(tmp)
     pname='Figs/GC/GC_vs_OMNO2_sat_lowres_%s.png'%month.strftime('%Y%m')
-    
+
     gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_low],
                                       [GC_lats,GC_lats],[GC_lons,GC_lons],
                                       region=region,
@@ -111,7 +195,7 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
                                       vmin=1e14,vmax=1e16, amin=-1e15,amax=1e15,
                                       rmin=-100,rmax=100,
                                       clabel='molec/cm2',pname=pname)
-    
+
 
 def GC_vs_OMI(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     '''
@@ -247,28 +331,28 @@ def compare_to_campaigns(d0=datetime(2005,1,31), de=datetime(2005,6,1), dfmt='%b
     print('SAVED: ',pname)
 
 def compare_to_campaigns_daily_cycle():
-        
+
     # Read campaigns:
     SPS1=campaign()
     SPS2=campaign()
     SPS1.read_SPS(1)
     SPS2.read_SPS(2)
     lat,lon=SPS1.lat,SPS1.lon
-    
+
     d0,d1=SPS1.dates[0],SPS1.dates[-1]
     d2,d3=SPS2.dates[0],SPS2.dates[-1]
-    
+
     print('SPS1:',d0,d1)
     print('SPS2:',d2,d3)
-    
+
     d0 = d0.replace(year=2005)
     d1 = d1.replace(year=2005)
     d2 = d2.replace(year=2005)
     d3 = d3.replace(year=2005)
-        
+
     print('GC1:',d0,d1)
     print('GC2:',d2,d3)
-    
+
     # Read GEOS-Chem:
     GC1=GC_class.Hemco_diag(d0,d1,month=False)
     lati,loni=GC1.lat_lon_index(lat,lon)
@@ -284,7 +368,7 @@ def compare_to_campaigns_daily_cycle():
     plt.plot(SPS1.isop, color='k')
     plt.sca(a1)
     plt.plot(np.arange(gcoffset,len(GC1_E_isop)+gcoffset), GC1_E_isop, color='r')
-    
+
     for ax in [a0,a1]:
         plt.sca(ax)
         plt.tick_params(
@@ -293,20 +377,20 @@ def compare_to_campaigns_daily_cycle():
             bottom='off',      # ticks along the bottom edge are off
             top='off',         # ticks along the top edge are off
             labelbottom='off') # labels along the bottom edge are off
-        
+
     # then show daily cycle
     plt.sca(a2)
     print(len(SPS1.dates),SPS1.isop.shape)
     pp.plot_daily_cycle(SPS1.dates,SPS1.isop,houroffset=0, color='k') # already local time
     plt.sca(a3)
     pp.plot_daily_cycle(GC1.dates,GC1_E_isop,houroffset=gcoffset, color='r')
-    
+
     pname='Figs/SPS1_DailyCycle.png'
     plt.savefig(pname)
     print('Saved ',pname)
 
-    
-    
+
+
 
 def biogenic_vs_tavg():
     '''    '''
@@ -639,9 +723,14 @@ def check_shapefactors(date=datetime(2005,1,1)):
 # If this script is run directly:
 if __name__=='__main__':
     pp.InitMatplotlib()
+
+    for region, label in zip(subs,labels):
+        HCHO_vs_temp(region=region,regionlabel=label)
+
     #GC_vs_OMI()
-    for month in util.list_months(datetime(2005,1,1),datetime(2005,3,1)):
-        GC_vs_OMNO2d(month=month)
+    #for month in util.list_months(datetime(2005,1,1),datetime(2005,3,1)):
+    #    GC_vs_OMNO2d(month=month)
+
     #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()
     #compare_to_campaigns()

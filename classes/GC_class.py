@@ -82,6 +82,7 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     'TR-PAUSE_TP-PRESS':'tpP', # trop Pressure: mb
     # Many more in trac_avg_yyyymm.nc, not read here yet...
     'CHEM-L=$_OH':'OH', # OH molec/cm3: (time, alt059, lat, lon) : 'chemically produced OH'
+    'DAO-3D-$_TMPU':'temp', # temperature
     }
 
 ################
@@ -147,6 +148,7 @@ class GC_base:
             nkey=key
             if key in _GC_names_to_nice.keys():
                 nkey=_GC_names_to_nice[key]
+
             setattr(self, nkey, arr)
             # just use 'units' not 'unit'
             if 'unit' in attrs[key]:
@@ -611,7 +613,7 @@ class Hemco_diag(GC_base):
     def plot_daily_emissions_cycle(self,lat=-31,lon=150,pname=None,color='r'):
         ''' take a month and plot the emissions over the day'''
         import matplotlib.pyplot as plt
-        
+
         if pname is None:
             pname='Figs/GC/E_megan_%s.png'%self.dates[0].strftime("%Y%m")
 
@@ -620,9 +622,9 @@ class Hemco_diag(GC_base):
         # lat lon gives us one grid box
         lati,loni=self.lat_lon_index(lat,lon)
         offset=self.local_time_offset[0,loni] # get time offset from longitude
-        
+
         data=self.E_isop_bio[:,lati,loni]
-        
+
         # figure, first do whole timeline:
         f, (a0, a1) = plt.subplots(2,1, gridspec_kw = {'height_ratios':[1, 4]})
         plt.sca(a0)
@@ -633,12 +635,12 @@ class Hemco_diag(GC_base):
             bottom='off',      # ticks along the bottom edge are off
             top='off',         # ticks along the top edge are off
             labelbottom='off') # labels along the bottom edge are off
-        
+
         # then show daily cycle
         plt.sca(a1)
         pp.plot_daily_cycle(self.dates,data,houroffset=offset)
         #arr=np.zeros([24,self.n_days])
-        
+
         plt.ylabel('E_isop_biogenic [kgC/cm2/s]')
         plt.xlabel('hour(LT)')
         plt.suptitle(self.dates[0].strftime("%b %Y"))

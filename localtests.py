@@ -40,7 +40,10 @@ d0=datetime(2005,1,1)
 d1=datetime(2005,2,1)
 region=pp.__AUSREGION__
 
-data,attrs=fio.read_omno2d(d0)
 
-pp.createmap(data['tropno2'],data['lats'],data['lons'],vmin=1e13, vmax=1e16,pname='testno2.png',
-             title='OMNO2d for 2005, jan, 1',clabel='trop NO2 (molec/cm2)')
+
+
+#data,attrs=fio.read_omno2d(d0)
+#
+#pp.createmap(data['tropno2'],data['lats'],data['lons'],vmin=1e13, vmax=1e16,pname='testno2.png',
+#             title='OMNO2d for 2005, jan, 1',clabel='trop NO2 (molec/cm2)')

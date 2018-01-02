@@ -17,7 +17,7 @@ import calendar
 import numpy as np
 from scipy.interpolate import griddata # for regrid function
 from mpl_toolkits.basemap import maskoceans #
-
+from utilities import GMAO
 
 ###############
 ### GLOBALS ###
@@ -26,7 +26,9 @@ __VERBOSE__=False
 __grams_per_mole__={'isop':60.06+8.08, # C5H8
                     'hcho':30.02598,
                     'carbon':12.01}
-
+NA     = GMAO.edges_containing_region([-21,115,-11,150])
+SWA    = GMAO.edges_containing_region([-36,114,-29,128])
+SEA    = GMAO.edges_containing_region([-39,144,-29,153])
 
 ###############
 ### METHODS ###
@@ -74,6 +76,12 @@ def area_grid(lats,lons, latres, lonres):
             SWNE=[y-yr, x-xr, y+yr, x+xr]
             areas[yi,xi] = area_quadrangle(SWNE)
     return areas
+
+def combine_dicts(d1,d2):
+    '''
+    Add two dictionaries together
+    '''
+    return dict(d1.items() + d2.items() + [ (k, d1[k] + d2[k]) for k in set(d2) & set(d1) ])
 
 def date_from_gregorian(greg):
     '''

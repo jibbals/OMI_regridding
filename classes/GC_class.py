@@ -83,6 +83,7 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     # Many more in trac_avg_yyyymm.nc, not read here yet...
     'CHEM-L=$_OH':'OH', # OH molec/cm3: (time, alt059, lat, lon) : 'chemically produced OH'
     'DAO-3D-$_TMPU':'temp', # temperature
+    'DOA-FLDS_TS':'surftemp', # surface temperature, Kelvin
     }
 
 ################

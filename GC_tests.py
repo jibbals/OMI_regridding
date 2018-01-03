@@ -131,7 +131,11 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
 
     d0=month
     d1=util.last_day(month)
-
+    rmin,rmax=-50,50 # limits for percent relative difference in plots
+    amin,amax=-1e15,1e15 # limits for absolute diffs
+    vmin,vmax=1e14,14e14 # limits for molec/cm2 plots
+    linear=True # linear or logarithmic scale
+    
     data,attrs=fio.read_omno2d(d0,month=True)
     OM_tropno2 = np.nanmean(data['tropno2'],axis=0) # Average over month axis
     OM_lats=data['lats']
@@ -144,17 +148,29 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     GC_tropno2=np.nanmean(GC_tropno2,axis=0) # Average over month
     GC_lats,GC_lons=GC.lats,GC.lons
 
-
-
+    # set up axes for 3,1,1 columns (over 3 rows)
+    plt.figure(figsize=(12,18))
+    ax1=plt.subplot(331)
+    ax2=plt.subplot(332)
+    ax3=plt.subplot(333)
+    ax4=plt.subplot(323)
+    ax5=plt.subplot(324)
+    ax6=plt.subplot(325)
+    ax7=plt.subplot(326)
+    
+    
     pname='Figs/GC/GC_vs_OMNO2_sat_%s.png'%month.strftime('%Y%m')
     gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_tropno2],
                                       [GC_lats,OM_lats],[GC_lons,OM_lons],
                                       region=region,
-                                      titles=['GC_tropno2','OM_tropno2'],
+                                      titles=['GC','OM'],
                                       suptitle='Tropospheric NO2: 2005,Jan',
-                                      vmin=1e14,vmax=1e16, amin=-1e15,amax=1e15,
-                                      rmin=-100,rmax=100,
-                                      clabel='molec/cm2',pname=pname)
+                                      vmin=vmin,vmax=vmax, amin=amin,amax=amax,
+                                      rmin=rmin, rmax=rmax,
+                                      clabel='molec/cm2',
+                                      axeslist=[ax1,ax2,ax4,None],
+                                      linear=linear)
+                                      #pname=pname)
 
 
     # pull out region:
@@ -185,16 +201,29 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
             tmp=OM_tropno2[lati,:]
             tmp=tmp[:,loni]
             OM_low[i,j]=np.nanmean(tmp)
-    pname='Figs/GC/GC_vs_OMNO2_sat_lowres_%s.png'%month.strftime('%Y%m')
-
+    
+    # Put a regression for each gridsquare:
+    plt.sca(ax5)
+    assert OM_low.shape == GC_tropno2.shape, 'Reduced OMI Grid should match GC'
+    pp.plot_regression(OM_low.flatten(),GC_tropno2.flatten(),lims=[vmin,vmax],
+                       logscale=False, legendfont=14)
+    plt.title('Month averaged scatter')
+    plt.ylabel('GC')
+    plt.xlabel('OM_low')
+    
     gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_low],
                                       [GC_lats,GC_lats],[GC_lons,GC_lons],
                                       region=region,
-                                      titles=['GC_tropno2','OM_tropno2'],
-                                      suptitle='Tropospheric NO2: 2005,Jan',
-                                      vmin=1e14,vmax=1e16, amin=-1e15,amax=1e15,
-                                      rmin=-100,rmax=100,
-                                      clabel='molec/cm2',pname=pname)
+                                      titles=['GC','OM_low'],
+                                      vmin=vmin,vmax=vmax, amin=amin,amax=amax,
+                                      rmin=rmin,rmax=rmax,
+                                      clabel='molec/cm2',
+                                      axeslist=[None,ax3,ax6,ax7],
+                                      linear=linear )
+                                      #pname=pname)
+    plt.savefig(pname)
+    print('Saved ',pname)
+    plt.close()
 
 
 def GC_vs_OMI(month=datetime(2005,1,1),region=pp.__AUSREGION__):
@@ -724,12 +753,12 @@ def check_shapefactors(date=datetime(2005,1,1)):
 if __name__=='__main__':
     pp.InitMatplotlib()
 
-    for region, label in zip(subs,labels):
-        HCHO_vs_temp(region=region,regionlabel=label)
+    #for region, label in zip(subs,labels):
+    #    HCHO_vs_temp(region=region,regionlabel=label)
 
     #GC_vs_OMI()
-    #for month in util.list_months(datetime(2005,1,1),datetime(2005,3,1)):
-    #    GC_vs_OMNO2d(month=month)
+    for month in util.list_months(datetime(2005,1,1),datetime(2005,3,1)):
+        GC_vs_OMNO2d(month=month)
 
     #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()

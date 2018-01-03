@@ -65,6 +65,7 @@ __sat_mainkeys__=['lev','lon','lat','time',
                   'TR-PAUSE_TPLEV', # Added satellite output for ppamf
                   'CHEM-L=$_OH',
                   'DAO-3D-$_TMPU', # Temperature field (Kelvin)
+                  'DAO-FLDS_TS', # Surf Temp (Kelvin)
                   ]
 
 ################

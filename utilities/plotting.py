@@ -183,7 +183,7 @@ def basicmap(data, lats, lons, latlon=True,
     # if no colorbar is wanted then don't return one (can be set externally)
     return m, cs, cb
 
-def createmap(data, lats, lons, make_edges=False, GC_shift=False,
+def createmap(data, lats, lons, make_edges=False, GC_shift=True,
               vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
               clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
@@ -224,7 +224,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=False,
         ## midpoints, derive simply from edges
         lons_m=(lats_e[0:-1] + lats_e[1:])/2.0
         lats_m=(lons_e[0:-1] + lons_e[1:])/2.0
-    elif GC_shift: # GC output is generally shifted a box to the right(east)
+    elif GC_shift: # non edge-based grids need to be shifted left and down by half a box
         latres=lats[6]-lats[5]
         lonres=lons[6]-lons[5]
         lats=lats-latres/2.0
@@ -453,9 +453,11 @@ def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legen
 def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
                  clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
                  rmin=-200.0, rmax=200., amin=None, amax=None,
+                 axeslist=[None,None,None,None],
                  linear=False, alinear=True, rlinear=True, **pltargs):
     '''
         Plot two maps and their relative and absolute differences
+        axeslist can be used to redirect panels... just don't set pname
     '''
     A=datas[0]
     B=datas[1]
@@ -485,17 +487,26 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
 
     # set up plot
     f,axes=plt.subplots(2,2,figsize=(16,14))
+    
+    # first plot plain maps
     plt.sca(axes[0,0])
+    if axeslist[0] is not None:
+        plt.sca(axeslist[0])
     args={'region':region, 'clabel':clabel, 'linear':linear,
           'lats':lats, 'lons':lons, 'title':titles[0], 'cmapname':'rainbow',
          'vmin':vmin, 'vmax':vmax}
     createmap(A, **args)
-
+    
     plt.sca(axes[0,1])
+    if axeslist[1] is not None:
+        plt.sca(axeslist[1])
     args['title']=titles[1]
     createmap(B, **args)
 
+    # Next plot abs/rel differences
     plt.sca(axes[1,0])
+    if axeslist[2] is not None:
+        plt.sca(axeslist[2])
     args['title']="%s - %s"%(titles[0],titles[1])
     args['vmin']=amin; args['vmax']=amax
     args['linear']=alinear
@@ -503,11 +514,17 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     createmap(A-B, **args)
 
     plt.sca(axes[1,1])
+    if axeslist[3] is not None:
+        plt.sca(axeslist[3])
     args['title']="100*(%s-%s)/%s"%(titles[0], titles[1], titles[1])
     args['vmin']=rmin; args['vmax']=rmax
     args['linear']=rlinear
     args['clabel']="%"
     createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
+    
+    if np.sum([a is not None for a in axeslist]) > 0 :
+        plt.close(f)
+    
     return (A,B)
 
 def add_grid_to_map(m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=1.0, dashes=[1000,1], labels=[0,0,0,0],xy1=None):

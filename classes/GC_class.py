@@ -55,7 +55,30 @@ tavg_path = {'tropchem':rdir+'geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_t
              'halfisop':rdir+'geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'UCX':rdir+'UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s'}
 
-# MAP GC TAVG output to nicer names:
+# GC OUTPUT NAMES:
+__coords__ = ['lev','lon','lat','time']
+__ijavg__  = ['IJ-AVG-$_ISOP',
+              'IJ-AVG-$_CH2O',
+              'IJ-AVG-$_NO2',       # NO2 in ppbv
+              'TIME-SER_AIRDEN',    # Named differently in satellite output
+              'CHEM-L=$_OH',]       # OH concentrations?
+__emiss__  = ['BIOGSRCE_ISOP',      # biogenic source of isoprene () []
+              'BIOBSRCE_CH20',      # biomass burning hcho source () []
+              'ANTHSRCE_NO', ]      # anthro source of NO (molec/cm2/s) [t,lat,lon,1]
+__other__  = ['PEDGE-$_PSURF',      # pressure at surface of each gridbox (hPa)
+              'BXHGHT-$_BXHEIGHT',  # box height (?)
+              'BXHGHT-$_AD',        # Air density (?)
+              'BXHGHT-$_AVGW',      # water ??
+              'BXHGHT-$_N(AIR)',    # air density (?)
+              'DXYP_DXYP',          # gridbox horizontal area (m?)
+              'TR-PAUSE_TP-LEVEL',  #
+              'TR-PAUSE_TPLEV',    # Added satellite output for ppamf
+              'DAO-3D-$_TMPU',      # Temperature field (Kelvin)
+              'DAO-FLDS_TS', ]      # Surf Temp (Kelvin)
+__gc_allkeys__ = __coords__ + __ijavg__ + __emiss__ + __other__
+
+
+# MAP GC output to nicer names:
 _ija='IJ-AVG-$_'
 _bxh='BXHGHT-$_'
 _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
@@ -446,7 +469,7 @@ class GC_tavg(GC_base):
         self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
-    def __init__(self,date,keys=GC_fio.__tavg_mainkeys__,run='tropchem',nlevs=47):
+    def __init__(self,date,keys=__gc_allkeys__,run='tropchem',nlevs=47):
         # Call GC_base initialiser with tavg_mainkeys and tropchem by default
 
         # Determine path of file:
@@ -468,7 +491,7 @@ class GC_sat(GC_base):
     '''
         Class for reading and manipulating satellite overpass output!
     '''
-    def __init__(self,date, keys=GC_fio.__sat_mainkeys__, run='tropchem',nlevs=47):
+    def __init__(self,date, keys=__gc_allkeys__, run='tropchem',nlevs=47):
 
         # Determine path of files:
         dstr=date.strftime("%Y%m*")

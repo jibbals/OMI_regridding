@@ -370,13 +370,15 @@ def plot_rec(bmap, inlimits, color=None, linewidth=1):
     x,y=bmap(xs,ys)
     bmap.plot(x, y, latlon=False, color=color, linewidth=linewidth)
 
-def plot_regression(X,Y, lims=[1e12,2e17], logscale=True,
+def plot_regression(X,Y, lims=None, logscale=True,
                      legend=True, legendfont=22,
                      colour='k',linecolour='r', diag=True, oceanmask=None,
                      verbose=False):
     X=np.array(X)
     Y=np.array(Y)
     nans=np.isnan(X) + np.isnan(Y)
+    if lims is None:
+        lims=[np.nanmin([np.nanmin(X),np.nanmin(Y)]),np.nanmax([np.nanmax(X),np.nanmax(Y)])]
     lims0=np.array(lims); lims=np.array(lims)
 
     if oceanmask is None:

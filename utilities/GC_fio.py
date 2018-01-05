@@ -96,11 +96,20 @@ def dataset_to_dicts(ds,keys):
 
     return data,attrs
 
-def read_bpch(path,keys,multi=False):
+def read_bpch(path,keys):
     '''
         Read  generic bpch file into dictionary
         keys = keys you want to read
     '''
+    paths=path
+    multi=False
+    if isinstance(path,list):
+        path=path[0]
+        if len(path) > 1:
+            multi=True
+    if '*' in path:
+        multi=True
+
     # assume tracerinfo and diaginfo in same folder:
     splt=path.split('/')
     splt[-1]='tracerinfo.dat'
@@ -128,7 +137,7 @@ def read_bpch(path,keys,multi=False):
               'tracerinfo_file':tracinf,'diaginfo_file':diaginf,
               'decode_cf':False,'dask':True}
     if multi:
-        ds=open_mfbpchdataset(path,**bpchargs)
+        ds=open_mfbpchdataset(paths,**bpchargs)
     else:
         ds=open_bpchdataset(path,**bpchargs)
 

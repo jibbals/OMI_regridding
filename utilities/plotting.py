@@ -112,15 +112,35 @@ def add_rectangle(bmap, limits, color='k', linewidth=1):
           lr[1], ll[1]]
     bmap.plot(xs, ys, latlon = True, color=color, linewidth=linewidth)
 
-def add_regression(X,Y,label=None, color='r'):
+def add_regression(X,Y,label=None, color='r', exponential=False):
     '''
     plots RMA between X and Y
+        Y = mX+b
+    or X and ln Y if exponential flag is set
+        ln Y = mX+b
+        Y = exp(mX + b)
     '''
-    m,b,r,ci1,ci2 = RMA(np.array(X),np.array(Y))
+    Y2=np.copy(Y)
+    if exponential:
+        Y2=np.log(Y)
+
+    # find regression
+    m,b,r,ci1,ci2 = RMA(np.array(X), np.array(Y2))
     xx= np.array([np.nanmin(X), np.nanmax(X)])
+    Xspace=np.linspace(xx[0], xx[1], 30)
+    Yline=m*Xspace + b
+    if exponential:
+        Xspace=np.logspace(xx[0], xx[1], 30)
+        Yline= np.exp( m * Xspace + b)
+
+    # set up lable
     if label is None:
         label='Y = %.2fX + %.2f ; r=%.2f'%(m,b,r)
-    plt.plot(xx,m*xx + b,color=color,label=label)
+        if exponential:
+            label='Y = exp(%.2fX + %.2f) ; r=%.2f'%(m,b,r)
+
+
+    plt.plot(Xspace,Yline,color=color,label=label)
 
 
 def basicmap(data, lats, lons, latlon=True,
@@ -489,7 +509,7 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
 
     # set up plot
     f,axes=plt.subplots(2,2,figsize=(16,14))
-    
+
     # first plot plain maps
     plt.sca(axes[0,0])
     if axeslist[0] is not None:
@@ -498,7 +518,7 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
           'lats':lats, 'lons':lons, 'title':titles[0], 'cmapname':'rainbow',
          'vmin':vmin, 'vmax':vmax}
     createmap(A, **args)
-    
+
     plt.sca(axes[0,1])
     if axeslist[1] is not None:
         plt.sca(axeslist[1])
@@ -523,10 +543,10 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     args['linear']=rlinear
     args['clabel']="%"
     createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
-    
+
     if np.sum([a is not None for a in axeslist]) > 0 :
         plt.close(f)
-    
+
     return (A,B)
 
 def add_grid_to_map(m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=1.0, dashes=[1000,1], labels=[0,0,0,0],xy1=None):

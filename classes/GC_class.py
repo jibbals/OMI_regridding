@@ -106,7 +106,7 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     # Many more in trac_avg_yyyymm.nc, not read here yet...
     'CHEM-L=$_OH':'OH', # OH molec/cm3: (time, alt059, lat, lon) : 'chemically produced OH'
     'DAO-3D-$_TMPU':'temp', # temperature
-    'DOA-FLDS_TS':'surftemp', # surface temperature, Kelvin
+    'DAO-FLDS_TS':'surftemp', # surface temperature, Kelvin
     }
 
 ################
@@ -151,7 +151,11 @@ class GC_base:
 
             # Fix air density units to molec/m3, in case they are in molec/cm3
             if key == 'TIME-SER_AIRDEN':
-                surf_air=np.nanmean(arr[:,:,:,0])
+                # grab surface air density to check units
+                surf_air=np.nanmean(arr[:,:,0])
+                if len(arr.shape)==4:
+                    surf_air=np.nanmean(arr[:,:,:,0]) # maybe has time dimension
+
                 if __VERBOSE__:
                     print(key,np.shape(arr),'surface N_air:',surf_air)
                 if key in attrs:
@@ -491,27 +495,25 @@ class GC_sat(GC_base):
     '''
         Class for reading and manipulating satellite overpass output!
     '''
-    def __init__(self,date, keys=__gc_allkeys__, run='tropchem',nlevs=47):
+    def __init__(self,day0, dayN=None, keys=__gc_allkeys__, run='tropchem',nlevs=47):
 
         # Determine path of files:
-        dstr=date.strftime("%Y%m*")
-        path=sat_path[run]%dstr
+        dates=util.list_days(day0,dayN)
+        dstrs=util.list_days_strings(day0,dayN)
+        paths= [ sat_path[run]%dstr for dstr in dstrs ]
 
         # read data/attrs and initialise class:
-        data,attrs = GC_fio.read_bpch(path,keys=keys,multi='*' in path)
+        data,attrs = GC_fio.read_bpch(paths,keys=keys)
 
         # may need to handle missing time dim...
         if not 'time' in data:
-            tmp=data['IJ-AVG-$_CH2O']
-            dates=[date]
+            #tmp=data['IJ-AVG-$_CH2O']
             times=util.datetimes_from_np_datetime64(dates,reverse=True)
-            if len(tmp.shape) == 4:
-                dates=util.list_days(date,month=True)
-                times=util.datetimes_from_np_datetime64(dates,reverse=True)
+
             data['time']=np.array(times)
             attrs['time']={'desc':'Overpass date (np.datetime64)'}
 
-        attrs['init_date']=date
+        attrs['init_date']=day0
         super(GC_sat,self).__init__(data,attrs,nlevs=nlevs)
 
         # fix TR-PAUSE_TPLEV output:
@@ -537,12 +539,12 @@ class GC_sat(GC_base):
 
             # also calculate emissions in kg/s
             self._set_E_isop_bio_kgs()
+
         # fix dates:
-        files=glob(path)
-        if len(files) > 1:
+        if len(dates) > 1:
             self._has_time_dim=True
             #ASSUME WE HAVE ALL DAYS IN THIS MONTH:
-            self.dates=util.list_days(day0=date, month=True)
+            self.dates=dates
 
 
 class Hemco_diag(GC_base):

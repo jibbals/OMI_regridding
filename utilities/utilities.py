@@ -249,6 +249,12 @@ def list_days(day0,dayn=None,month=False):
     numdays = (dayn-day0).days + 1 # timedelta
     return [day0 + timedelta(days=x) for x in range(0, numdays)]
 
+def list_days_strings(day0,dayn=None,month=False,fmt='%Y%m%d'):
+    '''
+    '''
+    days=list_days(day0,dayn=dayn,month=month)
+    return [day.strftime(fmt) for day in days]
+
 def list_months(day0,dayn):
     '''
         Return list of months (day=1) included between day0 and dayN

@@ -56,7 +56,9 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
 
     d1 not yet implemented, just looks at month of d0
     '''
-    gc=GC_class.GC_sat(d0,)
+    if d1 is None:
+        d1=util.last_day(d0)
+    gc=GC_class.GC_sat(d0,d1)
     plt.figure(figsize=[12,12])
     ym=d0.strftime('%b, %Y')
     ymd=d0.strftime('%Y%m%d')
@@ -66,7 +68,8 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
         regionplus=np.array(region)+np.array([-10,-15,10,15])
 
     # Temperature avg:
-    temp=gc.temp[:,:,:,0] # surface
+    #temp=gc.temp[:,:,:,0] # surface
+    temp=gc.surftemp[:,:,:,0] # surface temp in Kelvin
     surfmeantemp=np.mean(temp,axis=0)
     lati,loni=util.lat_lon_range(gc.lats,gc.lons,regionplus)
     smt=surfmeantemp[lati,:]
@@ -110,9 +113,13 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
             hh.extend(list(iihcho))
             ii=ii+1
 
+    # add straight regression
+    pp.add_regression(tt,hh,color='r')
+    # Add exponential regression:
+    pp.add_regression(tt,hh,color='m',exponential=True)
+    plt.plot()
+    plt.legend(loc='upper left', fontsize=12)
 
-    pp.add_regression(tt,hh)
-    plt.legend(loc='upper left', fontsize=14)
 
     plt.title('Scatter (coloured by gridsquare)')
     plt.xlabel('Kelvin')
@@ -135,7 +142,7 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     amin,amax=-1e15,1e15 # limits for absolute diffs
     vmin,vmax=1e14,14e14 # limits for molec/cm2 plots
     linear=True # linear or logarithmic scale
-    
+
     data,attrs=fio.read_omno2d(d0,month=True)
     OM_tropno2 = np.nanmean(data['tropno2'],axis=0) # Average over month axis
     OM_lats=data['lats']
@@ -150,7 +157,7 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     GC_anthrono[GC_anthrono < 1]=np.NaN
     GC_tropno2=np.nanmean(GC_tropno2,axis=0) # Average over month
     GC_anthrono=np.nanmean(GC_anthrono,axis=0)
-    
+
     GC_lats,GC_lons=GC.lats,GC.lons
 
     # set up axes for 3,1,1 columns (over 3 rows)
@@ -162,8 +169,8 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     ax5=plt.subplot(324)
     ax6=plt.subplot(325)
     ax7=plt.subplot(326)
-    
-    
+
+
     pname='Figs/GC/GC_vs_OMNO2_sat_%s.png'%month.strftime('%Y%m')
     gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_tropno2],
                                       [GC_lats,OM_lats],[GC_lons,OM_lons],
@@ -208,7 +215,7 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
             tmp=OM_tropno2[lati,:]
             tmp=tmp[:,loni]
             OM_low[i,j]=np.nanmean(tmp)
-    
+
     # Put a regression for each gridsquare:
     plt.sca(ax4)
     GC_anthrono=GC_anthrono/np.nanstd(GC_anthrono)
@@ -224,7 +231,7 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     plt.title('molec/cm2')
     plt.ylabel('GC')
     plt.xlabel('OM_low')
-    
+
     gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_low],
                                       [GC_lats,GC_lats],[GC_lons,GC_lons],
                                       region=region,
@@ -767,12 +774,13 @@ def check_shapefactors(date=datetime(2005,1,1)):
 if __name__=='__main__':
     pp.InitMatplotlib()
 
+    region=SEA
+    label='SEA'
     #for region, label in zip(subs,labels):
-    #    HCHO_vs_temp(region=region,regionlabel=label)
+    HCHO_vs_temp(region=region,regionlabel=label)
 
-    #GC_vs_OMI()
-    for month in util.list_months(datetime(2005,1,1),datetime(2005,3,1)):
-        GC_vs_OMNO2d(month=month)
+    #for month in util.list_months(datetime(2005,1,1),datetime(2005,3,1)):
+    #    GC_vs_OMNO2d(month=month)
 
     #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()

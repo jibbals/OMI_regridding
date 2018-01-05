@@ -573,7 +573,7 @@ def read_omno2d(date0,date1=None,month=False):
     tropname='HDFEOS/GRIDS/ColumnAmountNO2/Data Fields/ColumnAmountNO2TropCloudScreened'
     latname='HDFEOS/GRIDS/ColumnAmountNO2/lat'
     lonname='HDFEOS/GRIDS/ColumnAmountNO2/lon'
-    ddir='/short/m19/satellite-data/aura/omi/OMNO2d/data/'
+    ddir='Data/OMNO2d/data/'
 
     dates=util.list_days(date0,date1)
     data=np.zeros([len(dates),720,1440])+np.NaN

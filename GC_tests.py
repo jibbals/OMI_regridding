@@ -211,17 +211,17 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     
     # Put a regression for each gridsquare:
     plt.sca(ax4)
-    GC_anthrono=GC_anthrono/np.nanmean(GC_anthrono)
-    OM_low_norm=OM_low/np.nanmean(OM_low)
+    GC_anthrono=GC_anthrono/np.nanstd(GC_anthrono)
+    OM_low_norm=OM_low/np.nanstd(OM_low)#/np.nanmean(OM_low)
     pp.plot_regression(OM_low_norm.flatten(), GC_anthrono.flatten(),
                        logscale=False, legendfont=12)
-    plt.title('Month Averaged normalised Scatter')
+    plt.title('Normalised by $\sigma$')
     plt.ylabel('GC_Anthrono')#GC.attrs['ANTHSRCE_NO']['units'])
     plt.sca(ax5)
     assert OM_low.shape == GC_tropno2.shape, 'Reduced OMI Grid should match GC'
     pp.plot_regression(OM_low.flatten(),GC_tropno2.flatten(),lims=[vmin,vmax],
                        logscale=False, legendfont=12)
-    plt.title('Month averaged scatter')
+    plt.title('molec/cm2')
     plt.ylabel('GC')
     plt.xlabel('OM_low')
     
@@ -771,10 +771,10 @@ if __name__=='__main__':
     #    HCHO_vs_temp(region=region,regionlabel=label)
 
     #GC_vs_OMI()
-    #for month in util.list_months(datetime(2005,1,1),datetime(2005,3,1)):
-    #    GC_vs_OMNO2d(month=month)
+    for month in util.list_months(datetime(2005,1,1),datetime(2005,3,1)):
+        GC_vs_OMNO2d(month=month)
 
-    GC_vs_OMNO2d(month=datetime(2005,1,1))
+    #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()
     #compare_to_campaigns()
     #check_shapefactors()

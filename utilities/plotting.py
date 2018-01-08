@@ -112,7 +112,7 @@ def add_rectangle(bmap, limits, color='k', linewidth=1):
           lr[1], ll[1]]
     bmap.plot(xs, ys, latlon = True, color=color, linewidth=linewidth)
 
-def add_regression(X,Y,label=None, color='r', exponential=False):
+def add_regression(X,Y,label=None, addlabel=True, exponential=False, **pargs):
     '''
     plots RMA between X and Y
         Y = mX+b
@@ -130,17 +130,16 @@ def add_regression(X,Y,label=None, color='r', exponential=False):
     Xspace=np.linspace(xx[0], xx[1], 30)
     Yline=m*Xspace + b
     if exponential:
-        Xspace=np.logspace(xx[0], xx[1], 30)
         Yline= np.exp( m * Xspace + b)
 
     # set up lable
-    if label is None:
+    if addlabel and (label is None):
         label='Y = %.2fX + %.2f ; r=%.2f'%(m,b,r)
         if exponential:
             label='Y = exp(%.2fX + %.2f) ; r=%.2f'%(m,b,r)
 
-
-    plt.plot(Xspace,Yline,color=color,label=label)
+    plt.plot(Xspace,Yline,label=label, **pargs)
+    return m,b,r,ci1,ci2
 
 
 def basicmap(data, lats, lons, latlon=True,

@@ -75,7 +75,7 @@ __other__  = ['PEDGE-$_PSURF',      # pressure at surface of each gridbox (hPa)
               'TR-PAUSE_TPLEV',    # Added satellite output for ppamf
               'DAO-3D-$_TMPU',      # Temperature field (Kelvin)
               'DAO-FLDS_TS', ]      # Surf Temp (Kelvin)
-__gc_allkeys__ = __coords__ + __ijavg__ + __emiss__ + __other__
+__gc_allkeys__ = __ijavg__ + __emiss__ + __other__
 
 
 # MAP GC output to nicer names:
@@ -196,7 +196,7 @@ class GC_base:
 
         # Calculate total columns hcho
         # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
-        if hasattr(self,'hcho'):
+        if hasattr(self,'hcho') and hasattr(self,'N_air') and hasattr(self, 'boxH'):
             n_dims=len(np.shape(self.hcho))
             print("CHECK:hcho %s, mean = %.2e %s"%(str(np.shape(self.hcho)),np.mean(self.hcho),self.attrs['hcho']['units']))
             self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
@@ -481,7 +481,7 @@ class GC_tavg(GC_base):
         path = tavg_path[run]%dstr
 
         # read data/attrs and initialise class:
-        data,attrs = GC_fio.read_bpch(path,keys=keys,multi='*' in path)
+        data,attrs = GC_fio.read_bpch(path,keys=keys)
         attrs['init_date']=date
 
         super(GC_tavg,self).__init__(data,attrs,nlevs=nlevs)

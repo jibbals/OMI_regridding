@@ -162,6 +162,9 @@ def get_mask(arr, lats=None, lons=None, masknan=True, maskocean=False, maskland=
         to mask the ocean or land you need to put in the lats, lons of the data
     '''
     mask=np.isnan(arr)
+    if maskocean or maskland:
+        if len(np.shape(lats)) == 1:
+            lons,lats = np.meshgrid(lons,lats)
     if maskocean:
         mask = mask + maskoceans(lons,lats,arr, inlands=False).mask
     if maskland:

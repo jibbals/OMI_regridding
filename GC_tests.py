@@ -19,6 +19,7 @@ from glob import glob
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import matplotlib.cm as cm
+import seaborn # Plotting density function
 
 # local imports:
 import utilities.plotting as pp
@@ -58,10 +59,11 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     '''
     if d1 is None:
         d1=util.last_day(d0)
-    gc=GC_class.GC_sat(d0,d1)
-    plt.figure(figsize=[12,12])
-    ym=d0.strftime('%b, %Y')
-    ymd=d0.strftime('%Y%m%d')
+    # read hcho, and temperature
+    gc=GC_class.GC_sat(d0,d1,keys=['IJ-AVG-$_CH2O','DAO-FLDS_TS'])#+GC_class.__other__)
+    fig=plt.figure(figsize=[12,12])
+    #ym=d0.strftime('%b, %Y')
+    ymd=d0.strftime('%Y%m%d') + '-' + d1.strftime('%Y%m%d')
 
     # region + view area
     if regionplus is None:
@@ -83,7 +85,7 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
                          cbarorient='right',
                          vmin=tmin,vmax=tmax,
                          GC_shift=True, linear=True,
-                         title='Temperature '+ym, clabel='Kelvin')
+                         title='Temperature '+ymd, clabel='Kelvin')
     pp.add_rectangle(m,region,)
 
     # Second do gridsquare scatter plot
@@ -93,9 +95,17 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     colors = cm.rainbow(np.linspace(0, 1, len(lati)*len(loni)))
 
     ii=0
-    tt,hh=[],[]
+    tt,hh,l_r,e_r,l_m,e_m=[],[],[],[],[],[]
+    oceanmask=util.get_mask(surfmeantemp,gc.lats,gc.lons,maskocean=True)
+
     for y in lati:
         for x in loni:
+
+            # Don't correlate oceanic squares
+            if oceanmask[y,x]:
+                ii=ii+1
+                continue
+
 
             # Add dot to map
             plt.sca(ax0)
@@ -103,22 +113,35 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
             m.plot(mx, my, 'o', markersize=5, color=colors[ii])
 
             # Gridbox scatter plot
-            iitemp=gc.temp[:,y,x,0]
+            iitemp=gc.surftemp[:,y,x,0]
             iihcho=gc.hcho[:,y,x,0]
             plt.sca(ax1)
             plt.scatter(iitemp, iihcho, color=colors[ii])
 
+            # add little line for each regression
+            l_reg=pp.add_regression(iitemp, iihcho, addlabel=False,
+                                    color=colors[ii],
+                                    linewidth=0) # turn off line with width
+            e_reg=pp.add_regression(iitemp, iihcho, addlabel=False,
+                                    exponential=True, color=colors[ii],
+                                    linewidth=0)
+
             # create full list for regression
             tt.extend(list(iitemp))
             hh.extend(list(iihcho))
+            l_r.append(l_reg[2]) # save the regressions
+            e_r.append(e_reg[2])
+            l_m.append(l_reg[0]) # save the slopes
+            e_m.append(e_reg[0])
             ii=ii+1
 
     # add straight regression
-    pp.add_regression(tt,hh,color='r')
+    pp.add_regression(tt,hh,color='r',linewidth=3)
     # Add exponential regression:
-    pp.add_regression(tt,hh,color='m',exponential=True)
-    plt.plot()
-    plt.legend(loc='upper left', fontsize=12)
+    pp.add_regression(tt,hh,exponential=True,color='m',linewidth=3)
+
+    # add legend
+    plt.legend(loc='lower right', fontsize=12)
 
 
     plt.title('Scatter (coloured by gridsquare)')
@@ -126,6 +149,37 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     #plt.xlim([280,320]) # temp
     plt.ylabel('HCHO ppbv')
     #plt.ylim() # hcho ppbv
+
+    # set fontsizes for plot
+    fs=10
+    for attr in ['ytick','xtick','axes']:
+        plt.rc(attr, labelsize=fs)
+    plt.rc('font',size=fs)
+    # show distribution of regressions  # x0,y0,xwid,ywid
+    lil_ax = fig.add_axes([0.17, 0.3, .19, 0.11])
+    plt.sca(lil_ax)
+
+    seaborn.set_style('whitegrid')
+    #seaborn.kdeplot(np.array(l_r), linestyle='--',color='r',ax=lil_ax)
+    seaborn.kdeplot(np.array(e_r), linestyle='--',color='m',ax=lil_ax)
+    plt.xlim([0.3,1.2]); plt.ylim([0.0,5.0])
+    plt.xticks(np.arange(0.3,1.21,.2))
+    plt.yticks([1,2,3,4])
+    plt.xlabel('r (dashed)'); plt.ylabel('r density')
+    plt.title('')
+    plt.text(0.8,0.8,'n=%d'%len(l_r),transform = lil_ax.transAxes)
+
+    # show distribution of m values:
+    lil_ax2 = lil_ax.twinx().twiny() # another density plot on same axes
+    plt.sca(lil_ax2)
+
+    #seaborn.kdeplot(np.array(l_m), linestyle='-',color='r',ax=lil_ax2)
+    seaborn.kdeplot(np.array(e_m), linestyle='-',color='m',ax=lil_ax2)
+    plt.xlabel('slope (m)')
+    plt.ylabel('m density')
+    plt.xticks(np.arange(0,0.401,0.1))
+    plt.xlim(0,0.4)
+
     pname='Figs/GC/HCHO_vs_temp_%s_%s.png'%(regionlabel,ymd)
     plt.savefig(pname)
     plt.close()
@@ -774,10 +828,12 @@ def check_shapefactors(date=datetime(2005,1,1)):
 if __name__=='__main__':
     pp.InitMatplotlib()
 
+    d0=datetime(2005,1,1)
+    d1=datetime(2005,4,29)
     region=SEA
     label='SEA'
-    #for region, label in zip(subs,labels):
-    HCHO_vs_temp(region=region,regionlabel=label)
+    for region, label in zip(subs,labels):
+        HCHO_vs_temp(d0=d0,d1=d1,region=region,regionlabel=label)
 
     #for month in util.list_months(datetime(2005,1,1),datetime(2005,3,1)):
     #    GC_vs_OMNO2d(month=month)

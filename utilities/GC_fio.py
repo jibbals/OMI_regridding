@@ -19,6 +19,7 @@ from glob import glob
 #sys.path.insert(0,os.path.dirname(currentdir))
 
 import utilities.utilities as util
+from classes.GC_class import __coords__ as GC_coords
 
 #sys.path.pop(0)
 
@@ -48,26 +49,6 @@ def _datapaths():
 
 paths = _datapaths()
 
-# Make these nice name dictionaries in GC_Output class file
-
-#__tavg_mainkeys__=['lev','lon','lat','time',
-#                   'IJ-AVG-$_ISOP','IJ-AVG-$_CH2O','BIOGSRCE_ISOP', 'BIOBSRCE_CH20',
-#                   'IJ-AVG-$_NO2',
-#                   'PEDGE-$_PSURF','BXHGHT-$_BXHEIGHT','BXHGHT-$_AD',
-#                   'BXHGHT-$_AVGW','BXHGHT-$_N(AIR)','DXYP_DXYP',
-#                   'TR-PAUSE_TP-LEVEL']
-
-#__sat_mainkeys__=['lev','lon','lat','time',
-#                  'IJ-AVG-$_ISOP','IJ-AVG-$_CH2O',
-#                  'IJ-AVG-$_NO2', # NO2 in ppbv
-#                  'BIOGSRCE_ISOP',
-#                  'PEDGE-$_PSURF','BXHGHT-$_BXHEIGHT',
-#                  'TIME-SER_AIRDEN', #'BXHGHT-$_AD',
-#                  'TR-PAUSE_TPLEV', # Added satellite output for ppamf
-#                  'CHEM-L=$_OH',
-#                  'DAO-3D-$_TMPU', # Temperature field (Kelvin)
-#                  'DAO-FLDS_TS', # Surf Temp (Kelvin)
-#                  ]
 
 ################
 ###FUNCTIONS####
@@ -109,6 +90,9 @@ def read_bpch(path,keys):
             multi=True
     if '*' in path:
         multi=True
+
+    # make sure coordinates are in keys list
+    keys = list(set(keys + GC_coords)) # set removes any duplicates
 
     # assume tracerinfo and diaginfo in same folder:
     splt=path.split('/')

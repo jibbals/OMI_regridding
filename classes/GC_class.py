@@ -238,7 +238,7 @@ class GC_base:
                 ppbv=ppbv/5.0 # ppb carbon to ppb isoprene
 
             # ppbv * 1e-9 * molec_air/m3 * boxH(m) * m2/cm2
-            scale=0.0
+            # scale=0.0
             out[k] = ppbv * 1e-9 * N_air * self.boxH * 1e-4 # molec/cm2
         return out
 

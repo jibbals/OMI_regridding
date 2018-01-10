@@ -139,10 +139,17 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     pp.add_regression(tt,hh,color='r',linewidth=3)
     # Add exponential regression:
     pp.add_regression(tt,hh,exponential=True,color='m',linewidth=3)
-
+    
+    # reset lower bounds
+    ylims=plt.gca().get_ylim()
+    plt.ylim([max([-2,ylims[0]]), ylims[1]])
+    xlims=plt.gca().get_xlim()
+    plt.xlim([max([xlims[0],270]),xlims[1]])
+    
+    
     # add legend
     plt.legend(loc='lower right', fontsize=12)
-
+    
 
     plt.title('Scatter (coloured by gridsquare)')
     plt.xlabel('Kelvin')
@@ -162,10 +169,10 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     seaborn.set_style('whitegrid')
     #seaborn.kdeplot(np.array(l_r), linestyle='--',color='r',ax=lil_ax)
     seaborn.kdeplot(np.array(e_r), linestyle='--',color='m',ax=lil_ax)
-    plt.xlim([0.3,1.2]); plt.ylim([0.0,5.0])
+    #plt.xlim([0.3,1.2]); plt.ylim([0.0,5.0])
     plt.xticks(np.arange(0.3,1.21,.2))
-    plt.yticks([1,2,3,4])
-    plt.xlabel('r (dashed)'); plt.ylabel('r density')
+    #plt.yticks([1,2,3,4])
+    plt.xlabel('r (dashed)'); plt.ylabel('density (r)')
     plt.title('')
     plt.text(0.8,0.8,'n=%d'%len(l_r),transform = lil_ax.transAxes)
 
@@ -204,7 +211,7 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
 
 
     #GC=GC_class.GC_tavg(d0)
-    GC=GC_class.GC_sat(d0)
+    GC=GC_class.GC_sat(d0,dayN=d1)
     GC_tropno2=GC.get_trop_columns(['NO2'])['NO2']
     GC_tavg=GC_class.GC_tavg(d0,keys=GC_class.__coords__+GC_class.__emiss__)
     GC_anthrono=GC_tavg.ANTHSRCE_NO
@@ -829,14 +836,14 @@ if __name__=='__main__':
     pp.InitMatplotlib()
 
     d0=datetime(2005,1,1)
-    d1=datetime(2005,4,29)
+    d1=datetime(2005,12,31)
     region=SEA
     label='SEA'
-    for region, label in zip(subs,labels):
-        HCHO_vs_temp(d0=d0,d1=d1,region=region,regionlabel=label)
+    #for region, label in zip(subs,labels):
+    #    HCHO_vs_temp(d0=d0,d1=d1,region=region,regionlabel=label)
 
-    #for month in util.list_months(datetime(2005,1,1),datetime(2005,3,1)):
-    #    GC_vs_OMNO2d(month=month)
+    for month in util.list_months(datetime(2005,6,1),datetime(2005,12,1)):
+        GC_vs_OMNO2d(month=month)
 
     #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()

@@ -28,7 +28,7 @@ from classes.GC_class import __coords__ as GC_coords
 #####GLOBALS######
 ##################
 
-__VERBOSE__=True
+__VERBOSE__=False
 
 run_number={"tropchem":0,"UCX":1,"halfisop":2,"zeroisop":3}
 runs=["geos5_2x25_tropchem","UCX_geos5_2x25",
@@ -83,6 +83,9 @@ def read_bpch(path,keys):
         keys = keys you want to read
     '''
     paths=path
+    if __VERBOSE__:
+        print('GC_fio.read_bpch called on paths:')
+        print(path)
     multi=False
     if isinstance(path,list):
         path=path[0]

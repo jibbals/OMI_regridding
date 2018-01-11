@@ -264,14 +264,16 @@ class GC_base:
             # Which index is time,lat,lon,lev?
             timei=0;lati=1;loni=2
             out=np.zeros(dims[[timei,lati,loni]])
-            if dims[0] > 40: # no time dimension
+            #if dims[0] > 40: # no time dimension
+            hastime= len(dims)==3
+            if hastime: # no time dim
                 lati=0; loni=1
                 out=np.zeros(dims[[lati, loni]])
 
             for lat in range(dims[lati]): # loop over lats
                 for lon in range(dims[loni]): # loop over lons
                     try:
-                        if len(dims)==3:
+                        if hastime:
                             tropi=trop[lat,lon]
                             out[lat,lon]=np.sum(X[lat,lon,0:tropi])+extra[lat,lon] * X[lat,lon,tropi]
                         else:

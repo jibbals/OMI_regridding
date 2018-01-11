@@ -167,7 +167,7 @@ def basicmap(data, lats, lons, latlon=True,
 
     norm=None
     if not linear:
-        if __VERBOSE__:print("createmap() is removing negatives")
+        if __VERBOSE__:print("basicmap() is removing negatives")
         norm=LogNorm()
         data[data<=0.0]=np.NaN
 
@@ -475,6 +475,7 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
                  clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
                  rmin=-200.0, rmax=200., amin=None, amax=None,
                  axeslist=[None,None,None,None],
+                 lower_resolution=False,
                  linear=False, alinear=True, rlinear=True, **pltargs):
     '''
         Plot two maps and their relative and absolute differences
@@ -496,13 +497,23 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
         amin = -vmax
 
 
-    # regrid the lower resolution data
+    # regrid the lower resolution data to upper unless flag set
+    # Alats is higher resolution    
     if len(Alats) > len(Blats):
-        B = regrid(B,Blats,Blons,Alats,Alons)
-        Blats,Blons=Alats,Alons
+        if lower_resolution:
+            A = regrid(A,Alats,Alons,Blats,Blons)
+            Alats,Alons=Blats,Blons
+        else:
+            B = regrid(B,Blats,Blons,Alats,Alons)
+            Blats,Blons=Alats,Alons
+    # Alats is lower resolution
     if len(Alats) < len(Blats):
-        A = regrid(A,Alats,Alons,Blats,Blons)
-        Alats,Alons=Blats,Blons
+        if lower_resolution:
+            B = regrid(B,Blats,Blons,Alats,Alons)
+            Blats,Blons=Alats,Alons
+        else:
+            A = regrid(A,Alats,Alons,Blats,Blons)
+            Alats,Alons=Blats,Blons
     lats=Alats
     lons=Alons
 

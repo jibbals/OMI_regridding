@@ -213,7 +213,7 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     #GC=GC_class.GC_tavg(d0)
     GC=GC_class.GC_sat(d0,dayN=d1)
     GC_tropno2=GC.get_trop_columns(['NO2'])['NO2']
-    GC_tavg=GC_class.GC_tavg(d0,keys=GC_class.__coords__+GC_class.__emiss__)
+    GC_tavg=GC_class.GC_tavg(d0,keys=GC_class.__emiss__)
     GC_anthrono=GC_tavg.ANTHSRCE_NO
     GC_anthrono[GC_anthrono < 1]=np.NaN
     GC_tropno2=np.nanmean(GC_tropno2,axis=0) # Average over month
@@ -300,6 +300,7 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
                                       vmin=vmin,vmax=vmax, amin=amin,amax=amax,
                                       rmin=rmin,rmax=rmax,
                                       clabel='molec/cm2',
+                                      lower_resolution=True,
                                       axeslist=[None,ax3,ax6,ax7],
                                       linear=linear )
                                       #pname=pname)
@@ -842,7 +843,7 @@ if __name__=='__main__':
     #for region, label in zip(subs,labels):
     #    HCHO_vs_temp(d0=d0,d1=d1,region=region,regionlabel=label)
 
-    for month in util.list_months(datetime(2005,1,1),datetime(2005,2,1)):
+    for month in util.list_months(datetime(2005,1,1),datetime(2005,1,2)):
         GC_vs_OMNO2d(month=month)
 
     #GC_vs_OMNO2d(month=datetime(2005,1,1))

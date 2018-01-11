@@ -237,7 +237,7 @@ def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
                                       [GC_lats,OM_lats],[GC_lons,OM_lons],
                                       region=region,
                                       titles=['GC','OM'],
-                                      suptitle='Tropospheric NO2: 2005,Jan',
+                                      suptitle='Tropospheric NO2: %s'%month.strftime('%b, %Y'),
                                       vmin=vmin,vmax=vmax, amin=amin,amax=amax,
                                       rmin=rmin, rmax=rmax,
                                       clabel='molec/cm2',
@@ -842,7 +842,7 @@ if __name__=='__main__':
     #for region, label in zip(subs,labels):
     #    HCHO_vs_temp(d0=d0,d1=d1,region=region,regionlabel=label)
 
-    for month in util.list_months(datetime(2005,6,1),datetime(2005,12,1)):
+    for month in util.list_months(datetime(2005,1,1),datetime(2005,2,1)):
         GC_vs_OMNO2d(month=month)
 
     #GC_vs_OMNO2d(month=datetime(2005,1,1))

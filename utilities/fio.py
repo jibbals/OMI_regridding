@@ -560,13 +560,13 @@ def read_gchcho(date):
             ret_data[key] = dset[key].squeeze()
     return ret_data
 
-def read_omno2d(date0,date1=None,month=False):
+def read_omno2d(day0,dayN=None,month=False):
     '''
         Read daily gridded OMNO2d data, optionally with time dimension
     '''
-    # set date1 if not set to end of month or date0
-    if date1 is None:
-        date1=[date0, util.last_day(date0)][month]
+    # set dayN if not set
+    if dayN is None:
+        dayN=[day0, util.last_day(day0)][month]
 
     #vcdname='HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields/ColumnAmountNO2'
     #vcdcsname='HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields/ColumnAmountNO2CloudScreened'
@@ -575,7 +575,7 @@ def read_omno2d(date0,date1=None,month=False):
     lonname='HDFEOS/GRIDS/ColumnAmountNO2/lon'
     ddir='Data/OMNO2d/data/'
 
-    dates=util.list_days(date0,date1)
+    dates=util.list_days(day0,dayN)
     data=np.zeros([len(dates),720,1440])+np.NaN
     lats=np.arange(-90,90,0.25)+0.125
     lons=np.arange(-180,180,0.25)+0.125

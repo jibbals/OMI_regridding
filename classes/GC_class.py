@@ -196,7 +196,7 @@ class GC_base:
 
         # Calculate total columns hcho
         # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
-        if hasattr(self,'hcho') and hasattr(self,'N_air') and hasattr(self, 'boxH'):
+        if all([hasattr(self,attr) for attr in ['hcho','N_air','boxH','tplev']]):
             n_dims=len(np.shape(self.hcho))
             print("CHECK:hcho %s, mean = %.2e %s"%(str(np.shape(self.hcho)),np.mean(self.hcho),self.attrs['hcho']['units']))
             self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
@@ -475,16 +475,18 @@ class GC_tavg(GC_base):
         self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
-    def __init__(self,date,keys=__gc_allkeys__,run='tropchem',nlevs=47):
+    def __init__(self,day0,dayN=None,keys=__gc_allkeys__,run='tropchem',nlevs=47):
         # Call GC_base initialiser with tavg_mainkeys and tropchem by default
 
-        # Determine path of file:
-        dstr = date.strftime("%Y%m%d0000")
-        path = tavg_path[run]%dstr
+        # Determine path of files:
+        dates=util.list_months(day0,dayN)
+        dstrs=[ m.strftime("%Y%m%d0000") for m in dates]
+        paths= [ tavg_path[run]%dstr for dstr in dstrs ]
 
         # read data/attrs and initialise class:
-        data,attrs = GC_fio.read_bpch(path,keys=keys)
-        attrs['init_date']=date
+        data,attrs = GC_fio.read_bpch(paths,keys=keys)
+
+        attrs['init_date']=day0
 
         super(GC_tavg,self).__init__(data,attrs,nlevs=nlevs)
 

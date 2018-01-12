@@ -139,17 +139,17 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     pp.add_regression(tt,hh,color='r',linewidth=3)
     # Add exponential regression:
     pp.add_regression(tt,hh,exponential=True,color='m',linewidth=3)
-    
+
     # reset lower bounds
     ylims=plt.gca().get_ylim()
     plt.ylim([max([-2,ylims[0]]), ylims[1]])
     xlims=plt.gca().get_xlim()
     plt.xlim([max([xlims[0],270]),xlims[1]])
-    
-    
+
+
     # add legend
     plt.legend(loc='lower right', fontsize=12)
-    
+
 
     plt.title('Scatter (coloured by gridsquare)')
     plt.xlabel('Kelvin')
@@ -192,28 +192,32 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     plt.close()
     print('Saved ',pname)
 
-def GC_vs_OMNO2d(month=datetime(2005,1,1),region=pp.__AUSREGION__):
+def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     '''
     plot comparison of tropO2 from GC to OMNO2d
     '''
 
-    d0=month
-    d1=util.last_day(month)
+    if d1 is None:
+        d1=util.last_day(d0)
+    dstr="%s-%s"%(d0.strftime("%Y%m%d"),d1.strftime("%Y%m%d"))
     rmin,rmax=-50,50 # limits for percent relative difference in plots
     amin,amax=-1e15,1e15 # limits for absolute diffs
     vmin,vmax=1e14,14e14 # limits for molec/cm2 plots
     linear=True # linear or logarithmic scale
 
-    data,attrs=fio.read_omno2d(d0,month=True)
+    data,attrs=fio.read_omno2d(day0=d0,dayN=d1)
     OM_tropno2 = np.nanmean(data['tropno2'],axis=0) # Average over month axis
     OM_lats=data['lats']
     OM_lons=data['lons']
 
 
     #GC=GC_class.GC_tavg(d0)
-    GC=GC_class.GC_sat(d0,dayN=d1)
+    # Keys needed for satellite tropNO2
+    keys=['IJ-AVG-$_NO2','BXHGHT-$_BXHEIGHT','TIME-SER_AIRDEN','TR-PAUSE_TPLEV',]
+    GC=GC_class.GC_sat(d0,dayN=d1,keys=keys)
     GC_tropno2=GC.get_trop_columns(['NO2'])['NO2']
-    GC_tavg=GC_class.GC_tavg(d0,keys=GC_class.__emiss__)
+    # Keys needed for anthrono2
+    GC_tavg=GC_class.GC_tavg(d0,d1,keys=['ANTHSRCE_NO',])
     GC_anthrono=GC_tavg.ANTHSRCE_NO
     GC_anthrono[GC_anthrono < 1]=np.NaN
     GC_tropno2=np.nanmean(GC_tropno2,axis=0) # Average over month
@@ -836,15 +840,15 @@ def check_shapefactors(date=datetime(2005,1,1)):
 if __name__=='__main__':
     pp.InitMatplotlib()
 
+    summer05=[datetime(2005,1,1),util.last_day(datetime(2005,2,1))]
     d0=datetime(2005,1,1)
-    d1=datetime(2005,12,31)
+    d1=datetime(2005,2,1)
     region=SEA
     label='SEA'
     #for region, label in zip(subs,labels):
     #    HCHO_vs_temp(d0=d0,d1=d1,region=region,regionlabel=label)
 
-    for month in util.list_months(datetime(2005,1,1),datetime(2005,1,2)):
-        GC_vs_OMNO2d(month=month)
+    GC_vs_OMNO2d(d0=summer05[0],d1=summer05[1])
 
     #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()

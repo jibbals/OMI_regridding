@@ -206,7 +206,7 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     linear=True # linear or logarithmic scale
 
     data,attrs=fio.read_omno2d(day0=d0,dayN=d1)
-    OM_tropno2 = np.nanmean(data['tropno2'],axis=0) # Average over month axis
+    OM_tropno2 = np.nanmean(data['tropno2'],axis=0) # Average over time axis
     OM_lats=data['lats']
     OM_lons=data['lons']
 
@@ -220,7 +220,7 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     GC_tavg=GC_class.GC_tavg(d0,d1,keys=['ANTHSRCE_NO',])
     GC_anthrono=GC_tavg.ANTHSRCE_NO
     GC_anthrono[GC_anthrono < 1]=np.NaN
-    GC_tropno2=np.nanmean(GC_tropno2,axis=0) # Average over month
+    GC_tropno2=np.nanmean(GC_tropno2,axis=0) # Average over time
     GC_anthrono=np.nanmean(GC_anthrono,axis=0)
 
     GC_lats,GC_lons=GC.lats,GC.lons
@@ -236,12 +236,12 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     ax7=plt.subplot(326)
 
 
-    pname='Figs/GC/GC_vs_OMNO2_sat_%s.png'%month.strftime('%Y%m')
+    pname='Figs/GC/GC_vs_OMNO2_sat_%s.png'%dstr
     gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_tropno2],
                                       [GC_lats,OM_lats],[GC_lons,OM_lons],
                                       region=region,
                                       titles=['GC','OM'],
-                                      suptitle='Tropospheric NO2: %s'%month.strftime('%b, %Y'),
+                                      suptitle='Tropospheric NO2: %s'%dstr,
                                       vmin=vmin,vmax=vmax, amin=amin,amax=amax,
                                       rmin=rmin, rmax=rmax,
                                       clabel='molec/cm2',
@@ -840,6 +840,7 @@ def check_shapefactors(date=datetime(2005,1,1)):
 if __name__=='__main__':
     pp.InitMatplotlib()
 
+    all2005=[datetime(2005,1,1),util.last_day(datetime(2005,12,1))]
     summer05=[datetime(2005,1,1),util.last_day(datetime(2005,2,1))]
     d0=datetime(2005,1,1)
     d1=datetime(2005,2,1)
@@ -847,8 +848,9 @@ if __name__=='__main__':
     label='SEA'
     #for region, label in zip(subs,labels):
     #    HCHO_vs_temp(d0=d0,d1=d1,region=region,regionlabel=label)
-
-    GC_vs_OMNO2d(d0=summer05[0],d1=summer05[1])
+    
+    
+    GC_vs_OMNO2d(d0=all2005[0],d1=all2005[1])
 
     #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()

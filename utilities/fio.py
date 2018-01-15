@@ -47,61 +47,7 @@ geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
 __VERBOSE__=False
 
-# Keys for omhchorp:
-__OMHCHORP_KEYS__ = [
-    'latitude','longitude',
-    'gridentries',   # how many satellite pixels make up the pixel
-    'ppentries',     # how many pixels we got the PP_AMF for
-    'RSC',           # The reference sector correction [rsc_lats, 60]
-    'RSC_latitude',  # latitudes of RSC
-    'RSC_region',    # RSC region [S,W,N,E]
-    'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)
-    'VCC',           # The vertical column corrected using the RSC
-    'VCC_PP',        # Corrected Paul Palmer VC
-    'AMF_GC',        # AMF calculated using by GEOS-Chem]
-    'AMF_GCz',       # secondary way of calculating AMF with GC
-    'AMF_OMI',       # AMF from OMI swaths
-    'AMF_PP',        # AMF calculated using Paul palmers code
-    'SC',            # Slant Columns
-    'VC_GC',         # GEOS-Chem Vertical Columns
-    'VC_OMI',        # OMI VCs
-    'VC_OMI_RSC',    # OMI VCs with Reference sector correction? TODO: check
-    'col_uncertainty_OMI',
-    'fires',         # Fire count
-    'fire_mask_8',   # true where fires occurred over last 8 days
-    'fire_mask_16' ] # true where fires occurred over last 16 days
 
-# attributes for omhchorp
-__OMHCHORP_ATTRS__ = {
-    'gridentries':          {'desc':'satellite pixels averaged per gridbox'},
-    'ppentries':            {'desc':'PP_AMF values averaged per gridbox'},
-    'VC_OMI':               {'units':'molec/cm2',
-                             'desc':'regridded OMI swathe VC'},
-    'VC_GC':                {'units':'molec/cm2',
-                             'desc':'regridded VC, using OMI SC recalculated using GEOSChem shape factor'},
-    'SC':                   {'units':'molec/cm2',
-                             'desc':'OMI slant colums'},
-    'VCC':                  {'units':'molec/cm2',
-                             'desc':'Corrected OMI columns using GEOS-Chem shape factor and reference sector correction'},
-    'VCC_PP':               {'units':'molec/cm2',
-                             'desc':'Corrected OMI columns using PPalmer and LSurl\'s lidort/GEOS-Chem based AMF'},
-    'VC_OMI_RSC':           {'units':'molec/cm2',
-                             'desc':'OMI\'s RSC column amount'},
-    'RSC':                  {'units':'molec/cm2',
-                             'desc':'GEOS-Chem/OMI based Reference Sector Correction: is applied to pixels based on latitude and track number'},
-    'RSC_latitude':         {'units':'degrees',
-                             'desc':'latitude centres for RSC'},
-    'RSC_GC':               {'units':'molec/cm2',
-                             'desc':'GEOS-Chem HCHO over reference sector'},
-    'col_uncertainty_OMI':  {'units':'molec/cm2',
-                             'desc':'OMI\'s column uncertainty'},
-    'AMF_GC':               {'desc':'AMF based on GC recalculation of shape factor'},
-    'AMF_OMI':              {'desc':'AMF based on GC recalculation of shape factor'},
-    'AMF_PP':               {'desc':'AMF based on PPalmer code using OMI and GEOS-Chem'},
-    'fire_mask_16':         {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day block"},
-    'fire_mask_8':          {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"},
-    'fires':                {'desc':"8 day fire count from AQUA"},
-    }
 
 __GCHCHO_KEYS__ = [
     'LONGITUDE','LATITUDE',
@@ -522,9 +468,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
         Structure containing omhchorp dataset
     '''
 
-    if keylist is None:
-        keylist=__OMHCHORP_KEYS__
-    retstruct=dict.fromkeys(keylist)
+
     if filename is None:
         fpath=determine_filepath(date,oneday=oneday,latres=latres,lonres=lonres,reprocessed=True)
     else:
@@ -532,6 +476,9 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
 
     with h5py.File(fpath,'r') as in_f:
         #print('reading from file '+fpath)
+        if keylist is None:
+            keylist=in_f.keys()
+        retstruct=dict.fromkeys(keylist)
         for key in keylist:
             try:
                 retstruct[key]=in_f[key].value

@@ -334,6 +334,22 @@ def ppbv_to_molecs_per_cm2(ppbv, pedges):
             out[:,x,y] = t*ppbv[:,x,y]
     return out
 
+def regrid_to_lower(data, lats, lons, newlats_e, newlons_e):
+    '''
+        Regrid data to lower resolution
+        using EDGES of new grid and mids of old grid
+    '''
+    ret=np.zeros([len(newlats_e)-1,len(newlons_e)-1])+np.NaN
+    for i in range(len(newlats_e)-1):
+        for j in range(len(newlons_e)-1):
+            lati= (lats >= newlats_e[i]) * (lats < newlats_e[i+1])
+            loni= (lons >= newlons_e[j]) * (lons < newlons_e[j+1])
+
+            tmp=data[lati,:]
+            tmp=tmp[:,loni]
+            ret[i,j]=np.nanmean(tmp)
+    return ret
+
 def regrid(data,lats,lons,newlats,newlons):
     '''
     Regrid a data array [lat,lon] onto [newlat,newlon]

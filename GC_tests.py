@@ -65,6 +65,11 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     #ym=d0.strftime('%b, %Y')
     ymd=d0.strftime('%Y%m%d') + '-' + d1.strftime('%Y%m%d')
 
+    # Read omhcho (reprocessed)
+    omi=omhchorp(d0,d1,keylist=['latitude','longitude','VCC','gridentries'],ignorePP=True)
+    omilowres=omi.lower_resolution()
+
+
     # region + view area
     if regionplus is None:
         regionplus=np.array(region)+np.array([-10,-15,10,15])
@@ -79,7 +84,7 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     tmin,tmax=np.min(smt),np.max(smt)
 
     # First plot temp map of region
-    ax0=plt.subplot(211)
+    ax0=plt.subplot(311)
     m,cs,cb=pp.createmap(surfmeantemp, gc.lats, gc.lons,
                          region=regionplus, cmapname='rainbow',
                          cbarorient='right',
@@ -89,13 +94,13 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     pp.add_rectangle(m,region,)
 
     # Second do gridsquare scatter plot
-    ax1=plt.subplot(212)
+    ax1=plt.subplot(312)
 
     lati,loni=util.lat_lon_range(gc.lats,gc.lons,region)
     colors = cm.rainbow(np.linspace(0, 1, len(lati)*len(loni)))
 
     ii=0
-    tt,hh,l_r,e_r,l_m,e_m=[],[],[],[],[],[]
+    tt,hh,e_r,e_m,=[],[],[],[]
     oceanmask=util.get_mask(surfmeantemp,gc.lats,gc.lons,maskocean=True)
 
     for y in lati:
@@ -119,9 +124,6 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
             plt.scatter(iitemp, iihcho, color=colors[ii])
 
             # add little line for each regression
-            l_reg=pp.add_regression(iitemp, iihcho, addlabel=False,
-                                    color=colors[ii],
-                                    linewidth=0) # turn off line with width
             e_reg=pp.add_regression(iitemp, iihcho, addlabel=False,
                                     exponential=True, color=colors[ii],
                                     linewidth=0)
@@ -129,14 +131,31 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
             # create full list for regression
             tt.extend(list(iitemp))
             hh.extend(list(iihcho))
-            l_r.append(l_reg[2]) # save the regressions
+            # Exponential slopes and regressions
             e_r.append(e_reg[2])
-            l_m.append(l_reg[0]) # save the slopes
             e_m.append(e_reg[0])
             ii=ii+1
 
-    # add straight regression
-    pp.add_regression(tt,hh,color='r',linewidth=3)
+    # Find area averaged regression:
+    areat=np.copy(gc.surftemp[:,:,:,0])
+    areah=np.copy(gc.hcho[:,:,:,0])
+    for ti in range(len(areat[:,0,0])): # for each timestep
+        # Remove oceansquares
+        areat[ti][oceanmask] = np.NaN
+        areah[ti][oceanmask] = np.NaN
+
+    areat=areat[:,:,loni]
+    areat=areat[:,lati,:]
+    areat=np.nanmean(areat,axis=(1,2))
+    areah=areah[:,:,loni]
+    areah=areah[:,lati,:]
+    areah=np.nanmean(areah,axis=(1,2))
+
+    plt.scatter(areat, areah, color='k')
+    pp.add_regression(areat, areah, addlabel=True,
+                              exponential=True, color='k',
+                              linewidth=3)
+
     # Add exponential regression:
     pp.add_regression(tt,hh,exponential=True,color='m',linewidth=3)
 
@@ -149,7 +168,6 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
 
     # add legend
     plt.legend(loc='lower right', fontsize=12)
-
 
     plt.title('Scatter (coloured by gridsquare)')
     plt.xlabel('Kelvin')
@@ -174,7 +192,7 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     #plt.yticks([1,2,3,4])
     plt.xlabel('r (dashed)'); plt.ylabel('density (r)')
     plt.title('')
-    plt.text(0.8,0.8,'n=%d'%len(l_r),transform = lil_ax.transAxes)
+    plt.text(0.8,0.8,'n=%d'%len(e_r),transform = lil_ax.transAxes)
 
     # show distribution of m values:
     lil_ax2 = lil_ax.twinx().twiny() # another density plot on same axes
@@ -186,6 +204,8 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     plt.ylabel('m density')
     plt.xticks(np.arange(0,0.401,0.1))
     plt.xlim(0,0.4)
+
+    # plot against Satellite hcho...
 
     pname='Figs/GC/HCHO_vs_temp_%s_%s.png'%(regionlabel,ymd)
     plt.savefig(pname)
@@ -271,15 +291,16 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     GC_lats_e=util.edges_from_mids(GC_lats)
     GC_lons_e=util.edges_from_mids(GC_lons)
 
-    OM_low=np.zeros([len(GC_lats),len(GC_lons)]) + np.NaN
+    #OM_low=np.zeros([len(GC_lats),len(GC_lons)]) + np.NaN
     # reduce OMI resolution to that of GEOS-Chem:
-    for i in range(len(GC_lats)):
-        for j in range(len(GC_lons)):
-            lati= (OM_lats >= GC_lats_e[i]) * (OM_lats < GC_lats_e[i+1])
-            loni= (OM_lons >= GC_lons_e[j]) * (OM_lons < GC_lons_e[j+1])
-            tmp=OM_tropno2[lati,:]
-            tmp=tmp[:,loni]
-            OM_low[i,j]=np.nanmean(tmp)
+    OM_low=util.regrid_to_lower(OM_tropno2,OM_lats,OM_lons,GC_lats_e,GC_lons_e)
+    #    for i in range(len(GC_lats)):
+    #        for j in range(len(GC_lons)):
+    #            lati= (OM_lats >= GC_lats_e[i]) * (OM_lats < GC_lats_e[i+1])
+    #            loni= (OM_lons >= GC_lons_e[j]) * (OM_lons < GC_lons_e[j+1])
+    #            tmp=OM_tropno2[lati,:]
+    #            tmp=tmp[:,loni]
+    #            OM_low[i,j]=np.nanmean(tmp)
 
     # Put a regression for each gridsquare:
     plt.sca(ax4)
@@ -846,11 +867,11 @@ if __name__=='__main__':
     d1=datetime(2005,2,1)
     region=SEA
     label='SEA'
-    #for region, label in zip(subs,labels):
-    #    HCHO_vs_temp(d0=d0,d1=d1,region=region,regionlabel=label)
-    
-    
-    GC_vs_OMNO2d(d0=all2005[0],d1=all2005[1])
+    for region, label in zip(subs,labels):
+        HCHO_vs_temp(d0=summer05[0],d1=summer05[1],region=region,regionlabel=label)
+
+
+    #GC_vs_OMNO2d(d0=all2005[0],d1=all2005[1])
 
     #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()

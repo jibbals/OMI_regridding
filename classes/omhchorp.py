@@ -42,6 +42,67 @@ __DEBUG__=False
 # Change to -175 to avoid crossing the 179 -> -179 boundary?
 __REMOTEPACIFIC__=[-15, -180, 15, -120]
 
+
+# Coords for omhchorp:
+__OMHCHORP_COORDS__=[
+                     'latitude','longitude',
+                     ]
+
+# Keys for omhchorp:
+__OMHCHORP_KEYS__ = [
+    'gridentries',   # how many satellite pixels make up the pixel
+    'ppentries',     # how many pixels we got the PP_AMF for
+    'RSC',           # The reference sector correction [rsc_lats, 60]
+    'RSC_latitude',  # latitudes of RSC
+    'RSC_region',    # RSC region [S,W,N,E]
+    'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)
+    'VCC',           # The vertical column corrected using the RSC
+    'VCC_PP',        # Corrected Paul Palmer VC
+    'AMF_GC',        # AMF calculated using by GEOS-Chem]
+    'AMF_GCz',       # secondary way of calculating AMF with GC
+    'AMF_OMI',       # AMF from OMI swaths
+    'AMF_PP',        # AMF calculated using Paul palmers code
+    'SC',            # Slant Columns
+    'VC_GC',         # GEOS-Chem Vertical Columns
+    'VC_OMI',        # OMI VCs
+    'VC_OMI_RSC',    # OMI VCs with Reference sector correction? TODO: check
+    'col_uncertainty_OMI',
+    'fires',         # Fire count
+    'fire_mask_8',   # true where fires occurred over last 8 days
+    'fire_mask_16' ] # true where fires occurred over last 16 days
+
+# attributes for omhchorp
+__OMHCHORP_ATTRS__ = {
+    'gridentries':          {'desc':'satellite pixels averaged per gridbox'},
+    'ppentries':            {'desc':'PP_AMF values averaged per gridbox'},
+    'VC_OMI':               {'units':'molec/cm2',
+                             'desc':'regridded OMI swathe VC'},
+    'VC_GC':                {'units':'molec/cm2',
+                             'desc':'regridded VC, using OMI SC recalculated using GEOSChem shape factor'},
+    'SC':                   {'units':'molec/cm2',
+                             'desc':'OMI slant colums'},
+    'VCC':                  {'units':'molec/cm2',
+                             'desc':'Corrected OMI columns using GEOS-Chem shape factor and reference sector correction'},
+    'VCC_PP':               {'units':'molec/cm2',
+                             'desc':'Corrected OMI columns using PPalmer and LSurl\'s lidort/GEOS-Chem based AMF'},
+    'VC_OMI_RSC':           {'units':'molec/cm2',
+                             'desc':'OMI\'s RSC column amount'},
+    'RSC':                  {'units':'molec/cm2',
+                             'desc':'GEOS-Chem/OMI based Reference Sector Correction: is applied to pixels based on latitude and track number'},
+    'RSC_latitude':         {'units':'degrees',
+                             'desc':'latitude centres for RSC'},
+    'RSC_GC':               {'units':'molec/cm2',
+                             'desc':'GEOS-Chem HCHO over reference sector'},
+    'col_uncertainty_OMI':  {'units':'molec/cm2',
+                             'desc':'OMI\'s column uncertainty'},
+    'AMF_GC':               {'desc':'AMF based on GC recalculation of shape factor'},
+    'AMF_OMI':              {'desc':'AMF based on GC recalculation of shape factor'},
+    'AMF_PP':               {'desc':'AMF based on PPalmer code using OMI and GEOS-Chem'},
+    'fire_mask_16':         {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day block"},
+    'fire_mask_8':          {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"},
+    'fires':                {'desc':"8 day fire count from AQUA"},
+    }
+
 ########################################################################
 ########################  OMHCHORP CLASS ###############################
 ########################################################################
@@ -65,6 +126,10 @@ class omhchorp:
         # Read the days we want to analyse:
         daylist = util.list_days(day0, dayn) # includes last day.
         struct = []
+        if keylist is None:
+            keylist=__OMHCHORP_KEYS__
+
+        keylist=list(set(keylist+__OMHCHORP_COORDS__)) # make sure coords are included
 
         for day in daylist:
             struct.append(fio.read_omhchorp(date=day, oneday=True,
@@ -110,8 +175,8 @@ class omhchorp:
         mlons,mlats=np.meshgrid(self.lons,self.lats)
 
         self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=0).mask
-        if 'VCC' in ret_keylist:
-            self.background=self.get_background_array()
+        #if 'VCC' in ret_keylist:
+        #    self.background=self.get_background_array()
         #self.apply_fire_mask()
 
     def apply_fire_mask(self, key='VCC', use_8day_mask=True):
@@ -119,16 +184,16 @@ class omhchorp:
         mask = [self.fire_mask_16, self.fire_mask_8][use_8day_mask]
         print ("fire mask:",mask.shape,np.nansum(mask))
         print(np.nansum(mask>0))
-        
+
         data=getattr(self,key)
-            
+
         print(key, data.shape, ' before firemask:',np.nanmean(data))
-        
+
         #if len(data.shape) == 3:
         #    for i in range(data.shape[0]): # loop over time dim
         data[mask>0]=np.NaN
         print('     after firemask:',np.nanmean(data))
-        
+
         #for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,
         #            self.VC_OMI,self.VC_OMI_RSC,self.VCC,
         #            self.col_uncertainty_OMI]:
@@ -279,7 +344,7 @@ class omhchorp:
             data=np.nanmean(data[ti],axis=0)
             counts=np.nansum(counts[ti],axis=0)
             dsum=np.nansum(dsum[ti],axis=0)
-        elif len(self.daylist > 1):
+        elif len(self.dates) > 1:
             data=np.nanmean(data,axis=0)
             counts=np.nansum(counts,axis=0)
             dsum=np.nansum(dsum,axis=0)

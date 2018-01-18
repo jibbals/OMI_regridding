@@ -251,11 +251,7 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     GC_anthrono=np.nanmean(GC_anthrono,axis=0)
     GC_lats,GC_lons=GC.lats,GC.lons
 
-    # Oceanmask using GC lat/lons:
-    oceanmask=util.get_mask(GC_anthrono,lats=GC_lats,lons=GC_lons)
-
-
-    # set up axes for 3,1,1 columns (over 3 rows)
+    # set up axes for 3,2,2 columns (over 3 rows)
     plt.figure(figsize=(12,18))
     ax1=plt.subplot(331)
     ax2=plt.subplot(332)
@@ -266,7 +262,7 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     ax7=plt.subplot(326)
 
 
-    pname='Figs/GC/GC_vs_OMNO2_sat_%s.png'%dstr
+    # The method returns the two arrays at highest resolution
     gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_tropno2],
                                       [GC_lats,OM_lats],[GC_lons,OM_lons],
                                       region=region,
@@ -277,7 +273,6 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
                                       clabel='molec/cm2',
                                       axeslist=[ax1,ax2,None,None],
                                       linear=linear)
-                                      #pname=pname)
 
 
     # pull out region:
@@ -290,7 +285,7 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     print('avg of gc/om',np.nanmean(gc_tno2/om_tno2))
     print('avg of (gc-om)/om ', np.nanmean((gc_tno2-om_tno2) / om_tno2))
 
-
+    # pull the region out for arrays
     lati,loni=util.lat_lon_range(GC_lats,GC_lons,region)
     GC_tropno2=GC_tropno2[lati,:]
     GC_tropno2=GC_tropno2[:,loni]
@@ -300,26 +295,28 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     GC_lons=GC_lons[loni]
     GC_lats_e=util.edges_from_mids(GC_lats)
     GC_lons_e=util.edges_from_mids(GC_lons)
-
+    
     #OM_low=np.zeros([len(GC_lats),len(GC_lons)]) + np.NaN
     # reduce OMI resolution to that of GEOS-Chem:
     OM_low=util.regrid_to_lower(OM_tropno2,OM_lats,OM_lons,GC_lats_e,GC_lons_e)
-    #    for i in range(len(GC_lats)):
-    #        for j in range(len(GC_lons)):
-    #            lati= (OM_lats >= GC_lats_e[i]) * (OM_lats < GC_lats_e[i+1])
-    #            loni= (OM_lons >= GC_lons_e[j]) * (OM_lons < GC_lons_e[j+1])
-    #            tmp=OM_tropno2[lati,:]
-    #            tmp=tmp[:,loni]
-    #            OM_low[i,j]=np.nanmean(tmp)
-
+    
+    # Lets mask the oceans at this point:
+    oceanmask=util.get_mask(OM_low,lats=GC_lats,lons=GC_lons,maskocean=True)
+    print('removing %d ocean squares'%int(np.sum(oceanmask)))
+    for arr in [GC_tropno2, GC_anthrono, OM_low]:
+        arr[oceanmask]=np.NaN
+        
+    
     # Put a regression for each gridsquare:
+    # This compares bias to anthropogenic emissions
     plt.sca(ax4)
-    GC_anthrono=GC_anthrono/np.nanstd(GC_anthrono)
-    OM_low_norm=OM_low/np.nanstd(OM_low)#/np.nanmean(OM_low)
-    pp.plot_regression(OM_low_norm.flatten(), GC_anthrono.flatten(),
+    GC_bias= GC_tropno2 - OM_low #/ OM_low # y axis 
+    GC_anthrono_norm = GC_anthrono # normalise if desired for x axis
+    pp.plot_regression(GC_anthrono_norm.flatten(), GC_bias.flatten(),
                        logscale=False, legendfont=12)
-    plt.title('Normalised by $\sigma$')
-    plt.ylabel('GC_Anthrono')#GC.attrs['ANTHSRCE_NO']['units'])
+    plt.title('GC anthro NO vs (GC-OMI)')
+    plt.xlabel('GC_Anthrono')#GC.attrs['ANTHSRCE_NO']['units'])
+    plt.ylabel('GC-OMI NO2')
     plt.sca(ax5)
     assert OM_low.shape == GC_tropno2.shape, 'Reduced OMI Grid should match GC'
     pp.plot_regression(OM_low.flatten(),GC_tropno2.flatten(),lims=[vmin,vmax],
@@ -327,7 +324,8 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     plt.title('molec/cm2')
     plt.ylabel('GC')
     plt.xlabel('OM_low')
-
+    
+    
     gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_low],
                                       [GC_lats,GC_lats],[GC_lons,GC_lons],
                                       region=region,
@@ -338,7 +336,8 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
                                       lower_resolution=True,
                                       axeslist=[None,ax3,ax6,ax7],
                                       linear=linear )
-                                      #pname=pname)
+
+    pname='Figs/GC/GC_vs_OMNO2_sat_%s.png'%dstr
     plt.savefig(pname)
     print('Saved ',pname)
     plt.close()

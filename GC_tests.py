@@ -206,6 +206,7 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     plt.xlim(0,0.4)
 
     # plot against Satellite hcho...
+    plt.subplot(313)
 
     pname='Figs/GC/HCHO_vs_temp_%s_%s.png'%(regionlabel,ymd)
     plt.savefig(pname)
@@ -215,23 +216,29 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
 def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     '''
     plot comparison of tropO2 from GC to OMNO2d
+    Averaged to GC resolution
+    temporally averaged from d0-d1, regression is one point per gridbox
     '''
 
+    # Set up time bounds: one month if d1 is missing
     if d1 is None:
         d1=util.last_day(d0)
     dstr="%s-%s"%(d0.strftime("%Y%m%d"),d1.strftime("%Y%m%d"))
+
+    # plot scale limits
     rmin,rmax=-50,50 # limits for percent relative difference in plots
     amin,amax=-1e15,1e15 # limits for absolute diffs
     vmin,vmax=1e14,14e14 # limits for molec/cm2 plots
     linear=True # linear or logarithmic scale
 
+    # Read omno2d
     data,attrs=fio.read_omno2d(day0=d0,dayN=d1)
-    OM_tropno2 = np.nanmean(data['tropno2'],axis=0) # Average over time axis
+    # Average over time axis
+    OM_tropno2 = np.nanmean(data['tropno2'],axis=0)
     OM_lats=data['lats']
     OM_lons=data['lons']
 
-
-    #GC=GC_class.GC_tavg(d0)
+    # Read satellite output from GC troprun
     # Keys needed for satellite tropNO2
     keys=['IJ-AVG-$_NO2','BXHGHT-$_BXHEIGHT','TIME-SER_AIRDEN','TR-PAUSE_TPLEV',]
     GC=GC_class.GC_sat(d0,dayN=d1,keys=keys)
@@ -242,8 +249,11 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     GC_anthrono[GC_anthrono < 1]=np.NaN
     GC_tropno2=np.nanmean(GC_tropno2,axis=0) # Average over time
     GC_anthrono=np.nanmean(GC_anthrono,axis=0)
-
     GC_lats,GC_lons=GC.lats,GC.lons
+
+    # Oceanmask using GC lat/lons:
+    oceanmask=util.get_mask(GC_anthrono,lats=GC_lats,lons=GC_lons)
+
 
     # set up axes for 3,1,1 columns (over 3 rows)
     plt.figure(figsize=(12,18))

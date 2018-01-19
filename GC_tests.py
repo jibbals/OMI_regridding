@@ -295,22 +295,22 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     GC_lons=GC_lons[loni]
     GC_lats_e=util.edges_from_mids(GC_lats)
     GC_lons_e=util.edges_from_mids(GC_lons)
-    
+
     #OM_low=np.zeros([len(GC_lats),len(GC_lons)]) + np.NaN
     # reduce OMI resolution to that of GEOS-Chem:
     OM_low=util.regrid_to_lower(OM_tropno2,OM_lats,OM_lons,GC_lats_e,GC_lons_e)
-    
+
     # Lets mask the oceans at this point:
     oceanmask=util.get_mask(OM_low,lats=GC_lats,lons=GC_lons,maskocean=True)
     print('removing %d ocean squares'%int(np.sum(oceanmask)))
     for arr in [GC_tropno2, GC_anthrono, OM_low]:
         arr[oceanmask]=np.NaN
-        
-    
+
+
     # Put a regression for each gridsquare:
     # This compares bias to anthropogenic emissions
     plt.sca(ax4)
-    GC_bias= GC_tropno2 - OM_low #/ OM_low # y axis 
+    GC_bias= GC_tropno2 - OM_low #/ OM_low # y axis
     GC_anthrono_norm = GC_anthrono # normalise if desired for x axis
     pp.plot_regression(GC_anthrono_norm.flatten(), GC_bias.flatten(),
                        logscale=False, legendfont=12)
@@ -324,8 +324,8 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     plt.title('molec/cm2')
     plt.ylabel('GC')
     plt.xlabel('OM_low')
-    
-    
+
+
     gc_tno2,om_tno2 = pp.compare_maps([GC_tropno2,OM_low],
                                       [GC_lats,GC_lats],[GC_lons,GC_lons],
                                       region=region,
@@ -876,11 +876,11 @@ if __name__=='__main__':
     d1=datetime(2005,2,1)
     region=SEA
     label='SEA'
-    for region, label in zip(subs,labels):
-        HCHO_vs_temp(d0=summer05[0],d1=summer05[1],region=region,regionlabel=label)
+    #for region, label in zip(subs,labels):
+    #    HCHO_vs_temp(d0=summer05[0],d1=summer05[1],region=region,regionlabel=label)
 
 
-    #GC_vs_OMNO2d(d0=all2005[0],d1=all2005[1])
+    GC_vs_OMNO2d(d0=d0,d1=d1)
 
     #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()

@@ -67,8 +67,6 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
 
     # Read omhcho (reprocessed)
     omi=omhchorp(d0,d1,keylist=['latitude','longitude','VCC','gridentries'],ignorePP=True)
-    omilowres=omi.lower_resolution()
-
 
     # region + view area
     if regionplus is None:
@@ -291,6 +289,7 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     GC_tropno2=GC_tropno2[:,loni]
     GC_anthrono=GC_anthrono[lati,:]
     GC_anthrono=GC_anthrono[:,loni]
+    GC_anthrono[GC_anthrono<1]=np.NaN # remove zero emissions squares
     GC_lats=GC_lats[lati]
     GC_lons=GC_lons[loni]
     GC_lats_e=util.edges_from_mids(GC_lats)
@@ -299,6 +298,7 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     #OM_low=np.zeros([len(GC_lats),len(GC_lons)]) + np.NaN
     # reduce OMI resolution to that of GEOS-Chem:
     OM_low=util.regrid_to_lower(OM_tropno2,OM_lats,OM_lons,GC_lats_e,GC_lons_e)
+    assert OM_low.shape == GC_tropno2.shape, 'Reduced OMI Grid should match GC'
 
     # Lets mask the oceans at this point:
     oceanmask=util.get_mask(OM_low,lats=GC_lats,lons=GC_lons,maskocean=True)
@@ -310,17 +310,33 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     # Put a regression for each gridsquare:
     # This compares bias to anthropogenic emissions
     plt.sca(ax4)
-    GC_bias= GC_tropno2 - OM_low #/ OM_low # y axis
-    GC_anthrono_norm = GC_anthrono # normalise if desired for x axis
-    pp.plot_regression(GC_anthrono_norm.flatten(), GC_bias.flatten(),
-                       logscale=False, legendfont=12)
+    GC_bias= (GC_tropno2 - OM_low)
+    GC_bias_norm = 20*GC_bias/OM_low # y axis
+    GC_anthrono_norm = GC_anthrono/np.nanmean(GC_anthrono) # xaxis
+    GC_anthrono_norm2 = np.copy(GC_anthrono_norm)
+    # removes squares with 20% or less of mean anthro emissions
+    GC_anthrono_norm2[GC_anthrono_norm < 0.2] = np.NaN
+
+    regsize=30
+    pp.plot_regression(GC_anthrono_norm.flatten(), GC_bias_norm.flatten(),
+                       logscale=False, legendfont=12,
+                       colours=GC_anthrono.flatten(), cmap='YlOrRd',
+                       showcbar=False, size=regsize)
+    #pp.plot_regression(GC_anthrono_norm2.flatten(), GC_bias_norm.flatten(),
+    #                   logscale=False, colour='m',linecolour='m', diag=False,
+    #                   legendfont=12)
     plt.title('GC anthro NO vs (GC-OMI)')
-    plt.xlabel('GC_Anthrono')#GC.attrs['ANTHSRCE_NO']['units'])
-    plt.ylabel('GC-OMI NO2')
+    plt.xlabel('GC_Anthrono/$\mu$')#GC.attrs['ANTHSRCE_NO']['units'])
+    plt.ylabel('20*(GC-OMI)/$\mu$')
+
+    # Second regression showing GC vs OMI coloured by Anthrono
+    #
     plt.sca(ax5)
-    assert OM_low.shape == GC_tropno2.shape, 'Reduced OMI Grid should match GC'
+
     pp.plot_regression(OM_low.flatten(),GC_tropno2.flatten(),lims=[vmin,vmax],
-                       logscale=False, legendfont=12)
+                       logscale=False, legendfont=12, size=regsize,
+                       showcbar=True, colours=GC_anthrono.flatten(),
+                       cmap='YlOrRd')
     plt.title('molec/cm2')
     plt.ylabel('GC')
     plt.xlabel('OM_low')
@@ -873,14 +889,14 @@ if __name__=='__main__':
     all2005=[datetime(2005,1,1),util.last_day(datetime(2005,12,1))]
     summer05=[datetime(2005,1,1),util.last_day(datetime(2005,2,1))]
     d0=datetime(2005,1,1)
-    d1=datetime(2005,2,1)
+    d1=datetime(2005,1,5)
     region=SEA
     label='SEA'
     #for region, label in zip(subs,labels):
     #    HCHO_vs_temp(d0=summer05[0],d1=summer05[1],region=region,regionlabel=label)
 
 
-    GC_vs_OMNO2d(d0=d0,d1=d1)
+    GC_vs_OMNO2d(d0=d0,d1=summer05[1])
 
     #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()

@@ -211,11 +211,16 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     plt.close()
     print('Saved ',pname)
 
-def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
+def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,
+                 region=pp.__AUSREGION__, regionlabel='',
+                 drop_low_anthro=False):
     '''
     plot comparison of tropO2 from GC to OMNO2d
     Averaged to GC resolution
     temporally averaged from d0-d1, regression is one point per gridbox
+    set drop_low_anthro to true to remove lowest 20% of anthro emissions
+        from bias regression
+
     '''
 
     # Set up time bounds: one month if d1 is missing
@@ -317,14 +322,13 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     # removes squares with 20% or less of mean anthro emissions
     GC_anthrono_norm2[GC_anthrono_norm < 0.2] = np.NaN
 
-    regsize=30
-    pp.plot_regression(GC_anthrono_norm.flatten(), GC_bias_norm.flatten(),
-                       logscale=False, legendfont=12,
+    regression_dot_size=30
+    tmparr= [GC_anthrono_norm, GC_anthrono_norm2][drop_low_anthro]
+    pp.plot_regression(tmparr.flatten(), GC_bias_norm.flatten(),
+                       logscale=False, legendfont=12, diag=False,
                        colours=GC_anthrono.flatten(), cmap='YlOrRd',
-                       showcbar=False, size=regsize)
-    #pp.plot_regression(GC_anthrono_norm2.flatten(), GC_bias_norm.flatten(),
-    #                   logscale=False, colour='m',linecolour='m', diag=False,
-    #                   legendfont=12)
+                       showcbar=False, size=regression_dot_size)
+
     plt.title('GC anthro NO vs (GC-OMI)')
     plt.xlabel('GC_Anthrono/$\mu$')#GC.attrs['ANTHSRCE_NO']['units'])
     plt.ylabel('20*(GC-OMI)/$\mu$')
@@ -334,7 +338,7 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
     plt.sca(ax5)
 
     pp.plot_regression(OM_low.flatten(),GC_tropno2.flatten(),lims=[vmin,vmax],
-                       logscale=False, legendfont=12, size=regsize,
+                       logscale=False, legendfont=12, size=regression_dot_size,
                        showcbar=True, colours=GC_anthrono.flatten(),
                        cmap='YlOrRd')
     plt.title('molec/cm2')
@@ -353,7 +357,8 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,region=pp.__AUSREGION__):
                                       axeslist=[None,ax3,ax6,ax7],
                                       linear=linear )
 
-    pname='Figs/GC/GC_vs_OMNO2_sat_%s.png'%dstr
+    pname='Figs/GC/GC_vs_OMNO2_%s_%s.png'%(regionlabel,dstr)
+    plt.suptitle('GC NO vs OMINO2d %s'%dstr)
     plt.savefig(pname)
     print('Saved ',pname)
     plt.close()
@@ -888,15 +893,23 @@ if __name__=='__main__':
 
     all2005=[datetime(2005,1,1),util.last_day(datetime(2005,12,1))]
     summer05=[datetime(2005,1,1),util.last_day(datetime(2005,2,1))]
+    winter05=[datetime(2005,6,1),util.last_day(datetime(2005,8,1))]
     d0=datetime(2005,1,1)
     d1=datetime(2005,1,5)
-    region=SEA
-    label='SEA'
-    #for region, label in zip(subs,labels):
-    #    HCHO_vs_temp(d0=summer05[0],d1=summer05[1],region=region,regionlabel=label)
+    region=pp.__AUSREGION__
+    label='AUS'
+    GC_vs_OMNO2d(d0=summer05[0], d1=summer05[1],
+                 region=region, regionlabel=label,
+                 drop_low_anthro=True)
+    for dates in [summer05,winter05]:
+        for region, label in zip(subs,labels):
+            HCHO_vs_temp(d0=dates[0],d1=dates[1],
+                         region=region,regionlabel=label)
+            GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
+                         region=region, regionlabel=label,
+                         drop_low_anthro=True)
 
 
-    GC_vs_OMNO2d(d0=d0,d1=summer05[1])
 
     #GC_vs_OMNO2d(month=datetime(2005,1,1))
     #compare_to_campaigns_daily_cycle()

@@ -244,8 +244,8 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         lons_m=(lats_e[0:-1] + lats_e[1:])/2.0
         lats_m=(lons_e[0:-1] + lons_e[1:])/2.0
     elif GC_shift: # non edge-based grids need to be shifted left and down by half a box
-        latres=lats[6]-lats[5]
-        lonres=lons[6]-lons[5]
+        latres=lats[3]-lats[2]
+        lonres=lons[3]-lons[2]
         lats=lats-latres/2.0
         lons=lons-lonres/2.0
         lats[lats < -89.9] = -89.9

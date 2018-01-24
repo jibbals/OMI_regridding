@@ -898,16 +898,17 @@ if __name__=='__main__':
     d1=datetime(2005,1,5)
     region=pp.__AUSREGION__
     label='AUS'
-    GC_vs_OMNO2d(d0=summer05[0], d1=summer05[1],
-                 region=region, regionlabel=label,
-                 drop_low_anthro=True)
+    
     for dates in [summer05,winter05]:
-        for region, label in zip(subs,labels):
-            HCHO_vs_temp(d0=dates[0],d1=dates[1],
-                         region=region,regionlabel=label)
-            GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
-                         region=region, regionlabel=label,
-                         drop_low_anthro=True)
+        GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
+                     region=region, regionlabel=label,
+                     drop_low_anthro=True)    
+    #    for region, label in zip(subs,labels):
+    #        HCHO_vs_temp(d0=dates[0],d1=dates[1],
+    #                     region=region,regionlabel=label)
+    #        GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
+    #                     region=region, regionlabel=label,
+    #                     drop_low_anthro=True)
 
 
 

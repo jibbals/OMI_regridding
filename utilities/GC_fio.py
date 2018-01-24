@@ -14,14 +14,14 @@ from pathlib import Path
 from glob import glob
 
 # Add parent folder to path
-#import os,sys,inspect
-#currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-#sys.path.insert(0,os.path.dirname(currentdir))
+import os,sys,inspect
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+sys.path.insert(0,os.path.dirname(currentdir))
 
 import utilities.utilities as util
-from classes.GC_class import __coords__ as GC_coords
-
-#sys.path.pop(0)
+#from classes.GC_class import __coords__ as GC_coords
+GC_coords = ['lev','lon','lat','time']
+sys.path.pop(0)
 
 
 ##################

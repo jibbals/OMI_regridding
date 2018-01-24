@@ -213,7 +213,9 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
                  clabel=r'Atoms C cm$^{-2}$ s$^{-1}$', cmapname=cmapname)
 
 
-def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31), smoothed=False,
+def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31),
+                  lowres=True,
+                  smoothed=False,
                   region=pp.__AUSREGION__):
     '''
         Plot E_gc, E_new, diff, ratio
@@ -222,36 +224,42 @@ def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31), smoothed=False,
     dstr=d0.strftime("%Y%m")
     yyyymon=d0.strftime("%Y, %b")
     if __VERBOSE__:
-        print("running Analyse_E_isop.E_gc_VS_E_new from %s and %s"%(d0, d1))
+        print("running Analyse_E_isop.E_gc_VS_E_new from %s to %s"%(d0, d1))
 
     ## READ DATA
     GC=GC_class.Hemco_diag(day0=d0,dayn=d1,month=False)
-    gcdays, GC_E_isop=GC.daily_LT_averaged(hour=13) # atomC/cm2/s
+    gcdays, Megan_isop=GC.daily_LT_averaged(hour=13) # atomC/cm2/s
     # subset to region
     lati,loni=util.lat_lon_range(GC.lats,GC.lons,region=region)
     latsgc=GC.lats[lati]
     lonsgc=GC.lons[loni]
-    GC_E_isop=GC_E_isop[:,lati,:]
-    GC_E_isop=GC_E_isop[:,:,loni]
-    GC_E_isop=np.mean(GC_E_isop,axis=0) # average over time
+    Megan_isop=Megan_isop[:,lati,:]
+    Megan_isop=Megan_isop[:,:,loni]
+    Megan_isop=np.mean(Megan_isop,axis=0) # average over time
+    Megan_isop_compare=Megan_isop
 
     # based on OMI using GC calculated yield (slope)
     Enew=E_new(day0=d0, dayn=d1)
-    E_isop_new=Enew.E_isop # atom c/cm2/s
-    E_isop_new=np.nanmean(E_isop_new,axis=0) # average over time
+    New_isop=Enew.E_isop # atom c/cm2/s
+    New_isop=np.nanmean(New_isop,axis=0) # average over time
     omilats=Enew.lats
     omilons=Enew.lons
+    New_isop_compare=New_isop
 
-    # GEOS-Chem over our region:
-    #E_GC_sub=GC.get_field(keys=['E_isop_bio'], region=region)['E_isop_bio']
-    #Egc = np.mean(E_GC_sub['E_isop_bio'],axis=0) # average of the monthly values
-    #latsgc=E_GC_sub['lats']
-    #lonsgc=E_GC_sub['lons']
 
-    # map the lower resolution data onto the higher resolution data:
-    Egc_up=GC_E_isop
-    if len(omilats) > len(latsgc):
-        Egc_up = util.regrid(GC_E_isop,latsgc,lonsgc,omilats,omilons)
+    if lowres:
+        # map higher res to lower res
+        New_isop_compare = util.regrid_to_lower(New_isop,omilats,omilons,GC.lats_e,GC.lons_e)
+        New_isop_compare=New_isop_compare[lati,:]
+        New_isop_compare=New_isop_compare[:,loni]
+        lats,lons=latsgc,lonsgc
+    else:
+        # map the lower resolution data onto the higher resolution data:
+        #Egc_up=Megan_isop
+        #if len(omilats) > len(latsgc):
+        Megan_isop_compare = util.regrid(Megan_isop,latsgc,lonsgc,omilats,omilons)
+        lats,lons=omilats,omilons
+
 
 
     ## First plot maps of emissions:
@@ -265,13 +273,13 @@ def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31), smoothed=False,
 
     # start with E_GC:
     plt.subplot(221)
-    pp.createmap(GC_E_isop,latsgc,lonsgc,vmin=clims[0],vmax=clims[1],GC_shift=True,
+    pp.createmap(Megan_isop,latsgc,lonsgc,vmin=clims[0],vmax=clims[1],GC_shift=True,
                  linear=vlinear,region=region,smoothed=smoothed,
                  cmapname=cmapname)
 
     # then E_new
     plt.subplot(222)
-    pp.createmap(E_isop_new,omilats,omilons,vmin=clims[0],vmax=clims[1],
+    pp.createmap(New_isop,omilats,omilons,vmin=clims[0],vmax=clims[1],
                  linear=vlinear,region=region,smoothed=smoothed,
                  cmapname=cmapname)
 
@@ -282,24 +290,26 @@ def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31), smoothed=False,
     plt.subplot(223)
     title=r'E$_{MEGAN} - $E$_{new}$ '
     args={'region':region, 'clabel':r'atoms C cm$^{-2}$ s$^{-1}$',
-          'linear':True, 'lats':omilats, 'lons':omilons,
+          'linear':True, 'lats':lats, 'lons':lons,
           'smoothed':smoothed, 'title':title, 'cmapname':cmapname,
           'vmin':amin, 'vmax':amax}
-    pp.createmap(Egc_up - E_isop_new, **args)
+    pp.createmap(Megan_isop_compare - New_isop_compare, **args)
 
     ## Ratio map:
     plt.subplot(224)
     args['title']=r"$E_{MEGAN} / E_{OMI}$"
     args['vmin']=rmin; args['vmax']=rmax
     args['clabel']="ratio"
-    pp.createmap(Egc_up / E_isop_new, **args)
+    pp.createmap(Megan_isop_compare / New_isop_compare, **args)
 
 
     # SAVE THE FIGURE:
     #
     suptitle='GEOS-Chem (gc) vs OMI for %s'%yyyymon
     plt.suptitle(suptitle)
-    fname='Figs/GC/E_Comparison_%s%s.png'%(dstr,['','_smoothed'][smoothed])
+    fname='Figs/GC/E_Comparison_%s%s%s.png'%(dstr,
+                                             ['','_smoothed'][smoothed],
+                                             ['','_lowres'][lowres])
     plt.savefig(fname)
     print("SAVED FIGURE: %s"%fname)
     plt.close()
@@ -315,7 +325,7 @@ def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31), smoothed=False,
         #    print ("    %s, %s, mean=%.3e"%(k, str(v.shape), np.nanmean(v)))
 
     # Print some diagnostics here.
-    for l,e in zip(['Enew','E_gc'],[E_isop_new,Egc_up]):
+    for l,e in zip(['Enew','E_gc'],[New_isop_compare,Megan_isop_compare]):
         print("%s: %s    (%s)"%(l,str(e.shape),dstr))
         print("    Has %d nans"%np.sum(np.isnan(e)))
         print("    Has %d negatives"%np.sum(e<0))
@@ -599,9 +609,9 @@ if __name__=='__main__':
     regions=pp.__AUSREGION__, SEAus#, JennySEA_fixed
 
     d0=datetime(2005,1,1); dn=datetime(2005,1,31)
-    #E_gc_VS_E_new(d0,dn)
+    E_gc_VS_E_new(d0,dn,lowres=False)
     #megan_SEA_regression()
-    Compare_to_daily_cycle()
+    #Compare_to_daily_cycle()
     #dn=datetime(2005,12,31)
     #E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
     #map_E_gc(month=d0,GC=GC_tavg(d0))

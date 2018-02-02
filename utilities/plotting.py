@@ -396,7 +396,8 @@ def plot_rec(bmap, inlimits, color=None, linewidth=1):
 def plot_regression(X,Y, lims=None, logscale=True,
                      legend=True, legendfont=22,
                      colour='k',linecolour='r', diag=True, oceanmask=None,
-                     colours=None,size=None, cmap='rainbow', showcbar=True):
+                     colours=None,size=None, cmap='rainbow', showcbar=True,
+                     clabel=''):
     '''
         Regression between X and Y
         Optional to colour by some third list of equal length by setting colours
@@ -417,7 +418,8 @@ def plot_regression(X,Y, lims=None, logscale=True,
             sc=plt.scatter(X[~nans], Y[~nans], c=colours[~nans], s=size,
                            cmap=cm)
             if showcbar:
-                plt.colorbar(sc)
+                cb=plt.colorbar(sc)
+                cb.set_label(clabel)
         m,b,r,CI1,CI2=RMA(X[~nans], Y[~nans]) # get regression
         plt.plot(lims, m*np.array(lims)+b,color=linecolour,
                  label='Y = %.5fX + %.2e\n r=%.5f, n=%d'%(m,b,r,np.sum(~nans)))

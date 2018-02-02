@@ -30,10 +30,11 @@ sys.path.pop(0)
 
 __VERBOSE__=True
 
-run_number={"tropchem":0,"UCX":1,"halfisop":2,"zeroisop":3}
+run_number={"tropchem":0,"UCX":1,"halfisop":2,"zeroisop":3,"nochem":4}
 runs=["geos5_2x25_tropchem","UCX_geos5_2x25",
       "geos5_2x25_tropchem_halfisoprene",
-      "geos5_2x25_tropchem_noisoprene"]
+      "geos5_2x25_tropchem_noisoprene",
+      "nochem"]
 
 def _datapaths():
     ''' get location of datafiles, handles either NCI or desktop '''
@@ -98,11 +99,18 @@ def read_bpch(path,keys):
     keys = list(set(keys + GC_coords)) # set removes any duplicates
 
     # assume tracerinfo and diaginfo in same folder:
+    # otherwise use my generic one with coalesced info
     splt=path.split('/')
     splt[-1]='tracerinfo.dat'
     tracinf='/'.join(splt)
+    if not os.path.isfile(tracinf):
+        tracinf='Data/GC_Output/tracerinfo.dat'
+
     splt[-1]='diaginfo.dat'
     diaginf='/'.join(splt)
+    if not os.path.isfile(diaginf):
+        diaginf='Data/GC_Output/diaginfo.dat'
+    
 
     # Improve read performance by only reading requested fields:
     fields=set(); categories=set()

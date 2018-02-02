@@ -222,13 +222,17 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
     lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
     m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
               resolution='i', projection='merc')
-
+    
+    if not linear:
+        if __VERBOSE__:
+            print('removing %d negative datapoints in createmap'%np.nansum(data<0))
+        data[data<0] = np.NaN
     # Set vmin and vmax if necessary
     if vmin is None:
         vmin=1.05*np.nanmin(data)
     if vmax is None:
         vmax=0.95*np.nanmax(data)
-
+    
     ## basemap pcolormesh uses data edges
     ##
     lats_e,lons_e=lats,lons

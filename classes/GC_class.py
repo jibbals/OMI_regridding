@@ -53,7 +53,8 @@ sat_path  = {'tropchem':rdir+'geos5_2x25_tropchem/satellite_output/ts_satellite_
              'biogenic':rdir+'geos5_2x25_tropchem_biogenic/satellite_output/sat_biogenic.%s.bpch',}
 tavg_path = {'tropchem':rdir+'geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'halfisop':rdir+'geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
-             'UCX':rdir+'UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s'}
+             'UCX':rdir+'UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s',
+             'nochem':rdir+'nochem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',}
 
 # GC OUTPUT NAMES:
 __coords__ = ['lev','lon','lat','time']
@@ -64,7 +65,10 @@ __ijavg__  = ['IJ-AVG-$_ISOP',
               'CHEM-L=$_OH',]       # OH concentrations?
 __emiss__  = ['BIOGSRCE_ISOP',      # biogenic source of isoprene () []
               'BIOBSRCE_CH20',      # biomass burning hcho source () []
-              'ANTHSRCE_NO', ]      # anthro source of NO (molec/cm2/s) [t,lat,lon,1]
+              'ANTHSRCE_NO',        # anthro source of NO (molec/cm2/s) [t,lat,lon,1]
+              'NO-SOIL_NO',         # soil emissions of NO (molec/cm2/s) [t,lat,lon,1]
+              'BIOBSRCE_NO',        # fire no (molec/cm2/s) [t,lat,lon,1]
+             ] 
 __other__  = ['PEDGE-$_PSURF',      # pressure at surface of each gridbox (hPa)
               'BXHGHT-$_BXHEIGHT',  # box height (?)
               'BXHGHT-$_AD',        # Air density (?)
@@ -89,6 +93,7 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     # Biogenic sources:
     'BIOGSRCE_ISOP':'E_isop_bio', # atoms C/cm2/s
     'ISOP_BIOG':'E_isop_bio', # kgC/cm2/s (from Hemco_diagnostic output)
+    'NO-SOIL_NO':'NO_soil', # molec/cm2/s (soil nox)
     # burning sources: atoms C/cm2/s
     'BIOBSRCE_CH2O':'E_hcho_burn',
     # Other diagnostics:
@@ -119,7 +124,7 @@ class GC_base:
     '''
     def __init__(self, data,attrs, nlevs=47):
         ''' Read data for ONE MONTH into self
-            run= 'tropchem'|'halfisop'|'UCX'
+            run= 'tropchem'|'halfisop'|'UCX'|'nochem'
             output= 'satellite'|'tavg'
         '''
         self.ntimes=1

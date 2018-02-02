@@ -40,19 +40,20 @@ d0=datetime(2005,1,1)
 d1=datetime(2005,1,31)
 region=pp.__AUSREGION__
 
-omi=omhchorp(d0,d1,keylist=['VCC','gridentries'],ignorePP=True)
-omi.lats.shape
-vccavg=np.nanmean(omi.VCC,axis=0)
-lowvcc=util.regrid_to_lower(vccavg,omi.lats,omi.lons,GMAO.lats_e,GMAO.lons_e)
 
-vmin,vmax=1e14,1e17
+
+emiss=GC_class.GC_tavg(d0,dayN=d1,keys=['NO-SOIL_NO',], run='nochem')
+print (emiss.NO_soil.shape)
+soil_no=np.nanmean(emiss.NO_soil, axis=0) # avg over time
+
+vmin,vmax=1e6,None
 linear=False
 
 plt.figure()
-plt.subplot(211)
-pp.createmap(vccavg,omi.lats,omi.lons,linear=linear,vmin=vmin,vmax=vmax)
-plt.subplot(212)
-pp.createmap(lowvcc,GMAO.lats_m,GMAO.lons_m,linear=linear,vmin=vmin,vmax=vmax)
+#plt.subplot(211)
+pp.createmap(soil_no,emiss.lats,emiss.lons,linear=linear,vmin=vmin,vmax=vmax,pname='tmp_soilno.png')
+#plt.subplot(212)
+#pp.createmap(lowvcc,GMAO.lats_m,GMAO.lons_m,linear=linear,vmin=vmin,vmax=vmax)
 
 #data,attrs=fio.read_omno2d(d0)
 #

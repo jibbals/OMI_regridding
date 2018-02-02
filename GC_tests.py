@@ -212,7 +212,7 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     print('Saved ',pname)
 
 def GC_vs_OMNO2d(d0=datetime(2005,1,1),d1=None,
-                 region=pp.__AUSREGION__, regionlabel='',
+                 region=pp.__AUSREGION__, regionlabel='AUS',
                  drop_low_anthro=False):
     '''
     plot comparison of tropO2 from GC to OMNO2d

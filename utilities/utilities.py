@@ -231,7 +231,7 @@ def lat_lon_subset(lats,lons,region, data=[]):
     lats_e=edges_from_mids(lats_m)
     lons_e=edges_from_mids(lons_m)
     out={'lats':lats_m,'lons':lons_m,'lats_e':lats_e,'lons_e':lons_e,
-         'data':[], }
+         'data':[], 'lati':lati, 'loni':loni, }
     for arr in data:
         # if lats is second dimension:
         if (len(lats) != len(lons)) and (len(lats)==np.shape(arr)[1]):

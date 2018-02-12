@@ -393,7 +393,7 @@ def plot_rec(bmap, inlimits, color=None, linewidth=1):
     x,y=bmap(xs,ys)
     bmap.plot(x, y, latlon=False, color=color, linewidth=linewidth)
 
-def plot_regression(X,Y, lims=None, logscale=True,
+def plot_regression(X,Y, limsx=None, limsy=None, logscale=True,
                      legend=True, legendfont=22,
                      colour='k',linecolour='r', diag=True, oceanmask=None,
                      colours=None,size=None, cmap='rainbow', showcbar=True,
@@ -406,9 +406,13 @@ def plot_regression(X,Y, lims=None, logscale=True,
     X=np.array(X)
     Y=np.array(Y)
     nans=np.isnan(X) + np.isnan(Y)
-    if lims is None:
-        lims=[np.nanmin([np.nanmin(X),np.nanmin(Y)]),np.nanmax([np.nanmax(X),np.nanmax(Y)])]
-    lims0=np.array(lims); lims=np.array(lims)
+    if limsx is None:
+        spread = np.nanmax(X) - np.nanmin(X)
+        limsx  = np.array([np.nanmin(X)-0.05*spread, np.nanmax(X)+0.05*spread])
+    if limsy is None:
+        spread = np.nanmax(Y) - np.nanmin(Y)
+        limsy  = np.array([np.nanmin(Y)-0.05*spread, np.nanmax(Y)+0.05*spread])
+    limsx0=np.copy(limsx);
 
     if oceanmask is None:
         if colours is None:
@@ -421,7 +425,7 @@ def plot_regression(X,Y, lims=None, logscale=True,
                 cb=plt.colorbar(sc)
                 cb.set_label(clabel)
         m,b,r,CI1,CI2=RMA(X[~nans], Y[~nans]) # get regression
-        plt.plot(lims, m*np.array(lims)+b,color=linecolour,
+        plt.plot(limsx, m*np.array(limsx)+b,color=linecolour,
                  label='Y = %.5fX + %.2e\n r=%.5f, n=%d'%(m,b,r,np.sum(~nans)))
     else:
         omask=~(nans+~oceanmask ) # true where not nan or land
@@ -434,15 +438,15 @@ def plot_regression(X,Y, lims=None, logscale=True,
         lm,lx0,lr,lci1,lci2 = RMA(X[lmask], Y[lmask])
         m,x0,r,ci1,ci2 = RMA(X[omask], Y[omask])
         #move limit for lobf if log scale goes to negative
-        if m*lims[0] + x0 < 0 and logscale:
-            lims[0] = -x0/m + 100
-        if (lm*lims[0] + lx0 < 0) and logscale:
-            lims[0] = -lx0/lm + 100
+        if m*limsx[0] + x0 < 0 and logscale:
+            limsx[0] = -x0/m + 100
+        if (lm*limsx[0] + lx0 < 0) and logscale:
+            limsx[0] = -lx0/lm + 100
 
         #plot lobf and label
-        plt.plot( lims, lm*lims+lx0, color='k', linewidth=2,
+        plt.plot( limsx, lm*limsx+lx0, color='k', linewidth=2,
                 label='Land: Y = %.5fX + %.2e; r=%.5f'%(lm,lx0,lr))
-        plt.plot( lims, m*lims+x0, color='blue',
+        plt.plot( limsx, m*limsx+x0, color='blue',
                 label='Ocean: Y = %.5fX + %.2e, r=%.5f'%(m,x0,r))
 
         print('Land: Y = %.5fX + %.2e; r=%.5f'%(lm,lx0,lr))
@@ -455,9 +459,9 @@ def plot_regression(X,Y, lims=None, logscale=True,
         plt.legend(loc=2,scatterpoints=1, fontsize=legendfont,frameon=False)
     if logscale:
         plt.yscale('log'); plt.xscale('log')
-    plt.ylim(lims0); plt.xlim(lims0)
+    plt.ylim(limsy); plt.xlim(limsx0)
     if diag:
-        plt.plot(lims0,lims0,'--',color='k',label='1-1') # plot the 1-1 line for comparison
+        plt.plot(limsx0,limsx0,'--',color='k',label='1-1') # plot the 1-1 line for comparison
 
 def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', xticks=None, **pltargs):
     ''' plot values over datetimes '''

@@ -1093,12 +1093,12 @@ if __name__=='__main__':
                      region=region, regionlabel=label,
                      drop_low_anthro=True)    
     
-    #    for region, label in zip(subs,labels):
+        for region, label in zip(subs,labels):
     #        HCHO_vs_temp(d0=dates[0],d1=dates[1],
     #                     region=region,regionlabel=label)
-    #        GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
-    #                     region=region, regionlabel=label,
-    #                     drop_low_anthro=True)
+            GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
+                         region=region, regionlabel=label,
+                         drop_low_anthro=True)
 
 
 

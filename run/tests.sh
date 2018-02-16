@@ -2,9 +2,9 @@
 #PBS -P m19
 #PBS -q express
 #PBS -N script
-#PBS -l walltime=00:30:00
+#PBS -l walltime=00:45:00
 #PBS -l mem=50000MB
-#PBS -l cput=00:30:00
+#PBS -l cput=00:90:00
 #PBS -l wd
 #PBS -l ncpus=2
 #PBS -j oe

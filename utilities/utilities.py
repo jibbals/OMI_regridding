@@ -395,31 +395,42 @@ def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
         nlevs = -2
 
     # make sure data is not square
+    ti = None
     if len(set([ntimes,nlats,nlons,nlevs])) < 4:
-        print("ERROR: could not reshape data array")
-        print(shp,'->',ntimes,nlats,nlons,nlevs)
-        return data
-
+        # can assume first dimension is time if it's the one with = len
+        if (len(set([nlats,nlons,nlevs])) < 3) or ( ntimes != shp[0] ):
+            print("ERROR: could not reshape data array")
+            print(shp,'->',ntimes,nlats,nlons,nlevs)
+            assert False, 'reshaping failed'
+            return data
+        else:
+            shp[0]=-5
+            ti=np.array([[0,],])
+    
+    # reshape automatically
     if n_dims>1:
         lati=np.argwhere(shp==nlats)[0,0]
         loni=np.argwhere(shp==nlons)[0,0]
         newshape=(lati,loni)
-
+    
         # do we have time and level dimensions?
-        ti=np.argwhere(shp==ntimes)
+        if ti is None:
+            ti=np.argwhere(shp==ntimes)
         levi=np.argwhere(shp==nlevs)
-
+    
         if len(ti)==1 and len(levi)==1:
             newshape=(ti[0,0],lati,loni,levi[0,0])
         elif len(ti)==0 and len(levi)==1:
             newshape=(lati,loni,levi[0,0])
         elif len(ti)==1 and len(levi)==0:
             newshape=(ti[0,0],lati,loni)
+    
 
         arr=np.transpose(data,axes=newshape)
-        if __VERBOSE__:
-            print('changed data array shape:',shp," -> ",np.shape(arr))
 
+    if __VERBOSE__:
+        print('changed data array shape:',shp," -> ",np.shape(arr))
+    
     return arr
 
 

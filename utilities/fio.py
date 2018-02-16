@@ -65,6 +65,17 @@ __GCHCHO_KEYS__ = [
 ### METHODS ###
 ###############
 
+def read_csv_p(filename):
+    '''
+    Read csv with pandas
+    returns dataframe?
+    '''
+    import pandas
+    print("Reading %s"%filename)
+
+    return pandas.read_csv(filename)
+
+
 def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
                  attrdicts={}, fattrs={},
                  verbose=False):
@@ -138,6 +149,8 @@ def read_csv(filename, delimiter=',', hasheader=True):
                 ret[k].append(row[k])
 
     return ret
+
+
 
 def read_netcdf(filename):
     '''

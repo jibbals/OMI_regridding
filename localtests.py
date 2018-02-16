@@ -26,6 +26,7 @@ from classes.gchcho import gchcho
 from classes.campaign import campaign
 import xbpch
 import xarray
+import pandas as pd
 
 ###############
 ### Globals ###
@@ -37,25 +38,21 @@ __VERBOSE__=True
 ## DO STUFF
 #####
 d0=datetime(2005,1,1)
-d1=datetime(2005,1,31)
-region=pp.__AUSREGION__
+mydfile='Data/MOD14A1_D_FIRE/2005/MOD14A1_D_FIRE_2005-01-02.CSV'
+myd=pd.read_csv(mydfile)
 
+myd.shape
+data=myd.values
+data[data>9000]=np.NaN # ocean squares!
 
+# assume leftmost bottom is 0,0
+lats=np.linspace(89.9,-89.9,1799)
+lons=np.linspace(-180,179.9,3600)
 
-emiss=GC_class.GC_tavg(d0,dayN=d1,keys=['NO-SOIL_NO',], run='nochem')
-print (emiss.NO_soil.shape)
-soil_no=np.nanmean(emiss.NO_soil, axis=0) # avg over time
+pp.createmap(data,lats,lons,title='MODIS Fires 20050102',
+             pname='test_fires.png', clabel='fire pixels/1000km$^2$',
+             linear=True,)# cmapname='Reds')
 
-vmin,vmax=1e6,None
-linear=False
-
-plt.figure()
-#plt.subplot(211)
-pp.createmap(soil_no,emiss.lats,emiss.lons,linear=linear,vmin=vmin,vmax=vmax,pname='tmp_soilno.png')
-#plt.subplot(212)
-#pp.createmap(lowvcc,GMAO.lats_m,GMAO.lons_m,linear=linear,vmin=vmin,vmax=vmax)
-
-#data,attrs=fio.read_omno2d(d0)
 #
 #pp.createmap(data['tropno2'],data['lats'],data['lons'],vmin=1e13, vmax=1e16,pname='testno2.png',
 #             title='OMNO2d for 2005, jan, 1',clabel='trop NO2 (molec/cm2)')

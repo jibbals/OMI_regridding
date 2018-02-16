@@ -13,14 +13,8 @@ import numpy as np
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
 
-# Add parent folder to path
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-sys.path.insert(0,os.path.dirname(currentdir))
-
 from utilities import fio
 from utilities import plotting as pp
-sys.path.pop(0)
 
 ###############
 ### GLOBALS ###
@@ -113,7 +107,7 @@ class campaign:
         plt.title(title)
         # 3 xticks:
         plt.gca().xaxis.set_ticks([dates[0],dates[len(dates)//2],dates[-1]])
-        
+
         if pname is not None:
             plt.legend()
             plt.savefig(pname)

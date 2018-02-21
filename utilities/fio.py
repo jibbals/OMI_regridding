@@ -232,8 +232,8 @@ def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
     fpath='Data/MOD14A1_D_FIRE/'+date.strftime('%Y/MOD14A1_D_FIRE_%Y-%m-%d.CSV')
     fires=pd.read_csv(fpath).values
 
-    fires[fires>9000]= 0. # np.NaN # ocean squares
-
+    fires[fires>9000] = 0. # np.NaN # ocean squares
+    fires[fires==0.1] = 0. # land squares but no fire I think...
 
     lats=np.linspace(89.9,-89.9,1799) # lats are from top to bottom when read using pandas
     lons=np.linspace(-180,179.9,3600) # lons are from left to right

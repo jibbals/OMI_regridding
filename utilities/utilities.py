@@ -62,11 +62,16 @@ def area_quadrangle(SWNE):
     A= A_zone*p
     return A
 
-def area_grid(lats,lons, latres, lonres):
+def area_grid(lats, lons):
     '''
         Area give lats and lons in a grid in km^2
+        can do non grid with provided latres, lonres arrays
+
+        Lats and Lons are centres of gridpoints
     '''
     areas=np.zeros([len(lats),len(lons)]) + np.NaN
+    latres=np.abs(lats[1]-lats[0])
+    lonres=np.abs(lons[1]-lons[0])
     yr,xr=latres/2.0,lonres/2.0
 
     for yi,y in enumerate(lats):
@@ -406,31 +411,31 @@ def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
         else:
             shp[0]=-5
             ti=np.array([[0,],])
-    
+
     # reshape automatically
     if n_dims>1:
         lati=np.argwhere(shp==nlats)[0,0]
         loni=np.argwhere(shp==nlons)[0,0]
         newshape=(lati,loni)
-    
+
         # do we have time and level dimensions?
         if ti is None:
             ti=np.argwhere(shp==ntimes)
         levi=np.argwhere(shp==nlevs)
-    
+
         if len(ti)==1 and len(levi)==1:
             newshape=(ti[0,0],lati,loni,levi[0,0])
         elif len(ti)==0 and len(levi)==1:
             newshape=(lati,loni,levi[0,0])
         elif len(ti)==1 and len(levi)==0:
             newshape=(ti[0,0],lati,loni)
-    
+
 
         arr=np.transpose(data,axes=newshape)
 
     if __VERBOSE__:
         print('changed data array shape:',shp," -> ",np.shape(arr))
-    
+
     return arr
 
 

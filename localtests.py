@@ -8,8 +8,6 @@ Created on Thu Oct 12 12:15:43 2017
 
 from datetime import datetime
 import numpy as np
-#import matplotlib
-#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 # local modules
@@ -38,20 +36,18 @@ __VERBOSE__=True
 ## DO STUFF
 #####
 d0=datetime(2005,1,1)
-mydfile='Data/MOD14A1_D_FIRE/2005/MOD14A1_D_FIRE_2005-01-02.CSV'
-myd=pd.read_csv(mydfile)
 
-myd.shape
-data=myd.values
-data[data>9000]=np.NaN # ocean squares!
+fires_per_area,lats,lons=fio.read_MOD14A1(d0,True)
+fires,lats,lons=fio.read_MOD14A1(d0,False)
+earth_sa=510e6 # 510.1 million km2
+count_a=np.sum(fires)
+count_b=np.mean(fires_per_area)*earth_sa*1e3
+print(count_a,count_b)
+print((count_a-count_b)/count_b)
 
-# assume leftmost bottom is 0,0
-lats=np.linspace(89.9,-89.9,1799)
-lons=np.linspace(-180,179.9,3600)
-
-pp.createmap(data,lats,lons,title='MODIS Fires 20050102',
-             pname='test_fires.png', clabel='fire pixels/1000km$^2$',
-             linear=True,)# cmapname='Reds')
+pp.createmap(fires,lats,lons,title='MODIS Fires 20050102',
+             pname='test_fires.png', clabel='fire pixels',
+             linear=False,cmapname='Reds',vmin=1,vmax=3e6)
 
 #
 #pp.createmap(data['tropno2'],data['lats'],data['lons'],vmin=1e13, vmax=1e16,pname='testno2.png',

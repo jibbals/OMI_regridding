@@ -26,15 +26,9 @@ import csv
 from scipy.interpolate import griddata
 import xarray
 
-# Add parent folder to path
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-sys.path.insert(0,os.path.dirname(currentdir))
+import pandas as pd
 
-# import utilities module
 import utilities.utilities as util
-# Remove parent folder from path
-sys.path.pop(0)
 
 ###############
 ### GLOBALS ###
@@ -68,12 +62,15 @@ __GCHCHO_KEYS__ = [
 def read_csv_p(filename):
     '''
     Read csv with pandas
-    returns dataframe?
+
+    returns dataframe
+
+    To get array from dataframe: df.values
     '''
-    import pandas
+
     print("Reading %s"%filename)
 
-    return pandas.read_csv(filename)
+    return pd.read_csv(filename)
 
 
 def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
@@ -221,6 +218,47 @@ def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded
     d = 'Data/omhchor'+typ+'/' # directory
     fpath=d+"omhcho_%s_%4d%02d%02d.he5" %(avg+typ+res,date.year,date.month,date.day)
     return(fpath)
+
+
+def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
+    '''
+        Read the modis product of firepix/1000km2/day
+
+        Returns firepix/km2/day or firepix/day
+    '''
+
+    # file looks like:
+    #'Data/MOD14A1_D_FIRE/2005/MOD14A1_D_FIRE_2005-01-02.CSV'
+    fpath='Data/MOD14A1_D_FIRE/'+date.strftime('%Y/MOD14A1_D_FIRE_%Y-%m-%d.CSV')
+    fires=pd.read_csv(fpath).values
+
+    fires[fires>9000]= 0. # np.NaN # ocean squares
+
+
+    lats=np.linspace(89.9,-89.9,1799) # lats are from top to bottom when read using pandas
+    lons=np.linspace(-180,179.9,3600) # lons are from left to right
+
+    if not per_km2:
+        # area per gridbox in km2:
+        area=util.area_grid(lats,lons)
+        fires=fires * 1e3 * area # now fire_pixels/day
+
+    return fires,lats,lons
+
+def read_MOD14A1_interpolated(date=datetime(2005,1,1), latres=0.25,lonres=0.3125):
+    '''
+        Read firepixels/day from MOD14A1 daily gridded product
+        returns fires, lats, lons
+    '''
+    newlats= np.arange(-90,90, latres) + latres/2.0
+    newlons= np.arange(-180,180, lonres) + lonres/2.0
+    newlats_e=util.edges_from_mids(newlats)
+    newlons_e=util.edges_from_mids(newlons)
+    fires,lats,lons=read_MOD14A1(date,per_km2=False)
+
+    newfires=util.regrid_to_lower(fires,lats,lons,newlats_e,newlons_e)
+    return newfires,newlats,newlons
+
 
 def read_8dayfire(date=datetime(2005,1,1,0)):
     '''

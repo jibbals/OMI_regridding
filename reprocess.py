@@ -2,6 +2,9 @@
 """
 Created on Tue Apr 19 14:22:05 2016
 
+This script is used to take GC output, OMI hcho swathes,
+    and OMNO2d gridded fire counts - to combine them into my omhcho dataset
+
 @author: jesse
 """
 
@@ -291,13 +294,13 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     2) determine reference sector correction
     3) calculate VCs, VCC(ref corrected), Anything else
     4) place lists neatly into gridded latlon arrays
-    5) Save as netcdf
+    5) Save as hdf5 with nice enough attributes
     '''
 
     ## 1)
     #
     ymdstr=date.strftime("%Y%m%d")
-    
+
     if __VERBOSE__:
         print("create_omhchorp_1 called for %s"%ymdstr)
     ## set stdout to parent process
@@ -306,7 +309,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
         print("This file was created by reprocess.create_omhchorp_1(%s) "%str(date))
         print("Turn off verbose and __DEBUG__ to stop creating these files")
         print("Process thread: %s"%str(os.getpid()))
-    
+
     goodpixels=get_good_pixel_list(date, verbose=(verbose or __DEBUG__))
     omi_lons=np.array(goodpixels['lon'])
     omi_lats=np.array(goodpixels['lat'])

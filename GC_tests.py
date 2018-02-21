@@ -333,7 +333,7 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
     
 def GCe_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
              region=pp.__AUSREGION__, regionlabel='AUS',
-             soil=True,
+             soil=True, dstr_lab=None,
              map_cmap='PuRd' ,reg_cmap='YlOrRd',dmap_cmap='RdBu_r'):
     '''
         Plot regressions between soil NO vs bias from GC-OMI
@@ -344,6 +344,8 @@ def GCe_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
     if d1 is None:
         d1=util.last_day(d0)
     dstr="%s-%s"%(d0.strftime("%Y%m%d"),d1.strftime("%Y%m%d"))
+    if dstr_lab is None:
+        dstr_lab=dstr
     
     ## Read our data:
     
@@ -495,7 +497,7 @@ def GCe_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
     
     emisstype=['anthro','soil'][soil]
     pname='Figs/GC/GC%s_vs_OMNO2_%s_%s.png'%(emisstype,regionlabel,dstr)
-    plt.suptitle('GEOS-Chem vs OMINO2d %s'%dstr, fontsize=35)
+    plt.suptitle('GEOS-Chem vs OMINO2d %s'%dstr_lab, fontsize=32)
     plt.savefig(pname)
     print('Saved ',pname)
     plt.close()
@@ -1033,6 +1035,8 @@ if __name__=='__main__':
     aut05=[datetime(2005,3,1),util.last_day(datetime(2005,5,1))]
     win05=[datetime(2005,6,1),util.last_day(datetime(2005,8,1))]
     spr05=[datetime(2005,9,1),util.last_day(datetime(2005,11,1))]
+    dstrs=['Jan-Feb 2005','Autumn (MAM) 2005','Winter (JJA) 2005',
+           'Sprint (SON) 2005']
     d0=datetime(2005,1,1)
     d1=datetime(2005,1,5)
     region=pp.__AUSREGION__
@@ -1043,14 +1047,15 @@ if __name__=='__main__':
     #             drop_low_anthro=True)
     
     #
-    for dates in [sum05,spr05,win05,aut05]:
+    for dates,dstr in zip([sum05,spr05,win05,aut05],dstrs):
         
-        GCe_vs_OMNO2d(d0=dates[0], d1=dates[1],
-             region=region, regionlabel=label,
-             soil=True,)
+        for soil in [True, False]:
+            GCe_vs_OMNO2d(d0=dates[0], d1=dates[1],
+                 region=region, regionlabel=label,
+                 soil=False,dstr_lab=dstr)
 
-        GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
-                     region=region, regionlabel=label)
+        #GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
+        #             region=region, regionlabel=label)
     
     #    for region, label in zip(subs,labels):
     #        HCHO_vs_temp(d0=dates[0],d1=dates[1],

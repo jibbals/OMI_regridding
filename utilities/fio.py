@@ -205,7 +205,7 @@ def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded
     if metaData:
         return ('Data/omhchorp/metadata/metadata_%s.he5'%(date.strftime('%Y%m%d')))
     if not (regridded or reprocessed):
-        return glob('Data/omhcho/%4d%02d/OMI-Aura*%4dm%02d%02d*'%(date.year,date.month,date.year, date.month, date.day))
+        return glob(date.strftime('Data/omhcho/%Y/OMI-Aura_L2-OMHCHO_%Ym%md%d*'))
 
     # geos chem output created via idl scripts match the following
     if geoschem:

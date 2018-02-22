@@ -11,6 +11,7 @@ This script is used to take GC output, OMI hcho swathes,
 # module to read/write data to file
 from utilities import fio
 from classes.gchcho import gchcho
+import classes.omhchorp as omhchorp
 import numpy as np
 import os.path
 import sys
@@ -57,7 +58,7 @@ def create_lat_lon_grid(latres=0.25,lonres=0.3125):
     return(lats,lons,lat_bounds,lon_bounds)
 
 
-def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True, verbose=False):
+def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True):
     '''
     Create a long list of 'good' pixels
     Also calculate new AMF for each good pixel
@@ -108,11 +109,11 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True, verbos
 
     # loop through swaths
     files = fio.determine_filepath(date)
-    if verbose:
+    if __DEBUG__:
         print("%d omhcho files for %s"%(len(files),str(date)))
     for ff in files:
-        if verbose: print("trying to read %s"%ff)
-        omiswath = fio.read_omhcho(ff, maxlat=maxlat, verbose=verbose)
+        if __DEBUG__: print("trying to read %s"%ff)
+        omiswath = fio.read_omhcho(ff, maxlat=maxlat)
         flat,flon = omiswath['lats'], omiswath['lons']
 
         # only looking at good pixels
@@ -288,7 +289,7 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
     # ref_sec_correction [500, 60] is done
     return(ref_sec_correction, gc_VC_ref_func(ref_lat_mids))
 
-def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remove_fires=True, verbose=True):
+def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     '''
     1) get good pixels list from OMI swath files
     2) determine reference sector correction
@@ -304,13 +305,13 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     if __VERBOSE__:
         print("create_omhchorp_1 called for %s"%ymdstr)
     ## set stdout to parent process
-    if verbose or __DEBUG__:
+    if __DEBUG__:
         sys.stdout = open("logs/create_omhchorp.%s"%ymdstr, "w")
         print("This file was created by reprocess.create_omhchorp_1(%s) "%str(date))
         print("Turn off verbose and __DEBUG__ to stop creating these files")
         print("Process thread: %s"%str(os.getpid()))
 
-    goodpixels=get_good_pixel_list(date, verbose=(verbose or __DEBUG__))
+    goodpixels=get_good_pixel_list(date)
     omi_lons=np.array(goodpixels['lon'])
     omi_lats=np.array(goodpixels['lat'])
     # SC UNITS: Molecs/cm2
@@ -389,9 +390,9 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     cloud_filter = omi_clouds < 0.4 # This is a list of booleans for the pixels
     # Filter for removing fire affected squares(from current and prior 8 days)
     # filter is booleans matching lat/lon grid. True for fires
-    fire_count, _flats, _flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
-    fire_filter_16 = get_16day_fires_mask(date,latres=latres,lonres=lonres)
-    fire_filter_8  = get_8day_fires_mask(date,latres=latres,lonres=lonres)
+    #fire_count, _flats, _flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
+    fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date,latres=latres,lonres=lonres)
+    assert _flats == lats, "fire interpolation does not match our resolution"
 
     ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -465,8 +466,6 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     outd['AMF_GCz']             = AMF_gcz
     outd['AMF_OMI']             = AMF_omi
     outd['AMF_PP']              = AMF_pp
-    outd['fire_mask_16']        = fire_filter_16.astype(np.int16)
-    outd['fire_mask_8']         = fire_filter_8.astype(np.int16)
     outd['fires']               = fire_count.astype(np.int16)
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True,oneday=True)
 
@@ -475,7 +474,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True, remo
     if __DEBUG__:
         print(("keys: ",outd.keys()))
 
-    fio.save_to_hdf5(outfilename, outd, attrdicts=fio.__OMHCHORP_ATTRS__, verbose=verbose)
+    fio.save_to_hdf5(outfilename, outd, attrdicts=omhchorp.__OMHCHORP_ATTRS__, verbose=__DEBUG__)
     if __DEBUG__:
         print("File should be saved now...")
     ## 5.1)

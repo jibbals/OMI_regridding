@@ -509,7 +509,7 @@ def make_gridded_swaths(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     # Filter for removing cloudy entries
     cloud_filter = cloud_pix < 0.4 # This is a list of booleans for the pixels
 
-    assert _flats == lats, "fire interpolation does not match our resolution"
+    assert all(_flats == lats), "fire interpolation does not match our resolution"
 
     ## DATA which will be outputted in gridded file
     #SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN

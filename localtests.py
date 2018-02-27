@@ -26,6 +26,8 @@ import xbpch
 import xarray
 import pandas as pd
 
+import regrid_swaths as rs
+
 ###############
 ### Globals ###
 ###############
@@ -36,6 +38,8 @@ __VERBOSE__=True
 ## DO STUFF
 #####
 d0=datetime(2005,1,1)
+
+
 
 fires_per_area,lats,lons=fio.read_MOD14A1(d0,True)
 fires,lats,lons=fio.read_MOD14A1(d0,False)

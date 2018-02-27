@@ -28,11 +28,15 @@ from multiprocessing import Pool
 # datetime for nice date handling
 from datetime import timedelta, datetime
 
+# plotting :
+from mpl_toolkits.basemap import Basemap, interp
+
 ###########
 # GLOBALS
 ###########
 __VERBOSE__=True # set to true for more print statements
 __DEBUG__=True # set to true for even more print statements
+_orig_stdout_=sys.stdout
 
 ###########
 # Helper Functions
@@ -50,6 +54,17 @@ def create_lat_lon_grid(latres=0.25,lonres=0.3125):
     lons=np.arange(-180,180,lonres)+lonres/2.0
 
     return(lats,lons,lat_bounds,lon_bounds)
+
+def list_days(day0,dayn=None,month=False):
+    '''
+        return list of days from day0 to dayn, or just day0
+        if month is True, return [day0,...,end_of_month]
+    '''
+    if month:
+        dayn=last_day(day0)
+    if dayn is None: return [day0,]
+    numdays = (dayn-day0).days + 1 # timedelta
+    return [day0 + timedelta(days=x) for x in range(0, numdays)]
 
 def edges_from_mids(x,fix=False):
     '''
@@ -129,10 +144,11 @@ def area_grid(lats, lons):
             areas[yi,xi] = area_quadrangle(SWNE)
     return areas
 
-def regrid_to_lower(data, lats, lons, newlats_e, newlons_e):
+def regrid_to_lower(data, lats, lons, newlats_e, newlons_e, func=np.nanmean):
     '''
         Regrid data to lower resolution
         using EDGES of new grid and mids of old grid
+        apply func to data within each new gridbox (mean by default)
     '''
     ret=np.zeros([len(newlats_e)-1,len(newlons_e)-1])+np.NaN
     for i in range(len(newlats_e)-1):
@@ -142,7 +158,7 @@ def regrid_to_lower(data, lats, lons, newlats_e, newlons_e):
 
             tmp=data[lati,:]
             tmp=tmp[:,loni]
-            ret[i,j]=np.nanmean(tmp)
+            ret[i,j]=func(tmp)
     return ret
 
 def set_adjacent_to_true(mask):
@@ -212,6 +228,61 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
         # force h5py to flush buffers to disk
         f.flush()
     print("Saved "+outfilename)
+
+def read_hdf5(filename):
+    '''
+        Should be able to read hdf5 files created by my method above...
+        Returns data dictionary and attributes dictionary
+    '''
+    if __VERBOSE__:
+        print('reading from file '+filename)
+
+    retstruct={}
+    retattrs={}
+    with h5py.File(filename,'r') as in_f:
+
+        # READ DATA AND ATTRIBUTES:
+        #attrs=in_f.attrs
+
+        for key in in_f.keys():
+            if __VERBOSE__: print(key)
+            retstruct[key]=in_f[key].value
+            attrs=in_f[key].attrs
+            retattrs[key]={}
+            # print the attributes
+            for akey,val in attrs.items():
+                if __VERBOSE__: print("%s(attr)   %s:%s"%(key,akey,val))
+                retattrs[key][akey]=val
+
+    return retstruct, retattrs
+
+def read_regridded_swath(date,dateN=None):
+    '''
+        Read one to N days of regridded swaths and fires
+    '''
+    # Reading One day only is easy:
+    if dateN is None:
+        filename=date.strftime('Data/omi_hcho_%Y%m%d.hdf')
+        data,attr=read_hdf5(filename)
+    # Reading many days is requires combining them:
+    else:
+        data,attr = {},{}
+        dats,atts  = [],[]
+        days=list_days(date,dateN,False) # list of days
+        # Read each day into a list
+        for day in days:
+            filename=day.strftime('Data/omi_hcho_%Y%m%d.hdf')
+            dat,att=read_hdf5(filename)
+            dats.append(dat)
+            atts.append(att)
+        # Combine list into array for each of the non dimensional data
+        for k in dats[0].keys():
+            data[k] = np.array([dats[j][k] for j in range(len(days))])
+        for k in ['lats','lons']:
+            data[k]=dats[0][k]
+        # assume all the attributes match:
+        attr = atts[0]
+    return data,attr
 
 def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=60, verbose=False):
     '''
@@ -358,6 +429,7 @@ def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
 
     fires[fires>9000] = 0. # np.NaN # ocean squares
     fires[fires==0.1] = 0. # land squares but no fire I think...
+    assert np.nansum(fires < 0) == 0, "There are negative fire pixels?"
 
     lats=np.linspace(89.9,-89.9,1799) # lats are from top to bottom when read using pandas
     lons=np.linspace(-180,179.9,3600) # lons are from left to right
@@ -380,7 +452,7 @@ def read_MOD14A1_interpolated(date=datetime(2005,1,1), latres=0.25,lonres=0.3125
     newlons_e=edges_from_mids(newlons)
     fires,lats,lons=read_MOD14A1(date,per_km2=False)
 
-    newfires=regrid_to_lower(fires,lats,lons,newlats_e,newlons_e)
+    newfires=regrid_to_lower(fires,lats,lons,newlats_e,newlons_e,func=np.nansum)
     return newfires,newlats,newlons
 
 def get_good_pixel_list(date, maxlat=60):
@@ -411,7 +483,9 @@ def get_good_pixel_list(date, maxlat=60):
     #
 
     # grab all swaths for input date:
-    files = glob(date.strftime('Data/omhcho/%Y/OMI-Aura_L2-OMHCHO_%Ym%md%d*'))
+    files = glob(date.strftime('Data/omhcho/%Y/OMI-Aura_L2-OMHCHO_%Ym%m%d*'))
+    assert len(files) > 0, "omhcho data is not at %s"%date.strftime('Data/omhcho/%Y/OMI-Aura_L2-OMHCHO_%Ym%m%d*')
+
     if __DEBUG__:
         print("%d omhcho files for %s"%(len(files),str(date)))
 
@@ -476,7 +550,7 @@ def make_gridded_swaths(date, latres=0.25, lonres=0.3125, remove_clouds=True):
         print("create_omhchorp_1 called for %s"%ymdstr)
     ## set stdout to parent process
     if __DEBUG__:
-        sys.stdout = open("logs/create_omhchorp.%s"%ymdstr, "w")
+        #sys.stdout = open("logs/create_omhchorp.%s"%ymdstr, "w")
         print("This file was created by reprocess.create_omhchorp_1(%s) "%str(date))
         print("Turn off verbose and __DEBUG__ to stop creating these files")
         print("Process thread: %s"%str(os.getpid()))
@@ -554,7 +628,7 @@ def make_gridded_swaths(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     outd['lons']            = lons
     outd['uncertainty']     = cunc
     outd['AMF']             = AMF
-    outd['fires']           = fire_count.astype(np.int16)
+    outd['fires']           = fire_count
     outfilename='Data/omi_hcho_%s.hdf'%ymdstr
 
     attrs = {
@@ -620,5 +694,6 @@ def regrid_N_days(date, latres=0.25, lonres=0.3125, remove_clouds=True,
     if __VERBOSE__:
         elapsed = timeit.default_timer() - start_time
         print ("Took %6.2f minutes to reprocess %3d days using %2d processes"%(elapsed/60.0,days,processes))
+
 
 

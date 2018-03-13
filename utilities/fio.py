@@ -627,8 +627,7 @@ def read_AMF_pp(date=datetime(2005,1,1),troprun=True):
     runstr=['ucxrunpathgoeshere','tropchem'][troprun]
     dstr=date.strftime('%Y%m%d')
     fname='Data/pp_amf/%s/amf_%s.csv'%(runstr,dstr)
-    if not os.path.isfile(fname):
-        return None,None
+    assert os.path.isfile(fname), "ERROR: file missing: %s"%fname
     inds=[]
     amfs=[]
     with open(fname,'r') as f:

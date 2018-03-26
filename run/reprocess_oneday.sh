@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -P m19
-#PBS -q normal
-#PBS -N ReprocessOneDay
+#PBS -q express
+#PBS -N RP_Day
 #PBS -l walltime=02:00:00
 #PBS -l mem=10000MB
 #PBS -l cput=02:00:00

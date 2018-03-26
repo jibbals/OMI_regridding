@@ -392,7 +392,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     # filter is booleans matching lat/lon grid. True for fires
     #fire_count, _flats, _flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
     fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date,latres=latres,lonres=lonres)
-    assert _flats == lats, "fire interpolation does not match our resolution"
+    assert all(_flats == lats), "fire interpolation does not match our resolution"
 
     ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN

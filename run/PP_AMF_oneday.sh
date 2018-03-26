@@ -2,9 +2,9 @@
 #PBS -P m19
 #PBS -q normal
 #PBS -N pp_trop_amf
-#PBS -l walltime=15:00:00
-#PBS -l mem=5000MB
-#PBS -l cput=15:00:00
+#PBS -l walltime=8:00:00
+#PBS -l mem=3000MB
+#PBS -l cput=8:00:00
 #PBS -l jobfs=10MB
 #PBS -l wd
 #PBS -l ncpus=1

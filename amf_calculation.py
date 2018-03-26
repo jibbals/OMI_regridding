@@ -18,12 +18,14 @@ from datetime import timedelta, datetime
 # GLOBALS
 __VERBOSE__=True # set to true for more print statements
 __DEBUG__=True # set to true for even more print statements
-#_AusNESW=[-10,160, -50, 110] # Australian region
-#_RefSect=[90,-140, -90, -160] # reference sector
+## S,W,N,E zones:
+#_AusNESW=[-50, 110, -10, 160] # Australian region
+#_RefSect=[-90, -160, 90, -140] # reference sector
+_AUSzonal=[-50, -160, -10, 160] # Australia plus required remote pacific
 #
 # function to create .csv from swaths:
 #
-def pixel_list_to_csv(date=datetime(2005,1,1),nesw=None):
+def pixel_list_to_csv(date=datetime(2005,1,1),swne=_AUSzonal):
     '''
     Read good pixel list, 
         These pixels are read from the omi swath dataset
@@ -43,11 +45,13 @@ def pixel_list_to_csv(date=datetime(2005,1,1),nesw=None):
     lats=np.array(gp['lat'])
     lons=np.array(gp['lon'])
     zone=np.ones(len(lats),dtype=bool)
-    if nesw is not None:
-        zone=(lats < nesw[0]) * (lons < nesw[1]) * (lats > nesw[2]) * (lons > nesw[3])
-        assert (np.max(lats[zone]) < nesw[0]), "subsetting region didn't work"
+    if swne is not None:
+        zone=(lats < swne[2]) * (lons < swne[3]) * (lats > swne[0]) * (lons > swne[1])
+        assert (np.max(lats[zone]) < swne[2]), "subsetting region didn't work"
         if __DEBUG__: 
             print("range cut down to (s,w,n,e): %s"%str((min(lats[zone]),min(lons[zone]),max(lats[zone]),max(lons[zone]))))
+            print("from %2.0e entries down to %2.0e entries"%(len(lats)*len(lons),np.sum(zone)))
+        
         # One day for AUS cuts pixels from ~ 700k to 38k
     
     # save the 9 parameters we want for randal martin AMF package to csv:

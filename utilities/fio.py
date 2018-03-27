@@ -194,7 +194,7 @@ def read_hdf5(filename):
 
 
 
-def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded=False, reprocessed=False, geoschem=False, oneday=True, metaData=False):
+def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded=False, reprocessed=False, geoschem=False, metaData=False):
     '''
     Make filename based on date, resolution, and type of file.
     '''
@@ -212,7 +212,7 @@ def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded
         return ('Data/gchcho/hcho_%4d%2d.he5'%(date.year,date.month))
 
     # reprocessed and regridded match the following:
-    avg=['8','1'][oneday] # one or 8 day average when applicable
+    avg='1' # one or 8 day average when applicable
     typ=['p','g'][regridded] # reprocessed or regridded
     res='%1.2fx%1.2f'%(latres,lonres) # resolution string
     d = 'Data/omhchor'+typ+'/' # directory
@@ -521,7 +521,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
 
 
     if filename is None:
-        fpath=determine_filepath(date,oneday=oneday,latres=latres,lonres=lonres,reprocessed=True)
+        fpath=determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True)
     else:
         fpath=filename
 

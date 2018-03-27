@@ -58,7 +58,7 @@ __OMHCHORP_KEYS__ = [
     'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)
     'VCC',           # The vertical column corrected using the RSC
     'VCC_PP',        # Corrected Paul Palmer VC
-    'AMF_GC',        # AMF calculated using by GEOS-Chem]
+    'AMF_GC',        # AMF calculated using by GEOS-Chem
     'AMF_GCz',       # secondary way of calculating AMF with GC
     'AMF_OMI',       # AMF from OMI swaths
     'AMF_PP',        # AMF calculated using Paul palmers code
@@ -68,8 +68,9 @@ __OMHCHORP_KEYS__ = [
     'VC_OMI_RSC',    # OMI VCs with Reference sector correction? TODO: check
     'col_uncertainty_OMI',
     'fires',         # Fire count
-    'fire_mask_8',   # true where fires occurred over last 8 days
-    'fire_mask_16' ] # true where fires occurred over last 16 days
+    ]
+    #'fire_mask_8',   # true where fires occurred over last 8 days
+    #'fire_mask_16' ] # true where fires occurred over last 16 days
 
 # attributes for omhchorp
 __OMHCHORP_ATTRS__ = {
@@ -132,7 +133,7 @@ class omhchorp:
         keylist=list(set(keylist+__OMHCHORP_COORDS__)) # make sure coords are included
 
         for day in daylist:
-            struct.append(fio.read_omhchorp(date=day, oneday=True,
+            struct.append(fio.read_omhchorp(date=day,
                                             latres=latres, lonres=lonres,
                                             keylist=keylist))
         # dates and dimensions
@@ -143,7 +144,7 @@ class omhchorp:
         self.lon_res=self.lons[1]-self.lons[0]
         self.lats_e = util.edges_from_mids(self.lats)
         self.lons_e = util.edges_from_mids(self.lons)
-        self.surface_areas=util.area_grid(self.lats,self.lons,self.lat_res,self.lon_res)
+        self.surface_areas=util.area_grid(self.lats,self.lons)
         nt,self.n_lats,self.n_lons=len(daylist), len(self.lats), len(self.lons)
         self.n_times=nt
 
@@ -164,7 +165,7 @@ class omhchorp:
             self.RSC_region=struct[0]['RSC_region']
 
         # remove small and negative AMFs
-        if not ignorePP:
+        if hasattr(self,'AMF_PP'):
             print("Removing %d AMF_PP's less than 0.1"%np.nansum(self.AMF_PP<0.1))
             self.AMF_PP[self.AMF_PP < 0.1]=np.NaN
             screen=[-5e15,1e17]

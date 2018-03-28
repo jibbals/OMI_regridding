@@ -601,13 +601,7 @@ def get_8day_fires_mask(date=datetime(2005,1,1), latres=0.25, lonres=0.3125):
     1) read aqua 8 day fire count
     2) return a mask set to true where fire influence is expected
     '''
-    def set_adjacent_to_true(mask):
-        mask_copy = np.zeros(mask.shape).astype(bool)
-        ny,nx=mask.shape
-        for x in range(nx):
-            for y in np.arange(1,ny-1): # don't worry about top and bottom row
-                mask_copy[y,x] = np.sum(mask[[y-1,y,y+1],[x-1,x,(x+1)%nx]]) > 0
-        return mask_copy
+
 
     # read day fires
     fires, flats, flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
@@ -616,7 +610,7 @@ def get_8day_fires_mask(date=datetime(2005,1,1), latres=0.25, lonres=0.3125):
 
     # create a mask in squares with fires or adjacent to fires
     mask = fires > 0
-    retmask = set_adjacent_to_true(mask)
+    retmask = util.set_adjacent_to_true(mask)
 
     return retmask
 

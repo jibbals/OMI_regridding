@@ -92,6 +92,18 @@ def regularbounds(x,fix=False):
 
     return newx
 
+def add_colourbar(f,cs,ticks=None,label=None,fontsize=15):
+    '''
+        Add a colour bar to a figure
+    '''
+    f.tight_layout()
+    f.subplots_adjust(top=0.95)
+    f.subplots_adjust(right=0.84)
+    cbar_ax = f.add_axes([0.87, 0.20, 0.04, 0.6])
+    cb=f.colorbar(cs,cax=cbar_ax)
+    cb.set_ticks(ticks)
+    cb.set_label(label,fontsize=fontsize)
+
 def add_rectangle(bmap, limits, color='k', linewidth=1):
     '''
     Plot rectangle on basemap(arg 0) using [lat0,lon0,lat1,lon1](arg 1)
@@ -219,10 +231,18 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         print("createmap called over %s (S,W,N,E)"%str(region))
         #print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
 
+    # First reduce data,lats,lons to the desired region (should save plotting time)
+    lati,loni=util.lat_lon_range(lats,lons,region)
+    data=data[lati,:]
+    data=data[:,loni]
+    lats=lats[lati]
+    lons=lons[loni]
+
+
     lllat=region[0]; urlat=region[2]; lllon=region[1]; urlon=region[3]
     m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
               resolution='i', projection='merc')
-    
+
     if not linear:
         if __VERBOSE__:
             print('removing %d negative datapoints in createmap'%np.nansum(data<0))
@@ -232,7 +252,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         vmin=1.05*np.nanmin(data)
     if vmax is None:
         vmax=0.95*np.nanmax(data)
-    
+
     ## basemap pcolormesh uses data edges
     ##
     lats_e,lons_e=lats,lons

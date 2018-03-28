@@ -438,6 +438,16 @@ def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
 
     return arr
 
+def set_adjacent_to_true(mask):
+    mask_copy = np.zeros(mask.shape).astype(bool)
+    ny,nx=mask.shape
+    for x in range(nx):
+        for y in np.arange(1,ny-1): # don't worry about top and bottom row
+            mask_copy[y,x] = np.sum(mask[[y-1,y,y+1],[x-1,x,(x+1)%nx]]) > 0
+        # top and bottom row doesn't work?
+        #mask_copy[0,x] = np.sum(mask[[0,1],[x-1,x,(x+1)%nx]]) > 0
+        #mask_copy[-1,x] = np.sum(mask[[-2,-1],[x-1,x,(x+1)%nx]]) > 0
+    return mask_copy
 
 def utc_to_local(utc_dt):
     '''

@@ -580,6 +580,7 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
                 pass
 
     f.suptitle('Reference Sector Correction '+ymdstr,fontsize=30)
+    # Add colourbar to the right
     f.tight_layout()
     f.subplots_adjust(top=0.95)
     f.subplots_adjust(right=0.84)
@@ -880,7 +881,7 @@ def analyse_VCC_pp(day=datetime(2005,3,1), oneday=False, ausonly=True):
     print("%s saved"%pname)
     plt.close(f)
 
-def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None):
+def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -9, 166.25]):
     '''
         Plot columns with different amf bases
         also different fire filtering strengths
@@ -895,43 +896,45 @@ def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None):
     # start by reading all the VCC stuff
     # useful strings
     ymdstr=d0.strftime('%Y%m%d')
+    if dn is not None:
+        ymdstr=ymdstr+'-%s'%dn.strftime('%Y%m%d')
+    pname='Figs/VCC_fires_%s.png'%ymdstr
 
     # read in omhchorp
     om=omrp(d0,dayn=dn, keylist=['VCC','VC_GC','VCC_PP','gridentries','ppentries'])
-    print(vars(om).keys()) # [3, 720, 1152] data arrays returned, along with lats/lons etc.
+    #print(vars(om).keys()) # [3, 720, 1152] data arrays returned, along with lats/lons etc.
     oceanmask=om.oceanmask # lets just look at land squares
 
-    # read in fire mask for 0,1,2,4,8 days prior masking
-    # TODO
+    # Regionmask is the area which isnt within the region subset
+    regionmask=~om.inds_subset(lat0=region[0],lat1=region[2],lon0=region[1],lon1=region[3])
 
-    # Figure out how many pixels are removed with fire filtering
-
-
-    # and find land averages
-
-
-    # Plotting stuff:
+    # Plot rows,cols,size:
     f,axes=plt.subplots(5,3,figsize=[18,18])
 
     # first line is maps of VCC, VC_GC, VCC_PP
     titles=["OMI VC","S(z) updated","S(z)+$\omega$(z) updated"]
     vmin,vmax=1e15,1e17
     for i,arr in enumerate([om.VCC, om.VC_GC, om.VCC_PP]):
-        entries=[om.gridentries,om.ppentries][i==2] # entries for normal or ppamf
+        entries=np.copy([om.gridentries,om.ppentries][i==2]) # entries for normal or ppamf
+        entries=entries.astype(np.float)
+        print(entries.shape)
         if len(np.shape(arr))==3:
             arr=np.nanmean(arr,axis=0) # average over time
             entries=np.nansum(entries,axis=0) # how many entries
         arr[oceanmask]=np.NaN # nanify the ocean
-        entries[oceanmask]=0
+        arr[regionmask]=np.NaN # nanify outside the region
+        entries[oceanmask]=np.NaN
+        entries[regionmask]=np.NaN
 
         plt.sca(axes[0,i]) # first row ith column
-        pp.createmap(arr,om.lats,om.lons,region=[-45, 98.75, -7, 166.25],
-                     linear=False,vmin=vmin,vmax=vmax,
-                     cmapname='rainbow')
+        m,cs,cb= pp.createmap(arr,om.lats,om.lons,
+                              region=region,
+                              linear=False,vmin=vmin,vmax=vmax,
+                              cmapname='rainbow',colorbar=False)
         plt.title(titles[i])
 
         # add a little thing showing entries and mean and max
-        txt=['N=%d'%np.nansum(entries), '$\mu$ = %.2e'%np.nanmean(arr), 'max = %.2e'%np.nanmax(arr)]
+        txt=['N($\mu$)=%d(%.1f)'%(np.nansum(entries),np.nanmean(entries)), '$\mu$ = %.2e'%np.nanmean(arr), 'max = %.2e'%np.nanmax(arr)]
         for txt, yloc in zip(txt,[0.01,0.07,0.13]):
             plt.text(0.01, yloc, txt,
                  verticalalignment='bottom', horizontalalignment='left',
@@ -939,8 +942,55 @@ def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None):
                  color='k', fontsize=10)
 
     # Now loop over the same plots after NaNing our different fire masks
+    for j, N in enumerate([1,2,4,8]):
 
-    pname='pp_test.png'
+        for i, arr in enumerate([om.VCC, om.VC_GC, om.VCC_PP]):
+            plt.sca(axes[j+1,i]) # jth row ith column
+
+            # pixelcounts for normal or ppamf
+            entries=np.copy([om.gridentries,om.ppentries][i==2]).astype(np.float)
+
+            # read in fire mask for 1,2,4,8 days prior masking
+            firemask=om.make_fire_mask(d0,dN=dn,days_prior=N)
+            # firemask is 3dimensional: [days,lats,lons]
+
+            # Nanify fire squares
+            arr[firemask]=np.NaN
+
+            # masking to our specific region:
+            if len(np.shape(arr))==3:
+                for k in range(np.shape(arr)[0]):
+                    entries[k][regionmask]=np.NaN
+
+            firepix=int(np.nansum(entries[firemask])) # how many fire pixels
+            entries[firemask]=0
+            # flatten arrays for plotting and entries
+            if len(np.shape(arr))==3:
+                arr=np.nanmean(arr,axis=0) # average over time
+                entries=np.nansum(entries,axis=0) # how many entries
+
+            # Nanify ocean squares and area outside region
+            arr[regionmask]=np.NaN
+            arr[oceanmask]=np.NaN
+            entries[oceanmask]=np.NaN
+
+            plt.sca(axes[j+1,i]) # first row ith column
+            pp.createmap(arr,om.lats,om.lons,region=[-45, 98.75, -7, 166.25],
+                         linear=False,vmin=vmin,vmax=vmax,
+                         cmapname='rainbow', colorbar=False)
+
+            # add a little thing showing entries and mean and max
+            txt=['N($\mu$)=%d(%.1f)'%(np.nansum(entries), np.nanmean(entries)), '$\mu$ = %.2e'%np.nanmean(arr),
+                 'max = %.2e'%np.nanmax(arr), 'firepix=%d'%firepix]
+            for txt, yloc in zip(txt,[0.01,0.07,0.13,0.19]):
+                plt.text(0.01, yloc, txt,
+                     verticalalignment='bottom', horizontalalignment='left',
+                     transform=plt.gca().transAxes,
+                     color='k', fontsize=10)
+
+
+    pp.add_colourbar(f,cs,ticks=np.logspace(np.log10(vmin),np.log10(vmax),5),label='molec/cm$^2$')
+
     plt.savefig(pname)
     plt.close(f)
     print("Saved ",pname)
@@ -1735,7 +1785,7 @@ if __name__ == '__main__':
     #check_HEMCO_restarts()
 
     #analyse_VCC_pp(oneday=False, ausonly=True)
-    plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=datetime(2005,3,3))
+    plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=datetime(2005,3,8))
     #plot_swaths()
     # AMF tests and correlations
     #Check_OMI_AMF()

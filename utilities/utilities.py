@@ -352,11 +352,12 @@ def ppbv_to_molecs_per_cm2(ppbv, pedges):
             out[:,x,y] = t*ppbv[:,x,y]
     return out
 
-def regrid_to_lower(data, lats, lons, newlats_e, newlons_e):
+def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean):
     '''
         Regrid data to lower resolution
-        using EDGES of new grid and mids of old grid
+        using midpoints of new and old grid
     '''
+    newlats_e,newlons_e=edges_from_mids(newlats),edges_from_mids(newlons)
     ret=np.zeros([len(newlats_e)-1,len(newlons_e)-1])+np.NaN
     for i in range(len(newlats_e)-1):
         for j in range(len(newlons_e)-1):
@@ -365,42 +366,47 @@ def regrid_to_lower(data, lats, lons, newlats_e, newlons_e):
 
             tmp=data[lati,:]
             tmp=tmp[:,loni]
-            ret[i,j]=np.nanmean(tmp)
+            ret[i,j]=func(tmp)
     return ret
 
-def regrid(data,lats,lons,newlats,newlons):
+def regrid(data,lats,lons,newlats,newlons, interp='nearest', groupfunc=np.nanmean):
     '''
     Regrid a data array [lat,lon] onto [newlat,newlon]
+    When making resolution finer, need to interpolate:
+        interp = 'nearest' | 'linear' | 'cubic'
+    When making resolution lower, need to group using some function
+        groupfunc = np.nanmean by default
+
     '''
     if __VERBOSE__:
         print("utilities.regrid transforming %s to %s"%(str((len(lats),len(lons))),str((len(newlats),len(newlons)))))
         print("data input looks like %s"%str(np.shape(data)))
-    interp=None
+    newdata=None
     # if no resolution change then just throw back input
-    if len(newlats) == len(lats) and len(newlons) == len(lons):
-        if all(newlats == lats) and all(newlons == lons):
-            return data
+    oldy=lats[1]-lats[0]
+    newy=newlats[1]-newlats[0]
+    oldx=lons[1]-lons[0]
+    newx=newlons[1]-newlons[0]
+    if oldx==newx and oldy==newy:
+        return data
+    # If new resolution is strictly finer, use griddata
+    elif newx < oldx and newy < oldy:
+        # make into higher resolution
+        mlons,mlats = np.meshgrid(lons,lats)
+        mnewlons,mnewlats = np.meshgrid(newlons,newlats)
 
-    # If new lats have higher resolution
-    #elif len(newlats) > len(lats):
-    # make into higher resolution
-    mlons,mlats = np.meshgrid(lons,lats)
-    mnewlons,mnewlats = np.meshgrid(newlons,newlats)
-
-    #https://docs.scipy.org/doc/scipy/reference/interpolate.html
-    # take nearest datapoint from old grid new gridpoint value
-    interp = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
-                      (mnewlats, mnewlons), method='nearest')
+        #https://docs.scipy.org/doc/scipy/reference/interpolate.html
+        # take nearest datapoint from old grid new gridpoint value
+        newdata = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
+                          (mnewlats, mnewlons), method=interp)
+    # if new res is not strictly finer
+    else:
+        newdata = regrid_to_lower(data,lats,lons,newlats,newlons,func=groupfunc)
 
     # Check shape is as requested
-    assert np.shape(interp)== (len(newlats),len(newlons)), "Regridded shape new lats/lons!"
+    assert np.shape(newdata)== (len(newlats),len(newlons)), "Regridded shape new lats/lons!"
 
-    return interp
-
-#def regrid(data,lats,lons,newlats,newlons):
-#    '''
-#
-#    '''
+    return newdata
 
 def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
     ''' return reference to data array with time,lat,lon,lev dims '''

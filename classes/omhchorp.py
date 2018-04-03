@@ -87,7 +87,7 @@ __OMHCHORP_ATTRS__ = {
     'VCC_PP':               {'units':'molec/cm2',
                              'desc':'Corrected OMI columns using PPalmer and LSurl\'s lidort/GEOS-Chem based AMF'},
     'VC_OMI_RSC':           {'units':'molec/cm2',
-                             'desc':'OMI\'s RSC column amount'},
+                             'desc':'OMI\'s RSC corrected VC '},
     'RSC':                  {'units':'molec/cm2',
                              'desc':'GEOS-Chem/OMI based Reference Sector Correction: is applied to pixels based on latitude and track number'},
     'RSC_latitude':         {'units':'degrees',
@@ -180,23 +180,24 @@ class omhchorp:
         #    self.background=self.get_background_array()
         #self.apply_fire_mask()
 
-    def make_fire_mask(self, d0, dN=None, days_prior=1, fire_thresh=1, adjacent=True):
+    def make_fire_mask(self, d0, dN=None, days_masked=1, fire_thresh=1, adjacent=True):
         '''
             Return fire mask with dimensions [len(d0-dN), n_lats, n_lons]
-            looks at fires between [d0-days_prior+1, dN], for each day in d0 to dN
+            looks at fires between [d0-days_masked+1, dN], for each day in d0 to dN
 
-            If days_prior extends before contained days then the fire mask is read from omhchorp files
+            If days_masked extends before contained days then the fire mask is read from omhchorp files
 
             mask is true where more than fire_thresh fire pixels exist.
 
         '''
         # first day of filtering
         daylist=util.list_days(d0,dN)
-        first_day=daylist[0]-timedelta(days=days_prior-1)
+        first_day=daylist[0]-timedelta(days=days_masked-1)
         last_day=daylist[-1]
 
         if __VERBOSE__:
-            print ("fire mask will be from ", first_day, '-', last_day)
+            print ("make_fire_mask will return rolling %d day fire masks between "%days_masked, d0, '-', last_day)
+            print ("They will filter gridsquares with more than %d fire pixels detected"%fire_thresh)
 
         # check if we already have the required days
         dates=np.array(self.dates)
@@ -216,12 +217,12 @@ class omhchorp:
         mask = fires>fire_thresh
         retmask= np.zeros([len(daylist),self.n_lats,self.n_lons]).astype(np.bool)
 
-        # actual mask is made up of sums of daily masks over prior days_prior
+        # actual mask is made up of sums of daily masks over prior days_masked
 
-        if days_prior>1:
+        if days_masked>1:
             # from end back to first day in daylist
             for i in -np.arange(0,len(daylist)):
-                tempmask=mask[i-days_prior:] # look at last days_prior
+                tempmask=mask[i-days_masked:] # look at last days_masked
                 if i < 0:
                     tempmask=tempmask[:i] # remove days past the 'current'
 
@@ -238,6 +239,12 @@ class omhchorp:
                 retmask[i]=util.set_adjacent_to_true(retmask[i])
 
         return retmask
+
+    def get_smoke_mask(self, d0, dN=None, thresh=0.001):
+        '''
+            Read OMAERUVd AAOD(500nm), regrid into local resoluion, mask days above thresh
+        '''
+        assert False, "To be implemented"
 
     def inds_subset(self, lat0=None, lat1=None, lon0=None, lon1=None, maskocean=False, maskland=False):
         ''' return indices of lat, lon arrays within input box '''

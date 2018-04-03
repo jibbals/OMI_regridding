@@ -28,8 +28,15 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm # for lognormal colour bar
 #import matplotlib.patches as mpatches
 
+import random # random number generation
 import timeit
-import random
+# EG using timer:
+#start_time=timeit.default_timer()
+#runprocess()
+#elapsed = timeit.default_timer() - start_time
+#print ("TIMEIT: Took %6.2f seconds to runprocess()"%elapsed)
+
+
 
 Ohcho='$\Omega_{HCHO}$'
 Ovc='$\Omega_{VC}$'
@@ -899,9 +906,19 @@ def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -9, 166
     if dn is not None:
         ymdstr=ymdstr+'-%s'%dn.strftime('%Y%m%d')
     pname='Figs/VCC_fires_%s.png'%ymdstr
+    pname2='Figs/VCC_entries_%s.png'%ymdstr
+    vmin,vmax=4e15,8e15 # min,max for colourbar
+    linear=True # linear colour scale?
+    vmin2,vmax2=0,40
+
+    # time stuff:
+    start_time=timeit.default_timer()
 
     # read in omhchorp
-    om=omrp(d0,dayn=dn, keylist=['VCC','VC_GC','VCC_PP','gridentries','ppentries'])
+    om=omrp(d0,dayn=dn, keylist=['VC_OMI_RSC','VCC','VCC_PP','gridentries','ppentries'])
+    elapsed = timeit.default_timer() - start_time
+    print("TIMEIT: Took %6.2f seconds to read omhchorp"%elapsed)
+
     #print(vars(om).keys()) # [3, 720, 1152] data arrays returned, along with lats/lons etc.
     oceanmask=om.oceanmask # lets just look at land squares
 
@@ -910,14 +927,17 @@ def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -9, 166
 
     # Plot rows,cols,size:
     f,axes=plt.subplots(5,3,figsize=[18,18])
+    # second plot just for entries
+    f2, axes2=plt.subplots(5,3,figsize=[18,18])
 
     # first line is maps of VCC, VC_GC, VCC_PP
-    titles=["OMI VC","S(z) updated","S(z)+$\omega$(z) updated"]
-    vmin,vmax=1e15,1e17
-    for i,arr in enumerate([om.VCC, om.VC_GC, om.VCC_PP]):
-        entries=np.copy([om.gridentries,om.ppentries][i==2]) # entries for normal or ppamf
-        entries=entries.astype(np.float)
-        print(entries.shape)
+    titles=["OMI VCC","S(z) updated","S(z)+$\omega$(z) updated"]
+
+    for i,arr in enumerate([om.VC_OMI_RSC, om.VCC, om.VCC_PP]):
+        # entries for normal or ppamf
+        entries=np.copy([om.gridentries,om.ppentries][i==2])
+        entries=entries.astype(np.float) # so I can Nan the ocean/non-aus areas
+
         if len(np.shape(arr))==3:
             arr=np.nanmean(arr,axis=0) # average over time
             entries=np.nansum(entries,axis=0) # how many entries
@@ -929,7 +949,7 @@ def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -9, 166
         plt.sca(axes[0,i]) # first row ith column
         m,cs,cb= pp.createmap(arr,om.lats,om.lons,
                               region=region,
-                              linear=False,vmin=vmin,vmax=vmax,
+                              linear=linear,vmin=vmin,vmax=vmax,
                               cmapname='rainbow',colorbar=False)
         plt.title(titles[i])
 
@@ -941,18 +961,28 @@ def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -9, 166
                  transform=plt.gca().transAxes,
                  color='k', fontsize=10)
 
+        # also plot entries
+        plt.sca(axes2[0,i])
+        pp.createmap(entries,om.lats,om.lons,region=region,
+                     cmapname='jet', colorbar=False,
+                     linear=True,vmin=vmin2,vmax=vmax2)
+        plt.title(titles[i])
+
     # Now loop over the same plots after NaNing our different fire masks
     for j, N in enumerate([1,2,4,8]):
 
-        for i, arr in enumerate([om.VCC, om.VC_GC, om.VCC_PP]):
+        # read in fire mask for 1,2,4,8 days prior masking
+        # firemask is 3dimensional: [days,lats,lons]
+        fstart=timeit.default_timer()
+        firemask=om.make_fire_mask(d0,dN=dn,days_masked=N)
+        felapsed = timeit.default_timer() - fstart
+        print ("TIMEIT: Took %6.2f seconds to make_fire_mask(%d days)"%(felapsed,N))
+
+        for i, arr in enumerate([om.VC_OMI_RSC, om.VCC, om.VCC_PP]):
             plt.sca(axes[j+1,i]) # jth row ith column
 
             # pixelcounts for normal or ppamf
             entries=np.copy([om.gridentries,om.ppentries][i==2]).astype(np.float)
-
-            # read in fire mask for 1,2,4,8 days prior masking
-            firemask=om.make_fire_mask(d0,dN=dn,days_prior=N)
-            # firemask is 3dimensional: [days,lats,lons]
 
             # Nanify fire squares
             arr[firemask]=np.NaN
@@ -972,11 +1002,12 @@ def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -9, 166
             # Nanify ocean squares and area outside region
             arr[regionmask]=np.NaN
             arr[oceanmask]=np.NaN
+            entries[regionmask]=np.NaN
             entries[oceanmask]=np.NaN
 
             plt.sca(axes[j+1,i]) # first row ith column
-            pp.createmap(arr,om.lats,om.lons,region=[-45, 98.75, -7, 166.25],
-                         linear=False,vmin=vmin,vmax=vmax,
+            pp.createmap(arr,om.lats,om.lons,region=region,
+                         linear=linear,vmin=vmin,vmax=vmax,
                          cmapname='rainbow', colorbar=False)
 
             # add a little thing showing entries and mean and max
@@ -988,12 +1019,32 @@ def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -9, 166
                      transform=plt.gca().transAxes,
                      color='k', fontsize=10)
 
+            # also plot entries
+            plt.sca(axes2[j+1,i])
+            m2,cs2,cb2= pp.createmap(entries,om.lats,om.lons,region=region,
+                                     cmapname='jet',linear=True, colorbar=False,
+                                     vmin=vmin2,vmax=vmax2)
 
-    pp.add_colourbar(f,cs,ticks=np.logspace(np.log10(vmin),np.log10(vmax),5),label='molec/cm$^2$')
+    # Add row labels
+    rows = ['%d days'%fdays for fdays in [0,1,2,4,8]]
+    rows[0]='fire filter\n'+rows[0]
+    for ax, ax2, row in zip(axes[:,0], axes2[:,0], rows):
+        ax.set_ylabel(row, rotation=0, size='small')
 
-    plt.savefig(pname)
+    ticks=[np.logspace(np.log10(vmin),np.log10(vmax),5),np.linspace(vmin,vmax,5)][linear]
+    pp.add_colourbar(f,cs,ticks=ticks,label='molec/cm$^2$')
+    pp.add_colourbar(f2,cs2,ticks=np.linspace(vmin2,vmax2,5),label='pixels')
+
+    f.savefig(pname)
     plt.close(f)
     print("Saved ",pname)
+    f2.savefig(pname2)
+    plt.close(f2)
+    print("Saved ",pname2)
+
+    elapsed = timeit.default_timer() - start_time
+    print("TIMEIT: Took %6.2f seconds to run plot_VCC_rsc_gc_pp()"%elapsed)
+
     #createmap(data, lats, lons, make_edges=False, GC_shift=True,
     #          vmin=None, vmax=None, latlon=True,
     #          region=__GLOBALREGION__, aus=False, linear=False,
@@ -1785,7 +1836,7 @@ if __name__ == '__main__':
     #check_HEMCO_restarts()
 
     #analyse_VCC_pp(oneday=False, ausonly=True)
-    plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=datetime(2005,3,8))
+    plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=datetime(2005,3,31))
     #plot_swaths()
     # AMF tests and correlations
     #Check_OMI_AMF()

@@ -219,6 +219,26 @@ def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded
     fpath=d+"omhcho_%s_%4d%02d%02d.he5" %(avg+typ+res,date.year,date.month,date.day)
     return(fpath)
 
+def read_AAOD(date):
+    '''
+        Read OMAERUVd 1x1 degree resolution for a particular date
+    '''
+    fpath='Data/OMAERUVd/'+date.strftime('%Y/*%Y-%m-%d.CSV')
+    # read he5 file...
+
+    return aaod,lats,lons
+
+def read_AAOD_interpolated(date, latres=0.25,lonres=0.3125):
+    '''
+        Read OMAERUVd interpolated to a lat/lon grid
+    '''
+    newlats,newlons,newlats_e,newlons_e= util.lat_lon_grid(latres,lonres)
+    aaod,lats,lons=read_AAOD(date)
+
+    newaaod=util.regrid(aaod,lats,lons,newlats,newlons)
+    #util.regrid_to_lower(fires,lats,lons,newlats_e,newlons_e)
+    return newaaod,newlats,newlons
+
 
 def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
     '''

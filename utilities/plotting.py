@@ -36,7 +36,7 @@ sys.path.pop(0)
 ### GLOBALS ###
 ###############
 
-__VERBOSE__=True
+__VERBOSE__=False
 
 # S W N E
 __AUSREGION__=[-45, 108.75, -7, 156.25] # picked from lons_e and lats_e in GMAO.py

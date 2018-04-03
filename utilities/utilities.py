@@ -204,6 +204,19 @@ def last_day(date):
     dayn=datetime(date.year,date.month,lastday)
     return dayn
 
+def lat_lon_grid(latres=0.25,lonres=0.3125):
+    '''
+    Returns lats, lons, latbounds, lonbounds for grid with input resolution
+    '''
+    # lat and lon bin boundaries
+    lat_bounds=np.arange(-90, 90+latres/2.0, latres)
+    lon_bounds=np.arange(-180, 180+lonres/2.0, lonres)
+    # lat and lon bin midpoints
+    lats=np.arange(-90,90,latres)+latres/2.0
+    lons=np.arange(-180,180,lonres)+lonres/2.0
+
+    return (lats,lons,lat_bounds,lon_bounds)
+
 def lat_lon_index(lat,lon,lats,lons):
     ''' lat,lon index from lats,lons    '''
     with np.errstate(invalid='ignore'):
@@ -358,7 +371,6 @@ def regrid_to_lower(data, lats, lons, newlats_e, newlons_e):
 def regrid(data,lats,lons,newlats,newlons):
     '''
     Regrid a data array [lat,lon] onto [newlat,newlon]
-    Assumes a regular grid, and that boundaries are compatible!!
     '''
     if __VERBOSE__:
         print("utilities.regrid transforming %s to %s"%(str((len(lats),len(lons))),str((len(newlats),len(newlons)))))
@@ -376,6 +388,7 @@ def regrid(data,lats,lons,newlats,newlons):
     mnewlons,mnewlats = np.meshgrid(newlons,newlats)
 
     #https://docs.scipy.org/doc/scipy/reference/interpolate.html
+    # take nearest datapoint from old grid new gridpoint value
     interp = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
                       (mnewlats, mnewlons), method='nearest')
 
@@ -383,6 +396,11 @@ def regrid(data,lats,lons,newlats,newlons):
     assert np.shape(interp)== (len(newlats),len(newlons)), "Regridded shape new lats/lons!"
 
     return interp
+
+#def regrid(data,lats,lons,newlats,newlons):
+#    '''
+#
+#    '''
 
 def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
     ''' return reference to data array with time,lat,lon,lev dims '''

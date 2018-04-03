@@ -888,7 +888,7 @@ def analyse_VCC_pp(day=datetime(2005,3,1), oneday=False, ausonly=True):
     print("%s saved"%pname)
     plt.close(f)
 
-def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -9, 166.25]):
+def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -11, 166.25]):
     '''
         Plot columns with different amf bases
         also different fire filtering strengths
@@ -907,7 +907,7 @@ def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -9, 166
         ymdstr=ymdstr+'-%s'%dn.strftime('%Y%m%d')
     pname='Figs/VCC_fires_%s.png'%ymdstr
     pname2='Figs/VCC_entries_%s.png'%ymdstr
-    vmin,vmax=4e15,8e15 # min,max for colourbar
+    vmin,vmax=4e15,9e15 # min,max for colourbar
     linear=True # linear colour scale?
     vmin2,vmax2=0,40
 

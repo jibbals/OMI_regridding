@@ -356,6 +356,10 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=60, verbose=False)
     Read info from a single swath file
     NANify entries with main quality flag not equal to zero
     NANify entries where xtrackqualityflags aren't zero
+    Argument based filters:
+        NANify entries outside of screen (argument)
+        NANify entries with abs(latitude) > maxlat
+        NANify entries with sza > szamax
     Returns:{'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
             'omega':w,'apriori':apri,'plevels':plevs, 'cloudfrac':clouds,
             'rad_ref_col',

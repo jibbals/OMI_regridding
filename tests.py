@@ -11,6 +11,7 @@ from utilities import fio
 import reprocess
 from utilities import plotting as pp
 from utilities.JesseRegression import RMA
+from utilities import utilities as util
 from classes.omhchorp import omhchorp as omrp
 from classes.gchcho import match_bottom_levels
 from classes.GC_class import GC_tavg
@@ -27,8 +28,15 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm # for lognormal colour bar
 #import matplotlib.patches as mpatches
 
+import random # random number generation
 import timeit
-import random
+# EG using timer:
+#start_time=timeit.default_timer()
+#runprocess()
+#elapsed = timeit.default_timer() - start_time
+#print ("TIMEIT: Took %6.2f seconds to runprocess()"%elapsed)
+
+
 
 Ohcho='$\Omega_{HCHO}$'
 Ovc='$\Omega_{VC}$'
@@ -579,6 +587,7 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
                 pass
 
     f.suptitle('Reference Sector Correction '+ymdstr,fontsize=30)
+    # Add colourbar to the right
     f.tight_layout()
     f.subplots_adjust(top=0.95)
     f.subplots_adjust(right=0.84)
@@ -771,7 +780,7 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     plt.close()
     print(outfig+" Saved.")
 
-def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
+def analyse_VCC_pp(day=datetime(2005,3,1), oneday=False, ausonly=True):
     '''
     Look closely at AMFs over Australia, specifically over land
     and see how our values compare against the model and OMI swaths.and Paul Palmers code
@@ -780,7 +789,7 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
     ymdstr=day.strftime('%Y%m%d')
 
     # read in omhchorp
-    om=omrp(day,oneday=oneday)
+    om=omrp(day,dayn=util.last_day(day))
 
     print("AMF mean   : %7.4f, std: %7.4f"%(np.nanmean(om.AMF_OMI),np.nanstd(om.AMF_OMI)))
     print("AMF_GC mean: %7.4f, std: %7.4f"%(np.nanmean(om.AMF_GC),np.nanstd(om.AMF_GC)))
@@ -842,8 +851,8 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
     for ii in range (3):
         plt.text(.05,.85-0.05*ii, '%s mean(land)=%5.3e'%(OMP_str[ii],np.nanmean(OMP_l[ii])), transform=ta)
     ausstr=['','_AUS'][ausonly]
-    eightstr=['_8day',''][oneday]
-    pname='Figs/hist%s%s_%s.png'%(eightstr,ausstr,ymdstr)
+    timestr=['_month','_day'][oneday]
+    pname='Figs/hist%s%s_%s.png'%(timestr,ausstr,ymdstr)
     plt.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
@@ -873,12 +882,176 @@ def test_pp_against_mine(day=datetime(2005,1,1), oneday=False, ausonly=True):
         plt.ylabel(OMP_str[ii-1]); plt.xlabel(OMP_str[ii])
 
     # save plot
-    pname='Figs/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
+    pname='Figs/correlations%s%s_%s.png'%(timestr,ausstr,ymdstr)
     f.suptitle("Product comparison for %s"%ymdstr,fontsize=28)
     f.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
 
+def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -11, 166.25]):
+    '''
+        Plot columns with different amf bases
+        also different fire filtering strengths
+              |  VCC   |  VCC_gc   |  VCC_pp
+        fire0 |
+        fire1 |
+        fire2 |
+        fire4 |
+        fire8 |
+    '''
+
+    # start by reading all the VCC stuff
+    # useful strings
+    ymdstr=d0.strftime('%Y%m%d')
+    if dn is not None:
+        ymdstr=ymdstr+'-%s'%dn.strftime('%Y%m%d')
+    pname='Figs/VCC_fires_%s.png'%ymdstr
+    pname2='Figs/VCC_entries_%s.png'%ymdstr
+    vmin,vmax=4e15,9e15 # min,max for colourbar
+    linear=True # linear colour scale?
+    vmin2,vmax2=0,40
+
+    # time stuff:
+    start_time=timeit.default_timer()
+
+    # read in omhchorp
+    om=omrp(d0,dayn=dn, keylist=['VC_OMI_RSC','VCC','VCC_PP','gridentries','ppentries'])
+    elapsed = timeit.default_timer() - start_time
+    print("TIMEIT: Took %6.2f seconds to read omhchorp"%elapsed)
+
+    #print(vars(om).keys()) # [3, 720, 1152] data arrays returned, along with lats/lons etc.
+    oceanmask=om.oceanmask # lets just look at land squares
+
+    # Regionmask is the area which isnt within the region subset
+    regionmask=~om.inds_subset(lat0=region[0],lat1=region[2],lon0=region[1],lon1=region[3])
+
+    # Plot rows,cols,size:
+    f,axes=plt.subplots(5,3,figsize=[18,18])
+    # second plot just for entries
+    f2, axes2=plt.subplots(5,3,figsize=[18,18])
+
+    # first line is maps of VCC, VC_GC, VCC_PP
+    titles=["OMI VCC","S(z) updated","S(z)+$\omega$(z) updated"]
+
+    for i,arr in enumerate([om.VC_OMI_RSC, om.VCC, om.VCC_PP]):
+        # entries for normal or ppamf
+        entries=np.copy([om.gridentries,om.ppentries][i==2])
+        entries=entries.astype(np.float) # so I can Nan the ocean/non-aus areas
+
+        if len(np.shape(arr))==3:
+            arr=np.nanmean(arr,axis=0) # average over time
+            entries=np.nansum(entries,axis=0) # how many entries
+        arr[oceanmask]=np.NaN # nanify the ocean
+        arr[regionmask]=np.NaN # nanify outside the region
+        entries[oceanmask]=np.NaN
+        entries[regionmask]=np.NaN
+
+        plt.sca(axes[0,i]) # first row ith column
+        m,cs,cb= pp.createmap(arr,om.lats,om.lons,
+                              region=region,
+                              linear=linear,vmin=vmin,vmax=vmax,
+                              cmapname='rainbow',colorbar=False)
+        plt.title(titles[i])
+
+        # add a little thing showing entries and mean and max
+        txt=['N($\mu$)=%d(%.1f)'%(np.nansum(entries),np.nanmean(entries)), '$\mu$ = %.2e'%np.nanmean(arr), 'max = %.2e'%np.nanmax(arr)]
+        for txt, yloc in zip(txt,[0.01,0.07,0.13]):
+            plt.text(0.01, yloc, txt,
+                 verticalalignment='bottom', horizontalalignment='left',
+                 transform=plt.gca().transAxes,
+                 color='k', fontsize=10)
+
+        # also plot entries
+        plt.sca(axes2[0,i])
+        pp.createmap(entries,om.lats,om.lons,region=region,
+                     cmapname='jet', colorbar=False,
+                     linear=True,vmin=vmin2,vmax=vmax2)
+        plt.title(titles[i])
+
+    # Now loop over the same plots after NaNing our different fire masks
+    for j, N in enumerate([1,2,4,8]):
+
+        # read in fire mask for 1,2,4,8 days prior masking
+        # firemask is 3dimensional: [days,lats,lons]
+        fstart=timeit.default_timer()
+        firemask=om.make_fire_mask(d0,dN=dn,days_masked=N)
+        felapsed = timeit.default_timer() - fstart
+        print ("TIMEIT: Took %6.2f seconds to make_fire_mask(%d days)"%(felapsed,N))
+
+        for i, arr in enumerate([om.VC_OMI_RSC, om.VCC, om.VCC_PP]):
+            plt.sca(axes[j+1,i]) # jth row ith column
+
+            # pixelcounts for normal or ppamf
+            entries=np.copy([om.gridentries,om.ppentries][i==2]).astype(np.float)
+
+            # Nanify fire squares
+            arr[firemask]=np.NaN
+
+            # masking to our specific region:
+            if len(np.shape(arr))==3:
+                for k in range(np.shape(arr)[0]):
+                    entries[k][regionmask]=np.NaN
+
+            firepix=int(np.nansum(entries[firemask])) # how many fire pixels
+            entries[firemask]=0
+            # flatten arrays for plotting and entries
+            if len(np.shape(arr))==3:
+                arr=np.nanmean(arr,axis=0) # average over time
+                entries=np.nansum(entries,axis=0) # how many entries
+
+            # Nanify ocean squares and area outside region
+            arr[regionmask]=np.NaN
+            arr[oceanmask]=np.NaN
+            entries[regionmask]=np.NaN
+            entries[oceanmask]=np.NaN
+
+            plt.sca(axes[j+1,i]) # first row ith column
+            pp.createmap(arr,om.lats,om.lons,region=region,
+                         linear=linear,vmin=vmin,vmax=vmax,
+                         cmapname='rainbow', colorbar=False)
+
+            # add a little thing showing entries and mean and max
+            txt=['N($\mu$)=%d(%.1f)'%(np.nansum(entries), np.nanmean(entries)), '$\mu$ = %.2e'%np.nanmean(arr),
+                 'max = %.2e'%np.nanmax(arr), 'firepix=%d'%firepix]
+            for txt, yloc in zip(txt,[0.01,0.07,0.13,0.19]):
+                plt.text(0.01, yloc, txt,
+                     verticalalignment='bottom', horizontalalignment='left',
+                     transform=plt.gca().transAxes,
+                     color='k', fontsize=10)
+
+            # also plot entries
+            plt.sca(axes2[j+1,i])
+            m2,cs2,cb2= pp.createmap(entries,om.lats,om.lons,region=region,
+                                     cmapname='jet',linear=True, colorbar=False,
+                                     vmin=vmin2,vmax=vmax2)
+
+    # Add row labels
+    rows = ['%d days'%fdays for fdays in [0,1,2,4,8]]
+    rows[0]='fire filter\n'+rows[0]
+    for ax, ax2, row in zip(axes[:,0], axes2[:,0], rows):
+        ax.set_ylabel(row, rotation=0, size='small')
+
+    ticks=[np.logspace(np.log10(vmin),np.log10(vmax),5),np.linspace(vmin,vmax,5)][linear]
+    pp.add_colourbar(f,cs,ticks=ticks,label='molec/cm$^2$')
+    pp.add_colourbar(f2,cs2,ticks=np.linspace(vmin2,vmax2,5),label='pixels')
+
+    f.savefig(pname)
+    plt.close(f)
+    print("Saved ",pname)
+    f2.savefig(pname2)
+    plt.close(f2)
+    print("Saved ",pname2)
+
+    elapsed = timeit.default_timer() - start_time
+    print("TIMEIT: Took %6.2f seconds to run plot_VCC_rsc_gc_pp()"%elapsed)
+
+    #createmap(data, lats, lons, make_edges=False, GC_shift=True,
+    #          vmin=None, vmax=None, latlon=True,
+    #          region=__GLOBALREGION__, aus=False, linear=False,
+    #          clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
+    #          cbarorient='bottom',
+    #          pname=None,title=None,suptitle=None, smoothed=False,
+    #          cmapname=None, fillcontinents=None):
 
 def CompareMaps(day=datetime(2005,1,1), oneday=False, ausonly=True, PP=False):
     '''
@@ -1662,7 +1835,9 @@ if __name__ == '__main__':
     # GEOS Chem trop vs ucx restarts
     #check_HEMCO_restarts()
 
-    plot_swaths()
+    #analyse_VCC_pp(oneday=False, ausonly=True)
+    plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=datetime(2005,3,31))
+    #plot_swaths()
     # AMF tests and correlations
     #Check_OMI_AMF()
     #Check_AMF()
@@ -1686,7 +1861,7 @@ if __name__ == '__main__':
     #check_products(date=dates[0],oneday=False)
     #Summary_RSC(date=dates[0], oneday=False)
     #dates=[ ]
-    #test_pp_against_mine(day=dates[0],oneday=False, ausonly=False)
+
     #CompareMaps(day=dates[0],oneday=False,ausonly=False)
     #Summary_RSC(oneday=False)
     #for day in dates:

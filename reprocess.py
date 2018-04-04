@@ -10,6 +10,7 @@ This script is used to take GC output, OMI hcho swathes,
 
 # module to read/write data to file
 from utilities import fio
+from utilities import utilities as util
 from classes.gchcho import gchcho
 import classes.omhchorp as omhchorp
 import numpy as np
@@ -44,18 +45,7 @@ def sum_dicts(d1,d2):
         d3[k]=d1[k]+d2[k]
     return d3
 
-def create_lat_lon_grid(latres=0.25,lonres=0.3125):
-    '''
-    Returns lats, lons, latbounds, lonbounds for grid with input resolution
-    '''
-    # lat and lon bin boundaries
-    lat_bounds=np.arange(-90, 90+latres/2.0, latres)
-    lon_bounds=np.arange(-180, 180+lonres/2.0, lonres)
-    # lat and lon bin midpoints
-    lats=np.arange(-90,90,latres)+latres/2.0
-    lons=np.arange(-180,180,lonres)+lonres/2.0
 
-    return(lats,lons,lat_bounds,lon_bounds)
 
 
 def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True):
@@ -383,16 +373,18 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     # majority of processing time in here ( 75 minutes? )
 
     # how many lats, lons
-    lats,lons,lat_bounds,lon_bounds=create_lat_lon_grid(latres=latres,lonres=lonres)
+    lats,lons,lat_bounds,lon_bounds=util.lat_lon_grid(latres=latres,lonres=lonres)
     ny,nx = len(lats), len(lons)
 
     # Filter for removing cloudy entries
     cloud_filter = omi_clouds < 0.4 # This is a list of booleans for the pixels
-    # Filter for removing fire affected squares(from current and prior 8 days)
-    # filter is booleans matching lat/lon grid. True for fires
-    #fire_count, _flats, _flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
+
+    # fire filter can be made from the fire_count
     fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date,latres=latres,lonres=lonres)
     assert all(_flats == lats), "fire interpolation does not match our resolution"
+
+    # smoke filter can be made from AAOD product
+    aaod, _alats, _alons = fio.read_AAOD_interpolated(date,latres=latres,lonres=lonres)
 
     ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -427,9 +419,9 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
             SC[i,j]         = np.mean(omi_SC[matches])
             VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
             VC_omi[i,j]     = np.mean(omi_VC_omi[matches])
-            VCC[i,j]        = np.mean(omi_VCC[matches])
-            VCC_pp[i,j]     = np.mean(omi_VCC_pp[matches])
-            RSC_OMI[i,j]    = np.mean(omi_RSC[matches]) # the correction amount
+            VCC[i,j]        = np.mean(omi_VCC[matches]) # RSC Corrected VC_GC
+            VCC_pp[i,j]     = np.mean(omi_VCC_pp[matches]) # RSC Corrected VC_PP
+            RSC_OMI[i,j]    = np.mean(omi_RSC[matches]) # RSC corrected VC_omi
             # TODO: store analysis data for saving, when we decide what we want analysed
             cunc_omi[i,j]   = np.mean(omi_cunc[matches])
             AMF_gc[i,j]     = np.mean(omi_AMF_gc[matches])
@@ -452,7 +444,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     outd['SC']                  = SC
     outd['VCC']                 = VCC
     outd['VCC_PP']              = VCC_pp
-    outd['VC_OMI_RSC']          = RSC_OMI # omi's RSC column amount
+    outd['VC_OMI_RSC']          = RSC_OMI # omi's VC (corrected by reference sector)
     outd['gridentries']         = counts
     outd['ppentries']           = countspp
     outd['latitude']            = lats
@@ -467,6 +459,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     outd['AMF_OMI']             = AMF_omi
     outd['AMF_PP']              = AMF_pp
     outd['fires']               = fire_count.astype(np.int16)
+    outd['AAOD']                = aaod # omaeruvd aaod 500nm product interpolated
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True,oneday=True)
 
     if __VERBOSE__:
@@ -481,85 +474,85 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     ## TODO: Save analysis metadata like SSDs or other metrics
     #
 
-
-def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
-    '''
-    Combine eight omhchorp_1 outputs to create an 8 day average file
-    '''
-    # check that there are 8 omhchorp_1 files
-    # our 8 days in a list
-    days8 = [ date + timedelta(days=dd) for dd in range(8)]
-    files8= []
-    for day in days8:
-        #yyyymmdd=date.strftime("%Y%m%d")
-        filename=fio.determine_filepath(day,latres=latres,lonres=lonres,oneday=True,reprocessed=True)
-        assert os.path.isfile(filename), "ERROR: file not found for averaging : "+filename
-        files8.append(filename)
-
-    # normal stuff will be identical between days
-    normallist=['latitude', 'longitude', 'RSC_latitude', 'RSC_region',
-                'fires', 'fire_mask_8', 'fire_mask_16']
-    # list of things we need to add together and average
-    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
-             'VCC', 'col_uncertainty_OMI']
-    # other things need to be handled seperately
-    otherlist=['gridentries','RSC', 'RSC_GC','ppentries','AMF_PP','VCC_PP']
-
-    # keylist is all keys
-    keylist=sumlist.copy()
-    keylist.extend(normallist)
-    keylist.extend(otherlist)
-
-    # function adds arrays pretending nan entries are zero. two nans add to nan
-    def addArraysWithNans(x, y):
-        x = np.ma.masked_array(np.nan_to_num(x), mask=np.isnan(x) & np.isnan(y))
-        y = np.ma.masked_array(np.nan_to_num(y), mask=x.mask)
-        return (x+y).filled(np.nan)
-
-    # initialise sum dictionary with data from first day
-    sumdict=dict()
-    data=fio.read_omhchorp(date,latres=latres,lonres=lonres,oneday=True)
-    for key in keylist:
-        sumdict[key] = data[key].astype(np.float64)
-
-    # read in and sum the rest of the 8 reprocessed days
-    for day in days8[1:]:
-        data=fio.read_omhchorp(day,latres=latres,lonres=lonres,oneday=True)
-        daycount=data['gridentries']
-        daycountpp=data['ppentries']
-        sumdict['gridentries'] = addArraysWithNans(sumdict['gridentries'], daycount)
-        sumdict['ppentries'] = addArraysWithNans(sumdict['ppentries'], daycountpp)
-        sumdict['RSC'] = addArraysWithNans(sumdict['RSC'], data['RSC'])
-        sumdict['RSC_GC'] = sumdict['RSC_GC'] + data['RSC_GC']
-
-        for ppkey in ['AMF_PP','VCC_PP']:
-            y=data[ppkey].astype(np.float64) * daycountpp
-            sumdict[ppkey] = addArraysWithNans(sumdict[ppkey],y)
-
-        # for each averaged amount we want to sum together the totals
-        for key in sumlist:
-            # y is today's total amount ( gridcell avgs * gridcell counts )
-            y=data[key].astype(np.float64) * daycount
-            # add arrays treating nans as zero using masked arrays
-            sumdict[key]= addArraysWithNans(sumdict[key],y)
-
-    # take the average and save out to netcdf
-    avgdict=dict()
-    counts=sumdict['gridentries']
-    countspp=sumdict['ppentries']
-    for key in sumlist:
-        avgdict[key]= sumdict[key] / counts.astype(float)
-    for key in normallist:
-        avgdict[key]= sumdict[key]
-    avgdict['gridentries']=counts.astype(int)
-    avgdict['ppentries']=countspp.astype(int)
-    avgdict['RSC']=sumdict['RSC']/8.0
-    avgdict['RSC_GC']=sumdict['RSC_GC']/8.0
-    avgdict['AMF_PP']=sumdict['AMF_PP']/countspp.astype(float)
-    avgdict['VCC_PP']=sumdict['VCC_PP']/countspp.astype(float)
-    outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,oneday=False,reprocessed=True)
-    fio.save_to_hdf5(outfilename, avgdict, attrdicts=fio.__OMHCHORP_ATTRS__)
-    print("File Saved: "+outfilename)
+# Working with 1-day stuff only from 29/3/2018
+#def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
+#    '''
+#    Combine eight omhchorp_1 outputs to create an 8 day average file
+#    '''
+#    # check that there are 8 omhchorp_1 files
+#    # our 8 days in a list
+#    days8 = [ date + timedelta(days=dd) for dd in range(8)]
+#    files8= []
+#    for day in days8:
+#        #yyyymmdd=date.strftime("%Y%m%d")
+#        filename=fio.determine_filepath(day,latres=latres,lonres=lonres,oneday=True,reprocessed=True)
+#        assert os.path.isfile(filename), "ERROR: file not found for averaging : "+filename
+#        files8.append(filename)
+#
+#    # normal stuff will be identical between days
+#    normallist=['latitude', 'longitude', 'RSC_latitude', 'RSC_region',
+#                'fires', 'fire_mask_8', 'fire_mask_16']
+#    # list of things we need to add together and average
+#    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
+#             'VCC', 'col_uncertainty_OMI']
+#    # other things need to be handled seperately
+#    otherlist=['gridentries','RSC', 'RSC_GC','ppentries','AMF_PP','VCC_PP']
+#
+#    # keylist is all keys
+#    keylist=sumlist.copy()
+#    keylist.extend(normallist)
+#    keylist.extend(otherlist)
+#
+#    # function adds arrays pretending nan entries are zero. two nans add to nan
+#    def addArraysWithNans(x, y):
+#        x = np.ma.masked_array(np.nan_to_num(x), mask=np.isnan(x) & np.isnan(y))
+#        y = np.ma.masked_array(np.nan_to_num(y), mask=x.mask)
+#        return (x+y).filled(np.nan)
+#
+#    # initialise sum dictionary with data from first day
+#    sumdict=dict()
+#    data=fio.read_omhchorp(date,latres=latres,lonres=lonres,oneday=True)
+#    for key in keylist:
+#        sumdict[key] = data[key].astype(np.float64)
+#
+#    # read in and sum the rest of the 8 reprocessed days
+#    for day in days8[1:]:
+#        data=fio.read_omhchorp(day,latres=latres,lonres=lonres,oneday=True)
+#        daycount=data['gridentries']
+#        daycountpp=data['ppentries']
+#        sumdict['gridentries'] = addArraysWithNans(sumdict['gridentries'], daycount)
+#        sumdict['ppentries'] = addArraysWithNans(sumdict['ppentries'], daycountpp)
+#        sumdict['RSC'] = addArraysWithNans(sumdict['RSC'], data['RSC'])
+#        sumdict['RSC_GC'] = sumdict['RSC_GC'] + data['RSC_GC']
+#
+#        for ppkey in ['AMF_PP','VCC_PP']:
+#            y=data[ppkey].astype(np.float64) * daycountpp
+#            sumdict[ppkey] = addArraysWithNans(sumdict[ppkey],y)
+#
+#        # for each averaged amount we want to sum together the totals
+#        for key in sumlist:
+#            # y is today's total amount ( gridcell avgs * gridcell counts )
+#            y=data[key].astype(np.float64) * daycount
+#            # add arrays treating nans as zero using masked arrays
+#            sumdict[key]= addArraysWithNans(sumdict[key],y)
+#
+#    # take the average and save out to netcdf
+#    avgdict=dict()
+#    counts=sumdict['gridentries']
+#    countspp=sumdict['ppentries']
+#    for key in sumlist:
+#        avgdict[key]= sumdict[key] / counts.astype(float)
+#    for key in normallist:
+#        avgdict[key]= sumdict[key]
+#    avgdict['gridentries']=counts.astype(int)
+#    avgdict['ppentries']=countspp.astype(int)
+#    avgdict['RSC']=sumdict['RSC']/8.0
+#    avgdict['RSC_GC']=sumdict['RSC_GC']/8.0
+#    avgdict['AMF_PP']=sumdict['AMF_PP']/countspp.astype(float)
+#    avgdict['VCC_PP']=sumdict['VCC_PP']/countspp.astype(float)
+#    outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,oneday=False,reprocessed=True)
+#    fio.save_to_hdf5(outfilename, avgdict, attrdicts=fio.__OMHCHORP_ATTRS__)
+#    print("File Saved: "+outfilename)
 
 def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True,remove_fires=True):
     '''
@@ -601,13 +594,7 @@ def get_8day_fires_mask(date=datetime(2005,1,1), latres=0.25, lonres=0.3125):
     1) read aqua 8 day fire count
     2) return a mask set to true where fire influence is expected
     '''
-    def set_adjacent_to_true(mask):
-        mask_copy = np.zeros(mask.shape).astype(bool)
-        ny,nx=mask.shape
-        for x in range(nx):
-            for y in np.arange(1,ny-1): # don't worry about top and bottom row
-                mask_copy[y,x] = np.sum(mask[[y-1,y,y+1],[x-1,x,(x+1)%nx]]) > 0
-        return mask_copy
+
 
     # read day fires
     fires, flats, flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
@@ -616,7 +603,7 @@ def get_8day_fires_mask(date=datetime(2005,1,1), latres=0.25, lonres=0.3125):
 
     # create a mask in squares with fires or adjacent to fires
     mask = fires > 0
-    retmask = set_adjacent_to_true(mask)
+    retmask = util.set_adjacent_to_true(mask)
 
     return retmask
 

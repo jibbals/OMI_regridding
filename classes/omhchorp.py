@@ -58,7 +58,7 @@ __OMHCHORP_KEYS__ = [
     'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)
     'VCC',           # The vertical column corrected using the RSC
     'VCC_PP',        # Corrected Paul Palmer VC
-    'AMF_GC',        # AMF calculated using by GEOS-Chem]
+    'AMF_GC',        # AMF calculated using by GEOS-Chem
     'AMF_GCz',       # secondary way of calculating AMF with GC
     'AMF_OMI',       # AMF from OMI swaths
     'AMF_PP',        # AMF calculated using Paul palmers code
@@ -68,8 +68,9 @@ __OMHCHORP_KEYS__ = [
     'VC_OMI_RSC',    # OMI VCs with Reference sector correction? TODO: check
     'col_uncertainty_OMI',
     'fires',         # Fire count
-    'fire_mask_8',   # true where fires occurred over last 8 days
-    'fire_mask_16' ] # true where fires occurred over last 16 days
+    ]
+    #'fire_mask_8',   # true where fires occurred over last 8 days
+    #'fire_mask_16' ] # true where fires occurred over last 16 days
 
 # attributes for omhchorp
 __OMHCHORP_ATTRS__ = {
@@ -86,7 +87,7 @@ __OMHCHORP_ATTRS__ = {
     'VCC_PP':               {'units':'molec/cm2',
                              'desc':'Corrected OMI columns using PPalmer and LSurl\'s lidort/GEOS-Chem based AMF'},
     'VC_OMI_RSC':           {'units':'molec/cm2',
-                             'desc':'OMI\'s RSC column amount'},
+                             'desc':'OMI\'s RSC corrected VC '},
     'RSC':                  {'units':'molec/cm2',
                              'desc':'GEOS-Chem/OMI based Reference Sector Correction: is applied to pixels based on latitude and track number'},
     'RSC_latitude':         {'units':'degrees',
@@ -98,8 +99,8 @@ __OMHCHORP_ATTRS__ = {
     'AMF_GC':               {'desc':'AMF based on GC recalculation of shape factor'},
     'AMF_OMI':              {'desc':'AMF based on GC recalculation of shape factor'},
     'AMF_PP':               {'desc':'AMF based on PPalmer code using OMI and GEOS-Chem'},
-    'fire_mask_16':         {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day block"},
-    'fire_mask_8':          {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"},
+    #'fire_mask_16':         {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day block"},
+    #'fire_mask_8':          {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"},
     'fires':                {'desc':"8 day fire count from AQUA"},
     }
 
@@ -132,7 +133,7 @@ class omhchorp:
         keylist=list(set(keylist+__OMHCHORP_COORDS__)) # make sure coords are included
 
         for day in daylist:
-            struct.append(fio.read_omhchorp(date=day, oneday=True,
+            struct.append(fio.read_omhchorp(date=day,
                                             latres=latres, lonres=lonres,
                                             keylist=keylist))
         # dates and dimensions
@@ -143,7 +144,7 @@ class omhchorp:
         self.lon_res=self.lons[1]-self.lons[0]
         self.lats_e = util.edges_from_mids(self.lats)
         self.lons_e = util.edges_from_mids(self.lons)
-        self.surface_areas=util.area_grid(self.lats,self.lons,self.lat_res,self.lon_res)
+        self.surface_areas=util.area_grid(self.lats,self.lons)
         nt,self.n_lats,self.n_lons=len(daylist), len(self.lats), len(self.lons)
         self.n_times=nt
 
@@ -164,7 +165,7 @@ class omhchorp:
             self.RSC_region=struct[0]['RSC_region']
 
         # remove small and negative AMFs
-        if not ignorePP:
+        if hasattr(self,'AMF_PP'):
             print("Removing %d AMF_PP's less than 0.1"%np.nansum(self.AMF_PP<0.1))
             self.AMF_PP[self.AMF_PP < 0.1]=np.NaN
             screen=[-5e15,1e17]
@@ -179,29 +180,76 @@ class omhchorp:
         #    self.background=self.get_background_array()
         #self.apply_fire_mask()
 
-    def apply_fire_mask(self, key='VCC', use_8day_mask=True):
-        ''' nanify arrays which are fire affected. '''
-        mask = [self.fire_mask_16, self.fire_mask_8][use_8day_mask]
-        print ("fire mask:",mask.shape,np.nansum(mask))
-        print(np.nansum(mask>0))
+    def make_fire_mask(self, d0, dN=None, days_masked=1, fire_thresh=1, adjacent=True):
+        '''
+            Return fire mask with dimensions [len(d0-dN), n_lats, n_lons]
+            looks at fires between [d0-days_masked+1, dN], for each day in d0 to dN
 
-        data=getattr(self,key)
+            If days_masked extends before contained days then the fire mask is read from omhchorp files
 
-        print(key, data.shape, ' before firemask:',np.nanmean(data))
+            mask is true where more than fire_thresh fire pixels exist.
 
-        #if len(data.shape) == 3:
-        #    for i in range(data.shape[0]): # loop over time dim
-        data[mask>0]=np.NaN
-        print('     after firemask:',np.nanmean(data))
+        '''
+        # first day of filtering
+        daylist=util.list_days(d0,dN)
+        first_day=daylist[0]-timedelta(days=days_masked-1)
+        last_day=daylist[-1]
 
-        #for arr in [self.AMF_GC,self.AMF_OMI,self.AMF_GCz,self.SC,self.VC_GC,
-        #            self.VC_OMI,self.VC_OMI_RSC,self.VCC,
-        #            self.col_uncertainty_OMI]:
-        #    arr[mask]=np.NaN
+        if __VERBOSE__:
+            print ("make_fire_mask will return rolling %d day fire masks between "%days_masked, d0, '-', last_day)
+            print ("They will filter gridsquares with more than %d fire pixels detected"%fire_thresh)
+
+        # check if we already have the required days
+        dates=np.array(self.dates)
+        if (first_day >= dates[0]) and (last_day <= dates[-1]) and hasattr(self, 'fires'):
+            if __VERBOSE__:
+                print("fire mask will be made using already read data")
+            i = (dates <= last_day) * (dates >= first_day)
+            fires=self.fires[i,:,:]
+
+        else:
+            if __VERBOSE__:
+                print("fire mask will be read from omhchorp now...")
+            om=omhchorp(first_day,last_day,keylist=['fires'])
+            fires=om.fires
+
+        # mask squares with more fire pixels than allowed
+        mask = fires>fire_thresh
+        retmask= np.zeros([len(daylist),self.n_lats,self.n_lons]).astype(np.bool)
+
+        # actual mask is made up of sums of daily masks over prior days_masked
+
+        if days_masked>1:
+            # from end back to first day in daylist
+            for i in -np.arange(0,len(daylist)):
+                tempmask=mask[i-days_masked:] # look at last days_masked
+                if i < 0:
+                    tempmask=tempmask[:i] # remove days past the 'current'
+
+                # mask is made up from prior N days, working backwards
+                retmask[i-1]=np.sum(tempmask,axis=0)
+
+        else:
+            retmask = mask
+        assert retmask.shape[0]==len(daylist), 'return mask is wrong!'
+
+        # mask adjacent squares also (if desired)
+        if adjacent:
+            for i in range(len(daylist)):
+                retmask[i]=util.set_adjacent_to_true(retmask[i])
+
+        return retmask
+
+    def get_smoke_mask(self, d0, dN=None, thresh=0.001):
+        '''
+            Read OMAERUVd AAOD(500nm), regrid into local resoluion, mask days above thresh
+        '''
+        assert False, "To be implemented"
 
     def inds_subset(self, lat0=None, lat1=None, lon0=None, lon1=None, maskocean=False, maskland=False):
         ''' return indices of lat, lon arrays within input box '''
-        inds=~np.isnan(self.AMF_OMI) # only want non nans
+        inds=np.ones([self.n_lats,self.n_lons]).astype(np.bool) # array of trues
+
         mlons,mlats=np.meshgrid(self.lons,self.lats)
         with np.errstate(invalid='ignore'): # ignore comparisons with NaNs
             if lat0 is not None:
@@ -434,7 +482,7 @@ class omhchorp:
         if day0 is None:
             day0=self.dates[0]
         if dayn is None:
-            dayn=day
+            dayn=day0
         data=self.time_averaged(day0,dayn,keys=[key,],)[key]
         lati,loni=util.lat_lon_range(self.lats,self.lons,region=region)
         data=data[lati,:]

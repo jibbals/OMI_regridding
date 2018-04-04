@@ -194,7 +194,7 @@ def read_hdf5(filename):
 
 
 
-def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded=False, reprocessed=False, geoschem=False, oneday=True, metaData=False):
+def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded=False, reprocessed=False, geoschem=False, metaData=False):
     '''
     Make filename based on date, resolution, and type of file.
     '''
@@ -212,12 +212,32 @@ def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded
         return ('Data/gchcho/hcho_%4d%2d.he5'%(date.year,date.month))
 
     # reprocessed and regridded match the following:
-    avg=['8','1'][oneday] # one or 8 day average when applicable
+    avg='1' # one or 8 day average when applicable
     typ=['p','g'][regridded] # reprocessed or regridded
     res='%1.2fx%1.2f'%(latres,lonres) # resolution string
     d = 'Data/omhchor'+typ+'/' # directory
     fpath=d+"omhcho_%s_%4d%02d%02d.he5" %(avg+typ+res,date.year,date.month,date.day)
     return(fpath)
+
+def read_AAOD(date):
+    '''
+        Read OMAERUVd 1x1 degree resolution for a particular date
+    '''
+    fpath='Data/OMAERUVd/'+date.strftime('%Y/*%Y-%m-%d.CSV')
+    # read he5 file...
+
+    return aaod,lats,lons
+
+def read_AAOD_interpolated(date, latres=0.25,lonres=0.3125):
+    '''
+        Read OMAERUVd interpolated to a lat/lon grid
+    '''
+    newlats,newlons,newlats_e,newlons_e= util.lat_lon_grid(latres,lonres)
+    aaod,lats,lons=read_AAOD(date)
+
+    newaaod=util.regrid(aaod,lats,lons,newlats,newlons)
+    #util.regrid_to_lower(fires,lats,lons,newlats,newlons)
+    return newaaod,newlats,newlons
 
 
 def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
@@ -250,13 +270,10 @@ def read_MOD14A1_interpolated(date=datetime(2005,1,1), latres=0.25,lonres=0.3125
         Read firepixels/day from MOD14A1 daily gridded product
         returns fires, lats, lons
     '''
-    newlats= np.arange(-90,90, latres) + latres/2.0
-    newlons= np.arange(-180,180, lonres) + lonres/2.0
-    newlats_e=util.edges_from_mids(newlats)
-    newlons_e=util.edges_from_mids(newlons)
+    newlats,newlons,_nlate,_nlone= util.lat_lon_grid(latres=latres,lonres=lonres)
     fires,lats,lons=read_MOD14A1(date,per_km2=False)
 
-    newfires=util.regrid_to_lower(fires,lats,lons,newlats_e,newlons_e)
+    newfires=util.regrid_to_lower(fires,lats,lons,newlats,newlons,np.nansum)
     return newfires,newlats,newlons
 
 
@@ -525,7 +542,7 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
 
 
     if filename is None:
-        fpath=determine_filepath(date,oneday=oneday,latres=latres,lonres=lonres,reprocessed=True)
+        fpath=determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True)
     else:
         fpath=filename
 

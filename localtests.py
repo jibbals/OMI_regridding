@@ -39,7 +39,6 @@ __VERBOSE__=True
 d0=datetime(2005,1,1)
 
 
-
 fires_per_area,lats,lons=fio.read_MOD14A1(d0,True)
 fires,lats,lons=fio.read_MOD14A1(d0,False)
 earth_sa=510e6 # 510.1 million km2

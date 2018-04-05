@@ -382,9 +382,10 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     # fire filter can be made from the fire_count
     fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date,latres=latres,lonres=lonres)
     assert all(_flats == lats), "fire interpolation does not match our resolution"
-
-    # smoke filter can be made from AAOD product
-    aaod, _alats, _alons = fio.read_AAOD_interpolated(date,latres=latres,lonres=lonres)
+    
+    # Smoke filter similarly can be made from AAOD stored each day
+    smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date,latres=latres,lonres=lonres)
+    assert all(_flats == lats), "smoke aaod interpolation does not match our resolution"
 
     ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -459,7 +460,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     outd['AMF_OMI']             = AMF_omi
     outd['AMF_PP']              = AMF_pp
     outd['fires']               = fire_count.astype(np.int16)
-    outd['AAOD']                = aaod # omaeruvd aaod 500nm product interpolated
+    outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True,oneday=True)
 
     if __VERBOSE__:

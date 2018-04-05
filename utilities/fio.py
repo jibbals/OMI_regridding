@@ -223,9 +223,22 @@ def read_AAOD(date):
     '''
         Read OMAERUVd 1x1 degree resolution for a particular date
     '''
-    fpath='Data/OMAERUVd/'+date.strftime('%Y/*%Y-%m-%d.CSV')
+    fpath=glob('Data/OMAERUVd/'+date.strftime('OMI-Aura_L3-OMAERUVd_%Ym%m%d*.he5'))[0]
+    
+    if __VERBOSE__:
+        print("Reading AAOD from ",fpath)
+    
+    # Seems that the 1x1 grid orientation is as follows:
+    lats=np.linspace(-89.5,89.5,180)
+    lons=np.linspace(-179.5,179.5,360)
+    
+    # Field names of desired fields:
+    field_aaod500 = '/HDFEOS/GRIDS/Aerosol NearUV Grid/Data Fields/FinalAerosolOpticalDepth500'
+    
     # read he5 file...
-
+    with h5py.File(fpath,'r') as in_f:
+        ## get data arrays
+        aaod  = in_f[field_aaod500].value     #[ 180, 360 ]
     return aaod,lats,lons
 
 def read_AAOD_interpolated(date, latres=0.25,lonres=0.3125):
@@ -236,7 +249,6 @@ def read_AAOD_interpolated(date, latres=0.25,lonres=0.3125):
     aaod,lats,lons=read_AAOD(date)
 
     newaaod=util.regrid(aaod,lats,lons,newlats,newlons)
-    #util.regrid_to_lower(fires,lats,lons,newlats,newlons)
     return newaaod,newlats,newlons
 
 

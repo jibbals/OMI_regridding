@@ -68,6 +68,7 @@ __OMHCHORP_KEYS__ = [
     'VC_OMI_RSC',    # OMI VCs with Reference sector correction? TODO: check
     'col_uncertainty_OMI',
     'fires',         # Fire count
+    'AAOD',          # Smoke AAOD_500nm interpolated from OMAERUVd
     ]
     #'fire_mask_8',   # true where fires occurred over last 8 days
     #'fire_mask_16' ] # true where fires occurred over last 16 days
@@ -101,7 +102,8 @@ __OMHCHORP_ATTRS__ = {
     'AMF_PP':               {'desc':'AMF based on PPalmer code using OMI and GEOS-Chem'},
     #'fire_mask_16':         {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day block"},
     #'fire_mask_8':          {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"},
-    'fires':                {'desc':"8 day fire count from AQUA"},
+    'fires':                {'desc':"daily gridded fire count from AQUA/TERRA"},
+    'AAOD':                 {'desc':'daily smoke AAOD_500nm from AURA (OMAERUVd)'},
     }
 
 ########################################################################

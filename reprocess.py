@@ -461,7 +461,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     outd['AMF_PP']              = AMF_pp
     outd['fires']               = fire_count.astype(np.int16)
     outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
-    outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True,oneday=True)
+    outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True)
 
     if __VERBOSE__:
         print("sending day average to be saved: "+outfilename)

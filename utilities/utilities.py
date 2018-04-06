@@ -22,7 +22,7 @@ from utilities import GMAO
 ###############
 ### GLOBALS ###
 ###############
-__VERBOSE__=True
+__VERBOSE__=False
 __grams_per_mole__={'isop':60.06+8.08, # C5H8
                     'hcho':30.02598,
                     'carbon':12.01}
@@ -118,11 +118,11 @@ def edges_from_mids(x,fix=True):
     '''
         Take a lat or lon vector input and return the edges
         Works for monotonic increasing grids only
+        Doesn't matter if grid is irregular
     '''
-    # Doesn't matter if irregular grid now
-    #assert x[1]-x[0] == x[2]-x[1], "Resolution at edge not representative"
-    print("CHECK Edges_from_mids")
-    print(x[0:5],x[-5:])
+    if __VERBOSE__:
+        print("VERBOSE: CHECK Edges_from_mids")
+        print("VERBOSE: ", x[0:5],x[-5:])
 
     # new vector for array
     newx=np.zeros(len(x)+1)
@@ -134,7 +134,8 @@ def edges_from_mids(x,fix=True):
     newx[0]     = x[0] - (x[1]-x[0]) / 2.0
     newx[-1]    = x[-1] + (x[-1]-x[-2]) / 2.0
 
-    print(newx[0:5],newx[-5:])
+    if __VERBOSE__:
+        print("VERBOSE: ", newx[0:5],newx[-5:])
     # Finally if the ends are outside 90N/S or 180E/W then bring them back
     if fix:
         if newx[-1] >= 90: newx[-1]=89.99

@@ -232,7 +232,8 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         #print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
 
     # First reduce data,lats,lons to the desired region (should save plotting time)
-    lati,loni=util.lat_lon_range(lats,lons,region)
+    regionplus=np.array(region) + np.array([-5,-10,5,10]) # add a little padding for visual
+    lati,loni=util.lat_lon_range(lats,lons,regionplus)
     data=data[lati,:]
     data=data[:,loni]
     lats=lats[lati]

@@ -68,7 +68,7 @@ __emiss__  = ['BIOGSRCE_ISOP',      # biogenic source of isoprene () []
               'ANTHSRCE_NO',        # anthro source of NO (molec/cm2/s) [t,lat,lon,1]
               'NO-SOIL_NO',         # soil emissions of NO (molec/cm2/s) [t,lat,lon,1]
               'BIOBSRCE_NO',        # fire no (molec/cm2/s) [t,lat,lon,1]
-             ] 
+             ]
 __other__  = ['PEDGE-$_PSURF',      # pressure at surface of each gridbox (hPa)
               'BXHGHT-$_BXHEIGHT',  # box height (?)
               'BXHGHT-$_AD',        # Air density (?)
@@ -430,14 +430,8 @@ class GC_base:
 
     def plot_hcho_columns(self, region=pp.__AUSREGION__):
         ''' plot map of hcho columns over a region '''
-        data=self.O_hcho
-
-        data=self.time_averaged(day0,dayn,keys=[key,],)[key]
-        lati,loni=util.lat_lon_range(self.lats,self.lons,region=region)
-        data=data[lati,:]
-        data=data[:,loni]
-        lats=self.lats[lati]
-        lons=self.lons[loni]
+        data=np.nanmean(self.O_hcho, axis=0) # average over time dimension
+        pp.createmap(data,self.lats,self.lons)
 
     def _get_region(self,aus=False, region=None):
         ''' region for plotting '''

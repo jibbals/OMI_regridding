@@ -114,27 +114,27 @@ def datetimes_from_np_datetime64(times, reverse=False):
     return [datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in times]
 
 
-def edges_from_mids(x,fix=False):
+def edges_from_mids(x,fix=True):
     '''
         Take a lat or lon vector input and return the edges
-        Works for REGULAR grids only
+        Works for monotonic increasing grids only
     '''
-    assert x[1]-x[0] == x[2]-x[1], "Resolution at edge not representative"
-    # replace assert with this if it works, HANDLES GEOS CHEM LATS PROBLEM ONLY
-    if x[1]-x[0] != x[2]-x[1]:
-        xres=x[2]-x[1]   # Get resolution away from edge
-        x[0]=x[1]-xres   # push out the edges
-        x[-1]=x[-2]+xres #
+    # Doesn't matter if irregular grid now
+    #assert x[1]-x[0] == x[2]-x[1], "Resolution at edge not representative"
+    print("CHECK Edges_from_mids")
+    print(x[0:5],x[-5:])
 
     # new vector for array
     newx=np.zeros(len(x)+1)
-    # resolution from old vector
-    xres=x[1]-x[0]
-    # edges will be mids - resolution / 2.0
-    newx[0:-1]=np.array(x) - xres/2.0
-    # final edge
-    newx[-1]=newx[-2]+xres
+    # x left side = x minus half the distance to the next x
+    # x right side = x plus half the distance to the next x
+    # all x but first and last just take midpoints:
+    newx[1:-1]  = (x[0:-1]+x[1:]) / 2.0
+    # for very edges take again half the distance to the next inward
+    newx[0]     = x[0] - (x[1]-x[0]) / 2.0
+    newx[-1]    = x[-1] + (x[-1]-x[-2]) / 2.0
 
+    print(newx[0:5],newx[-5:])
     # Finally if the ends are outside 90N/S or 180E/W then bring them back
     if fix:
         if newx[-1] >= 90: newx[-1]=89.99

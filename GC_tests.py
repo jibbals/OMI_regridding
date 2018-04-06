@@ -52,7 +52,8 @@ colours = ['chartreuse','magenta','aqua']
 ###FUNCTIONS####
 ################
 
-def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regionplus=pp.__AUSREGION__):
+def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,
+                 region=SEA,regionlabel='SEA',regionplus=pp.__AUSREGION__):
     '''
     Plot comparison of temperature over region
     and over time in the region
@@ -62,48 +63,99 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
     '''
     if d1 is None:
         d1=util.last_day(d0)
-    # read hcho, and temperature
-    gc=GC_class.GC_sat(d0,d1,keys=['IJ-AVG-$_CH2O','DAO-FLDS_TS'])#+GC_class.__other__)
-    fig=plt.figure(figsize=[12,12])
-    #ym=d0.strftime('%b, %Y')
+
+    # ymd string and plot name
     ymd=d0.strftime('%Y%m%d') + '-' + d1.strftime('%Y%m%d')
+    pname='Figs/GC/HCHO_vs_temp_%s_%s.png'%(regionlabel,ymd)
+
+    # read hcho, and temperature
+    gc=GC_class.GC_sat(d0,d1,keys=['IJ-AVG-$_CH2O','DAO-FLDS_TS'],run='tropchem')
+    # Also read hcho from biogenic only run, should be better correlated
+    gcb=GC_class.GC_sat(d0,d1,keys=['IJ-AVG-$_CH2O'],run='biogenic')
+    fig=plt.figure(figsize=[12,16])
 
     # Read omhcho (reprocessed)
     omi=omhchorp(d0,d1,keylist=['latitude','longitude','VCC','gridentries'],ignorePP=True)
+    omivcc=np.zeros([gc.ntimes,gc.nlats,gc.nlons])
+    for ti in range(omi.n_times):
+        omivcc[ti,:,:]=util.regrid(omi.VCC[ti,:,:],omi.lats,omi.lons,gc.lats,gc.lons)
 
     # region + view area
     if regionplus is None:
         regionplus=np.array(region)+np.array([-10,-15,10,15])
 
     # Temperature avg:
-    #temp=gc.temp[:,:,:,0] # surface
     temp=gc.surftemp[:,:,:,0] # surface temp in Kelvin
     surfmeantemp=np.mean(temp,axis=0)
+
     lati,loni=util.lat_lon_range(gc.lats,gc.lons,regionplus)
     smt=surfmeantemp[lati,:]
     smt=smt[:,loni]
     tmin,tmax=np.min(smt),np.max(smt)
+    oceanmask=util.get_mask(surfmeantemp,gc.lats,gc.lons,maskocean=True)
 
     # First plot temp map of region
-    ax0=plt.subplot(311)
+    ax0a=plt.subplot(321)
     m,cs,cb=pp.createmap(surfmeantemp, gc.lats, gc.lons,
                          region=regionplus, cmapname='rainbow',
                          cbarorient='right',
                          vmin=tmin,vmax=tmax,
                          GC_shift=True, linear=True,
                          title='Temperature '+ymd, clabel='Kelvin')
-    pp.add_rectangle(m,region,)
+    # Add rectangle around where we are correlating
+    pp.add_rectangle(m,region,linewidth=2)
 
-    # Second do gridsquare scatter plot
+    # two plots, one for tropchem and one for biogenic hcho runs
     ax1=plt.subplot(312)
+    ax2=plt.subplot(313)
 
     lati,loni=util.lat_lon_range(gc.lats,gc.lons,region)
     colors = cm.rainbow(np.linspace(0, 1, len(lati)*len(loni)))
 
-    ii=0
-    tt,hh,e_r,e_m,=[],[],[],[]
-    oceanmask=util.get_mask(surfmeantemp,gc.lats,gc.lons,maskocean=True)
+    # Find area averaged regressions:
+    #plot against Satellite hcho...
+    ax0b=plt.subplot(322)
+    for ax,areat,areah in zip(
+            [ax0b,ax1,ax2],
+            [np.copy(gc.surftemp[:,:,:,0]), np.copy(gc.surftemp[:,:,:,0]), np.copy(gc.surftemp[:,:,:,0])],
+            [np.copy(omivcc), np.copy(gc.hcho[:,:,:,0]), np.copy(gcb.hcho[:,:,:,0])]):
+        #areat=np.copy(gc.surftemp[:,:,:,0])
+        #areah=np.copy(gc.hcho[:,:,:,0])
 
+        for ti in range(len(areat[:,0,0])): # for each timestep
+            # Remove oceansquares
+            areat[ti][oceanmask] = np.NaN
+            areah[ti][oceanmask] = np.NaN
+        print (np.shape(areah))
+        print (np.nanmean(areah))
+        # subset and average spatially
+        areat=areat[:,:,loni]
+        areat=areat[:,lati,:]
+        areat=np.nanmean(areat,axis=(1,2))
+
+
+        areah=areah[:,:,loni]
+        areah=areah[:,lati,:]
+        areah=np.nanmean(areah,axis=(1,2))
+        print (np.shape(areah))
+        print (np.nanmean(areah))
+
+        # Plot the area averaged regressions
+        plt.sca(ax)
+        plt.scatter(areat, areah, color='k')
+        pp.add_regression(areat, areah, addlabel=True,
+                                  exponential=True, color='k',
+                                  linewidth=3)
+
+
+    ## Next we add regressions in each gridsquare over the time dimension
+    #
+
+    # iterator ii, one for each land grid square we will regress
+    ii=0
+    # temp, hcho, exponential regression and slope for tropchem,biogenic
+    tt,hh,e_r,e_m,=[],[],[],[]
+    hhb,eb_r,eb_m,=[],[],[]
     for y in lati:
         for x in loni:
 
@@ -114,102 +166,99 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,region=SEA,regionlabel='SEA',regi
 
 
             # Add dot to map
-            plt.sca(ax0)
+            plt.sca(ax0a)
             mx,my = m(gc.lons[x], gc.lats[y])
             m.plot(mx, my, 'o', markersize=5, color=colors[ii])
 
             # Gridbox scatter plot
             iitemp=gc.surftemp[:,y,x,0]
             iihcho=gc.hcho[:,y,x,0]
+            iihchob=gcb.hcho[:,y,x,0]
+
             plt.sca(ax1)
             plt.scatter(iitemp, iihcho, color=colors[ii])
-
-            # add little line for each regression
             e_reg=pp.add_regression(iitemp, iihcho, addlabel=False,
+                                    exponential=True, color=colors[ii],
+                                    linewidth=0)
+
+            plt.sca(ax2)
+            plt.scatter(iitemp, iihchob, color=colors[ii])
+            eb_reg=pp.add_regression(iitemp, iihchob, addlabel=False,
                                     exponential=True, color=colors[ii],
                                     linewidth=0)
 
             # create full list for regression
             tt.extend(list(iitemp))
             hh.extend(list(iihcho))
+            hhb.extend(list(iihchob))
             # Exponential slopes and regressions
             e_r.append(e_reg[2])
             e_m.append(e_reg[0])
+            eb_r.append(eb_reg[2])
+            eb_m.append(eb_reg[0])
+
+            # Next colour iterator
             ii=ii+1
 
-    # Find area averaged regression:
-    areat=np.copy(gc.surftemp[:,:,:,0])
-    areah=np.copy(gc.hcho[:,:,:,0])
-    for ti in range(len(areat[:,0,0])): # for each timestep
-        # Remove oceansquares
-        areat[ti][oceanmask] = np.NaN
-        areah[ti][oceanmask] = np.NaN
-
-    areat=areat[:,:,loni]
-    areat=areat[:,lati,:]
-    areat=np.nanmean(areat,axis=(1,2))
-    areah=areah[:,:,loni]
-    areah=areah[:,lati,:]
-    areah=np.nanmean(areah,axis=(1,2))
-
-    plt.scatter(areat, areah, color='k')
-    pp.add_regression(areat, areah, addlabel=True,
-                              exponential=True, color='k',
-                              linewidth=3)
-
-    # Add exponential regression:
+    # Add exponential regressions:
+    plt.sca(ax1)
+    plt.title('Scatter (coloured by gridsquare)')
+    plt.ylabel('HCHO$_{tropchem}$ ppbv')
     pp.add_regression(tt,hh,exponential=True,color='m',linewidth=3)
 
-    # reset lower bounds
-    ylims=plt.gca().get_ylim()
-    plt.ylim([max([-2,ylims[0]]), ylims[1]])
-    xlims=plt.gca().get_xlim()
-    plt.xlim([max([xlims[0],270]),xlims[1]])
+    plt.sca(ax2)
+    plt.ylabel('HCHO$_{biogenic}$ ppbv')
+    pp.add_regression(tt,hhb,exponential=True,color='m',linewidth=3)
 
+    for ax in ax1,ax2:
+        # reset lower bounds
+        ylims=ax.get_ylim()
+        plt.ylim([max([-2,ylims[0]]), ylims[1]])
+        xlims=ax.get_xlim()
+        plt.xlim([max([xlims[0],270]),xlims[1]])
 
-    # add legend
-    plt.legend(loc='lower right', fontsize=12)
-
-    plt.title('Scatter (coloured by gridsquare)')
-    plt.xlabel('Kelvin')
-    #plt.xlim([280,320]) # temp
-    plt.ylabel('HCHO ppbv')
-    #plt.ylim() # hcho ppbv
+        # add legend
+        plt.sca(ax)
+        plt.legend(loc='lower right', fontsize=12)
+        plt.xlabel('Kelvin')
 
     # set fontsizes for plot
     fs=10
     for attr in ['ytick','xtick','axes']:
         plt.rc(attr, labelsize=fs)
     plt.rc('font',size=fs)
+
+
+    # Add little density plots for both
     # show distribution of regressions  # x0,y0,xwid,ywid
-    lil_ax = fig.add_axes([0.17, 0.3, .19, 0.11])
-    plt.sca(lil_ax)
+    lil_axa  = fig.add_axes([0.17, 0.5, 0.19, 0.08])
+    lil_axb = fig.add_axes([0.17, 0.2, 0.19, 0.11])
 
-    seaborn.set_style('whitegrid')
-    #seaborn.kdeplot(np.array(l_r), linestyle='--',color='r',ax=lil_ax)
-    seaborn.kdeplot(np.array(e_r), linestyle='--',color='m',ax=lil_ax)
-    #plt.xlim([0.3,1.2]); plt.ylim([0.0,5.0])
-    plt.xticks(np.arange(0.3,1.21,.2))
-    #plt.yticks([1,2,3,4])
-    plt.xlabel('r (dashed)'); plt.ylabel('density (r)')
-    plt.title('')
-    plt.text(0.8,0.8,'n=%d'%len(e_r),transform = lil_ax.transAxes)
+    for lil_e_r, lil_e_m, lil_ax in zip([e_r,eb_r],[e_m,eb_m],[lil_axa,lil_axb]):
+        plt.sca(lil_ax)
 
-    # show distribution of m values:
-    lil_ax2 = lil_ax.twinx().twiny() # another density plot on same axes
-    plt.sca(lil_ax2)
+        seaborn.set_style('whitegrid')
+        seaborn.kdeplot(np.array(lil_e_r), linestyle='--',color='m',ax=lil_ax)
+        #plt.xlim([0.3,1.2]); plt.ylim([0.0,5.0])
+        plt.xticks(np.arange(0.3,1.21,.2))
+        #plt.yticks([1,2,3,4])
+        plt.xlabel('r (dashed)'); plt.ylabel('density (r)')
+        plt.title('')
+        plt.text(0.8,0.8,'n=%d'%len(lil_e_r),transform = lil_ax.transAxes)
 
-    #seaborn.kdeplot(np.array(l_m), linestyle='-',color='r',ax=lil_ax2)
-    seaborn.kdeplot(np.array(e_m), linestyle='-',color='m',ax=lil_ax2)
-    plt.xlabel('slope (m)')
-    plt.ylabel('m density')
-    plt.xticks(np.arange(0,0.401,0.1))
-    plt.xlim(0,0.4)
+        # show distribution of m values:
+        lil_ax2 = lil_ax.twinx().twiny() # another density plot on same axes
+        plt.sca(lil_ax2)
 
-    # plot against Satellite hcho...
-    plt.subplot(313)
+        seaborn.kdeplot(np.array(lil_e_m), linestyle='-',color='m',ax=lil_ax2)
+        plt.xlabel('slope (m)')
+        plt.ylabel('m density')
+        plt.xticks(np.arange(0,0.401,0.1))
+        plt.xlim(0,0.4)
 
-    pname='Figs/GC/HCHO_vs_temp_%s_%s.png'%(regionlabel,ymd)
+    # ax0b also wants label
+    plt.sca(ax0b)
+    plt.legend()
     plt.savefig(pname)
     plt.close()
     print('Saved ',pname)
@@ -222,100 +271,100 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
     '''
         Plot differences between GC and OMI NO2 columns...
     '''
-    
+
     # Set up time bounds: one month if d1 is missing
     if d1 is None:
         d1=util.last_day(d0)
     dstr="%s-%s"%(d0.strftime("%Y%m%d"),d1.strftime("%Y%m%d"))
-    
+
     ## Read our data:
-    
+
     # Read omno2d
     OMNO2d,OM_attrs=fio.read_omno2d(day0=d0,dayN=d1)
     OM_tropno2=OMNO2d['tropno2']
     OM_lats=OMNO2d['lats']
     OM_lons=OMNO2d['lons']
-    
+
     # Read satellite output from GC troprun
     # Keys needed for satellite tropNO2
     keys=['IJ-AVG-$_NO2','BXHGHT-$_BXHEIGHT','TIME-SER_AIRDEN','TR-PAUSE_TPLEV',]
     GC=GC_class.GC_sat(d0,dayN=d1,keys=keys)
     GC_tropno2=GC.get_trop_columns(['NO2'])['NO2']
     GC_lats,GC_lons=GC.lats,GC.lons
-    
+
     # average them over time
     [GC_tropno2, OM_tropno2] = [ np.nanmean(arr,axis=0) for arr in [GC_tropno2, OM_tropno2] ]
     # get a lower resolution version of OMI tropno2
     OM_tropno2_low=util.regrid_to_lower(OM_tropno2,OM_lats,OM_lons,GC.lats_e,GC.lons_e)
     assert OM_tropno2_low.shape == GC_tropno2.shape, 'Reduced OMI Grid should match GC'
-    
+
     ## PLOTTING First two rows
     ##
-    
+
     # plot scale limits
     rmin,rmax=-50,50 # limits for percent relative difference in plots
     amin,amax=-1e15,1e15 # limits for absolute diffs
     vmin,vmax=1e14,14e14 # limits for molec/cm2 plots
     linear=True # linear or logarithmic scale
     regression_dot_size=30
-    
+
     # set up axes for 3x2
     fig, axes = plt.subplots(nrows=2,ncols=3,figsize=(14,18))
-    
+
     # First plot, maps
     plt.sca(axes[0,0])
-    pp.createmap(GC_tropno2,GC_lats,GC_lons, 
+    pp.createmap(GC_tropno2,GC_lats,GC_lons,
                  title='GEOS-Chem', colorbar=False,
                  linear=linear, vmin=vmin,vmax=vmax,
                  cmapname=map_cmap, region=region)
-    
+
     plt.sca(axes[0,1])
-    pp.createmap(OM_tropno2, OM_lats, OM_lons, 
+    pp.createmap(OM_tropno2, OM_lats, OM_lons,
                  title='OMI', colorbar=False,
                  linear=linear, vmin=vmin,vmax=vmax,
                  cmapname=map_cmap, region=region)
-    
+
     plt.sca(axes[0,2])
-    m,cs,cb= pp.createmap(OM_tropno2_low, GC_lats, GC_lons, 
+    m,cs,cb= pp.createmap(OM_tropno2_low, GC_lats, GC_lons,
                  title='OMI (low res)', colorbar=False,
                  linear=linear, vmin=vmin,vmax=vmax,
                  cmapname=map_cmap, region=region)
-    
+
     # Add colorbar to the right:
     #cax = fig.add_axes([0.9,0.375,0.04,0.25])
     divider = make_axes_locatable(axes[0,2])
     cax = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(cs,cax=cax, orientation='vertical')
-    
+
     # Plot differences and corellation
     # first abs diff
     plt.sca(axes[1,0])
-    pp.createmap(GC_tropno2-OM_tropno2_low, GC_lats, GC_lons, 
+    pp.createmap(GC_tropno2-OM_tropno2_low, GC_lats, GC_lons,
                  title='GC - OMI', colorbar=True, clabel='molec/cm2',
                  linear=True, vmin=amin, vmax=amax,
                  cmapname=dmap_cmap, region=region)
-    
+
     # then rel diff
     plt.sca(axes[1,1])
-    pp.createmap(100*(GC_tropno2-OM_tropno2_low)/OM_tropno2_low, GC_lats, GC_lons, 
+    pp.createmap(100*(GC_tropno2-OM_tropno2_low)/OM_tropno2_low, GC_lats, GC_lons,
                  title='100(GC - OMI)/OMI', colorbar=True, clabel='%',
                  linear=True, vmin=rmin, vmax=rmax,
                  cmapname=dmap_cmap, region=region)
-    
-    
+
+
     # now we must pull out the land data for corellations:
-    
+
     subsets=util.lat_lon_subset(GC_lats,GC_lons,region,data=[GC_tropno2,OM_tropno2_low])
     lati,loni=subsets['lati'],subsets['loni']
     lats,lons=subsets['lats'],subsets['lons'] # GC_lats[lati],GC_lons[loni]
     [GC_tropno2,OM_tropno2_low]=subsets['data']
-    
+
     # Lets mask the oceans at this point:
     oceanmask=util.get_mask(GC_tropno2, lats=lats,lons=lons,maskocean=True)
     for arr in [GC_tropno2,OM_tropno2_low]:
         arr[oceanmask] = np.NaN
-    
-    
+
+
     # then corellations
     plt.sca(axes[1,2])
     pp.plot_regression(OM_tropno2_low.flatten(),GC_tropno2.flatten(),
@@ -330,7 +379,7 @@ def GC_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
     plt.savefig(pname)
     print('Saved ',pname)
     plt.close()
-    
+
 def GCe_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
              region=pp.__AUSREGION__, regionlabel='AUS',
              soil=True, dstr_lab=None,
@@ -339,41 +388,41 @@ def GCe_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
         Plot regressions between soil NO vs bias from GC-OMI
             also anthro nox can be plotted if soil==False
     '''
-    
+
     # Set up time bounds: one month if d1 is missing
     if d1 is None:
         d1=util.last_day(d0)
     dstr="%s-%s"%(d0.strftime("%Y%m%d"),d1.strftime("%Y%m%d"))
     if dstr_lab is None:
         dstr_lab=dstr
-    
+
     ## Read our data:
-    
+
     # Read omno2d
     OMNO2d,OM_attrs=fio.read_omno2d(day0=d0,dayN=d1)
     OM_tropno2=OMNO2d['tropno2']
     OM_lats=OMNO2d['lats']
     OM_lons=OMNO2d['lons']
-    
+
     # Read satellite output from GC troprun
     # Keys needed for satellite tropNO2
     keys=['IJ-AVG-$_NO2','BXHGHT-$_BXHEIGHT','TIME-SER_AIRDEN','TR-PAUSE_TPLEV',]
     GC=GC_class.GC_sat(d0,dayN=d1,keys=keys)
     GC_tropno2=GC.get_trop_columns(['NO2'])['NO2']
     GC_lats,GC_lons=GC.lats,GC.lons
-    
+
     # Read emissions from GC:
     GC_tavg=GC_class.GC_tavg(d0,d1,keys=['NO-SOIL_NO','ANTHSRCE_NO',], run='nochem')
     anthrono=GC_tavg.ANTHSRCE_NO
     soilno=GC_tavg.NO_soil
-    
+
     # remove near zero emissions squares
     for arr in [anthrono, soilno]:
-        arr[arr < 1]=np.NaN 
-    
+        arr[arr < 1]=np.NaN
+
     # average over time:
     to_average = [anthrono, soilno ,GC_tropno2, OM_tropno2]
-    
+
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", category=RuntimeWarning)
         [anthrono, soilno ,GC_tropno2, OM_tropno2] = [ np.nanmean(arr,axis=0) for arr in to_average ]
@@ -381,7 +430,7 @@ def GCe_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
     assert OM_tropno2_low.shape == GC_tropno2.shape, 'Reduced OMI Grid should match GC'
     ## PLOTTING
     ##
-    
+
     # plot scale limits
     rmin,rmax=-50,50 # limits for percent relative difference in plots
     amin,amax=-1e15,1e15 # limits for absolute diffs
@@ -394,70 +443,70 @@ def GCe_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
     emimin,emimax=[[anthmin,anthmax],[soilmin,soilmax]][soil]
     emisstitle=['$E_{anthro NO}$','$E_{soil NO}$'][soil]
     regression_dot_size=30
-    
+
     # set up axes for 3,3,2
     fig = plt.figure(figsize=(15,17))
     axes=[ plt.subplot(331), plt.subplot(332), plt.subplot(333),
            plt.subplot(334), plt.subplot(335), plt.subplot(336),
                    plt.subplot(325), plt.subplot(326) ]
-    
+
     # First plot GC map
     plt.sca(axes[0])
-    m,cs,cb = pp.createmap(GC_tropno2,GC_lats,GC_lons, 
+    m,cs,cb = pp.createmap(GC_tropno2,GC_lats,GC_lons,
                  title='$\Omega_{GEOS-Chem NO2}$', colorbar=False,
                  linear=linear, vmin=vmin,vmax=vmax,
                  cmapname=map_cmap, region=region)
-    
+
     # Add colorbar to the right:
     divider = make_axes_locatable(axes[0])
     cax = divider.append_axes('right', size='5%', pad=0.05)
     fig.colorbar(cs,cax=cax, orientation='vertical')
-    
+
     # Plot the omi map
     plt.sca(axes[1])
-    pp.createmap(OM_tropno2_low, GC_lats, GC_lons, 
+    pp.createmap(OM_tropno2_low, GC_lats, GC_lons,
                  title='$\Omega_{OMI NO2}$', colorbar=False,
                  linear=linear, vmin=vmin,vmax=vmax,
                  cmapname=map_cmap, region=region)
-    
+
     # plot the emissions:
     plt.sca(axes[2])
     pp.createmap(emiss, GC_lats, GC_lons,
                  title=emisstitle, colorbar=True,
                  linear=elinear, vmin=emimin, vmax=emimax,
                  cmapname=reg_cmap, region=region)
-    
+
     # Plot differences and corellation
     # first abs diff
     plt.sca(axes[3])
-    pp.createmap(GC_tropno2-OM_tropno2_low, GC_lats, GC_lons, 
+    pp.createmap(GC_tropno2-OM_tropno2_low, GC_lats, GC_lons,
                  title='GC - OMI', colorbar=True, clabel='molec/cm2',
                  linear=True, vmin=amin, vmax=amax,
                  cmapname=dmap_cmap, region=region)
-    
+
     # then rel diff
     plt.sca(axes[4])
-    pp.createmap(100*(GC_tropno2-OM_tropno2_low)/OM_tropno2_low, GC_lats, GC_lons, 
+    pp.createmap(100*(GC_tropno2-OM_tropno2_low)/OM_tropno2_low, GC_lats, GC_lons,
                  title='100(GC - OMI)/OMI', colorbar=True, clabel='%',
                  linear=True, vmin=rmin, vmax=rmax,
                  cmapname=dmap_cmap, region=region)
-    
-    
+
+
     # now we must pull out the land data for corellations:
-    
+
     subsets=util.lat_lon_subset(GC_lats,GC_lons,region,data=[GC_tropno2,OM_tropno2_low, emiss])
     lati,loni=subsets['lati'],subsets['loni']
     lats,lons=subsets['lats'],subsets['lons'] # GC_lats[lati],GC_lons[loni]
     [GC_tropno2,OM_tropno2_low, emiss]=subsets['data']
-    
+
     # Lets mask the oceans at this point:
     oceanmask=util.get_mask(GC_tropno2, lats=lats,lons=lons,maskocean=True)
     for arr in [GC_tropno2,OM_tropno2_low, emiss]:
         arr[oceanmask] = np.NaN
-    
+
     # bias between GC and OMI
     bias= (GC_tropno2 - OM_tropno2_low)
-    
+
     # then corellations
     plt.sca(axes[5])
     colours = emiss
@@ -475,26 +524,26 @@ def GCe_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
     plt.sca(axes[6])
     pp.plot_regression(emiss.flatten(), GC_tropno2.flatten(),
                        logscale=False, legendfont=12, diag=False,
-                       cmap=reg_cmap, showcbar=False, 
+                       cmap=reg_cmap, showcbar=False,
                        colours=colours.flatten(),
                        size=regression_dot_size)
 
     plt.title('GEOS-Chem $E_{NO}$ vs $\Omega_{NO2}$')
     plt.xlabel(['anthro','soil'][soil])
     plt.ylabel('GC')
-    
+
     #emiss vs bias
     plt.sca(axes[7])
     pp.plot_regression(emiss.flatten(), bias.flatten(),
                        logscale=False, legendfont=12, diag=False,
-                       cmap=reg_cmap, showcbar=False, 
+                       cmap=reg_cmap, showcbar=False,
                        colours=colours.flatten(),
                        size=regression_dot_size)
 
     plt.title('$E_{NO}$ vs (GC-OMI)')
     plt.xlabel('emissions')
     plt.ylabel('GC-OMI')
-    
+
     emisstype=['anthro','soil'][soil]
     pname='Figs/GC/GC%s_vs_OMNO2_%s_%s.png'%(emisstype,regionlabel,dstr)
     plt.suptitle('GEOS-Chem vs OMINO2d %s'%dstr_lab, fontsize=32)
@@ -1041,25 +1090,30 @@ if __name__=='__main__':
     d1=datetime(2005,1,5)
     region=pp.__AUSREGION__
     label='AUS'
+
+    #HCHO_vs_temp(d0=d0,d1=d1,
+    #             region=SEA,regionlabel='SEA',
+    #             regionplus=pp.__AUSREGION__)
+
     # Test the function with 3 days of data
     #GC_vs_OMNO2d(d0=d0, d1=d1,
     #             region=region, regionlabel=label,
     #             drop_low_anthro=True)
-    
+
     #
     for dates,dstr in zip([sum05,spr05,win05,aut05],dstrs):
-        
-        for soil in [True, False]:
-            GCe_vs_OMNO2d(d0=dates[0], d1=dates[1],
-                 region=region, regionlabel=label,
-                 soil=False,dstr_lab=dstr)
+
+     #   for soil in [True, False]:
+     #       GCe_vs_OMNO2d(d0=dates[0], d1=dates[1],
+     #            region=region, regionlabel=label,
+     #            soil=False,dstr_lab=dstr)
 
         #GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
         #             region=region, regionlabel=label)
-    
-    #    for region, label in zip(subs,labels):
-    #        HCHO_vs_temp(d0=dates[0],d1=dates[1],
-    #                     region=region,regionlabel=label)
+
+        for region, label in zip(subs,labels):
+            HCHO_vs_temp(d0=dates[0],d1=dates[1],
+                         region=region,regionlabel=label)
     #        GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
     #                     region=region, regionlabel=label,
     #                     drop_low_anthro=True)

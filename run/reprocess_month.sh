@@ -16,7 +16,7 @@ printf -v mm "%02d" $2
 for i in `seq 1 31`;
 do
     printf -v dd "%02d" $i
-    qsub -N RP$1${mm}${dd} -v dstr=${1}${mm}${dd} -o logs/reprocess${1}${mm}${dd}.log run/reprocess_oneday.sh
+    qsub -N RP$1${mm}${dd} -v dstr=${1}${mm}${dd} -o logs/reprocess${1}${mm}${dd}.log run/reprocess_day.sh
     echo "creating omhchorp_1 for ${1}${mm}${dd}"
 done
 

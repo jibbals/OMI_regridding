@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -P m19
-#PBS -q express
+#PBS -q normal
 #PBS -N RP_Day
 #PBS -l walltime=02:00:00
 #PBS -l mem=10000MB

@@ -27,33 +27,33 @@ _AUSzonal=[-50, -160, -10, 160] # Australia plus required remote pacific
 #
 def pixel_list_to_csv(date=datetime(2005,1,1),swne=_AUSzonal):
     '''
-    Read good pixel list, 
+    Read good pixel list,
         These pixels are read from the omi swath dataset
         [optional: pull out the section we want,]
         save to csv for amf program to use.
-    CSV: 
+    CSV:
     linenumber, scan, pixel,lat, lon, sza, sva, cloud frac, cloud top pressure
     '''
     fname='Data/omhcho_csv/%s_for_AMF.csv'%date.strftime('%Y-%m-%d')
     csv_params=['scan','track', 'lat', 'lon', 'sza','vza','cloudfrac','ctp' ]
-    
+
     # list of good pixels
     # We are going to create the Palmer AMFs, not read them
-    gp=reprocess.get_good_pixel_list(date, PalmerAMF=False) 
-    
-    # cut the pixel list down to a desired region:
+    gp=reprocess.get_good_pixel_list(date, PalmerAMF=False)
     lats=np.array(gp['lat'])
     lons=np.array(gp['lon'])
+
+    # cut the pixel list down to a desired region:
     zone=np.ones(len(lats),dtype=bool)
     if swne is not None:
         zone=(lats < swne[2]) * (lons < swne[3]) * (lats > swne[0]) * (lons > swne[1])
         assert (np.max(lats[zone]) < swne[2]), "subsetting region didn't work"
-        if __DEBUG__: 
+        if __DEBUG__:
             print("range cut down to (s,w,n,e): %s"%str((min(lats[zone]),min(lons[zone]),max(lats[zone]),max(lons[zone]))))
             print("from %2.0e entries down to %2.0e entries"%(len(lats)*len(lons),np.sum(zone)))
-        
+
         # One day for AUS cuts pixels from ~ 700k to 38k
-    
+
     # save the 9 parameters we want for randal martin AMF package to csv:
     pixelnumber=np.arange(0,len(lats))
     # Create a list of 9 lists, each with the same length, then transpose
@@ -63,10 +63,10 @@ def pixel_list_to_csv(date=datetime(2005,1,1),swne=_AUSzonal):
     for name in csv_params:
         lists.append(list(np.array(gp[name])[zone]))
         if __DEBUG__: print("%d entries for column %s"%(len(lists[-1]),name))
-    
+
     # Transpose the list
     rows=list(map(list,zip(*lists)))
-    
+
     with open(fname,'w') as f:
         writer=csv.writer(f)
         for row in rows:

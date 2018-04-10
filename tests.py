@@ -27,6 +27,7 @@ from mpl_toolkits.basemap import Basemap, maskoceans
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm # for lognormal colour bar
 #import matplotlib.patches as mpatches
+import seaborn # kdeplots
 
 import random # random number generation
 import timeit
@@ -70,6 +71,77 @@ def check_array(array, nonzero=False):
 #############################################################################
 ######################       TESTS                  #########################
 #############################################################################
+
+def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=pp.__AUSREGION__):
+    '''
+        Compare fire counts to smoke aaod in the omhchorp files
+    '''
+    d0str=d0.strftime('%Y%m%d')
+    if dN is None:
+        dN = d0
+
+    dNstr=dN.strftime('%Y%m%d')
+
+    # Read the omhchorp product from d0-dN
+    data=omrp(day0=d0,dayn=dN, keylist=['AAOD','fires'])
+    lats=data.lats
+    lons=data.lons
+    # data fires and aaod = [times, lats, lons]
+    # data.fires.shape; data.AAOD.shape
+
+    f,axes=plt.subplots(2,2,figsize=(16,16)) # 2 rows 2 columns
+
+    titles=['Fires','AAOD$_{500nm}$']
+    linear=[True,False]
+    # average over time:
+    fires=data.fires.astype(np.float)
+    aaod=data.AAOD
+    fires[fires<0] = np.NaN
+    aaod[aaod<0]   = np.NaN
+    # Average over time
+    if data.n_times > 1:
+        fires=np.nanmean(fires,axis=0)
+        aaod=np.nanmean(aaod,axis=0)
+
+    for i,arr in enumerate([fires,aaod]):
+
+        # plot into right axis
+        plt.sca(axes[0,i])
+        pp.createmap(arr,lats,lons,title=titles[i],
+                     linear=linear[i],region=region,
+                     colorbar=True,cmapname='Reds',)
+                     #vmin=vmins[i],vmax=vmaxes[i])
+    plt.suptitle('Fires vs AAOD %s-%s'%(d0str,dNstr))
+
+    # third subplot: regression
+    plt.sca(axes[1,0])
+    X=fires
+    Y=aaod
+
+    subset=util.lat_lon_subset(lats,lons,region,[X,Y])
+    X,Y=subset['data'][0],subset['data'][1]
+    lats,lons=subset['lats'],subset['lons']
+    pp.plot_regression(X,Y,logscale=False,legend=False)
+    plt.xlabel('Fires')
+    plt.ylabel("AAOD")
+    plt.title('Correlation')
+
+    # Fourth plot: density of AAOD,Fires:
+    plt.subplot(426)
+    #plt.sca(axes[1,1])
+
+    seaborn.set_style('whitegrid')
+    seaborn.kdeplot(Y.flatten())# linestyle='-')
+    plt.title('aaod density')
+    plt.subplot(428)
+    seaborn.set_style('whitegrid')
+    seaborn.kdeplot(X.flatten())# linestyle='-')
+    plt.title('fires density')
+
+    pname='Figs/Smoke_vs_Fire_%s-%s.png'%(d0str,dNstr)
+    plt.savefig(pname)
+    print("Saved figure ",pname)
+
 
 def smearing_calculation(date=datetime(2005,1,1)):
     '''
@@ -201,6 +273,7 @@ def compare_products(date=datetime(2005,1,1), oneday=True, positiveonly=False,
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
+
 
 def check_products(date=datetime(2005,1,1), oneday=True, pltname='',
                    lllat=-60, lllon=-179, urlat=50, urlon=179):
@@ -888,7 +961,7 @@ def analyse_VCC_pp(day=datetime(2005,3,1), oneday=False, ausonly=True):
     print("%s saved"%pname)
     plt.close(f)
 
-def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 98.75, -11, 166.25]):
+def plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=None,region=[-45, 99.5, -11, 160.0]):
     '''
         Plot columns with different amf bases
         also different fire filtering strengths
@@ -1836,7 +1909,8 @@ if __name__ == '__main__':
     #check_HEMCO_restarts()
 
     #analyse_VCC_pp(oneday=False, ausonly=True)
-    plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=datetime(2005,3,31))
+    smoke_vs_fire()
+    #plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=datetime(2005,3,31))
     #plot_swaths()
     # AMF tests and correlations
     #Check_OMI_AMF()

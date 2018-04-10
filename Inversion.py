@@ -242,7 +242,8 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     ## Read data for this date unless it's been passed in
     ##
     if GC is None:
-        GC=GC_sat(date=day0)
+        # GC satellite needs whole biogenic month to make slope
+        GC=GC_class.GC_sat(day0=datetime(day0.year,day0.month,1), dayN=util.last_day(day0), run='biogenic')
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
 
@@ -388,34 +389,38 @@ def Emissions(day0, dayn, GC = None, OMI = None,
             'attributes':attrs}
 
 def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
-                          remove_fires_from_OMI=True,
-                          region=pp.__GLOBALREGION__, ignorePP=True):
+                          region=pp.__GLOBALREGION__, ignorePP=False):
     '''
         Store a month of new emissions estimates into an he5 file
     '''
+    # Dates required: day0, dayN, and list of days between
     day0=datetime(month.year,month.month,1)
-
-    # Get last day in month:
     dayn=util.last_day(day0)
     days=util.list_days(day0,dayn)
 
+    # Handy date strings
     mstr=dayn.strftime('%Y%m')
     d0str=day0.strftime("%Y%m%d")
     dnstr=dayn.strftime("%Y%m%d")
+
+    # File location to write to
     ddir="Data/Isop/E_new/"
     fname=ddir+"emissions_%s.h5"%(mstr)
+
     if __VERBOSE__:
         print("Calculating %s-%s estimated emissions over %s"%(d0str,dnstr,str(region)))
         print("will save to file %s"%(fname))
 
+    # Read omhchorp VCs, AMFs, Fires, Smoke, etc...
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
     if GC is None:
         GC=GC_class.GC_biogenic(day0) # data like [time,lat,lon,lev]
 
-    # If we're removing fires:
-    if remove_fires_from_OMI:
-        OMI.apply_fire_mask('VCC')
+    # We need to make the fire and smoke masks:
+    firemask=OMI.make_fire_mask(d0=day0, dN=dayn, days_masked=8,
+                                fire_thresh=1, adjacent=True)
+    smokemask=OMI.make_smoke_mask(d0=day0,dN=dayn, aaod_thresh=0.2)
 
     # Read each day then save the month
     #

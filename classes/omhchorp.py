@@ -242,11 +242,34 @@ class omhchorp:
 
         return retmask
 
-    def get_smoke_mask(self, d0, dN=None, thresh=0.001):
+    def make_smoke_mask(self, d0, dN=None, aaod_thresh=0.2):
         '''
+            Return smoke mask with dimensions [len(d0-dN), n_lats, n_lons]
+
             Read OMAERUVd AAOD(500nm), regrid into local resoluion, mask days above thresh
+
         '''
-        assert False, "To be implemented"
+
+        # days of filtering:
+        # daylist=util.list_days(d0,dN)
+
+        if __VERBOSE__:
+            print ("Smoke mask being created for any square with aaod > %0.3f"%aaod_thresh)
+
+        # Subset to the requested days:
+        dates=np.array(self.dates)
+        i = (dates <= dN) * (dates >= d0)
+        aaod=self.AAOD[i,:,:]
+
+        # mask squares with more aaod pixels than allowed
+        mask = aaod>aaod_thresh
+
+        # mask adjacent squares also (if desired)
+        #if adjacent:
+        #    for i in range(len(daylist)):
+        #        mask[i]=util.set_adjacent_to_true(mask[i])
+
+        return mask
 
     def inds_subset(self, lat0=None, lat1=None, lon0=None, lon1=None, maskocean=False, maskland=False):
         ''' return indices of lat, lon arrays within input box '''

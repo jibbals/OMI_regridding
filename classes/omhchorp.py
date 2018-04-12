@@ -38,9 +38,6 @@ sys.path.pop(0)
 __VERBOSE__=True
 __DEBUG__=False
 
-# Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
-# Change to -175 to avoid crossing the 179 -> -179 boundary?
-__REMOTEPACIFIC__=[-15, -180, 15, -120]
 
 
 # Coords for omhchorp:
@@ -65,7 +62,7 @@ __OMHCHORP_KEYS__ = [
     'SC',            # Slant Columns
     'VC_GC',         # GEOS-Chem Vertical Columns
     'VC_OMI',        # OMI VCs
-    'VC_OMI_RSC',    # OMI VCs with Reference sector correction? TODO: check
+    'VC_OMI_RSC',    # OMI VCs with Reference sector correction?
     'col_uncertainty_OMI',
     'fires',         # Fire count
     'AAOD',          # Smoke AAOD_500nm interpolated from OMAERUVd
@@ -337,7 +334,7 @@ class omhchorp:
             return average HCHO over a specific region
             In same units as VCC [ Molecules/cm2 ]
         '''
-        region=__REMOTEPACIFIC__
+        region=util.__REMOTEPACIFIC__
         if lats is not None:
             region[0]=lats[0]
             region[2]=lats[1]
@@ -347,9 +344,9 @@ class omhchorp:
         BG=np.nanmean(self.VCC[inds])
         return BG
 
-    def get_background_array(self, lats=None, lons=None):
+    def get_background_array(self, key='VCC', lats=None, lons=None):
         '''
-            Return background HCHO based on average over pacific region
+            Return background for key based on average over pacific region
             for given latitudes (can be gridded with longitudes)
 
             Whatever time dimension we have gets averaged over for
@@ -358,8 +355,8 @@ class omhchorp:
         if __VERBOSE__:
             print("In omhchorp.get_background_array()")
         # Average pacific ocean longitudinally
-        lon0=__REMOTEPACIFIC__[1] # left lon
-        lon1=__REMOTEPACIFIC__[3] # right lon
+        lon0=util.__REMOTEPACIFIC__[1] # left lon
+        lon1=util.__REMOTEPACIFIC__[3] # right lon
 
         if lats is None:
             lats=self.lats
@@ -370,18 +367,20 @@ class omhchorp:
 
         # grab VCC over the ocean.
         oceanlons= (self.lons >= lon0) * (self.lons <= lon1)
+        Data=getattr(self, key)
+
         if __VERBOSE__:
-            print("VCC.shape:")
-            print (self.VCC.shape)
+            print(key,".shape:")
+            print (Data.shape)
         if self.n_times>1:
             # average this stuff over the time dim
             if __VERBOSE__:
                 dstrs=tuple([self.dates[0].strftime('%Y%m%d'),self.dates[-1].strftime('%Y%m%d')])
                 print("omhchorp.get_background_array() averaging over %s-%s"%dstrs)
-            oceanVCC=self.VCC[:,:,oceanlons]
+            oceanVCC=Data[:,:,oceanlons]
             oceanVCC=np.nanmean(oceanVCC,axis=0)
         else:
-            oceanVCC=self.VCC[:,oceanlons]
+            oceanVCC=Data[:,oceanlons]
 
         if __VERBOSE__:
             print("oceanVCC.shape")
@@ -467,6 +466,8 @@ class omhchorp:
             for key in keys:
                 ret[key]=getattr(self,key)
             ret['gridentries']=self.gridentries
+            if hasattr(self,'ppentries'):
+                ret['ppentries']=self.ppentries
             return ret
 
         # option to do whole month:
@@ -485,12 +486,19 @@ class omhchorp:
         entries=self.gridentries[dinds] # entries for each day
         totentries=np.nansum(entries,axis=0) # total entries over time dim
         ret['gridentries']=totentries
+        if hasattr(self,'ppentries'):
+            ppentries=self.ppentries[dinds] # entries for each day
+            pptotentries=np.nansum(ppentries,axis=0) # total entries over time dim
+            ret['ppentries']=pptotentries
+
         actual={}
         flat={}
         for key in keys:
             data=getattr(self,key)[dinds]
             with np.errstate(divide='ignore', invalid='ignore'):
                 actual[key]=np.nansum(data*entries, axis=0)/totentries
+                if key=='VCC_PP':
+                    actual[key]=np.nansum(data*ppentries, axis=0)/pptotentries
             flat[key]=np.nanmean(data, axis=0)
             ret[key]=[flat[key],actual[key]][weighted]
             #TODO: remove once checked

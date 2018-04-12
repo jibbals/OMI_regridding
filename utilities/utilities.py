@@ -30,6 +30,10 @@ NA     = GMAO.edges_containing_region([-21,115,-11,150])
 SWA    = GMAO.edges_containing_region([-36,114,-29,128])
 SEA    = GMAO.edges_containing_region([-39,144,-29,153])
 
+# Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
+# [lat,lon,lat,lon]
+__REMOTEPACIFIC__=[-15, -180, 15, -120]
+
 ###############
 ### METHODS ###
 ###############
@@ -200,7 +204,12 @@ def index_from_gregorian(gregs, date):
     ind=np.where(gregs==greg)[0]
     return (ind)
 
+def first_day(date):
+    ''' Return first day in month matching input argument '''
+    return datetime(date.year,date.month,1)
+
 def last_day(date):
+    ''' Return last day in month matching input argument '''
     lastday=calendar.monthrange(date.year,date.month)[1]
     dayn=datetime(date.year,date.month,lastday)
     return dayn
@@ -353,6 +362,19 @@ def ppbv_to_molecs_per_cm2(ppbv, pedges):
             out[:,x,y] = t*ppbv[:,x,y]
     return out
 
+def regrid_to_higher(data,lats,lons,newlats,newlons,interp='nearest'):
+    '''
+    '''
+    # make into higher resolution
+    mlons,mlats = np.meshgrid(lons,lats)
+    mnewlons,mnewlats = np.meshgrid(newlons,newlats)
+
+    #https://docs.scipy.org/doc/scipy/reference/interpolate.html
+    # take nearest datapoint from old grid new gridpoint value
+    newdata = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
+                      (mnewlats, mnewlons), method=interp)
+    return newdata
+
 def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean):
     '''
         Regrid data to lower resolution
@@ -373,6 +395,7 @@ def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean):
 def regrid(data,lats,lons,newlats,newlons, interp='nearest', groupfunc=np.nanmean):
     '''
     Regrid a data array [lat,lon] onto [newlat,newlon]
+    This function estimates if you want higher or lower resolution based on number of lats/lons
     When making resolution finer, need to interpolate:
         interp = 'nearest' | 'linear' | 'cubic'
     When making resolution lower, need to group using some function
@@ -392,14 +415,7 @@ def regrid(data,lats,lons,newlats,newlons, interp='nearest', groupfunc=np.nanmea
         return data
     # If new resolution is strictly finer, use griddata
     elif newx < oldx and newy < oldy:
-        # make into higher resolution
-        mlons,mlats = np.meshgrid(lons,lats)
-        mnewlons,mnewlats = np.meshgrid(newlons,newlats)
-
-        #https://docs.scipy.org/doc/scipy/reference/interpolate.html
-        # take nearest datapoint from old grid new gridpoint value
-        newdata = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
-                          (mnewlats, mnewlons), method=interp)
+        newdata = regrid_to_higher(data,lats,lons,newlats,newlons,interp=interp)
     # if new res is not strictly finer
     else:
         newdata = regrid_to_lower(data,lats,lons,newlats,newlons,func=groupfunc)
@@ -408,6 +424,34 @@ def regrid(data,lats,lons,newlats,newlons, interp='nearest', groupfunc=np.nanmea
     assert np.shape(newdata)== (len(newlats),len(newlons)), "Regridded shape new lats/lons!"
 
     return newdata
+
+def remote_pacific_background(data,lats,lons, average_lons=False, average_lats=False):
+    '''
+        Get remote pacific ocean background from data array
+        Can average the lats and lons if desired
+
+        Returns: rp, bglats, bglons
+            rp: remote pacific subset from data input
+            bglats: latitudes in rp
+            bglons: longitudes in rp
+
+    '''
+    # First pull out region in the remote pacific
+    subset=lat_lon_subset(lats,lons,__REMOTEPACIFIC__,[data])
+    rp=subset['data'][0]
+    bglats=subset['lats']
+    bglons=subset['lons']
+
+    if average_lons:
+        rp=np.nanmean(rp,axis=1)
+        bglons = np.nanmean(bglons)
+
+    if average_lats:
+        rp=np.nanmean(rp,axis=0)
+        bglats = np.nanmean(bglats)
+
+    return rp, bglats, bglons
+
 
 def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
     ''' return reference to data array with time,lat,lon,lev dims '''

@@ -38,40 +38,46 @@ __VERBOSE__=True
 #####
 d0=datetime(2005,1,1)
 
+Inversion.store_emissions_month(d0,save_daily=True)
 
-fires_per_area,lats,lons=fio.read_MOD14A1(d0,True)
-fires,lats,lons=fio.read_MOD14A1(d0,False)
-earth_sa=510e6 # 510.1 million km2
-count_a=np.sum(fires)
-count_b=np.mean(fires_per_area)*earth_sa*1e3
-print(count_a,count_b)
-print((count_a-count_b)/count_b)
 
-region=[-20,-30,40,50]
-f,axes=plt.subplots(3,1)
-plt.sca(axes[0])
-pp.createmap(fires,lats,lons,title='MODIS Fires 20050102',
-             colorbar=None, region=region,
-             linear=False, vmin=1,vmax=3e6)
 
-# lats lons are .1x.1 degrees
-# Try lower and higher resolution function:
-hlats,hlons,hlat_e,hlon_e = util.lat_lon_grid(latres=0.25,lonres=0.3125)
-llats,llons,llat_e,llon_e = util.lat_lon_grid(latres=2.0,lonres=2.5)
 
-hfires=util.regrid(fires,lats,lons,hlats,hlons,groupfunc=np.nansum)
-lfires=util.regrid(fires,lats,lons,llats,llons,groupfunc=np.nansum)
-print(np.nansum(hfires))
-print(np.nansum(lfires))
-plt.sca(axes[1])
-pp.createmap(hfires,hlats,hlons,title='High res',
-             colorbar=False,region=region,
-             linear=False, vmin=1,vmax=3e6)
+# to be moved somewhere:
+def firetest():
+    fires_per_area,lats,lons=fio.read_MOD14A1(d0,True)
+    fires,lats,lons=fio.read_MOD14A1(d0,False)
+    earth_sa=510e6 # 510.1 million km2
+    count_a=np.sum(fires)
+    count_b=np.mean(fires_per_area)*earth_sa*1e3
+    print(count_a,count_b)
+    print((count_a-count_b)/count_b)
 
-plt.sca(axes[2])
-pp.createmap(lfires,llats,llons,title='Low res', region=region,
-             clabel='fire pixels', pname='test_fires.png',
-             linear=False,cmapname='Reds',vmin=1,vmax=3e6)
+    region=[-20,-30,40,50]
+    f,axes=plt.subplots(3,1)
+    plt.sca(axes[0])
+    pp.createmap(fires,lats,lons,title='MODIS Fires 20050102',
+                 colorbar=None, region=region,
+                 linear=False, vmin=1,vmax=3e6)
+
+    # lats lons are .1x.1 degrees
+    # Try lower and higher resolution function:
+    hlats,hlons,hlat_e,hlon_e = util.lat_lon_grid(latres=0.25,lonres=0.3125)
+    llats,llons,llat_e,llon_e = util.lat_lon_grid(latres=2.0,lonres=2.5)
+
+    hfires=util.regrid(fires,lats,lons,hlats,hlons,groupfunc=np.nansum)
+    lfires=util.regrid(fires,lats,lons,llats,llons,groupfunc=np.nansum)
+    print(np.nansum(hfires))
+    print(np.nansum(lfires))
+    plt.sca(axes[1])
+    pp.createmap(hfires,hlats,hlons,title='High res',
+                 colorbar=False,region=region,
+                 linear=False, vmin=1,vmax=3e6)
+
+    plt.sca(axes[2])
+    pp.createmap(lfires,llats,llons,title='Low res', region=region,
+                 clabel='fire pixels', pname='test_fires.png',
+                 linear=False,cmapname='Reds',vmin=1,vmax=3e6)
 
 
 #

@@ -29,6 +29,13 @@ from utilities import fio as fio
 import utilities.plotting as pp
 import utilities.utilities as util
 
+import timeit
+# EG using timer:
+#start_time=timeit.default_timer()
+#runprocess()
+#elapsed = timeit.default_timer() - start_time
+#print ("TIMEIT: Took %6.2f seconds to runprocess()"%elapsed)
+
 ###############
 ### GLOBALS ###
 ###############
@@ -70,17 +77,21 @@ def Yield(H, k_H, I, k_I):
     #Return the yields
     return Y
 
-
-def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
+def Emissions(day, GC_biog, OMI, region=pp.__AUSREGION__):
     '''
         Return one day of emissions estimates
             Uses one month of GEOS-Chem (GC) estimated 'slope' for Y_hcho
             uses one day of OMI HCHO
             Use biogenic run for GC_biog
     '''
+
+    # Check that GC_biog dates are the whole month - for slope calculation
+    assert GC_biog.hemco.dates[0] == util.first_day(day), 'First day doesn\'t match in Emissions GC_biog parameter'
+    assert GC_biog.hemco.dates[-1] == util.last_day(day), 'Last day doesn\'t match in Emissions GC_biog parameter'
+
     dstr=day.strftime("%Y%m%d")
     attrs={} # attributes dict for meta data
-    GC=GC_biog.sat_out
+    GC=GC_biog.sat_out # Satellite output from biogenic run
 
     if __VERBOSE__:
         # Check the dims of our stuff
@@ -134,12 +145,14 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
         print("%d lats, %d lons for GC(region)"%(len(GC_lats),len(GC_lons)))
         print("%d lats, %d lons for OMI(global)"%(len(omi_lats),len(omi_lons)))
 
-    # Get OMI corrected vertical columns, averaged over time
-    # And with reduced resolution if desired
-    omi_day=OMI.time_averaged(day0=day,keys=['VCC'])
-    omi_hcho=omi_day['VCC']
+    # OMI corrected vertical columns for matching day
+    omi_day=OMI.time_averaged(day0=day,month=False,keys=['VCC','VCC_PP'])
+    vcc=omi_day['VCC']
+    vcc_pp=omi_day['VCC_PP']
     gridentries=omi_day['gridentries']
+    ppentries=omi_day['ppentries']
     attrs['gridentries']={'desc':'OMI satellite pixels used in each gridbox'}
+    attrs['ppentries']={'desc':'OMI satellite pixels used in each gridbox, recalculated using PP code'}
     # subset omi to region
     #
     omi_lati,omi_loni = util.lat_lon_range(omi_lats,omi_lons,region)
@@ -225,8 +238,8 @@ def Emissions_1day(day, GC_biog, OMI, region=pp.__AUSREGION__):
             'lati':omi_lati,'loni':omi_loni,'gridentries':gridentries,
             'attributes':attrs}
 
-def Emissions(day0, dayn, GC = None, OMI = None,
-              region=pp.__AUSREGION__, ReduceOmiRes=0, ignorePP=True):
+def Emissions_old(day0, dayn, GC = None, OMI = None,
+              region=pp.__AUSREGION__, ignorePP=True):
     '''
         Determine emissions of isoprene averaged over some length of time.
         1) Calculates model slope E_isop -> Tropcol_HCHO
@@ -236,6 +249,12 @@ def Emissions(day0, dayn, GC = None, OMI = None,
 
         HCHO = S * E_isop + b
     '''
+
+    # function will return a dictionary with all the important stuff in it
+    outdict={}
+    # also returns a dictionary of dicts for attributes:
+    attrs={}
+
     dstr=day0.strftime("%Y%m%d")
     if __VERBOSE__:
         print("Entering Inversion.Emissions(%s)"%dstr)
@@ -247,9 +266,6 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
 
-    # will return also a dictionary of dicts for attributes:
-    attrs={}
-
     if __VERBOSE__:
         # Check the dims of our stuff
         print("GC data %s"%str(GC.hcho.shape))
@@ -258,9 +274,16 @@ def Emissions(day0, dayn, GC = None, OMI = None,
         print("OMI data %s"%str(OMI.VCC.shape))
         #print("Lats from %.2f to %.2f"%(OMI.lats[0],OMI.lats[-1]))
         #print("Lons from %.2f to %.2f"%(OMI.lons[0],OMI.lons[-1]))
+
+    # Pull out the stuff we need from the classes
     latsomi0,lonsomi0=OMI.lats,OMI.lons
     latsomi, lonsomi= latsomi0.copy(), lonsomi0.copy()
     SA=OMI.surface_areas
+    vcc=OMI.VCC
+    pixels=OMI.gridentries
+    if not ignorePP:
+        vcc_pp=OMI.VCC_PP
+        pixels_pp=OMI.ppentries
 
     # model slope between HCHO and E_isop:
     # This also returns the lats and lons for just this region.
@@ -274,15 +297,16 @@ def Emissions(day0, dayn, GC = None, OMI = None,
         print("%d lats, %d lons for OMI(global)"%(len(latsomi0),len(lonsomi0)))
 
     # Get OMI corrected vertical columns, averaged over time
-    # And with reduced resolution if desired
+
     hchoomi=OMI.time_averaged(day0=day0,dayn=dayn,keys=['VCC'])['VCC']
-    if ReduceOmiRes > 0 :
-        if __VERBOSE__:
-            print("Lowering resolution by factor of %d"%ReduceOmiRes)
-        omilow=OMI.lower_resolution('VCC', factor=ReduceOmiRes, dates=[day0,dayn])
-        hchoomi=omilow['VCC']
-        latsomi, lonsomi=omilow['lats'], omilow['lons']
-        SA=omilow['surface_areas']
+    #if ReduceOmiRes > 0 :
+    #    if __VERBOSE__:
+    #        print("Lowering resolution by factor of %d"%ReduceOmiRes)
+    #    omilow= OMI.lower_resolution('VCC', factor=ReduceOmiRes, dates=[day0,dayn])
+    #    hchoomi=omilow['VCC']
+    #    latsomi, lonsomi=omilow['lats'], omilow['lons']
+    #    SA=omilow['surface_areas']
+
 
     # subset omi to region
     #
@@ -290,8 +314,10 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     latsomi,lonsomi=latsomi[latiomi], lonsomi[loniomi]
     attrs["lats"]={"units":"degrees",
         "desc":"gridbox midpoint"}
+    outdict['lats']=latsomi
     attrs["lons"]={"units":"degrees",
         "desc":"gridbox midpoint"}
+    outdict['lons']=lonsomi
 
     SA=SA[latiomi,:]
     SA=SA[:,loniomi]
@@ -307,6 +333,7 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     slope_after=np.nanmean(GC_slope)
     attrs["GC_slope"]={"units":"s",
         "desc":"slope between HCHO_GC (molec/cm2) and E_Isop_GC (atom c/cm2/s)"}
+    outdict['GC_slope']=GC_slope
 
     check=100.0*np.abs((slope_after-slope_before)/slope_before)
     if check > 1:
@@ -336,8 +363,9 @@ def Emissions(day0, dayn, GC = None, OMI = None,
 
     # Determine background using region latitude bounds
     BGomi    = OMI.background_HCHO(lats=[region[0],region[2]])
-    attrs["background"]={"units":"molec HCHO/cm2",
-        "desc":"background from OMI HCHO swathes"}
+    attrs["BC_OMI"]={"units":"molec HCHO/cm2",
+                     "desc":"background from OMI HCHO swathes"}
+    outdict['BG_OMI']=BGomi
 
     ## Calculate Emissions from these
     ##
@@ -347,18 +375,23 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     #   Determine S from the slope bewteen E_isop and HCHO
     #[print(np.nanmean(x)) for x in [hchoomi, BGomi, GC_slope]]
     E_new = (hchoomi - BGomi) / GC_slope
-    attrs["E_isop"]={"units":"atom C/cm2/s"}
+    attrs["Eisop_OMIGC"]={"units":"atom C/cm2/s",
+                          "desc":"Emissions using GEOS-Chem modelled slope, applied against VCC (OMI Vertical columns with GC based apriori)"}
+    outdict['Eisop_OMIGC']=E_new
 
-    #print (np.nanmean(hcho))
-    #print(BG)
+    # E_new_PP
+    if not ignorePP:
+        E_new_pp = ()
 
     # loss rate of HCHO
-
     # loss rate of Isop
 
     #
     #TODO: store GC_background for comparison
     GC_BG=np.array([np.NaN])
+    attrs['BG_GC']={"units":"molec HCHO/cm2",
+                    "desc" :"background from GEOS-Chem"}
+    outdict['BG_GC']=GC_BG
 
     ## TODO: Also store GC estimate (For easy MEGAN comparison)
     # GEOS-Chem over our region:
@@ -378,23 +411,25 @@ def Emissions(day0, dayn, GC = None, OMI = None,
     kg_per_atom = util.__grams_per_mole__['isop'] * 1.0/N_avegadro * 1e-3
     conversion= 1./5.0 * 1e10 * SA * kg_per_atom
     E_isop_kgs=E_new*conversion
-    attrs["E_isop_kg"]={"units":"kg/s",
-        "desc":"emissions/cm2 multiplied by area"}
+    attrs["Eisop_OMIGC_kg"]={"units":"kg/s",
+                        "desc":"emissions/cm2 multiplied by area, calculated using OMI with GC apriori"}
+    outdict['Eisop_OMIGC_kg']=E_isop_kgs
 
+    #outdict['attributes']=attrs
 
-    return {'E_isop':E_new, 'E_isop_kg':E_isop_kgs,
-            'lats':latsomi, 'lons':lonsomi, 'background':BGomi,
-            'GC_background':GC_BG, 'GC_slope':GC_slope,
-            'lati':latiomi,'loni':loniomi,
-            'attributes':attrs}
+    # Return dict with:
+    # 'BG_GC','GC_slope'
+    # 'lats','lons'
+    return outdict, attrs
 
 def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
-                          region=pp.__GLOBALREGION__, ignorePP=False):
+                          region=pp.__AUSREGION__, save_daily=False):
     '''
         Store a month of new emissions estimates into an he5 file
+        TODO: Add monthly option to just store month averages and month emissions
     '''
     # Dates required: day0, dayN, and list of days between
-    day0=datetime(month.year,month.month,1)
+    day0=util.first_day(month)
     dayn=util.last_day(day0)
     days=util.list_days(day0,dayn)
 
@@ -406,55 +441,159 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     # File location to write to
     ddir="Data/Isop/E_new/"
     fname=ddir+"emissions_%s.h5"%(mstr)
+    if save_daily:
+        fname=ddir+"emissions_d_%s.h5"%(mstr)
 
     if __VERBOSE__:
         print("Calculating %s-%s estimated emissions over %s"%(d0str,dnstr,str(region)))
         print("will save to file %s"%(fname))
 
+    # Dicts which will be saved:
+    outdata={}
+    outattrs={}
+
+
     # Read omhchorp VCs, AMFs, Fires, Smoke, etc...
     if OMI is None:
-        OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=ignorePP)
+        OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=False)
     if GC is None:
         GC=GC_class.GC_biogenic(day0) # data like [time,lat,lon,lev]
+
+    # subset our lats/lons
+    omilats=OMI.lats
+    omilons=OMI.lons
+    omilati, omiloni = util.lat_lon_range(omilats,omilons,region=region)
 
     # We need to make the fire and smoke masks:
     firemask=OMI.make_fire_mask(d0=day0, dN=dayn, days_masked=8,
                                 fire_thresh=1, adjacent=True)
     smokemask=OMI.make_smoke_mask(d0=day0,dN=dayn, aaod_thresh=0.2)
+    firefilter=(firemask+smokemask).astype(np.bool)
 
-    # Read each day then save the month
-    #
-    Emiss=[]
-    for day in days:
-        Emiss.append(Emissions_1day(day=day, GC_biog=GC, OMI=OMI, region=region))
 
-    outattrs=Emiss[0]['attributes'] # get one copy of attributes is required
+    # Need Vertical colums, slope, and backgrounds all at same resolution to get emissions
+    VCC                   = np.copy(OMI.VCC)
+    VCC_PP                = np.copy(OMI.VCC_PP)
+    VCC_OMI               = np.copy(OMI.VC_OMI_RSC)
+    pixels                = np.copy(OMI.gridentries)
+    pixels_PP             = np.copy(OMI.ppentries)
+    SArea                 = np.copy(OMI.surface_areas)
+    #VCC_orig              = np.copy(OMI.VCC) # to see the effect of the fire mask do some without
+
+    # Remove gridsquares affected by Fire or Smoke
+    VCC[firefilter]       = np.NaN
+    VCC_PP[firefilter]    = np.NaN
+    VCC_OMI[firefilter]   = np.NaN
+    pixels[firefilter]    = 0
+    pixels_PP[firefilter] = 0
+
+    #   GC.model_slope gets slope and subsets the region giving us lats/lons and their indices
+    slope_dict=GC.model_slope(region=region)
+    GC_slope=slope_dict['slope']
+    gclats,gclons = slope_dict['lats'],slope_dict['lons']
+    ##lati,loni = slope_dict['lati'],slope_dict['loni']
+    # Map slope onto higher omhchorp resolution:
+    GC_slope = util.regrid_to_higher(GC_slope,gclats,gclons,omilats,omilons,interp='nearest')
+
+    # Subset our arrays to their regions!
+    GC_slope    = GC_slope[omilati,:]
+    GC_slope    = GC_slope[:,omiloni]
+    VCC         = VCC[:,omilati,:]
+    VCC         = VCC[:,:,omiloni]
+    VCC_PP      = VCC_PP[:,omilati,:]
+    VCC_PP      = VCC_PP[:,:,omiloni]
+    VCC_OMI     = VCC_OMI[:,omilati,:]
+    VCC_OMI     = VCC_OMI[:,:,omiloni]
+    SArea       = SArea[omilati,:]
+    SArea       = SArea[:,omiloni]
+    pixels      = pixels[:,omilati,:]
+    pixels      = pixels[:,:,omiloni]
+    pixels_PP   = pixels_PP[:,omilati,:]
+    pixels_PP   = pixels_PP[:,:,omiloni]
+
+    # emissions using different columns as basis
+    E_vcc       = np.zeros(VCC.shape) + np.NaN
+    E_pp        = np.zeros(VCC.shape) + np.NaN
+    E_omi       = np.zeros(VCC.shape) + np.NaN
+    BG_VCC      = np.zeros(VCC.shape) + np.NaN
+    BG_PP       = np.zeros(VCC.shape) + np.NaN
+    BG_OMI      = np.zeros(VCC.shape) + np.NaN
+
+    time_emiss_calc=timeit.default_timer()
+    for i,day in enumerate(days):
+
+        # Need background values from remote pacific
+        BG_VCCi,bglats,bglons = util.remote_pacific_background(OMI.VCC[i], omilats, omilons, average_lons=True)
+        BG_PPi ,bglats,bglons = util.remote_pacific_background(OMI.VCC_PP[i], omilats, omilons, average_lons=True)
+        BG_OMIi,bglats,bglons = util.remote_pacific_background(OMI.VC_OMI_RSC[i], omilats, omilons, average_lons=True)
+
+        # The backgrounds need to be the same shape so we can subtract from whole array at once.
+        # done by repeating the BG values ([lats]) N times, then reshaping to [lats,N]
+        BG_VCCi = BG_VCCi.repeat(len(omilons)).reshape([len(omilats),len(omilons)])
+        BG_PPi  = BG_PPi.repeat(len(omilons)).reshape([len(omilats),len(omilons)])
+        BG_OMIi = BG_OMIi.repeat(len(omilons)).reshape([len(omilats),len(omilons)])
+
+        # Store the backgrounds for later analysis
+        BG_VCC[i,:,:] = BG_VCCi
+        BG_PP[i,:,:]  = BG_PPi
+        BG_OMI[i,:,:] = BG_OMIi
+
+
+        E_vcc[i,:,:]   = (VCC[i] - BG_VCCi) / GC_slope
+        E_pp[i,:,:]    = (VCC_PP[i] - BG_PPi) / GC_slope
+        E_omi[i,:,:]   = (VCC_OMI[i] - BG_OMIi) / GC_slope
+
+    elapsed = timeit.default_timer() - time_emiss_calc
+    print ("TIMEIT: Took %6.2f seconds to calculate backgrounds and estimate emissions()"%elapsed)
+    # should take very little time
+    func=np.nanmean
+    if save_daily:
+        def do_nothing(arr, **args):
+            return arr
+        func=do_nothing
+    # Save the backgrounds, as well as units/descriptions
+    outdata['BG_VCC']  = func(BG_VCC,axis=0)
+    outdata['BG_PP']   = func(BG_PP,axis=0)
+    outdata['BG_OMI']  = func(BG_OMI,axis=0)
+    outattrs['BG_VCC'] = {'unit':'molec/cm2','desc':'Background: VCC zonally averaged from remote pacific'}
+    outattrs['BG_PP']  = {'unit':'molec/cm2','desc':'Background: VCC_PP zonally averaged from remote pacific'}
+    outattrs['BG_OMI'] = {'unit':'molec/cm2','desc':'Background: VCC_OMI zonally averaged from remote pacific'}
+
+    # Save the Vertical columns, as well as units/descriptions
+    outdata['VCC']      = func(VCC,axis=0)
+    outdata['VCC_PP']   = func(VCC_PP,axis=0)
+    outdata['VCC_OMI']  = func(VCC_OMI,axis=0)
+    outattrs['VCC']     = {'unit':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, with fires masked'}
+    outattrs['VCC_PP']  = {'unit':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code, with fires masked'}
+    outattrs['VCC_OMI'] = {'unit':'molec/cm2','desc':'OMI (corrected) Vertical column, with fires masked'}
+
+    # Save the Emissions estimates, as well as units/descriptions
+    outdata['E_VCC']      = func(E_vcc,axis=0)
+    outdata['E_VCC_PP']   = func(E_pp,axis=0)
+    outdata['E_VCC_OMI']  = func(E_omi,axis=0)
+    outattrs['E_VCC']     = {'unit':'molec OR atom C???/cm2/s',
+                             'desc':'Isoprene Emissions based on VCC and GC_slope'}
+    outattrs['E_VCC_PP']  = {'unit':'molec OR atom C??/cm2/s',
+                             'desc':'Isoprene Emissions based on VCC_PP and GC_slope'}
+    outattrs['E_VCC_OMI'] = {'unit':'molec OR/cm2/s',
+                             'desc':'Isoprene emissions based on VCC_OMI and GC_slope'}
 
     # Adding time dimension (needs to be utf8 for h5 files)
     #dates = np.array([d.strftime("%Y%m%d").encode('utf8') for d in days])
-    #outattrs["time"]={"format":"%Y%m%d", "desc":"year month day string"}
     dates = np.array([int(d.strftime("%Y%m%d")) for d in days])
-    outdata={"time":dates}
+    outdata["time"]=dates
     outattrs["time"]={"format":"%Y%m%d", "desc":"year month day as integer (YYYYMMDD)"}
     fattrs={'region':"SWNE: %s"%str(region)}
     fattrs['date range']="%s to %s"%(d0str,dnstr)
 
     # Save lat,lon
-    outdata['lats']=Emiss[0]['lats']
-    outdata['lons']=Emiss[0]['lons']
+    outdata['lats']=omilats[omilati]
+    outdata['lons']=omilons[omiloni]
     outdata['lats_e']=util.edges_from_mids(outdata['lats'])
     outdata['lons_e']=util.edges_from_mids(outdata['lons'])
 
     outdata['smearing']=smearing(month,plot=True,region=region)
-    outattrs['smearing']={'desc':'smearing for %s'%mstr}
-    # Save data into month of daily averages
-    # TODO: keep OMI counts from earlier...
-    keys_to_save=['E_isop', 'E_isop_kg','background',
-                  'GC_E_isop', 'GC_E_isop_kg', 'GC_background',
-                  'GC_slope']
-    #if not ignorePP: keys_to_save.append("") save PP based new emissions also..
-    for key in keys_to_save:
-        outdata[key]=np.array([E[key] for E in Emiss]) # time will be first dim
+    outattrs['smearing']={'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for %s'%mstr}
 
     # Save file, with attributes
     fio.save_to_hdf5(fname,outdata,attrdicts=outattrs,fattrs=fattrs)

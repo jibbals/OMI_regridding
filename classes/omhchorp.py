@@ -93,7 +93,7 @@ __OMHCHORP_ATTRS__ = {
     'RSC_GC':               {'units':'molec/cm2',
                              'desc':'GEOS-Chem HCHO over reference sector'},
     'col_uncertainty_OMI':  {'units':'molec/cm2',
-                             'desc':'OMI\'s column uncertainty'},
+                             'desc':'mean OMI pixel uncertainty'},
     'AMF_GC':               {'desc':'AMF based on GC recalculation of shape factor'},
     'AMF_OMI':              {'desc':'AMF based on GC recalculation of shape factor'},
     'AMF_PP':               {'desc':'AMF based on PPalmer code using OMI and GEOS-Chem'},
@@ -166,11 +166,13 @@ class omhchorp:
         # remove small and negative AMFs
         if hasattr(self,'AMF_PP'):
             print("Removing %d AMF_PP's less than 0.1"%np.nansum(self.AMF_PP<0.1))
-            self.AMF_PP[self.AMF_PP < 0.1]=np.NaN
+            print("    EDIT: not removed at the moment")
+            #self.AMF_PP[self.AMF_PP < 0.1]=np.NaN
             screen=[-5e15,1e17]
             screened=(self.VCC_PP<screen[0]) + (self.VCC_PP>screen[1])
             print("Removing %d VCC_PP's outside [-5e15,1e17]"%(np.sum(screened)))
-            self.VCC_PP[screened]=np.NaN
+            print("    EDIT: not removed at the moment")
+            #self.VCC_PP[screened]=np.NaN
 
         mlons,mlats=np.meshgrid(self.lons,self.lats)
 

@@ -19,16 +19,12 @@ from mpl_toolkits.basemap import maskoceans #Basemap, maskoceans
 import numpy as np
 from datetime import datetime#, timedelta
 
-# Add parent folder to path
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-sys.path.insert(0,os.path.dirname(currentdir))
-
+# Local libraries
 # my file reading library
 from utilities import fio, JesseRegression
 import utilities.utilities as util
 from utilities import plotting as pp
-sys.path.pop(0)
+
 
 ###############
 ### GLOBALS ###
@@ -36,13 +32,38 @@ sys.path.pop(0)
 
 __VERBOSE__=True
 __DEBUG__=False
-__E_new_keys__=['E_isop','E_isop_kg','GC_E_isop','GC_E_isop_kg',
-                'GC_background', 'GC_slope', 'background', 'lats',
-                'lats_e', 'lons', 'lons_e', 'time','smearing']
+__E_new_keys__=[            # #  # {time, lats, lons}
+                'BG_OMI',       #  {31, 152, 152}
+                'BG_OMI_m',     #  {152, 152}
+                'BG_PP',        #  {31, 152, 152}
+                'BG_PP_m',      #  {152, 152}
+                'BG_VCC',       #  {31, 152, 152}
+                'BG_VCC_m',     #  {152, 152}
+                'E_VCC',        #  {31, 152, 152}
+                'E_VCC_OMI',    #  {31, 152, 152}
+                'E_VCC_OMI_m',  #  {152, 152}
+                'E_VCC_PP',     #  {31, 152, 152}
+                'E_VCC_PP_m',   #  {152, 152}
+                'E_VCC_m',      #  {152, 152}
+                'VCC',          # {31, 152, 152}
+                'VCC_OMI',      # {31, 152, 152}
+                'VCC_OMI_m',    # {152, 152}
+                'VCC_PP',       # {31, 152, 152}
+                'VCC_PP_m',     # {152, 152}
+                'VCC_m',        # {152, 152}
+                'smearing',     # {19, 19}
+                ]
+__E_new_dims__=['lats',         # {152}
+                'lats_e',       # {153}
+                'lons',         # {152}
+                'lons_e',       # {153}
+                'time',         # {31}
+                ]
+
 
 # Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
 # Change to -175 to avoid crossing the 179 -> -179 boundary?
-__REMOTEPACIFIC__=[-15, -180, 15, -120]
+__REMOTEPACIFIC__=util.__REMOTEPACIFIC__
 
 ########################################################################
 ########################  E_new CLASS ###############################
@@ -60,31 +81,42 @@ class E_new:
         # day0=datetime(2005,1,1); dayn=datetime(2005,3,1)
         # Get list of months including requested data
         months=util.list_months(day0,dayn)
-
         n_months=len(months)
         E_new_list=[]
 
         # For each month read the data
         for month in months:
-            data,attrs=fio.read_E_new_month(month=month)
+            data,attrs=fio.read_E_new_month(month=month,keys=dkeys+__E_new_dims__)
             E_new_list.append(data)
         self.attributes=attrs
-        dimensions=['lons','lons_e','lats','lats_e']
+        dimensions=['lats','lons','lats_e','lons_e']
 
         # Combine the data
         for key in E_new_list[0].keys():
             if __VERBOSE__:
-                print("Reading ",key) 
-            #print(key,np.shape(E_new_list[0][key]))
+                print("Reading ",key, np.shape(E_new_list[0][key]))
+
+            # Read the dimensions
             if key in dimensions:
                 setattr(self,key,E_new_list[0][key])
-            elif (key == 'time') or (key in dkeys):
+
+            # Read the data and append to time dimensions if there's more than
+            # one month file being read
+            elif (key in ['time',]) or (key in dkeys):
+
+                # np array of the data [time, lats, lons]
                 data=np.array(E_new_list[0][key])
+
+                # for each extra month, append onto time dim:
                 for i in range(1,n_months):
                     data=np.append(data,np.array(E_new_list[i][key]),axis=0)
+
                 setattr(self, key, data)
+
             elif __VERBOSE__:
                 print("KEY %s not being read from E_new dataset"%key )
+
+
         self.dates=[datetime.strptime(str(t),"%Y%m%d") for t in self.time]
 
         # True over ocean squares

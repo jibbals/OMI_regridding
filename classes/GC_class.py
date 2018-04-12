@@ -683,7 +683,7 @@ class GC_biogenic:
         # first get hemco output for this month
         self.hemco=Hemco_diag(month,month=True)
         # also get satellite output
-        self.sat_out=GC_sat(month,run='biogenic')
+        self.sat_out=GC_sat(month, dayN=util.last_day(month) ,run='biogenic')
 
     def model_slope(self, region=pp.__AUSREGION__, overpass_hour=13):
         '''

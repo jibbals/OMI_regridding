@@ -18,15 +18,16 @@ if [ -z ${PBS_O_LOGNAME} ] || [ -z ${MONTH} ]; then
         echo "EG 1: $0 200505"
         echo "EG 2: qsub -o logs/inversion_200505 -v MONTH=200505 run/inversion_month.sh"
         echo "   to save E_new fOR 200505 "
+        exit 0
     else
         echo "qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh"
         #read -r -p "run that command? [y/N] " response
         #response=${response,,}    # tolower
         #if [[ "$response" =~ ^(yes|y)$ ]]; then
-        qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh
-        #fi
+        #qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh
+        MONTH=$1
     fi
-    exit 0
+    
 fi
 
 ymdstr="${MONTH}01"
@@ -47,7 +48,7 @@ d1s=d1.strftime('%Y%m%d')
 # run with some dialog
 ndays=(d1-d0).days
 print("Beginning inversion (%d days) from %s to %s"%(ndays,d0s,d1s))
-Inversion.store_emissions(day0=d0,dayn=d1)
+Inversion.store_emissions_month(month=d0)
 print("Finished inversion")
 ENDPython
 

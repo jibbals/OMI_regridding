@@ -437,7 +437,9 @@ def remote_pacific_background(data,lats,lons, average_lons=False, average_lats=F
 
     '''
     # First pull out region in the remote pacific
-    subset=lat_lon_subset(lats,lons,__REMOTEPACIFIC__,[data])
+    # Use the lats from input data
+    remote_bg_region=[lats[0],__REMOTEPACIFIC__[1],lats[-1],__REMOTEPACIFIC__[3]]
+    subset=lat_lon_subset(lats, lons, remote_bg_region, [data])
     rp=subset['data'][0]
     bglats=subset['lats']
     bglons=subset['lons']

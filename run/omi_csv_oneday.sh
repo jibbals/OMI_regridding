@@ -1,6 +1,6 @@
 #!/bin/bash
 #PBS -P m19
-#PBS -q express
+#PBS -q normal
 #PBS -N makeAMFcsv
 #PBS -l walltime=01:00:00
 #PBS -l mem=5000MB

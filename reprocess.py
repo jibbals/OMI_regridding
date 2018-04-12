@@ -475,6 +475,46 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     ## TODO: Save analysis metadata like SSDs or other metrics
     #
 
+def create_omhchorp_justfires(date, latres=0.25, lonres=0.3125):
+    '''
+        Function to create omhchorp with just fires, this is for fire filtering the first few days in 2005
+    '''
+
+    ymdstr=date.strftime("%Y%m%d")
+
+    if __VERBOSE__:
+        print("create_omhchorp_justfires called for %s"%ymdstr)
+
+    # how many lats, lons
+    lats,lons,lat_bounds,lon_bounds=util.lat_lon_grid(latres=latres,lonres=lonres)
+    ny,nx = len(lats), len(lons)
+
+    # fire filter can be made from the fire_count
+    fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date,latres=latres,lonres=lonres)
+    assert all(_flats == lats), "fire interpolation does not match our resolution"
+    
+    # Smoke filter similarly can be made from AAOD stored each day
+    smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date,latres=latres,lonres=lonres)
+    assert all(_flats == lats), "smoke aaod interpolation does not match our resolution"
+    
+    # Save fires, smoke out to H5 format, along with dates, lats, lons
+    outd=dict()
+    outd['latitude']            = lats
+    outd['longitude']           = lons
+    outd['fires']               = fire_count.astype(np.int16)
+    outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
+    outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True)
+
+    if __VERBOSE__:
+        print("sending day average to be saved: "+outfilename)
+    if __DEBUG__:
+        print(("keys: ",outd.keys()))
+
+    fio.save_to_hdf5(outfilename, outd, attrdicts=omhchorp.__OMHCHORP_ATTRS__, verbose=__DEBUG__)
+    if __DEBUG__:
+        print("File should be saved now...")
+
+
 # Working with 1-day stuff only from 29/3/2018
 #def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
 #    '''

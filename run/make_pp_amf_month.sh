@@ -14,6 +14,16 @@ printf -v mm "%02d" $2
 for i in `seq 1 31`;
 do
     printf -v dd "%02d" $i 
+
+    # check if file already exists:
+    outfile=Data/pp_amf/tropchem/amf_$1$mm$dd.csv
+    if [ -f $outfile ]; then
+        # Skip if file already exists
+        echo "$outfile exists already"
+        continue
+    else 
+        echo "submitting jobs to make $outfile"
+    fi
     
     # First run the code to make satellite data -> csv files for lidort code
     # 

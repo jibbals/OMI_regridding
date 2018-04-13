@@ -40,11 +40,12 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'BG_VCC',       #  {31, 152, 152}
                 'BG_VCC_m',     #  {152, 152}
                 'E_VCC',        #  {31, 152, 152}
+                'E_VCC_f',      #  Without fire filter
                 'E_VCC_OMI',    #  {31, 152, 152}
-                'E_VCC_OMI_m',  #  {152, 152}
+                'E_VCC_OMI_f',  #  Without using fire filter
                 'E_VCC_PP',     #  {31, 152, 152}
-                'E_VCC_PP_m',   #  {152, 152}
-                'E_VCC_m',      #  {152, 152}
+                'E_VCC_PP_f',   #  without using fire filter
+                'firefilter',   # Fire filter used for e estimates [time,lat,lon]
                 'VCC',          # {31, 152, 152}
                 'VCC_OMI',      # {31, 152, 152}
                 'VCC_OMI_m',    # {152, 152}
@@ -52,6 +53,9 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'VCC_PP_m',     # {152, 152}
                 'VCC_m',        # {152, 152}
                 'smearing',     # {19, 19}
+                'pixels',       # OMI pixel count
+                'pixels_PP',    # OMI pixel count using PP code
+                'uncert_OMI',   # OMI grid averaged pixel uncertainty
                 ]
 __E_new_dims__=['lats',         # {152}
                 'lats_e',       # {153}
@@ -86,7 +90,7 @@ class E_new:
 
         # For each month read the data
         for month in months:
-            data,attrs=fio.read_E_new_month(month=month,keys=dkeys+__E_new_dims__)
+            data,attrs=fio.read_E_new_month(month=month)
             E_new_list.append(data)
         self.attributes=attrs
         dimensions=['lats','lons','lats_e','lons_e']

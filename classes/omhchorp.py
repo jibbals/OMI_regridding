@@ -248,12 +248,17 @@ class omhchorp:
             Read OMAERUVd AAOD(500nm), regrid into local resoluion, mask days above thresh
 
         '''
-
-        # days of filtering:
-        # daylist=util.list_days(d0,dN)
+        if dN is None:
+            dN = d0
 
         if __VERBOSE__:
-            print ("Smoke mask being created for any square with aaod > %0.3f"%aaod_thresh)
+            print("Making smoke mask for %s - %s"%(d0,dN))
+            print("Smoke mask being created for any square with aaod > %0.3f"%aaod_thresh)
+
+        if self.n_times < 2:
+            if __VERBOSE__:
+                print("smoke mask has no time dimension")
+            return self.AAOD>aaod_thresh
 
         # Subset to the requested days:
         dates=np.array(self.dates)
@@ -261,14 +266,7 @@ class omhchorp:
         aaod=self.AAOD[i,:,:]
 
         # mask squares with more aaod pixels than allowed
-        mask = aaod>aaod_thresh
-
-        # mask adjacent squares also (if desired)
-        #if adjacent:
-        #    for i in range(len(daylist)):
-        #        mask[i]=util.set_adjacent_to_true(mask[i])
-
-        return mask
+        return aaod>aaod_thresh
 
     def inds_subset(self, lat0=None, lat1=None, lon0=None, lon1=None, maskocean=False, maskland=False):
         ''' return indices of lat, lon arrays within input box '''

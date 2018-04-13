@@ -118,7 +118,7 @@ def datetimes_from_np_datetime64(times, reverse=False):
     return [datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in times]
 
 
-def edges_from_mids(x,fix=True):
+def edges_from_mids(x,fix_max=179.99):
     '''
         Take a lat or lon vector input and return the edges
         Works for monotonic increasing grids only
@@ -140,12 +140,11 @@ def edges_from_mids(x,fix=True):
 
     if __VERBOSE__:
         print("VERBOSE: ", newx[0:5],newx[-5:])
+
     # Finally if the ends are outside 90N/S or 180E/W then bring them back
-    if fix:
-        if newx[-1] >= 90: newx[-1]=89.99
-        if newx[0] <= -90: newx[0]=-89.99
-        if newx[-1] >= 180: newx[-1]=179.99
-        if newx[0] <= -180: newx[0]=-179.99
+    if newx[-1] > fix_max: newx[-1]=fix_max
+    if newx[0] < -1*fix_max: newx[0]=-1*fix_max
+
 
     return newx
 

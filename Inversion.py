@@ -525,9 +525,9 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     for i,day in enumerate(days):
 
         # Need background values from remote pacific
-        BG_VCCi,bglats,bglons = util.remote_pacific_background(OMI.VCC[i], omilats, omilons, average_lons=True)
-        BG_PPi ,bglats,bglons = util.remote_pacific_background(OMI.VCC_PP[i], omilats, omilons, average_lons=True)
-        BG_OMIi,bglats,bglons = util.remote_pacific_background(OMI.VC_OMI_RSC[i], omilats, omilons, average_lons=True)
+        BG_VCCi, bglats, bglons = util.remote_pacific_background(OMI.VCC[i], omilats, omilons, average_lons=True)
+        BG_PPi , bglats, bglons = util.remote_pacific_background(OMI.VCC_PP[i], omilats, omilons, average_lons=True)
+        BG_OMIi, bglats, bglons = util.remote_pacific_background(OMI.VC_OMI_RSC[i], omilats, omilons, average_lons=True)
 
         # can check that reshaping makes sense with:
         #bgcolumn=np.copy(BG_VCCi)
@@ -559,12 +559,15 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
         E_omi_f[i,:,:]      = (VCC_OMI[i] - BG_OMIi) / GC_slope
         # Again with fire filter applied
         ff                  = firefilter[i]
-        VCC[i][ff]          = np.NaN
-        VCC_PP[i][ff]       = np.NaN
-        VCC_OMI[i][ff]      = np.NaN
-        E_vcc[i,:,:]        = (VCC[i] - BG_VCCi) / GC_slope
-        E_pp[i,:,:]         = (VCC_PP[i] - BG_PPi) / GC_slope
-        E_omi[i,:,:]        = (VCC_OMI[i] - BG_OMIi) / GC_slope
+        vcci                = np.copy(VCC[i])
+        vcci[ff]            = np.NaN
+        vcc_ppi             = np.copy(VCC_PP[i])
+        vcc_ppi[ff]         = np.NaN
+        vcc_omii            = np.copy(VCC_OMI[i])
+        vcc_omii[ff]        = np.NaN
+        E_vcc[i,:,:]        = (vcci - BG_VCCi) / GC_slope
+        E_pp[i,:,:]         = (vcc_ppi - BG_PPi) / GC_slope
+        E_omi[i,:,:]        = (vcc_omii - BG_OMIi) / GC_slope
 
 
     elapsed = timeit.default_timer() - time_emiss_calc

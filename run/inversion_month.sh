@@ -21,10 +21,12 @@ if [ -z ${PBS_O_LOGNAME} ] || [ -z ${MONTH} ]; then
         exit 0
     else
         echo "qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh"
-        #read -r -p "run that command? [y/N] " response
-        #response=${response,,}    # tolower
-        #if [[ "$response" =~ ^(yes|y)$ ]]; then
-        #qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh
+        read -r -p "run that command? [y/N] " response
+        response=${response,,}    # tolower
+        if [[ "$response" =~ ^(yes|y)$ ]]; then
+            qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh
+            exit 0
+        fi
         MONTH=$1
     fi
     

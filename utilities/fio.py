@@ -233,7 +233,8 @@ def read_AAOD(date):
     lons=np.linspace(-179.5,179.5,360)
     
     # Field names of desired fields:
-    field_aaod500 = '/HDFEOS/GRIDS/Aerosol NearUV Grid/Data Fields/FinalAerosolOpticalDepth500'
+    # AAOD
+    field_aaod500 = '/HDFEOS/GRIDS/Aerosol NearUV Grid/Data Fields/FinalAerosolAbsOpticalDepth500'
     
     # read he5 file...
     with h5py.File(fpath,'r') as in_f:

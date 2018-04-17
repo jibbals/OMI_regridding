@@ -147,8 +147,6 @@ def read_csv(filename, delimiter=',', hasheader=True):
 
     return ret
 
-
-
 def read_netcdf(filename):
     '''
         read all of some netcdf file...
@@ -224,18 +222,18 @@ def read_AAOD(date):
         Read OMAERUVd 1x1 degree resolution for a particular date
     '''
     fpath=glob('Data/OMAERUVd/'+date.strftime('OMI-Aura_L3-OMAERUVd_%Ym%m%d*.he5'))[0]
-    
+
     if __VERBOSE__:
         print("Reading AAOD from ",fpath)
-    
+
     # Seems that the 1x1 grid orientation is as follows:
     lats=np.linspace(-89.5,89.5,180)
     lons=np.linspace(-179.5,179.5,360)
-    
+
     # Field names of desired fields:
     # AAOD
     field_aaod500 = '/HDFEOS/GRIDS/Aerosol NearUV Grid/Data Fields/FinalAerosolAbsOpticalDepth500'
-    
+
     # read he5 file...
     with h5py.File(fpath,'r') as in_f:
         ## get data arrays
@@ -251,6 +249,24 @@ def read_AAOD_interpolated(date, latres=0.25,lonres=0.3125):
 
     newaaod=util.regrid(aaod,lats,lons,newlats,newlons)
     return newaaod,newlats,newlons
+
+def read_smoke(d0,dN, latres=0.25, lonres=0.3125):
+    '''
+        Read AAOD interpolated over some date dimension
+        returns AAOD, dates,lats,lons
+    '''
+    dates=util.list_days(d0,dN,month=False)
+    smoke0,lats,lons=read_AAOD_interpolated(date=d0,latres=latres,lonres=lonres)
+    if len(dates)==1:
+        return smoke0,dates,lats,lons
+
+    retsmoke=np.zeros([len(dates),len(lats),len(lons)])
+    retsmoke[0] = smoke0
+    for i,day in enumerate(dates[1:]):
+        smokei,lats,lons=read_AAOD_interpolated(date=day,latres=latres,lonres=lonres)
+        retsmoke[i+1] = smokei
+
+    return retsmoke, dates, lats, lons
 
 
 def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
@@ -278,6 +294,7 @@ def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
 
     return fires,lats,lons
 
+
 def read_MOD14A1_interpolated(date=datetime(2005,1,1), latres=0.25,lonres=0.3125):
     '''
         Read firepixels/day from MOD14A1 daily gridded product
@@ -289,61 +306,150 @@ def read_MOD14A1_interpolated(date=datetime(2005,1,1), latres=0.25,lonres=0.3125
     newfires=util.regrid_to_lower(fires,lats,lons,newlats,newlons,np.nansum)
     return newfires,newlats,newlons
 
-
-def read_8dayfire(date=datetime(2005,1,1,0)):
+def read_fires(d0, dN, latres=0.25, lonres=0.3125):
     '''
-    Read 8 day fire average file
-    This function determines the filepath based on date input
+        Read fires from MOD14A1 into a time,lat,lon array
+        Returns Fires[dates,lats,lons], dates,lats,lons
     '''
-    # filenames are all like *yyyyddd.h5, where ddd is day of the year(DOY), one for every 8 days
-    tt = date.timetuple()
+    dates=util.list_days(d0,dN,month=False)
+    fire0,lats,lons=read_MOD14A1_interpolated(date=d0,latres=latres,lonres=lonres)
+    if len(dates) == 1:
+        return fire0,lats,lons
 
-    # only every 8 days matches a file
-    # this will give us a multiple of 8 which matches our DOY
-    daymatch= int(np.floor(tt.tm_yday/8)*8) +1
-    filepath='Data/MYD14C8H/MYD14C8H.%4d%03d.h5' % (tt.tm_year, daymatch)
-    return read_8dayfire_path(filepath)
+    retfires=np.zeros([len(dates),len(lats),len(lons)])
+    retfires[0] = fire0
+    for i,day in enumerate(dates[1:]):
+        firei,lats,lons=read_MOD14A1_interpolated(date=day,latres=latres,lonres=lonres)
+        retfires[i+1] = firei
 
-def read_8dayfire_path(path):
+    return retfires, dates, lats, lons
+
+def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1, adjacent=True):
     '''
-    Read fires file using given path
+        Return fire mask with dimensions [len(d0-dN), n_lats, n_lons]
+        looks at fires between [d0-days_masked+1, dN], for each day in d0 to dN
+
+        If days_masked extends before contained days then the fire mask is read from omhchorp files
+
+        mask is true where more than fire_thresh fire pixels exist.
+
     '''
-    ## Fields to be read:
-    # Count of fires in each grid box over 8 days
-    corrFirePix = 'CorrFirePix'
-    #cloudCorrFirePix = 'CloudCorrFirePix'
+    # first day of filtering
+    daylist=util.list_days(d0,dN)
+    first_day=daylist[0]-timedelta(days=prior_days_masked)
+    last_day=daylist[-1]
 
-    ## read in file:
-    with h5py.File(path,'r') as in_f:
-        ## get data arrays
-        cfp     = in_f[corrFirePix].value
-        #ccfp    = in_f[cloudCorrFirePix].value
+    if __VERBOSE__:
+        print("VERBOSE: make_fire_mask will return rolling %d day fire masks between "%prior_days_masked+1, d0, '-', last_day)
+        print("VERBOSE: They will filter gridsquares with more than %d fire pixels detected"%fire_thresh)
+        print("VERBOSE: fire mask will be read from omhchorp now.")
 
-    # from document at
-    # http://www.fao.org/fileadmin/templates/gfims/docs/MODIS_Fire_Users_Guide_2.4.pdf
-    # latitude = 89.75 - 0.5 * y
-    # longitude = -179.75 + 0.5 * x
-    lats    = np.arange(90,-90,-0.5) - 0.25
-    lons    = np.arange(-180,180, 0.5) + 0.25
-    return (cfp, lats, lons)
+    # read fires[dates,lats,lons]
+    fires, _dates, lats, lons = read_fires(d0=first_day,dN=last_day)
 
-def read_8dayfire_interpolated(date,latres,lonres):
+    # mask squares with more fire pixels than allowed
+    mask = fires>fire_thresh
+
+    retmask= np.zeros([len(daylist),len(lats),len(lons)]).astype(np.bool)
+
+    # actual mask is made up of sums of daily masks over prior days_masked
+
+    if prior_days_masked>0:
+        # from end back to first day in daylist
+        for i in -np.arange(0,len(daylist)+1):
+            tempmask=mask[i-prior_days_masked-1:] # look at last N days (N is prior days masked)
+            if i < 0:
+                tempmask=tempmask[:i] # remove days past the 'current'
+
+            # mask is made up from prior N days, working backwards
+            retmask[i-1]=np.sum(tempmask,axis=0)
+
+    else:
+        retmask = mask
+    assert retmask.shape[0]==len(daylist), 'return mask is wrong!'
+
+    # mask adjacent squares also (if desired)
+    if adjacent:
+        for i in range(len(daylist)):
+            retmask[i]=util.set_adjacent_to_true(retmask[i])
+
+    return retmask
+
+def make_smoke_mask(d0, dN=None, aaod_thresh=0.05):
     '''
-    Read the date, interpolate data to match lat/lon resolution, return data
+        Return smoke mask with dimensions [len(d0-dN), n_lats, n_lons]
+
+        Read OMAERUVd AAOD(500nm), regrid into local resoluion, mask days above thresh
+
     '''
-    ##original lat/lons:
-    fires, lats, lons = read_8dayfire(date)
-    #lats = np.arange(90,-90,-0.5) - 0.25
-    #lons = np.arange(-180,180, 0.5) + 0.25
+    if dN is None:
+        dN = d0
 
-    newlats= np.arange(-90,90, latres) + latres/2.0
-    newlons= np.arange(-180,180, lonres) + lonres/2.0
+    if __VERBOSE__:
+        print("Making smoke mask for %s - %s"%(d0,dN))
+        print("Smoke mask being created for any square with aaod > %0.3f"%aaod_thresh)
 
-    mlons,mlats = np.meshgrid(lons,lats)
-    mnewlons,mnewlats = np.meshgrid(newlons,newlats)
+    # smoke from OMAERUVd
+    smoke, dates, lats, lons = read_smoke(d0, dN)
 
-    interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons), method='nearest')
-    return interp, newlats, newlons
+    # Return mask for aaod over threshhold
+    return smoke>aaod_thresh
+
+# Fire code is for old fire product
+#def read_8dayfire(date=datetime(2005,1,1,0)):
+#    '''
+#    Read 8 day fire average file
+#    This function determines the filepath based on date input
+#    '''
+#    # filenames are all like *yyyyddd.h5, where ddd is day of the year(DOY), one for every 8 days
+#    tt = date.timetuple()
+#
+#    # only every 8 days matches a file
+#    # this will give us a multiple of 8 which matches our DOY
+#    daymatch= int(np.floor(tt.tm_yday/8)*8) +1
+#    filepath='Data/MYD14C8H/MYD14C8H.%4d%03d.h5' % (tt.tm_year, daymatch)
+#    return read_8dayfire_path(filepath)
+#
+#def read_8dayfire_path(path):
+#    '''
+#    Read fires file using given path
+#    '''
+#    ## Fields to be read:
+#    # Count of fires in each grid box over 8 days
+#    corrFirePix = 'CorrFirePix'
+#    #cloudCorrFirePix = 'CloudCorrFirePix'
+#
+#    ## read in file:
+#    with h5py.File(path,'r') as in_f:
+#        ## get data arrays
+#        cfp     = in_f[corrFirePix].value
+#        #ccfp    = in_f[cloudCorrFirePix].value
+#
+#    # from document at
+#    # http://www.fao.org/fileadmin/templates/gfims/docs/MODIS_Fire_Users_Guide_2.4.pdf
+#    # latitude = 89.75 - 0.5 * y
+#    # longitude = -179.75 + 0.5 * x
+#    lats    = np.arange(90,-90,-0.5) - 0.25
+#    lons    = np.arange(-180,180, 0.5) + 0.25
+#    return (cfp, lats, lons)
+#
+#def read_8dayfire_interpolated(date,latres,lonres):
+#    '''
+#    Read the date, interpolate data to match lat/lon resolution, return data
+#    '''
+#    ##original lat/lons:
+#    fires, lats, lons = read_8dayfire(date)
+#    #lats = np.arange(90,-90,-0.5) - 0.25
+#    #lons = np.arange(-180,180, 0.5) + 0.25
+#
+#    newlats= np.arange(-90,90, latres) + latres/2.0
+#    newlons= np.arange(-180,180, lonres) + lonres/2.0
+#
+#    mlons,mlats = np.meshgrid(lons,lats)
+#    mnewlons,mnewlats = np.meshgrid(newlons,newlats)
+#
+#    interp = griddata( (mlats.ravel(), mlons.ravel()), fires.ravel(), (mnewlats, mnewlons), method='nearest')
+#    return interp, newlats, newlons
 
 def read_E_new_month(month=datetime(2005,1,1), oneday=None, filename=None):
     '''
@@ -603,8 +709,8 @@ def read_omno2d(day0,dayN=None,month=False):
     #vcdname='HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields/ColumnAmountNO2'
     #vcdcsname='HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields/ColumnAmountNO2CloudScreened'
     tropname='HDFEOS/GRIDS/ColumnAmountNO2/Data Fields/ColumnAmountNO2TropCloudScreened'
-    latname='HDFEOS/GRIDS/ColumnAmountNO2/lat'
-    lonname='HDFEOS/GRIDS/ColumnAmountNO2/lon'
+    #latname='HDFEOS/GRIDS/ColumnAmountNO2/lat'
+    #lonname='HDFEOS/GRIDS/ColumnAmountNO2/lon'
     ddir='Data/OMNO2d/data/'
 
     dates=util.list_days(day0,dayN)
@@ -623,7 +729,7 @@ def read_omno2d(day0,dayN=None,month=False):
             #for name in in_f[tropname]:
             #    print (name)
             trop=in_f[tropname].value
-            trop[trop<1e-20] = np.NaN
+            trop[trop<-1e20] = np.NaN
 
             data[ii]=trop
 
@@ -639,6 +745,28 @@ def read_omno2d(day0,dayN=None,month=False):
     ret={'tropno2':data,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
     return ret,attrs
 
+def make_anthro_mask(d0, dN, no2thresh=1e16, latres=0.25, lonres=0.3125):
+    '''
+
+    '''
+    # Read the tropno2 columns
+    dates=util.list_days(d0,dN,month=False)
+
+    omno2, omno2_attrs = read_omno2d(day0=d0, dayN=dN, month=False)
+    lats = omno2['lats']
+    lons = omno2['lons']
+    no2  = omno2['tropno2'] # [dates, lats, lons]
+
+    # regridding 0.25x0.25 to 0.25x0.3125 may cause issues, but lets see
+    newlats, newlons, _nlate, _nlone = util.lat_lon_grid(latres=latres,lonres=lonres)
+
+    ret = np.zeros([len(dates),len(newlats),len(newlons)]).astype(np.bool)
+
+    for i,day in enumerate(dates):
+        no2i = util.regrid_to_lower(no2[i],lats,lons,newlats,newlons,func=np.nanmean)
+        ret[i] = no2i > no2thresh
+
+    return ret, dates, newlats, newlons
 
 def filter_high_latitudes(array, latres=0.25, lonres=0.3125, highest_lat=60.0):
     '''
@@ -700,3 +828,82 @@ def read_GC_output(date=datetime(2005,1,1), Isop=False,
     else:
         data=get_tropchem_data(date,keys=keys,monthavg=monthavg,surface=surface)
     return data
+
+
+def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1, adjacent=True):
+    '''
+        Return fire mask with dimensions [len(d0-dN), n_lats, n_lons]
+        looks at fires between [d0-days_masked+1, dN], for each day in d0 to dN
+
+        If days_masked extends before contained days then the fire mask is read from omhchorp files
+
+        mask is true where more than fire_thresh fire pixels exist.
+
+    '''
+    # first day of filtering
+    daylist=util.list_days(d0,dN)
+    first_day=daylist[0]-timedelta(days=prior_days_masked)
+    last_day=daylist[-1]
+
+    if __VERBOSE__:
+        print("VERBOSE: make_fire_mask will return rolling %d day fire masks between "%prior_days_masked+1, d0, '-', last_day)
+        print("VERBOSE: They will filter gridsquares with more than %d fire pixels detected"%fire_thresh)
+        print("VERBOSE: fire mask will be read from omhchorp now.")
+
+
+    om = omhchorp(first_day,last_day,keylist=['fires'])
+    fires = om.fires
+
+    # mask squares with more fire pixels than allowed
+    mask = fires>fire_thresh
+    retmask= np.zeros([len(daylist),self.n_lats,self.n_lons]).astype(np.bool)
+
+    # actual mask is made up of sums of daily masks over prior days_masked
+
+    if prior_days_masked>0:
+        # from end back to first day in daylist
+        for i in -np.arange(0,len(daylist)+1):
+            tempmask=mask[i-prior_days_masked-1:] # look at last N days (N is prior days masked)
+            if i < 0:
+                tempmask=tempmask[:i] # remove days past the 'current'
+
+            # mask is made up from prior N days, working backwards
+            retmask[i-1]=np.sum(tempmask,axis=0)
+
+    else:
+        retmask = mask
+    assert retmask.shape[0]==len(daylist), 'return mask is wrong!'
+
+    # mask adjacent squares also (if desired)
+    if adjacent:
+        for i in range(len(daylist)):
+            retmask[i]=util.set_adjacent_to_true(retmask[i])
+
+    return retmask
+
+def make_smoke_mask(self, d0, dN=None, aaod_thresh=0.2):
+    '''
+        Return smoke mask with dimensions [len(d0-dN), n_lats, n_lons]
+
+        Read OMAERUVd AAOD(500nm), regrid into local resoluion, mask days above thresh
+
+    '''
+    if dN is None:
+        dN = d0
+
+    if __VERBOSE__:
+        print("Making smoke mask for %s - %s"%(d0,dN))
+        print("Smoke mask being created for any square with aaod > %0.3f"%aaod_thresh)
+
+    if self.n_times < 2:
+        if __VERBOSE__:
+            print("smoke mask has no time dimension")
+        return self.AAOD>aaod_thresh
+
+    # Subset to the requested days:
+    dates=np.array(self.dates)
+    i = (dates <= dN) * (dates >= d0)
+    aaod=self.AAOD[i,:,:]
+
+    # mask squares with more aaod pixels than allowed
+    return aaod>aaod_thresh

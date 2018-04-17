@@ -450,7 +450,6 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     outdata={}
     outattrs={}
 
-
     # Read omhchorp VCs, AMFs, Fires, Smoke, etc...
     if OMI is None:
         OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=False)
@@ -465,11 +464,18 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     newlons=omilons[omiloni]
 
     # We need to make the fire and smoke masks:
-    firemask=OMI.make_fire_mask(d0=day0, dN=dayn, days_masked=8,
-                                fire_thresh=1, adjacent=True)
-    smokemask=OMI.make_smoke_mask(d0=day0,dN=dayn, aaod_thresh=0.2)
-    firefilter=(firemask+smokemask).astype(np.bool)
+    firemask=fio.make_fire_mask(d0=day0, dN=dayn, prior_days_masked=2, fire_thresh=1, adjacent=True)
+    smokemask=fio.make_smoke_mask(d0=day0, dN=dayn, aaod_thresh=0.2)
 
+    # We also want an anthropogenic mask:
+    no2thresh=1e16
+    no2mask, _no2dates, _no2lats, _no2lons = fio.make_anthro_mask(d0=day0, dN=dayn, no2thresh=no2thresh)
+
+
+
+    # Filters made up of these masks:
+    firefilter=(firemask+smokemask).astype(np.bool)
+    anthrofilter=no2mask
 
     # Need Vertical colums, slope, and backgrounds all at same resolution to get emissions
     VCC                   = np.copy(OMI.VCC)
@@ -479,7 +485,6 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     pixels_PP             = np.copy(OMI.ppentries)
     SArea                 = np.copy(OMI.surface_areas)
     uncert                = np.copy(OMI.col_uncertainty_OMI)
-    #VCC_orig              = np.copy(OMI.VCC) # to see the effect of the fire mask do some without
 
 
 
@@ -509,14 +514,27 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     uncert      = uncert[:,:,omiloni]
     firefilter  = firefilter[:,omilati,:]
     firefilter  = firefilter[:,:,omiloni]
+    anthrofilter= anthrofilter[:,omilati,:]
+    anthrofilter= anthrofilter[:,:,omiloni]
 
     # emissions using different columns as basis
+    # Fully filtered:
     E_vcc       = np.zeros(VCC.shape) + np.NaN
     E_pp        = np.zeros(VCC.shape) + np.NaN
     E_omi       = np.zeros(VCC.shape) + np.NaN
+    # Only fire filtered
     E_vcc_f     = np.zeros(VCC.shape) + np.NaN
     E_pp_f      = np.zeros(VCC.shape) + np.NaN
     E_omi_f     = np.zeros(VCC.shape) + np.NaN
+    # Only anthro filtered
+    E_vcc_a     = np.zeros(VCC.shape) + np.NaN
+    E_pp_a      = np.zeros(VCC.shape) + np.NaN
+    E_omi_a     = np.zeros(VCC.shape) + np.NaN
+    # unfiltered:
+    E_vcc_u     = np.zeros(VCC.shape) + np.NaN
+    E_pp_u      = np.zeros(VCC.shape) + np.NaN
+    E_omi_u     = np.zeros(VCC.shape) + np.NaN
+
     BG_VCC      = np.zeros(VCC.shape) + np.NaN
     BG_PP       = np.zeros(VCC.shape) + np.NaN
     BG_OMI      = np.zeros(VCC.shape) + np.NaN
@@ -551,12 +569,11 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
         BG_PP[i,:,:]  = BG_PPi
         BG_OMI[i,:,:] = BG_OMIi
 
-        # Run calculation with and without applying a fire + smoke filter:
-        # Remove gridsquares affected by Fire or Smoke
+        # Run calculation with no filters applied:
+        E_vcc_u[i,:,:]      = (VCC[i] - BG_VCCi) / GC_slope
+        E_pp_u[i,:,:]       = (VCC_PP[i] - BG_PPi) / GC_slope
+        E_omi_u[i,:,:]      = (VCC_OMI[i] - BG_OMIi) / GC_slope
 
-        E_vcc_f[i,:,:]      = (VCC[i] - BG_VCCi) / GC_slope
-        E_pp_f[i,:,:]       = (VCC_PP[i] - BG_PPi) / GC_slope
-        E_omi_f[i,:,:]      = (VCC_OMI[i] - BG_OMIi) / GC_slope
         # Again with fire filter applied
         ff                  = firefilter[i]
         vcci                = np.copy(VCC[i])
@@ -565,10 +582,33 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
         vcc_ppi[ff]         = np.NaN
         vcc_omii            = np.copy(VCC_OMI[i])
         vcc_omii[ff]        = np.NaN
+        E_vcc_f[i,:,:]        = (vcci - BG_VCCi) / GC_slope
+        E_pp_f[i,:,:]         = (vcc_ppi - BG_PPi) / GC_slope
+        E_omi_f[i,:,:]        = (vcc_omii - BG_OMIi) / GC_slope
+
+        # again with just anthro filter applied
+        af                  = anthrofilter[i]
+        vcci                = np.copy(VCC[i])
+        vcci[af]            = np.NaN
+        vcc_ppi             = np.copy(VCC_PP[i])
+        vcc_ppi[af]         = np.NaN
+        vcc_omii            = np.copy(VCC_OMI[i])
+        vcc_omii[af]        = np.NaN
+        E_vcc_a[i,:,:]        = (vcci - BG_VCCi) / GC_slope
+        E_pp_a[i,:,:]         = (vcc_ppi - BG_PPi) / GC_slope
+        E_omi_a[i,:,:]        = (vcc_omii - BG_OMIi) / GC_slope
+
+        # finally with both filters
+        faf                 = firefilter[i] + anthrofilter[i]
+        vcci                = np.copy(VCC[i])
+        vcci[faf]           = np.NaN
+        vcc_ppi             = np.copy(VCC_PP[i])
+        vcc_ppi[faf]        = np.NaN
+        vcc_omii            = np.copy(VCC_OMI[i])
+        vcc_omii[faf]       = np.NaN
         E_vcc[i,:,:]        = (vcci - BG_VCCi) / GC_slope
         E_pp[i,:,:]         = (vcc_ppi - BG_PPi) / GC_slope
         E_omi[i,:,:]        = (vcc_omii - BG_OMIi) / GC_slope
-
 
     elapsed = timeit.default_timer() - time_emiss_calc
     print ("TIMEIT: Took %6.2f seconds to calculate backgrounds and estimate emissions()"%elapsed)
@@ -589,9 +629,9 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     outdata['VCC']        = VCC
     outdata['VCC_PP']     = VCC_PP
     outdata['VCC_OMI']    = VCC_OMI
-    outattrs['VCC']       = {'unit':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, with fires masked'}
-    outattrs['VCC_PP']    = {'unit':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code, with fires masked'}
-    outattrs['VCC_OMI']   = {'unit':'molec/cm2','desc':'OMI (corrected) Vertical column, with fires masked'}
+    outattrs['VCC']       = {'unit':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, fire and anthro masked'}
+    outattrs['VCC_PP']    = {'unit':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code, fire and anthro masked'}
+    outattrs['VCC_OMI']   = {'unit':'molec/cm2','desc':'OMI (corrected) Vertical column, fire and anthro masked'}
 
     # Save the Emissions estimates, as well as units/descriptions
     outdata['E_VCC']        = E_vcc
@@ -600,6 +640,12 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     outdata['E_VCC_f']      = E_vcc_f
     outdata['E_VCC_PP_f']   = E_pp_f
     outdata['E_VCC_OMI_f']  = E_omi_f
+    outdata['E_VCC_a']      = E_vcc_a
+    outdata['E_VCC_PP_a']   = E_pp_a
+    outdata['E_VCC_OMI_a']  = E_omi_a
+    outdata['E_VCC_u']      = E_vcc_u
+    outdata['E_VCC_PP_u']   = E_pp_u
+    outdata['E_VCC_OMI_u']  = E_omi_u
     outattrs['E_VCC']       = {'unit':'molec OR atom C???/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope'}
     outattrs['E_VCC_PP']    = {'unit':'molec OR atom C??/cm2/s',
@@ -607,19 +653,34 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     outattrs['E_VCC_OMI']   = {'unit':'molec OR/cm2/s',
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope'}
     outattrs['E_VCC_f']     = {'unit':'molec OR atom C???/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC and GC_slope, without fire effect filtered out'}
+                               'desc':'Isoprene Emissions based on VCC and GC_slope, just fires masked'}
     outattrs['E_VCC_PP_f']  = {'unit':'molec OR atom C??/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope, without fire effect filtered out'}
+                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope, just fires masked'}
     outattrs['E_VCC_OMI_f'] = {'unit':'molec OR/cm2/s',
-                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope, without fire effect filtered out'}
+                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope, just fires masked'}
+    outattrs['E_VCC_a']     = {'unit':'molec OR atom C???/cm2/s',
+                               'desc':'Isoprene Emissions based on VCC and GC_slope, just anthro masked'}
+    outattrs['E_VCC_PP_a']  = {'unit':'molec OR atom C??/cm2/s',
+                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope, just anthro masked'}
+    outattrs['E_VCC_OMI_a'] = {'unit':'molec OR/cm2/s',
+                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope, just anthro masked'}
+    outattrs['E_VCC_u']     = {'unit':'molec OR atom C???/cm2/s',
+                               'desc':'Isoprene Emissions based on VCC and GC_slope, unmasked by fire or anthro'}
+    outattrs['E_VCC_PP_u']  = {'unit':'molec OR atom C??/cm2/s',
+                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope, unmasked by fire or anthro'}
+    outattrs['E_VCC_OMI_u'] = {'unit':'molec OR/cm2/s',
+                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope, unmasked by fire or anthro'}
 
     # Extras like pixel counts etc..
     outdata['firefilter']   = firefilter.astype(np.int)
+    outdata['anthrofilter'] = anthrofilter.astype(np.int)
     outdata['pixels']       = pixels
     outdata['pixels_PP']    = pixels_PP
     outdata['uncert_OMI']   = uncert
     outattrs['firefilter']  = {'unit':'N/A',
                                'desc':'Squares with more than one fire or more than 0.2 aaod: 1 for True (filtered)'}
+    outattrs['anthrofilter']= {'unit':'N/A',
+                               'desc':'Squares with tropNO2 from OMI greater than %.1e'%no2thresh}
     outattrs['uncert_OMI']  = {'unit':'?? molec/cm2 ??',
                                'desc':'OMI pixel uncertainty averaged for each gridsquare'}
     outattrs['pixels']      = {'unit':'n',

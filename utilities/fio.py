@@ -238,6 +238,7 @@ def read_AAOD(date):
     with h5py.File(fpath,'r') as in_f:
         ## get data arrays
         aaod  = in_f[field_aaod500].value     #[ 180, 360 ]
+    aaod[aaod<0] = np.NaN
     return aaod,lats,lons
 
 def read_AAOD_interpolated(date, latres=0.25,lonres=0.3125):

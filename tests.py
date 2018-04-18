@@ -72,6 +72,69 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
+def typical_aaods():
+    '''
+    Check typical aaod over Australia during specific events
+    row a) normal
+    row b) Black saturday: 20090207-20090314
+    row c) transported smoke: 20051103,08,17
+    row d) dust storm : 20090922-24
+    '''
+
+    # read particular days of aaod
+    dates = [ datetime(2005,6,10), datetime(2009,2,19),
+              datetime(2005,11,8), datetime(2009,9,23) ]
+
+    # plot stuff
+    plt.figure(figsize=(16,16))
+    titles=['normal','black saturday','transported plume','dust storm']
+    region=pp.__AUSREGION__
+    zooms=[None,[-40,140,-25,153],[-42,130,-20,155],[-40,120,-20,155]]
+    TerraModis=[None,
+                'Figs/TerraModis_BlackSaturday_20090219.png',
+                None,
+                'Figs/TerraModis_DustStorm_20090923.png']
+    vmin=1e-3
+    vmax=1e-1
+    cmapname='pink_r'
+    linear=False
+
+    for i,day in enumerate(dates):
+        zoom=region
+        plt.subplot(4,4,1+i*4)
+
+        title = titles[i] + day.strftime(' %Y%m%d')
+        aaod, lats, lons = fio.read_AAOD(day)
+        pp.createmap(aaod, lats, lons, title=title, region=zoom,
+                     vmin=vmin, vmax=vmax, linear=linear, cmapname=cmapname)
+
+        if zooms[i] is not None:
+            zoom=zooms[i]
+            plt.subplot(4,4,2+i*4)
+            pp.createmap(aaod, lats, lons ,region=zoom,
+                     vmin=vmin, vmax=vmax, linear=linear, cmapname=cmapname)
+
+        plt.subplot(4,4,3+i*4)
+        aaod, lats, lons = pp.density(aaod,lats,lons,region=zoom, vertical=True)
+        plt.title('density')
+        plt.ylabel('AAOD')
+        plt.gca().yaxis.set_label_position("right")
+        #plt.xlim([-0.02,0.1])
+        print('Mean AAOD=%.3f'%np.nanmean(aaod))
+        print("using %d gridsquares"%np.sum(~np.isnan(aaod)))
+
+        if TerraModis[i] is not None:
+            plt.subplot(4,4,4+i*4)
+            pp.plot_img(TerraModis[i])
+            plt.title(title)
+
+    plt.tight_layout()
+    pname='Figs/typical_AAODs.png'
+
+    plt.savefig(pname)
+    plt.close()
+    print("Saved ",pname)
+
 def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=pp.__AUSREGION__):
     '''
         Compare fire counts to smoke aaod in the omhchorp files

@@ -15,7 +15,7 @@ import utilities.utilities as util
 import utilities.plotting as pp
 from utilities import GMAO,GC_fio,fio
 import Inversion
-
+import tests
 
 from classes.E_new import E_new # E_new class
 from classes import GC_class
@@ -43,13 +43,7 @@ dstr=d0.strftime('%Y%m%d')
 mstr=d0.strftime('%Y%m')
 
 
-dat,att = fio.read_omno2d(d0,month=True)
-lats= dat['lats']
-lons= dat['lons']
-omno2= np.nanmean(dat['tropno2'],axis=0) # Average over time
-pp.createmap(omno2,lats,lons,region=region)
-
-plt.savefig('test_omno.png')
+tests.typical_aaods()
 
 
 def emisssions_vs_firefilter(d0=datetime(2005,1,1)):
@@ -57,20 +51,20 @@ def emisssions_vs_firefilter(d0=datetime(2005,1,1)):
     '''
     Enew=E_new(d0,)
     # mean Emissions estimates vs eachother
-    
+
     f,axes = plt.subplots(3,3,figsize=(15,15))
     region=[Enew.lats[0],Enew.lons[0],Enew.lats[-1],Enew.lons[-1]]
-    
+
     lats=Enew.lats
     lons=Enew.lons
     arrs=[[Enew.E_VCC_OMI, Enew.E_VCC, Enew.E_VCC_PP],
           [Enew.E_VCC_OMI_f, Enew.E_VCC_f, Enew.E_VCC_PP_f],
           []]
-    
+
     labels=[['OMI','GC','PP'],
             ['OMI_f','GC_f','PP_f'],
             ['fire-nofire','fire-nofire','fire-nofire']]
-    
+
     linear=False
     vmin=1e10
     vmax=1e13
@@ -82,18 +76,18 @@ def emisssions_vs_firefilter(d0=datetime(2005,1,1)):
             elif i==2:
                 arr=np.nanmean(arrs[1][j], axis=0) - np.nanmean(arrs[0][j], axis=0)
                 vmin=-5e12; vmax=5e12; linear=True
-    
+
             pp.createmap(arr,lats,lons,title=labels[i][j],
                          region=region,
                          vmin=vmin,vmax=vmax,linear=linear)
-    
+
     pname='Figs/Emiss/FireFilter%s.png'%mstr
     plt.suptitle('Emissions with and without fire filter %s'%mstr,fontsize=25)
     plt.savefig(pname)
     plt.close()
-    
-    
-    
+
+
+
 # to be moved somewhere:
 def firetest():
     fires_per_area,lats,lons=fio.read_MOD14A1(d0,True)

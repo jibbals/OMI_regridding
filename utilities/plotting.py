@@ -20,17 +20,19 @@ import matplotlib.dates as mdates
 #import matplotlib.colors as mcolors #, colormapping
 from matplotlib.colors import LogNorm # for lognormal colour bar
 from datetime import timedelta
+import seaborn # for density plots
+import matplotlib.image as mpimg # for direct image plotting
 
 # Add parent folder to path
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-sys.path.insert(0,os.path.dirname(currentdir))
+#import os,sys,inspect
+#currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+#sys.path.insert(0,os.path.dirname(currentdir))
 
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
 from utilities.utilities import regrid
 import utilities.fio as fio
-sys.path.pop(0)
+#sys.path.pop(0)
 
 ###############
 ### GLOBALS ###
@@ -308,6 +310,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         cmapname = matplotlib.rcParams['image.cmap']
 
     cmap=plt.cm.cmap_d[cmapname]
+
     pcmeshargs={'vmin':vmin, 'vmax':vmax, 'clim':(vmin, vmax),
                 'latlon':latlon, 'cmap':cmap}
 
@@ -327,6 +330,9 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
     cs=m.pcolormesh(mlons_e, mlats_e, mdata, **pcmeshargs)
     # colour limits for contour mesh
     cs.set_clim(vmin,vmax)
+    cmap.set_bad('grey',alpha=1)
+    cmap.set_under(cmap(0.0))
+    cmap.set_over(cmap(1.0))
 
     # draw coastline and equator(no latlon labels)
     m.drawcoastlines()
@@ -345,6 +351,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         cbargs={'format':cbarfmt,
                 'size':'5%', 'pad':'1%', 'extend':'both'}
         cb=m.colorbar(cs, cbarorient, **cbargs)
+
         if clabel is not None:
             cb.set_label(clabel)
         if cbarxtickrot is not None:
@@ -359,6 +366,29 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
 
     # if no colorbar is wanted then don't return one (can be set externally)
     return m, cs, cb
+
+def density(data,lats,lons,region=None, **kdeargs):
+    '''
+        Plot seaborn density plot of data
+        optionally subset to region
+    '''
+    Y=data
+    if region is not None:
+        subset=util.lat_lon_subset(lats,lons,region, data=[data])
+        Y=subset['data'][0]
+        lats=subset['lats']
+        lons=subset['lons']
+    #seaborn.set_style('whitegrid')
+    seaborn.kdeplot(Y.flatten(),**kdeargs)
+    return Y,lats,lons
+
+def plot_img(path):
+    ''' '''
+    img=mpimg.imread(path)
+    plt.imshow(img)
+    axes=plt.gca().axes
+    axes.get_yaxis().set_visible(False)
+    axes.get_xaxis().set_visible(False)
 
 def plot_swath(day, reprocessed=False,
               oneday=True, region=__AUSREGION__,

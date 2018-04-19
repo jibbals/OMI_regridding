@@ -258,14 +258,14 @@ def read_smoke(d0,dN, latres=0.25, lonres=0.3125):
     '''
     dates=util.list_days(d0,dN,month=False)
     smoke0,lats,lons=read_AAOD_interpolated(date=d0,latres=latres,lonres=lonres)
-    if len(dates)==1:
-        return smoke0,dates,lats,lons
+
 
     retsmoke=np.zeros([len(dates),len(lats),len(lons)])
     retsmoke[0] = smoke0
-    for i,day in enumerate(dates[1:]):
-        smokei,lats,lons=read_AAOD_interpolated(date=day,latres=latres,lonres=lonres)
-        retsmoke[i+1] = smokei
+    if len(dates)==1:
+        for i,day in enumerate(dates[1:]):
+            smokei,lats,lons=read_AAOD_interpolated(date=day,latres=latres,lonres=lonres)
+            retsmoke[i+1] = smokei
 
     return retsmoke, dates, lats, lons
 
@@ -314,14 +314,14 @@ def read_fires(d0, dN, latres=0.25, lonres=0.3125):
     '''
     dates=util.list_days(d0,dN,month=False)
     fire0,lats,lons=read_MOD14A1_interpolated(date=d0,latres=latres,lonres=lonres)
-    if len(dates) == 1:
-        return fire0,lats,lons
+
 
     retfires=np.zeros([len(dates),len(lats),len(lons)])
     retfires[0] = fire0
-    for i,day in enumerate(dates[1:]):
-        firei,lats,lons=read_MOD14A1_interpolated(date=day,latres=latres,lonres=lonres)
-        retfires[i+1] = firei
+    if len(dates) > 1:
+        for i,day in enumerate(dates[1:]):
+            firei,lats,lons=read_MOD14A1_interpolated(date=day,latres=latres,lonres=lonres)
+            retfires[i+1] = firei
 
     return retfires, dates, lats, lons
 

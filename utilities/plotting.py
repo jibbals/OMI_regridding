@@ -225,6 +225,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
               cmapname=None, fillcontinents=None):
     '''
         Pass in data[lat,lon], lats[lat], lons[lon]
+        Returns map, cs, cb
     '''
 
     # Create a basemap map with region as inputted
@@ -381,6 +382,30 @@ def density(data,lats,lons,region=None, **kdeargs):
     #seaborn.set_style('whitegrid')
     seaborn.kdeplot(Y.flatten(),**kdeargs)
     return Y,lats,lons
+
+def hatchmap(m, data, lats, lons, thresh, region=None,hatch='...',color='k'):
+    '''
+        add hatching to a basemap map
+        optionally subset to a region
+
+        region=[S,W,N,E]
+        hatch = one or more of: \ / | - + x o O . *
+    '''
+    data=np.copy(data)
+    if region is not None:
+        subset=util.lat_lon_subset(lats,lons,region=region,data=[data])
+        data=subset['data'][0]
+        lats=subset['lats']
+        lons=subset['lons']
+
+    # Remove nans so they are not hatched
+    data[np.isnan(data)] = thresh-1
+
+    # Set up mask of everywhere under the threshhold
+    aaod_masked=np.ma.masked_less_equal(data,thresh)
+    mlons,mlats=np.meshgrid(lons,lats)
+    mx,my = m(mlons,mlats)
+    m.pcolor(mx, my, aaod_masked, hatch=hatch, color=color, alpha=0.)
 
 def plot_img(path):
     ''' '''

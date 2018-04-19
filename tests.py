@@ -82,40 +82,50 @@ def typical_aaods():
     '''
 
     # read particular days of aaod
-    dates = [ datetime(2005,6,10), datetime(2009,2,19),
+    dates = [ datetime(2007,8,30), datetime(2009,2,19),
               datetime(2005,11,8), datetime(2009,9,23) ]
 
     # plot stuff
     plt.figure(figsize=(16,16))
     titles=['normal','black saturday','transported plume','dust storm']
     region=pp.__AUSREGION__
-    zooms=[None,[-40,140,-25,153],[-42,130,-20,155],[-40,120,-20,155]]
-    TerraModis=[None,
+    zooms=[None,[-40,140,-25,153],[-42,130,-20,155],[-40,135,-20,162]]
+    TerraModis=['Figs/TerraModis_Clear_20070830.png',
                 'Figs/TerraModis_BlackSaturday_20090219.png',
-                None,
+                'Figs/TerraModis_TransportedSmoke_20050811.png',
                 'Figs/TerraModis_DustStorm_20090923.png']
     vmin=1e-3
     vmax=1e-1
     cmapname='pink_r'
     linear=False
+    thresh=0.03
 
     for i,day in enumerate(dates):
         zoom=region
         plt.subplot(4,4,1+i*4)
-
-        title = titles[i] + day.strftime(' %Y%m%d')
+        ymd=day.strftime('%Y %b %d')
+        title = titles[i] +' '+ ymd
         aaod, lats, lons = fio.read_AAOD(day)
-        pp.createmap(aaod, lats, lons, title=title, region=zoom,
-                     vmin=vmin, vmax=vmax, linear=linear, cmapname=cmapname)
+        m, cs, cb = pp.createmap(aaod, lats, lons, title=title, region=zoom,
+                                 vmin=vmin, vmax=vmax, linear=linear,
+                                 cmapname=cmapname)
+
+        # Add hatch over threshhold values (if they exists)
+        #(m, data, lats, lons, thresh, region=None):
+        pp.hatchmap(m,aaod,lats,lons,thresh,region=zoom, hatch='x',color='blue')
 
         if zooms[i] is not None:
             zoom=zooms[i]
             plt.subplot(4,4,2+i*4)
-            pp.createmap(aaod, lats, lons ,region=zoom,
-                     vmin=vmin, vmax=vmax, linear=linear, cmapname=cmapname)
+            m,cs,cb= pp.createmap(aaod, lats, lons ,region=zoom,
+                                  vmin=vmin, vmax=vmax, linear=linear,
+                                  cmapname=cmapname)
+            # Add hatch to minimap also
+            pp.hatchmap(m,aaod,lats,lons,thresh,region=zoom, hatch='x',color='blue')
 
         plt.subplot(4,4,3+i*4)
         aaod, lats, lons = pp.density(aaod,lats,lons,region=zoom, vertical=True)
+        plt.plot([0,50],[thresh,thresh]) # add line for thresh
         plt.title('density')
         plt.ylabel('AAOD')
         plt.gca().yaxis.set_label_position("right")
@@ -126,7 +136,7 @@ def typical_aaods():
         if TerraModis[i] is not None:
             plt.subplot(4,4,4+i*4)
             pp.plot_img(TerraModis[i])
-            plt.title(title)
+            plt.title(ymd)
 
     plt.tight_layout()
     pname='Figs/typical_AAODs.png'
@@ -144,11 +154,15 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=pp.__AUSRE
         dN = d0
 
     dNstr=dN.strftime('%Y%m%d')
+    n_times=(dN-d0).days + 1
 
-    # Read the omhchorp product from d0-dN
-    data=omrp(day0=d0,dayn=dN, keylist=['AAOD','fires'])
-    lats=data.lats
-    lons=data.lons
+    # Read the products from modis and omi, interpolated to 1x1 degrees
+    fires, _dates, _modlats, _modlons = fio.read_fires(d0, dN, latres=1,lonres=1)
+    aaod, _dates, _omilats, _omilons = fio.read_smoke(d0,dN,latres=1,lonres=1)
+
+    assert all(_modlats==_omilats), 'interpolation is not working'
+    lats=_modlats
+    lons=_modlons
     # data fires and aaod = [times, lats, lons]
     # data.fires.shape; data.AAOD.shape
 
@@ -156,15 +170,13 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=pp.__AUSRE
 
     titles=['Fires','AAOD$_{500nm}$']
     linear=[True,False]
-    # average over time:
-    fires=data.fires.astype(np.float)
-    aaod=data.AAOD
+    fires=fires.astype(np.float)
     fires[fires<0] = np.NaN
-    aaod[aaod<0]   = np.NaN
+    aaod[aaod<0]   = np.NaN # should do nothing
+
     # Average over time
-    if data.n_times > 1:
-        fires=np.nanmean(fires,axis=0)
-        aaod=np.nanmean(aaod,axis=0)
+    fires=np.nanmean(fires,axis=0)
+    aaod=np.nanmean(aaod,axis=0)
 
     for i,arr in enumerate([fires,aaod]):
 
@@ -1972,7 +1984,13 @@ if __name__ == '__main__':
     #check_HEMCO_restarts()
 
     #analyse_VCC_pp(oneday=False, ausonly=True)
-    smoke_vs_fire()
+    typical_aaods()
+
+    #for dates in [ [datetime(2005,1,1),datetime(2005,1,8)],
+    #               [datetime(2005,2,1),datetime(2005,2,28)],
+    #               [datetime(2006,4,1),datetime(2006,4,14)]]:
+    #    smoke_vs_fire(dates[0],dates[1])
+
     #plot_VCC_rsc_gc_pp(d0=datetime(2005,3,1),dn=datetime(2005,3,31))
     #plot_swaths()
     # AMF tests and correlations

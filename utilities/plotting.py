@@ -38,7 +38,7 @@ import utilities.fio as fio
 ### GLOBALS ###
 ###############
 
-__VERBOSE__=False
+__VERBOSE__=True
 
 # S W N E
 __AUSREGION__=[-45, 108.75, -7, 156.25] # picked from lons_e and lats_e in GMAO.py
@@ -220,11 +220,14 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
               vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
               clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
-              cbarorient='bottom',
+              cbarorient='bottom', set_bad=None,
               pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None, fillcontinents=None):
     '''
         Pass in data[lat,lon], lats[lat], lons[lon]
+        arguments:
+            set_bad='blue' #should mask nans as blue
+            GC_shift=True #will shift plot half a square left and down
         Returns map, cs, cb
     '''
 
@@ -247,10 +250,15 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
     m=Basemap(llcrnrlat=lllat, urcrnrlat=urlat, llcrnrlon=lllon, urcrnrlon=urlon,
               resolution='i', projection='merc')
 
+    # plt.colormesh arguments will be added to dictionary
+    pcmeshargs={}
+
     if not linear:
         if __VERBOSE__:
             print('removing %d negative datapoints in createmap'%np.nansum(data<0))
-        data[data<0] = np.NaN
+        data[data<=0] = np.NaN
+        pcmeshargs['norm']=LogNorm()
+
     # Set vmin and vmax if necessary
     if vmin is None:
         vmin=1.05*np.nanmin(data)
@@ -312,13 +320,14 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
 
     cmap=plt.cm.cmap_d[cmapname]
 
-    pcmeshargs={'vmin':vmin, 'vmax':vmax, 'clim':(vmin, vmax),
-                'latlon':latlon, 'cmap':cmap}
+    cmap.set_under(cmap(0.0))
+    cmap.set_over(cmap(1.0))
 
-    if not linear:
-        if __VERBOSE__:print("createmap() is removing negatives")
-        pcmeshargs['norm']=LogNorm()
-        data[data<=0]=np.NaN
+    if set_bad is not None:
+        cmap.set_bad(set_bad,alpha=0.0)
+
+    pcmeshargs.update({'vmin':vmin, 'vmax':vmax, 'clim':(vmin, vmax),
+                'latlon':latlon, 'cmap':cmap})
 
     #force nan into any pixel with nan results, so color is not plotted there...
     mdata=np.ma.masked_invalid(data) # mask non-finite elements
@@ -331,9 +340,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
     cs=m.pcolormesh(mlons_e, mlats_e, mdata, **pcmeshargs)
     # colour limits for contour mesh
     cs.set_clim(vmin,vmax)
-    cmap.set_bad('grey',alpha=1)
-    cmap.set_under(cmap(0.0))
-    cmap.set_over(cmap(1.0))
+
 
     # draw coastline and equator(no latlon labels)
     m.drawcoastlines()

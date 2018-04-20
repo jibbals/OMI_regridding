@@ -72,6 +72,125 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
+def typical_no2(year=datetime(2005,1,1), region=pp.__AUSREGION__):
+    '''
+        Plot of NO2 from OMNO2d product over Australia, including density plots
+    '''
+    mstr=year.strftime('%b %Y')
+    plotname=year.strftime('Figs/typical_OMNO2_%Y.png')
+
+    # First read month and plot avg and std
+    dat,attrs=fio.read_omno2d(year,util.last_day(year))
+    # Tropospheric cloud screened (<30%) no2 columns (molec/cm2)
+    no2=dat['tropno2']
+    lats=dat['lats']
+    lons=dat['lons']
+    #no2_min, no2_max  = np.nanmin(no2,axis=0), np.nanmax(no2,axis=0)
+    no2_mean, no2_std = np.nanmean(no2,axis=0), np.nanstd(no2,axis=0)
+    subset=util.lat_lon_subset(lats,lons,region,[no2_mean,no2_std])
+    lats=subset['lats']
+    lons=subset['lons']
+
+    # plot stuff:
+    cmapname='plasma'
+    plt.figure(figsize=[16,16])
+    # MEAN | STDev
+    titles = ['Mean %s'%mstr, 'Std dev. %s'%mstr]
+    vmins  = [1e14, None]
+    vmaxes = [5e15, None]
+    axes=[]
+    for i,arr in enumerate(subset['data']):
+        axes.append(plt.subplot(2,2,i+1))
+        vmin,vmax=vmins[i],vmaxes[i]
+        bmap,cs,cb = pp.createmap(arr,lats,lons,region=region,
+                                  vmin=vmin,vmax=vmax,
+                                  cmapname=cmapname)
+        plt.title(titles[i])
+
+
+    # now read whole year and do yearly averaged time series for subsets of Australia
+    #
+    dat, attrs = fio.read_omno2d(datetime(year.year,1,1), util.last_day(datetime(year.year,12,1)))
+    # Tropospheric cloud screened (<30%) no2 columns (molec/cm2)
+    no2_orig=dat['tropno2']
+    lats=dat['lats']
+    lons=dat['lons']
+    dates=dat['dates']
+    doys=[d.timetuple().tm_yday for d in dates]
+
+    # Bottom row
+    axes.append(plt.subplot(2,1,2))
+
+    # Subset to desired region
+    subzones=[region, # All of Australia
+              [-38,147,-34,153], # Canberra and Sydney
+              [-37,134,-34,140], # Adelaide and port lincoln
+              [-30,125,-25,135], # Emptly land
+              ]# Melbourne]
+    colors=['k','cyan','green','teal']
+    for i,subzone in enumerate(subzones):
+        # Subset our data to subzone
+        lati,loni=util.lat_lon_range(lats,lons,subzone)
+        no2 = np.copy(no2_orig)
+        no2 = no2[:,lati,:]
+        no2 = no2[:,:,loni]
+
+        # Add square to first map:
+        plt.sca(axes[1])
+        pp.add_rectangle(bmap,subzone,color=colors[i],linewidth=2)
+
+
+        # Mask ocean
+        oceanmask=util.get_mask(no2[0],lats[lati],lons[loni],masknan=False,maskocean=True)
+        print("Removing %d ocean pixels"%(365*np.sum(oceanmask)))
+        no2[:,oceanmask] = np.NaN
+
+
+        # get mean and percentiles of interest for plot
+        #std = np.nanstd(no2,axis=(1,2))
+        upper = np.nanpercentile(no2,75,axis=(1,2))
+        lower = np.nanpercentile(no2,25,axis=(1,2))
+        mean= np.nanmean(no2,axis=(1,2))
+
+        # plot onto time series with light filling
+        plt.sca(axes[2])
+        plt.plot(doys, mean, color='k',linewidth=3)
+        plt.fill_between(doys, lower, upper, color='k',alpha=0.2)
+    plt.title('Time series (ocean masked) over %d'%year.year)
+
+    plt.savefig(plotname)
+    print("saved ",plotname)
+
+def typical_aaod_month(month=datetime(2005,11,1)):
+    ''' '''
+    ymstr=month.strftime("%Y%m")
+    pname2='Figs/AAOD_month_%s.png'%ymstr
+    region=pp.__AUSREGION__
+    #vmin=1e-3
+    #vmax=1e-1
+    vmin,vmax=1e-7,5e-2
+    cmapname='pink_r'
+
+    # also show a month of aaod during nov 2005 ( high transport month )
+    plt.figure()
+    plt.subplot(211)
+
+    # read the aaod and average over the month
+    aaod,dates,lats,lons=fio.read_smoke(month,util.last_day(month))
+    aaod=np.nanmean(aaod,axis=0)
+
+    # create map
+    pp.createmap(aaod,lats,lons,region=region,cmapname=cmapname,
+                 vmin=vmin,vmax=vmax,set_bad='blue')
+
+    # also show density map
+    plt.subplot(212)
+    pp.density(aaod,lats,lons,region=region)
+
+    plt.savefig(pname2)
+    print("Saved ",pname2)
+    plt.close()
+
 def typical_aaods():
     '''
     Check typical aaod over Australia during specific events
@@ -87,16 +206,17 @@ def typical_aaods():
 
     # plot stuff
     plt.figure(figsize=(16,16))
-    titles=['normal','black saturday','transported plume','dust storm']
+    pname='Figs/typical_AAODs.png'
     region=pp.__AUSREGION__
+    vmin=1e-4
+    vmax=1e-1
+    cmapname='pink_r'
+    titles=['normal','black saturday','transported plume','dust storm']
     zooms=[None,[-40,140,-25,153],[-42,130,-20,155],[-40,135,-20,162]]
     TerraModis=['Figs/TerraModis_Clear_20070830.png',
                 'Figs/TerraModis_BlackSaturday_20090219.png',
                 'Figs/TerraModis_TransportedSmoke_20050811.png',
                 'Figs/TerraModis_DustStorm_20090923.png']
-    vmin=1e-3
-    vmax=1e-1
-    cmapname='pink_r'
     linear=False
     thresh=0.03
 
@@ -108,11 +228,11 @@ def typical_aaods():
         aaod, lats, lons = fio.read_AAOD(day)
         m, cs, cb = pp.createmap(aaod, lats, lons, title=title, region=zoom,
                                  vmin=vmin, vmax=vmax, linear=linear,
-                                 cmapname=cmapname)
+                                 cmapname=cmapname, set_bad='blue')
 
         # Add hatch over threshhold values (if they exists)
         #(m, data, lats, lons, thresh, region=None):
-        pp.hatchmap(m,aaod,lats,lons,thresh,region=zoom, hatch='x',color='blue')
+        #pp.hatchmap(m,aaod,lats,lons,thresh,region=zoom, hatch='x',color='blue')
 
         if zooms[i] is not None:
             zoom=zooms[i]
@@ -121,7 +241,7 @@ def typical_aaods():
                                   vmin=vmin, vmax=vmax, linear=linear,
                                   cmapname=cmapname)
             # Add hatch to minimap also
-            pp.hatchmap(m,aaod,lats,lons,thresh,region=zoom, hatch='x',color='blue')
+            #pp.hatchmap(m,aaod,lats,lons,thresh,region=zoom, hatch='x',color='blue')
 
         plt.subplot(4,4,3+i*4)
         aaod, lats, lons = pp.density(aaod,lats,lons,region=zoom, vertical=True)
@@ -139,11 +259,12 @@ def typical_aaods():
             plt.title(ymd)
 
     plt.tight_layout()
-    pname='Figs/typical_AAODs.png'
 
     plt.savefig(pname)
     plt.close()
     print("Saved ",pname)
+
+
 
 def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=pp.__AUSREGION__):
     '''
@@ -1984,7 +2105,10 @@ if __name__ == '__main__':
     #check_HEMCO_restarts()
 
     #analyse_VCC_pp(oneday=False, ausonly=True)
-    typical_aaods()
+    #typical_aaods()
+    #typical_aaod_month()
+    typical_no2()
+
 
     #for dates in [ [datetime(2005,1,1),datetime(2005,1,8)],
     #               [datetime(2005,2,1),datetime(2005,2,28)],

@@ -26,6 +26,8 @@ from datetime import datetime#, timedelta
 from mpl_toolkits.basemap import Basemap, maskoceans
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm # for lognormal colour bar
+from matplotlib.ticker import FormatStrFormatter # tick formats
+
 #import matplotlib.patches as mpatches
 import seaborn # kdeplots
 
@@ -268,7 +270,8 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
             plt.yscale('log')
             plt.ylabel('molec/cm2')
             yticks=[2e14,5e14,1e15,4e15]
-            plt.yticks(yticks,yticks)
+            ytickstr=['%.0e'%tick for tick in yticks]
+            plt.yticks(yticks,ytickstr)
             plt.xlabel('Day of year')
         plt.title('Mean time series (ocean masked) over %d'%year.year)
 
@@ -278,8 +281,8 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
         plt.close()
 
     # Now run both those functions
-    typical_no2()
     no2_threshcheck()
+    typical_no2()
 
 def typical_aaod_month(month=datetime(2005,11,1)):
     ''' '''

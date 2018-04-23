@@ -78,6 +78,71 @@ def check_array(array, nonzero=False):
     print ('count :%f'%np.sum(np.isfinite(arrayt)))
     print ('shape :'+str(np.shape(arrayt)))
 
+def no2_plots(data, lats, lons, vmin, vmax, subzones, colors):
+    '''
+        Plot australia, with subzones and stuff added
+    '''
+
+    cmapname='plasma'
+    
+    bmap,cs,cb = pp.createmap(data, lats, lons, region=subzones[0],
+                              vmin=vmin, vmax=vmax, clabel='molec/cm2',
+                              cmapname=cmapname)
+    # Add cities to map
+    for city,latlon in cities.items():
+        pp.add_point(bmap,latlon[0],latlon[1],markersize=12,
+                     color='floralwhite', label=city, fontsize=10)
+
+    # Add squares to first map:
+    for i,subzone in enumerate(subzones[1:]):
+        pp.add_rectangle(bmap,subzone,color=colors[i+1],linewidth=2)
+    
+def no2_timeseries(no2,dates,lats,lons,subzones,colors,ylims=[2e14,4e15]):
+    '''
+        time series for each subzone in no2_tests
+    '''
+    lw=[4,2,2,2,2]
+    doys=[d.timetuple().tm_yday for d in dates]
+    for i,subzone in enumerate(subzones):
+        # Subset our data to subzone
+        lati,loni=util.lat_lon_range(lats,lons,subzone)
+        no2 = no2[:,lati,:]
+        no2 = no2[:,:,loni]
+
+        # Mask ocean
+        oceanmask=util.get_mask(no2[0],lats[lati],lons[loni],masknan=False,maskocean=True)
+        print("Removing %d ocean pixels"%(365*np.sum(oceanmask)))
+        no2[:,oceanmask] = np.NaN
+
+        # Also remove negatives
+        negmask=no2 < 0
+        print("Removing %d negative pixels"%(np.sum(negmask)))
+        no2[negmask]=np.NaN
+
+        # get mean and percentiles of interest for plot
+        #std = np.nanstd(no2,axis=(1,2))
+        upper = np.nanpercentile(no2,75,axis=(1,2))
+        lower = np.nanpercentile(no2,25,axis=(1,2))
+        mean = np.nanmean(no2,axis=(1,2))
+        totmean = np.nanmean(no2)
+        
+        plt.plot(doys, mean, color=colors[i],linewidth=lw[i])
+        # Add IQR shading for first plot
+        if i==0:
+            plt.fill_between(doys, lower, upper, color=colors[i],alpha=0.2)
+
+        # show yearly mean
+        plt.plot([370,395],[totmean,totmean], color=colors[i],linewidth=lw[i])
+
+        # change to log y scale?
+        plt.ylim(ylims)
+        plt.yscale('log')
+        plt.ylabel('molec/cm2')
+        yticks=[2e14,5e14,1e15,4e15]
+        ytickstr=['%.0e'%tick for tick in yticks]
+        plt.yticks(yticks,ytickstr)
+        plt.xlabel('Day of year')
+
 #############################################################################
 ######################       TESTS                  #########################
 #############################################################################
@@ -88,7 +153,7 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
     '''
         examine year of omno2d and look at densities and threshhold
     '''
-
+    
     # First read and whole year of NO2
     dat, attrs = fio.read_omno2d(datetime(year.year,1,1), util.last_day(datetime(year.year,12,1)))
     # Tropospheric cloud screened (<30%) no2 columns (molec/cm2)
@@ -96,8 +161,7 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
     lats=dat['lats']
     lons=dat['lons']
     dates=dat['dates']
-    doys=[d.timetuple().tm_yday for d in dates]
-
+    
     # Want to look at timeseires and densities in these subregions:
     subzones=[region, # All of Australia
               [-36,148,-32,153], # Canberra, Newcastle, and Sydney
@@ -106,7 +170,7 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
               [-39,142,-36,148], # Melbourne
               ]
     colors=['k','red','green','cyan','darkred']
-
+    
     # Make two plots using following two subfunctions
     def no2_threshcheck():
         '''
@@ -120,24 +184,13 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
 
         # plot map with regions:
         plt.figure(figsize=[16,14])
-
-        cmapname='plasma'
+        
         title = 'Mean OMNO2d %d'%year.year
         vmin = 1e14
         vmax = 1e15
         plt.subplot(2,2,1)
-        bmap,cs,cb = pp.createmap(no2_mean,lats,lons,region=region,
-                                  vmin=vmin,vmax=vmax, clabel='molec/cm2',
-                                  cmapname=cmapname)
+        bmap,cs,cb = no2_plots(no2_mean,lats,lons,vmin,vmax,subzones,colors)
         plt.title(title)
-        # Add cities to map
-        for city,latlon in cities.items():
-            pp.add_point(bmap,latlon[0],latlon[1],markersize=12,
-                         color='floralwhite', label=city, fontsize=10)
-
-        # Add squares to first map:
-        for i,subzone in enumerate(subzones):
-            pp.add_rectangle(bmap,subzone,color=colors[i],linewidth=2)
 
         # One density plot for each region in subzones
         for i,subzone in enumerate(subzones):
@@ -146,8 +199,6 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
             no2 = np.copy(no2_orig)
             no2 = no2[:,lati,:]
             no2 = no2[:,:,loni]
-
-
 
             # Mask ocean
             oceanmask=util.get_mask(no2[0],lats[lati],lons[loni],masknan=False,maskocean=True)
@@ -168,13 +219,7 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
                 plt.subplot(2,4,i+4)
                 pp.density(no2,bw=bw, color=colors[i], linewidth=2) # should work with 3d
             plt.xlim([0,5e15])
-            #plt.plot([thresh,thresh],[])
-            ## change to log y scale?
-            #plt.ylim([2e14, 4e15])
-            #plt.yscale('log')
-            #plt.ylabel('molec/cm2')
-            #plt.yticks([2e14,5e14,1e15,4e15])
-            #plt.xlabel('Day of year')
+            plt.plot([thresh,thresh],[0,1])
 
         plt.suptitle("OMNO2d NO2 columns %d"%year.year)
         plt.savefig(plotname)
@@ -191,13 +236,10 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
 
         # Tropospheric cloud screened (<30%) no2 columns (molec/cm2)
         no2=np.copy(no2_orig)
-
+        
         no2_mean, no2_std = np.nanmean(no2,axis=0), np.nanstd(no2,axis=0)
-        subset=util.lat_lon_subset(lats,lons,region,[no2_mean,no2_std])
-        sublats=subset['lats']
-        sublons=subset['lons']
+        
         # plot stuff:
-        cmapname='plasma'
         plt.figure(figsize=[16,16])
         # MEAN | STDev
         titles = ['Mean %d'%year.year, 'Standard deviation %d'%year.year]
@@ -206,80 +248,54 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
 
         axes=[]
         bmaps=[]
-        for i,arr in enumerate(subset['data']):
+        for i,arr in enumerate([no2_mean,no2_std]):
             axes.append(plt.subplot(2,2,i+1))
             vmin,vmax=vmins[i],vmaxes[i]
-            bmap,cs,cb = pp.createmap(arr,sublats,sublons,region=region,
-                                      vmin=vmin,vmax=vmax, clabel='molec/cm2',
-                                      cmapname=cmapname)
+            bmap,cs,cb = no2_plots(arr, lats, lons,vmin,vmax,subzones,colors)
             plt.title(titles[i])
+
             bmaps.append(bmap) # save the bmap for later
-            # Add cities to map
-            for city,latlon in cities.items():
-                pp.add_point(bmap,latlon[0],latlon[1],markersize=12,
-                             color='floralwhite', label=city, fontsize=10)
 
         # Bottom row
         axes.append(plt.subplot(2,1,2))
 
         # For each subset here, plot the timeseries
-        lw=[4,2,2,2,2]
-
-        for i,subzone in enumerate(subzones):
-            # Subset our data to subzone
-            no2=np.copy(no2_orig)
-            lati,loni=util.lat_lon_range(lats,lons,subzone)
-            no2 = no2[:,lati,:]
-            no2 = no2[:,:,loni]
-
-            # Add square to first map:
-            plt.sca(axes[0])
-            pp.add_rectangle(bmaps[0],subzone,color=colors[i],linewidth=2)
-
-
-            # Mask ocean
-            oceanmask=util.get_mask(no2[0],lats[lati],lons[loni],masknan=False,maskocean=True)
-            print("Removing %d ocean pixels"%(365*np.sum(oceanmask)))
-            no2[:,oceanmask] = np.NaN
-
-            # Also remove negatives
-            negmask=no2 < 0
-            print("Removing %d negative pixels"%(np.sum(negmask)))
-            no2[negmask]=np.NaN
-
-            # get mean and percentiles of interest for plot
-            #std = np.nanstd(no2,axis=(1,2))
-            upper = np.nanpercentile(no2,75,axis=(1,2))
-            lower = np.nanpercentile(no2,25,axis=(1,2))
-            mean = np.nanmean(no2,axis=(1,2))
-            totmean = np.nanmean(no2)
-
-            # plot onto time series
-            plt.sca(axes[2])
-
-            plt.plot(doys, mean, color=colors[i],linewidth=lw[i])
-            # Add IQR shading for first plot
-            if i==0:
-                plt.fill_between(doys, lower, upper, color=colors[i],alpha=0.2)
-
-            # show yearly mean
-            plt.plot([370,395],[totmean,totmean], color=colors[i],linewidth=lw[i])
-
-            # change to log y scale?
-            plt.ylim([2e14, 4e15])
-            plt.yscale('log')
-            plt.ylabel('molec/cm2')
-            yticks=[2e14,5e14,1e15,4e15]
-            ytickstr=['%.0e'%tick for tick in yticks]
-            plt.yticks(yticks,ytickstr)
-            plt.xlabel('Day of year')
+        no2_timeseries(no2,dates,lats,lons,subzones,colors)
+        
         plt.title('Mean time series (ocean masked) over %d'%year.year)
 
         plt.suptitle("OMNO2d NO2 columns")
         plt.savefig(plotname)
         print("saved ",plotname)
         plt.close()
-
+        
+    def CheckThresh():
+        ''' Look at affect of applying threshhold '''
+        fig, axes = plt.subplots(2,2,figsize=[16,16])
+        no2=np.copy(no2_orig)
+        no2_f=np.copy(no2)
+        no2_f[no2_f>thresh] = np.NaN # filtered
+        
+        # Plot map and regions with and without values above threshhold filtered out
+        # Also time series with and without filter
+        
+        no2_mean = np.nanmean(no2,axis=0)
+        no2_f_mean = np.nanmean(no2_f, axis=0)
+        
+        # plot stuff:
+        
+        # MEAN | STDev
+        titles = ['Mean %d'%year.year, 'filtered over %.1e threshhold'%thresh]
+        vmins  = [1e14, 1e14]
+        vmaxes = [5e15, 1e15]
+        for i,arr in enumerate([no2_mean,no2_f_mean]):
+            plt.sca(axes[0,i])
+            no2_plots(arr,lats,lons,vmins[i],vmaxes[i],subzones,colors)
+            plt.title(titles[i])
+            
+            plt.sca(axes[1,i])
+            no2_timeseries(arr,dates,lats,lons,subzones,colors)
+            
     # Now run both those functions
     no2_threshcheck()
     typical_no2()

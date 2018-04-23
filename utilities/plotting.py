@@ -126,6 +126,20 @@ def add_rectangle(bmap, limits, color='k', linewidth=1):
           lr[1], ll[1]]
     bmap.plot(xs, ys, latlon = True, color=color, linewidth=linewidth)
 
+def add_point(bmap, lat,lon,
+              color='k', marker='*',markersize=5,
+              label=None, fontsize=12, fontcolor='k',
+              xlabeloffset=1000,ylabeloffset=2000):
+    '''
+        Add point with optional label onto bmap
+    '''
+    x,y = bmap(lon,lat)
+
+    bmap.plot(x,y, marker, color=color, markersize=markersize)
+    if label is not None:
+        plt.text(x+xlabeloffset,y+ylabeloffset, label,
+                 color=fontcolor, fontsize=fontsize)
+
 def add_regression(X,Y,label=None, addlabel=True, exponential=False, **pargs):
     '''
     plots RMA between X and Y
@@ -375,7 +389,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
     # if no colorbar is wanted then don't return one (can be set externally)
     return m, cs, cb
 
-def density(data,lats,lons,region=None, **kdeargs):
+def density(data,lats=None,lons=None,region=None, **kdeargs):
     '''
         Plot seaborn density plot of data
         optionally subset to region
@@ -388,6 +402,21 @@ def density(data,lats,lons,region=None, **kdeargs):
         lons=subset['lons']
     #seaborn.set_style('whitegrid')
     seaborn.kdeplot(Y.flatten(),**kdeargs)
+    return Y,lats,lons
+
+def distplot(data, lats=None, lons=None, region=None, **distargs):
+    '''
+        plot seaborn distplot of data.flatten()
+    '''
+    Y=data
+    if region is not None:
+        subset=util.lat_lon_subset(lats,lons,region, data=[data])
+        Y=subset['data'][0]
+        lats=subset['lats']
+        lons=subset['lons']
+    #seaborn.set_style('whitegrid')
+    mask=np.isnan(Y.flatten())
+    seaborn.distplot(Y.flatten()[~mask],**distargs)
     return Y,lats,lons
 
 def hatchmap(m, data, lats, lons, thresh, region=None,hatch='...',color='k'):

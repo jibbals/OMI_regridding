@@ -78,33 +78,40 @@ def check_array(array, nonzero=False):
     print ('count :%f'%np.sum(np.isfinite(arrayt)))
     print ('shape :'+str(np.shape(arrayt)))
 
-def no2_plots(data, lats, lons, vmin, vmax, subzones, colors):
+def no2_map(data, lats, lons, vmin, vmax, subzones, colors):
     '''
         Plot australia, with subzones and stuff added
     '''
 
     cmapname='plasma'
-    
+
     bmap,cs,cb = pp.createmap(data, lats, lons, region=subzones[0],
                               vmin=vmin, vmax=vmax, clabel='molec/cm2',
                               cmapname=cmapname)
     # Add cities to map
     for city,latlon in cities.items():
         pp.add_point(bmap,latlon[0],latlon[1],markersize=12,
-                     color='floralwhite', label=city, fontsize=10)
+                     color='floralwhite', label=city, fontsize=12,
+                     xlabeloffset=0,ylabeloffset=3000)
 
-    # Add squares to first map:
+    # Add squares to map:
     for i,subzone in enumerate(subzones[1:]):
         pp.add_rectangle(bmap,subzone,color=colors[i+1],linewidth=2)
-    
-def no2_timeseries(no2,dates,lats,lons,subzones,colors,ylims=[2e14,4e15]):
+
+    return bmap,cs,cb
+
+def no2_timeseries(no2_orig,dates,lats,lons,subzones,colors,ylims=[2e14,4e15],
+                   print_values=False):
     '''
         time series for each subzone in no2_tests
     '''
-    lw=[4,2,2,2,2]
+    lw=[3,1,1,1,1]
     doys=[d.timetuple().tm_yday for d in dates]
+
+    # loop over subzones
     for i,subzone in enumerate(subzones):
         # Subset our data to subzone
+        no2=np.copy(no2_orig)
         lati,loni=util.lat_lon_range(lats,lons,subzone)
         no2 = no2[:,lati,:]
         no2 = no2[:,:,loni]
@@ -125,14 +132,14 @@ def no2_timeseries(no2,dates,lats,lons,subzones,colors,ylims=[2e14,4e15]):
         lower = np.nanpercentile(no2,25,axis=(1,2))
         mean = np.nanmean(no2,axis=(1,2))
         totmean = np.nanmean(no2)
-        
+
         plt.plot(doys, mean, color=colors[i],linewidth=lw[i])
         # Add IQR shading for first plot
         if i==0:
             plt.fill_between(doys, lower, upper, color=colors[i],alpha=0.2)
 
         # show yearly mean
-        plt.plot([370,395],[totmean,totmean], color=colors[i],linewidth=lw[i])
+        plt.plot([370,395],[totmean,totmean], color=colors[i],linewidth=lw[i]+1)
 
         # change to log y scale?
         plt.ylim(ylims)
@@ -142,6 +149,17 @@ def no2_timeseries(no2,dates,lats,lons,subzones,colors,ylims=[2e14,4e15]):
         ytickstr=['%.0e'%tick for tick in yticks]
         plt.yticks(yticks,ytickstr)
         plt.xlabel('Day of year')
+
+        # Print some stats if desired
+        if print_values:
+            with open("no2_output.txt",'a') as outf: # append to file
+                outf.write("Stats for %d, %s, %s"%(i, str(subzone), colors[i]))
+                outf.write("  yearly mean:  %.3e"%totmean)
+                outf.write("          std:  %.3e"%np.nanstd(no2))
+                outf.write("      entries:  %d"%np.sum(~np.isnan(no2)))
+                outf.write("  gridsquares:  %d"%np.prod(np.shape(no2)))
+            print("Wrote stats to no2_output.txt")
+
 
 #############################################################################
 ######################       TESTS                  #########################
@@ -153,7 +171,7 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
     '''
         examine year of omno2d and look at densities and threshhold
     '''
-    
+
     # First read and whole year of NO2
     dat, attrs = fio.read_omno2d(datetime(year.year,1,1), util.last_day(datetime(year.year,12,1)))
     # Tropospheric cloud screened (<30%) no2 columns (molec/cm2)
@@ -161,7 +179,7 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
     lats=dat['lats']
     lons=dat['lons']
     dates=dat['dates']
-    
+
     # Want to look at timeseires and densities in these subregions:
     subzones=[region, # All of Australia
               [-36,148,-32,153], # Canberra, Newcastle, and Sydney
@@ -170,9 +188,9 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
               [-39,142,-36,148], # Melbourne
               ]
     colors=['k','red','green','cyan','darkred']
-    
+
     # Make two plots using following two subfunctions
-    def no2_threshcheck():
+    def no2_densities():
         '''
             Look at densities of no2 pixels from omno2d
         '''
@@ -184,12 +202,12 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
 
         # plot map with regions:
         plt.figure(figsize=[16,14])
-        
+
         title = 'Mean OMNO2d %d'%year.year
         vmin = 1e14
         vmax = 1e15
         plt.subplot(2,2,1)
-        bmap,cs,cb = no2_plots(no2_mean,lats,lons,vmin,vmax,subzones,colors)
+        bmap,cs,cb = no2_map(no2_mean,lats,lons,vmin,vmax,subzones,colors)
         plt.title(title)
 
         # One density plot for each region in subzones
@@ -219,7 +237,7 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
                 plt.subplot(2,4,i+4)
                 pp.density(no2,bw=bw, color=colors[i], linewidth=2) # should work with 3d
             plt.xlim([0,5e15])
-            plt.plot([thresh,thresh],[0,1])
+            plt.plot([thresh,thresh],[0,1], '--k')
 
         plt.suptitle("OMNO2d NO2 columns %d"%year.year)
         plt.savefig(plotname)
@@ -236,9 +254,9 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
 
         # Tropospheric cloud screened (<30%) no2 columns (molec/cm2)
         no2=np.copy(no2_orig)
-        
+        print(no2.shape)
         no2_mean, no2_std = np.nanmean(no2,axis=0), np.nanstd(no2,axis=0)
-        
+
         # plot stuff:
         plt.figure(figsize=[16,16])
         # MEAN | STDev
@@ -251,7 +269,7 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
         for i,arr in enumerate([no2_mean,no2_std]):
             axes.append(plt.subplot(2,2,i+1))
             vmin,vmax=vmins[i],vmaxes[i]
-            bmap,cs,cb = no2_plots(arr, lats, lons,vmin,vmax,subzones,colors)
+            bmap,cs,cb = no2_map(arr, lats, lons,vmin,vmax,subzones,colors)
             plt.title(titles[i])
 
             bmaps.append(bmap) # save the bmap for later
@@ -260,45 +278,49 @@ def omno2d_filter_determination(year=datetime(2005,1,1),
         axes.append(plt.subplot(2,1,2))
 
         # For each subset here, plot the timeseries
-        no2_timeseries(no2,dates,lats,lons,subzones,colors)
-        
+        no2_timeseries(no2_orig,dates,lats,lons,subzones,colors)
+
         plt.title('Mean time series (ocean masked) over %d'%year.year)
 
         plt.suptitle("OMNO2d NO2 columns")
         plt.savefig(plotname)
         print("saved ",plotname)
         plt.close()
-        
+
     def CheckThresh():
         ''' Look at affect of applying threshhold '''
+        pname='Figs/OMNO2_threshaffect_%d.png'%year.year
         fig, axes = plt.subplots(2,2,figsize=[16,16])
         no2=np.copy(no2_orig)
         no2_f=np.copy(no2)
         no2_f[no2_f>thresh] = np.NaN # filtered
-        
-        # Plot map and regions with and without values above threshhold filtered out
-        # Also time series with and without filter
-        
-        no2_mean = np.nanmean(no2,axis=0)
-        no2_f_mean = np.nanmean(no2_f, axis=0)
-        
+
         # plot stuff:
-        
-        # MEAN | STDev
-        titles = ['Mean %d'%year.year, 'filtered over %.1e threshhold'%thresh]
-        vmins  = [1e14, 1e14]
-        vmaxes = [5e15, 1e15]
-        for i,arr in enumerate([no2_mean,no2_f_mean]):
+        titles = ['Mean %d'%year.year, 'With %.1e threshhold'%thresh]
+        vmin = 1e14
+        vmax = 2e15
+        means=[]
+        for i,arr in enumerate([no2,no2_f]):
+            # Plot map and regions with and without values above threshhold filtered out
+            # Also time series with and without filter
+
+            means.append(np.nanmean(arr,axis=0))
             plt.sca(axes[0,i])
-            no2_plots(arr,lats,lons,vmins[i],vmaxes[i],subzones,colors)
+            no2_map(means[i],lats,lons,vmin,vmax,subzones,colors)
             plt.title(titles[i])
-            
+
             plt.sca(axes[1,i])
-            no2_timeseries(arr,dates,lats,lons,subzones,colors)
-            
+            no2_timeseries(arr,dates,lats,lons,subzones,colors,print_values=True)
+
+        plt.savefig(pname)
+        print('saved ',pname)
+        plt.close()
+
+
     # Now run both those functions
-    no2_threshcheck()
-    typical_no2()
+    #no2_densities()
+    #typical_no2()
+    CheckThresh()
 
 def typical_aaod_month(month=datetime(2005,11,1)):
     ''' '''

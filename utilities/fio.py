@@ -736,7 +736,6 @@ def read_omno2d(day0,dayN=None,month=False):
 
     data=np.squeeze(data)
 
-
     # trop column units: molec/cm2 from ~ 1e13-1e16
     attrs={'tropno2':{'desc':'tropospheric NO2 cloud screened for <30% cloudy pixels',
                       'units':'molec/cm2'},
@@ -746,14 +745,23 @@ def read_omno2d(day0,dayN=None,month=False):
     ret={'tropno2':data,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
     return ret,attrs
 
-def make_anthro_mask(d0, dN, no2thresh=1e16, latres=0.25, lonres=0.3125):
+def make_anthro_mask(d0,dN, threshy=1.5e15, threshd=1e15, latres=0.25, lonres=0.3125):
+    '''
+        Read year of OMNO2d
+        Create filter from d0 to dN using yearly average over threshy
+        and daily amount over threshd
     '''
 
-    '''
-    # Read the tropno2 columns
+    # Dates where we want filter
     dates=util.list_days(d0,dN,month=False)
 
-    omno2, omno2_attrs = read_omno2d(day0=d0, dayN=dN, month=False)
+    # Dates we read to make filter
+    y0=datetime(d0.year,1,1)
+    yN=util.last_day(datetime(d0.year,12,1))
+    yates=util.list_days(y0,yN,month=False)
+
+    # Read the tropno2 columns for the year
+    omno2, omno2_attrs = read_omno2d(day0=y0, dayN=yN, month=False)
     lats = omno2['lats']
     lons = omno2['lons']
     no2  = omno2['tropno2'] # [dates, lats, lons]
@@ -761,11 +769,19 @@ def make_anthro_mask(d0, dN, no2thresh=1e16, latres=0.25, lonres=0.3125):
     # regridding 0.25x0.25 to 0.25x0.3125 may cause issues, but lets see
     newlats, newlons, _nlate, _nlone = util.lat_lon_grid(latres=latres,lonres=lonres)
 
+    # bool array we will return
     ret = np.zeros([len(dates),len(newlats),len(newlons)]).astype(np.bool)
 
+    # Yearly avg filter
+    no2mean = np.nanmean(no2,axis=0)
+    yfilt= no2mean>threshy
+    ret[:,yfilt] = True
+
+    # Daily filter: just for days in d0 to dN
+    i0=np.where(yates==dates[0])[0][0] # find first matching date
     for i,day in enumerate(dates):
-        no2i = util.regrid_to_lower(no2[i],lats,lons,newlats,newlons,func=np.nanmean)
-        ret[i] = no2i > no2thresh
+        no2i = util.regrid_to_lower(no2[i0+i],lats,lons,newlats,newlons,func=np.nanmean)
+        ret[i] = ret[i] + (no2i > threshd)
 
     return ret, dates, newlats, newlons
 

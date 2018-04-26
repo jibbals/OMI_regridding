@@ -44,6 +44,12 @@ __VERBOSE__=False
 __AUSREGION__=[-45, 108.75, -11, 156.25] # picked from lons_e and lats_e in GMAO.py
 __GLOBALREGION__=[-69, -178.75, 69, 178.75]
 
+__cities__ = {'Syd':[-33.87,151.21], # Sydney
+              'Can':[-35.28,149.13], # Canberra
+              'Mel':[-37.81,144.96], # Melbourne
+              'Ade':[-34.93,138.60], # Adelaide
+             }
+
 ###############
 ### METHODS ###
 ###############
@@ -419,7 +425,7 @@ def distplot(data, lats=None, lons=None, region=None, **distargs):
     seaborn.distplot(Y.flatten()[~mask],**distargs)
     return Y,lats,lons
 
-def hatchmap(m, data, lats, lons, thresh, region=None,hatch='...',color='k'):
+def hatchmap(m, datamap, lats, lons, thresh, region=None,hatch='x',color='k'):
     '''
         add hatching to a basemap map
         optionally subset to a region
@@ -427,7 +433,7 @@ def hatchmap(m, data, lats, lons, thresh, region=None,hatch='...',color='k'):
         region=[S,W,N,E]
         hatch = one or more of: \ / | - + x o O . *
     '''
-    data=np.copy(data)
+    data=np.copy(datamap)
     if region is not None:
         subset=util.lat_lon_subset(lats,lons,region=region,data=[data])
         data=subset['data'][0]

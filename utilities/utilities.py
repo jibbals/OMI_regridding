@@ -170,7 +170,9 @@ def get_mask(arr, lats=None, lons=None, masknan=True, maskocean=False, maskland=
         Return array which is a mask for the input array
         to mask the ocean or land you need to put in the lats, lons of the data
     '''
-    mask=np.isnan(arr)
+    mask=np.zeros(np.shape(arr),dtype=np.bool)
+    if masknan:
+        mask=np.isnan(arr)
     if maskocean or maskland:
         if len(np.shape(lats)) == 1:
             lons,lats = np.meshgrid(lons,lats)
@@ -247,10 +249,10 @@ def lat_lon_range(lats,lons,region):
     loninds=np.intersect1d(loninds1,loninds2, assume_unique=True)
     return latinds, loninds
 
-def lat_lon_subset(lats,lons,region, data=[]):
+def lat_lon_subset(lats,lons,region, data=[], has_time_dim=False):
     '''
         Returns dict with lats, lons, lats_e, lons_e, and each data aray subsetted
-        data should be list of arrays
+        data should be list of arrays with dimensions [[time,]lats,lons]
         Returned list will be list of arrays [lats,lons] along with lats, lats_e...
     '''
     lati,loni=lat_lon_range(lats,lons,region)
@@ -260,11 +262,15 @@ def lat_lon_subset(lats,lons,region, data=[]):
     out={'lats':lats_m,'lons':lons_m,'lats_e':lats_e,'lons_e':lons_e,
          'data':[], 'lati':lati, 'loni':loni, }
     for arr in data:
-        # if lats is second dimension:
-        if (len(lats) != len(lons)) and (len(lats)==np.shape(arr)[1]):
-            arr=arr.T # make it arr[lats,lons]
-        arr=arr[lati,:]
-        arr=arr[:,loni]
+
+        if has_time_dim:
+            assert len(lats)==len(arr[0,:,0]), "Lats need to be second dimension"
+            arr=arr[:,lati,:]
+            arr=arr[:,:,loni]
+        else:
+            assert len(lats)==len(arr[:,0]), "Lats need to be first dimension"
+            arr=arr[lati,:]
+            arr=arr[:,loni]
         out['data'].append(arr)
     return out
 

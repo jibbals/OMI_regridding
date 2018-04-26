@@ -1,1 +1,100 @@
-Stats for 0, [-45, 108.75, -11, 156.25], k  yearly mean:  5.774e+14          std:  4.680e+14      entries:  2382615  gridsquares:  9431600Stats for 1, [-36, 148, -32, 153], red  yearly mean:  1.128e+15          std:  1.139e+15      entries:  22829  gridsquares:  116800Stats for 2, [-36, 134, -33, 140], green  yearly mean:  5.866e+14          std:  4.865e+14      entries:  13385  gridsquares:  105120Stats for 3, [-30, 125, -25, 135], cyan  yearly mean:  4.808e+14          std:  3.536e+14      entries:  161271  gridsquares:  292000Stats for 4, [-39, 142, -36, 148], darkred  yearly mean:  1.216e+15          std:  1.298e+15      entries:  37463  gridsquares:  105120Stats for 0, [-45, 108.75, -11, 156.25], k  yearly mean:  4.603e+14          std:  2.451e+14      entries:  1900176  gridsquares:  9431600Stats for 1, [-36, 148, -32, 153], red  yearly mean:  5.441e+14          std:  2.642e+14      entries:  8809  gridsquares:  116800Stats for 2, [-36, 134, -33, 140], green  yearly mean:  4.450e+14          std:  2.453e+14      entries:  9777  gridsquares:  105120Stats for 3, [-30, 125, -25, 135], cyan  yearly mean:  4.194e+14          std:  2.385e+14      entries:  138701  gridsquares:  292000Stats for 4, [-39, 142, -36, 148], darkred  yearly mean:  5.216e+14          std:  2.660e+14      entries:  14421  gridsquares:  105120
+Year = 2005
+negative gridsquaredays (made NaN)      : 395842 
+non-NaN, non-ocean gridsquaredays       : 3031013 
+Year threshhold (1.5e+15) removes       : 18900 (0.62%) 
+Then day threshhold (1.0e+15) removes   : 359434 (11.86%) 
+Stats for 0, [-45, 108.75, -11, 156.25], k
+  yearly mean:  5.922e+14
+          std:  5.058e+14
+      entries:  3031013
+  gridsquares:  9431600
+
+Stats for 1, [-36, 148, -32, 153], red
+  yearly mean:  1.185e+15
+          std:  1.229e+15
+      entries:  50968
+  gridsquares:  116800
+
+Stats for 2, [-36, 134, -33, 140], green
+  yearly mean:  7.560e+14
+          std:  6.152e+14
+      entries:  36873
+  gridsquares:  105120
+
+Stats for 3, [-30, 125, -25, 135], cyan
+  yearly mean:  4.755e+14
+          std:  3.515e+14
+      entries:  217961
+  gridsquares:  292000
+
+Stats for 4, [-39, 142, -36, 148], darkred
+  yearly mean:  1.204e+15
+          std:  1.229e+15
+      entries:  51195
+  gridsquares:  105120
+
+Year = 2005
+negative gridsquaredays (made NaN)      : 395842 
+non-NaN, non-ocean gridsquaredays       : 3031013 
+Year threshhold (1.5e+15) removes       : 18900 (0.62%) 
+Then day threshhold (1.0e+15) removes   : 359434 (11.86%) 
+Stats for 0, [-45, 108.75, -11, 156.25], k
+  yearly mean:  5.922e+14
+          std:  5.058e+14
+      entries:  3031013
+  gridsquares:  9431600
+
+Stats for 1, [-36, 148, -32, 153], red
+  yearly mean:  1.185e+15
+          std:  1.229e+15
+      entries:  50968
+  gridsquares:  116800
+
+Stats for 2, [-36, 134, -33, 140], green
+  yearly mean:  7.560e+14
+          std:  6.152e+14
+      entries:  36873
+  gridsquares:  105120
+
+Stats for 3, [-30, 125, -25, 135], cyan
+  yearly mean:  4.755e+14
+          std:  3.515e+14
+      entries:  217961
+  gridsquares:  292000
+
+Stats for 4, [-39, 142, -36, 148], darkred
+  yearly mean:  1.204e+15
+          std:  1.229e+15
+      entries:  51195
+  gridsquares:  105120
+
+Stats for 0, [-45, 108.75, -11, 156.25], k
+  yearly mean:  4.605e+14
+          std:  2.467e+14
+      entries:  2653629
+  gridsquares:  9431600
+
+Stats for 1, [-36, 148, -32, 153], red
+  yearly mean:  5.287e+14
+          std:  2.643e+14
+      entries:  28399
+  gridsquares:  116800
+
+Stats for 2, [-36, 134, -33, 140], green
+  yearly mean:  4.965e+14
+          std:  2.596e+14
+      entries:  27858
+  gridsquares:  105120
+
+Stats for 3, [-30, 125, -25, 135], cyan
+  yearly mean:  4.147e+14
+          std:  2.370e+14
+      entries:  204143
+  gridsquares:  292000
+
+Stats for 4, [-39, 142, -36, 148], darkred
+  yearly mean:  5.255e+14
+          std:  2.668e+14
+      entries:  27572
+  gridsquares:  105120
+

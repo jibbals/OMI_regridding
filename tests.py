@@ -783,7 +783,7 @@ def test_reprocess_corrected(date=datetime(2005,1,1), oneday=True, lllat=-80, ll
     plt.close()
     print(outfig+" Saved.")
 
-def analyse_VCC_pp(day=datetime(2005,3,1), oneday=False, ausonly=True):
+def analyse_VCC_pp(day=datetime(2005,3,1), oneday=False, region=pp.__AUSREGION__):
     '''
     Look closely at AMFs over Australia, specifically over land
     and see how our values compare against the model and OMI swaths.and Paul Palmers code
@@ -793,22 +793,19 @@ def analyse_VCC_pp(day=datetime(2005,3,1), oneday=False, ausonly=True):
 
     # read in omhchorp
     om=omrp(day,dayn=util.last_day(day))
+    lats,lons=om.lats,om.lons
 
-    print("AMF mean   : %7.4f, std: %7.4f"%(np.nanmean(om.AMF_OMI),np.nanstd(om.AMF_OMI)))
-    print("AMF_GC mean: %7.4f, std: %7.4f"%(np.nanmean(om.AMF_GC),np.nanstd(om.AMF_GC)))
-    print("AMF_PP mean: %7.4f, std: %7.4f"%(np.nanmean(om.AMF_PP),np.nanstd(om.AMF_PP)))
+    # AMF Subsets
+    subsets=util.lat_lon_subset(lats,lons,region,data=[om.AMF_OMI,om.AMF_GC,om.AMF_PP,om.VC_OMI_RSC,om.VCC,om.VCC_PP],has_time_dim=True)
+    lats,lons=subsets['lats'],subsets['lons']
+    for i,istr in enumerate(['AMF (OMI)', 'AMF (GC) ', 'AMF (PP) ']):
+        dat=subsets['data'][i]
+        print("%s mean : %7.4f, std: %7.4f"%(istr, np.nanmean(dat),np.nanstd(dat)))
 
-    lats=om.latitude
-    lons=om.longitude
-    unc = om.col_uncertainty_OMI
+    #unc = om.col_uncertainty_OMI
     mlons,mlats=np.meshgrid(lons,lats)
-
-    if ausonly:
-        # filter to just Australia rectangle [.,.,.,.]
-        landinds=om.inds_aus(maskocean=True)
-    else:
-        landinds=om.inds_subset(maskocean=True)
-    oceaninds=om.inds_subset(maskocean=False,maskland=True)
+    oceanmask=maskoceans(mlons,mlats,mlons,inlands=0).mask
+    oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],om.n_times,axis=0)
 
     # the datasets with nans and land or ocean masked
     OMP_l = [] # OMI, My, Paul palmer
@@ -817,18 +814,18 @@ def analyse_VCC_pp(day=datetime(2005,3,1), oneday=False, ausonly=True):
     OMP_col = ['k','r','m']
     land_data=[]
     ocean_data=[]
-    for arr in [om.VC_OMI_RSC, om.VCC, om.VCC_PP]:
-        print(arr.shape)
+    for arr in subsets['data'][3:]:
+
         alsonans=np.isnan(arr)
-        OMP_l.append(ma(arr, mask=~landinds))
-        OMP_o.append(ma(arr,  mask=~oceaninds))
-        land_data.append(arr[landinds* ~alsonans ])
-        ocean_data.append(arr[oceaninds* ~alsonans])
+        OMP_l.append(ma(arr, mask=oceanmask3d)) # as a masked array
+        OMP_o.append(ma(arr,  mask=~oceanmask3d))
+        land_data.append(arr[~oceanmask3d * ~alsonans ]) # as a list of data
+        ocean_data.append(arr[oceanmask3d * ~alsonans])
     #ocean_data=np.transpose(ocean_data)
     #land_data=np.transpose(land_data)
 
     # Print the land and ocean averages for each product
-    print("%s land averages (oceans are global):"%(['Global','Australian'][ausonly]))
+    print("%s land averages:"%str(region))
     print("%25s   land,   ocean"%'')
     for arrl, arro, arrstr in zip(OMP_l,OMP_o,OMP_str):
         print("%21s: %5.3e,  %5.3e "%(arrstr, np.nanmean(arrl),np.nanmean(arro)))
@@ -849,13 +846,13 @@ def analyse_VCC_pp(day=datetime(2005,3,1), oneday=False, ausonly=True):
     plt.ylabel('frequency'); plt.xlabel('molec cm$^{-2}$')
     plt.legend(loc='center left')
     ta=plt.gca().transAxes
-    plt.text(0.05,.95, 'land count=%d'%np.sum(landinds),transform=ta)
-    plt.text(.05,.90, 'ocean count=%d'%np.sum(oceaninds),transform=ta)
+    plt.text(0.05,.95, 'land count=%d'%np.sum(~oceanmask3d),transform=ta)
+    plt.text(.05,.90, 'ocean count=%d'%np.sum(oceanmask3d),transform=ta)
     for ii in range (3):
         plt.text(.05,.85-0.05*ii, '%s mean(land)=%5.3e'%(OMP_str[ii],np.nanmean(OMP_l[ii])), transform=ta)
-    ausstr=['','_AUS'][ausonly]
+
     timestr=['_month','_day'][oneday]
-    pname='Figs/hist%s%s_%s.png'%(timestr,ausstr,ymdstr)
+    pname='Figs/hist%s_%s.png'%(timestr,ymdstr)
     plt.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
@@ -885,7 +882,7 @@ def analyse_VCC_pp(day=datetime(2005,3,1), oneday=False, ausonly=True):
         plt.ylabel(OMP_str[ii-1]); plt.xlabel(OMP_str[ii])
 
     # save plot
-    pname='Figs/correlations%s%s_%s.png'%(timestr,ausstr,ymdstr)
+    pname='Figs/correlations%s_%s.png'%(timestr,ymdstr)
     f.suptitle("Product comparison for %s"%ymdstr,fontsize=28)
     f.savefig(pname)
     print("%s saved"%pname)
@@ -1838,10 +1835,7 @@ if __name__ == '__main__':
     # GEOS Chem trop vs ucx restarts
     #check_HEMCO_restarts()
 
-    #analyse_VCC_pp(oneday=False, ausonly=True)
-    #typical_aaods()
-    #typical_aaod_month()
-    omno2d_filter_determination()
+    analyse_VCC_pp(oneday=False)
 
 
     #for dates in [ [datetime(2005,1,1),datetime(2005,1,8)],

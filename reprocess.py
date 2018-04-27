@@ -382,7 +382,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     # fire filter can be made from the fire_count
     fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date,latres=latres,lonres=lonres)
     assert all(_flats == lats), "fire interpolation does not match our resolution"
-    
+
     # Smoke filter similarly can be made from AAOD stored each day
     smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date,latres=latres,lonres=lonres)
     assert all(_flats == lats), "smoke aaod interpolation does not match our resolution"
@@ -492,11 +492,11 @@ def create_omhchorp_justfires(date, latres=0.25, lonres=0.3125):
     # fire filter can be made from the fire_count
     fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date,latres=latres,lonres=lonres)
     assert all(_flats == lats), "fire interpolation does not match our resolution"
-    
+
     # Smoke filter similarly can be made from AAOD stored each day
     smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date,latres=latres,lonres=lonres)
     assert all(_flats == lats), "smoke aaod interpolation does not match our resolution"
-    
+
     # Save fires, smoke out to H5 format, along with dates, lats, lons
     outd=dict()
     outd['latitude']            = lats
@@ -630,33 +630,35 @@ def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remo
         elapsed = timeit.default_timer() - start_time
         print ("Took %6.2f minutes to reprocess %3d days using %2d processes"%(elapsed/60.0,days,processes))
 
-def get_8day_fires_mask(date=datetime(2005,1,1), latres=0.25, lonres=0.3125):
-    '''
-    1) read aqua 8 day fire count
-    2) return a mask set to true where fire influence is expected
-    '''
-
-
-    # read day fires
-    fires, flats, flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
-
-    # TODO: read night fires:
-
-    # create a mask in squares with fires or adjacent to fires
-    mask = fires > 0
-    retmask = util.set_adjacent_to_true(mask)
-
-    return retmask
-
-def get_16day_fires_mask(date, latres=0.25, lonres=0.3125):
-    '''
-    '''
-    # current 8 day fire mask
-    mask = get_8day_fires_mask(date, latres, lonres)
-    # prior 8 days fire mask:
-    pridate=date-timedelta(days=8)
-    if pridate >= datetime(2005,1,1):
-        maskpri= get_8day_fires_mask(pridate,latres,lonres)
-        mask = mask | maskpri
-    return mask
+## old fire method, now using daily modis product
+##
+#def get_8day_fires_mask(date=datetime(2005,1,1), latres=0.25, lonres=0.3125):
+#    '''
+#    1) read aqua 8 day fire count
+#    2) return a mask set to true where fire influence is expected
+#    '''
+#
+#
+#    # read day fires
+#    fires, flats, flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
+#
+#    # TODO: read night fires:
+#
+#    # create a mask in squares with fires or adjacent to fires
+#    mask = fires > 0
+#    retmask = util.set_adjacent_to_true(mask)
+#
+#    return retmask
+#
+#def get_16day_fires_mask(date, latres=0.25, lonres=0.3125):
+#    '''
+#    '''
+#    # current 8 day fire mask
+#    mask = get_8day_fires_mask(date, latres, lonres)
+#    # prior 8 days fire mask:
+#    pridate=date-timedelta(days=8)
+#    if pridate >= datetime(2005,1,1):
+#        maskpri= get_8day_fires_mask(pridate,latres,lonres)
+#        mask = mask | maskpri
+#    return mask
 

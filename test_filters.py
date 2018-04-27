@@ -12,6 +12,11 @@ History:
 #########################################
 ############# Modules ###################
 #########################################
+
+# don't actually display any plots, just create them
+import matplotlib
+matplotlib.use('Agg')
+
 # Local stuff
 from utilities import fio
 from utilities import plotting as pp

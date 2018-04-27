@@ -65,7 +65,7 @@ __OMHCHORP_KEYS__ = [
     'VC_OMI_RSC',    # OMI VCs with Reference sector correction?
     'col_uncertainty_OMI',
     'fires',         # Fire count
-    'AAOD',          # Smoke AAOD_500nm interpolated from OMAERUVd
+    #'AAOD',          # Smoke AAOD_500nm interpolated from OMAERUVd
     ]
     #'fire_mask_8',   # true where fires occurred over last 8 days
     #'fire_mask_16' ] # true where fires occurred over last 16 days
@@ -163,17 +163,18 @@ class omhchorp:
         if 'RSC_region' in ret_keylist:
             self.RSC_region=struct[0]['RSC_region']
 
-        # remove small and negative AMFs
-        if hasattr(self,'AMF_PP'):
-            print("Removing %d AMF_PP's less than 0.1"%np.nansum(self.AMF_PP<0.1))
-            print("    EDIT: not removed at the moment")
-            #self.AMF_PP[self.AMF_PP < 0.1]=np.NaN
-            screen=[-5e15,1e17]
-            screened=(self.VCC_PP<screen[0]) + (self.VCC_PP>screen[1])
-            print("Removing %d VCC_PP's outside [-5e15,1e17]"%(np.sum(screened)))
-            print("    EDIT: not removed at the moment")
-            #self.VCC_PP[screened]=np.NaN
+        # Screen the Vert Columns to between these values:
+        self.VC_screen=[-5e15,1e17]
+        for vcstr in ['VC_OMI_RSC','VCC_PP','VCC']:
+            if not hasattr(self,vcstr):
+                continue
+            attr=getattr(self,vcstr)
 
+            screened=(attr<self.VC_screen[0]) + (attr>self.VC_screen[1])
+            print("Removing %d gridsquares from %s using screen %s"%(np.sum(screened), vcstr, str(self.VC_screen)))
+
+            attr[screened]=np.NaN
+            setattr(self,vcstr,attr)
         mlons,mlats=np.meshgrid(self.lons,self.lats)
 
         self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=0).mask

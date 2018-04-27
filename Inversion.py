@@ -463,19 +463,13 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     newlats=omilats[omilati]
     newlons=omilons[omiloni]
 
-    # We need to make the fire and smoke masks:
+    # We need to make the anthropogenic, fire and smoke masks:
     firemask=fio.make_fire_mask(d0=day0, dN=dayn, prior_days_masked=2, fire_thresh=1, adjacent=True)
     smokemask=fio.make_smoke_mask(d0=day0, dN=dayn, aaod_thresh=0.2)
+    anthrofilter=fio.make_anthro_mask(d0=day0, dN=dayn)
 
-    # We also want an anthropogenic mask:
-    no2thresh=1e16
-    no2mask, _no2dates, _no2lats, _no2lons = fio.make_anthro_mask(d0=day0, dN=dayn, no2thresh=no2thresh)
-
-
-
-    # Filters made up of these masks:
+    # fire filter made up of two masks:
     firefilter=(firemask+smokemask).astype(np.bool)
-    anthrofilter=no2mask
 
     # Need Vertical colums, slope, and backgrounds all at same resolution to get emissions
     VCC                   = np.copy(OMI.VCC)

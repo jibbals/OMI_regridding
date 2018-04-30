@@ -31,7 +31,7 @@ import matplotlib.image as mpimg # for direct image plotting
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
 from utilities.utilities import regrid
-import utilities.fio as fio
+from utilities import fio
 #sys.path.pop(0)
 
 ###############

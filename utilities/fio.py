@@ -29,6 +29,8 @@ import xarray
 import pandas as pd
 
 import utilities.utilities as util
+from classes import omhchorp
+from utilities.plotting import __AUSREGION__
 
 ###############
 ### GLOBALS ###
@@ -39,7 +41,7 @@ geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
-__VERBOSE__=False
+__VERBOSE__=True
 
 
 
@@ -262,13 +264,37 @@ def read_smoke(d0,dN, latres=0.25, lonres=0.3125):
 
     retsmoke=np.zeros([len(dates),len(lats),len(lons)])
     retsmoke[0] = smoke0
-    if len(dates)==1:
+    if len(dates)>1:
         for i,day in enumerate(dates[1:]):
             smokei,lats,lons=read_AAOD_interpolated(date=day,latres=latres,lonres=lonres)
             retsmoke[i+1] = smokei
 
     return retsmoke, dates, lats, lons
 
+def make_smoke_mask(d0, dN=None, aaod_thresh=0.05,
+                    latres=0.25, lonres=0.3125, region=__AUSREGION__):
+    '''
+        Return smoke mask with dimensions [len(d0-dN), n_lats, n_lons]
+
+        Read OMAERUVd AAOD(500nm), regrid into local resoluion, mask days above thresh
+
+    '''
+    if dN is None:
+        dN = d0
+
+    if __VERBOSE__:
+        print("Making smoke mask for %s - %s"%(d0,dN))
+        print("Smoke mask being created for any square with aaod > %0.3f"%aaod_thresh)
+
+    # smoke from OMAERUVd
+    smoke, dates, lats, lons = read_smoke(d0, dN, latres=latres, lonres=lonres)
+
+    # Return mask for aaod over threshhold
+    subsets=util.lat_lon_subset(lats,lons,region,[smoke],has_time_dim=True)
+    smoke=subsets['data'][0]
+    lats,lons=subsets['lats'],subsets['lons']
+
+    return smoke>aaod_thresh, dates,lats,lons
 
 def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
     '''
@@ -280,6 +306,8 @@ def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
     # file looks like:
     #'Data/MOD14A1_D_FIRE/2005/MOD14A1_D_FIRE_2005-01-02.CSV'
     fpath='Data/MOD14A1_D_FIRE/'+date.strftime('%Y/MOD14A1_D_FIRE_%Y-%m-%d.CSV')
+    if __VERBOSE__:
+        print("Reading ",fpath)
     fires=pd.read_csv(fpath).values
 
     fires[fires>9000] = 0. # np.NaN # ocean squares
@@ -325,12 +353,12 @@ def read_fires(d0, dN, latres=0.25, lonres=0.3125):
 
     return retfires, dates, lats, lons
 
-def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1, adjacent=True):
+def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1,
+                   adjacent=True,
+                   latres=0.25,lonres=0.3125, region=__AUSREGION__):
     '''
         Return fire mask with dimensions [len(d0-dN), n_lats, n_lons]
         looks at fires between [d0-days_masked+1, dN], for each day in d0 to dN
-
-        If days_masked extends before contained days then the fire mask is read from omhchorp files
 
         mask is true where more than fire_thresh fire pixels exist.
 
@@ -341,12 +369,13 @@ def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1, adjacent=Tru
     last_day=daylist[-1]
 
     if __VERBOSE__:
-        print("VERBOSE: make_fire_mask will return rolling %d day fire masks between "%prior_days_masked+1, d0, '-', last_day)
+        print("VERBOSE: make_fire_mask will return rolling %d day fire masks between "%(prior_days_masked+1), d0, '-', last_day)
         print("VERBOSE: They will filter gridsquares with more than %d fire pixels detected"%fire_thresh)
         print("VERBOSE: fire mask will be read from omhchorp now.")
 
     # read fires[dates,lats,lons]
-    fires, _dates, lats, lons = read_fires(d0=first_day,dN=last_day)
+    fires, _dates, lats, lons = read_fires(d0=first_day,dN=last_day,
+                                           latres=latres,lonres=lonres)
 
     # mask squares with more fire pixels than allowed
     mask = fires>fire_thresh
@@ -374,27 +403,10 @@ def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1, adjacent=Tru
         for i in range(len(daylist)):
             retmask[i]=util.set_adjacent_to_true(retmask[i])
 
-    return retmask
+    subsets=util.lat_lon_subset(lats,lons,region,[retmask])
+    retmask=subsets['data'][0]
 
-def make_smoke_mask(d0, dN=None, aaod_thresh=0.05):
-    '''
-        Return smoke mask with dimensions [len(d0-dN), n_lats, n_lons]
-
-        Read OMAERUVd AAOD(500nm), regrid into local resoluion, mask days above thresh
-
-    '''
-    if dN is None:
-        dN = d0
-
-    if __VERBOSE__:
-        print("Making smoke mask for %s - %s"%(d0,dN))
-        print("Smoke mask being created for any square with aaod > %0.3f"%aaod_thresh)
-
-    # smoke from OMAERUVd
-    smoke, dates, lats, lons = read_smoke(d0, dN)
-
-    # Return mask for aaod over threshhold
-    return smoke>aaod_thresh
+    return retmask, daylist, subsets['lats'], subsets['lons']
 
 # Fire code is for old fire product
 #def read_8dayfire(date=datetime(2005,1,1,0)):
@@ -745,7 +757,7 @@ def read_omno2d(day0,dayN=None,month=False):
     ret={'tropno2':data,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
     return ret,attrs
 
-def make_anthro_mask(d0,dN, threshy=1.5e15, threshd=1e15, latres=0.25, lonres=0.3125):
+def make_anthro_mask(d0,dN, threshy=1.5e15, threshd=1e15, latres=0.25, lonres=0.3125, region=__AUSREGION__):
     '''
         Read year of OMNO2d
         Create filter from d0 to dN using yearly average over threshy
@@ -770,7 +782,7 @@ def make_anthro_mask(d0,dN, threshy=1.5e15, threshd=1e15, latres=0.25, lonres=0.
     newlats, newlons, _nlate, _nlone = util.lat_lon_grid(latres=latres,lonres=lonres)
 
     # bool array we will return
-    ret = np.zeros([len(dates),len(newlats),len(newlons)]).astype(np.bool)
+    ret = np.zeros([len(dates),len(newlats),len(newlons)],dtype=np.bool)
 
     # Yearly avg filter
     no2mean = np.nanmean(no2,axis=0)
@@ -783,7 +795,11 @@ def make_anthro_mask(d0,dN, threshy=1.5e15, threshd=1e15, latres=0.25, lonres=0.
         no2i = util.regrid_to_lower(no2[i0+i],lats,lons,newlats,newlons,func=np.nanmean)
         ret[i] = ret[i] + (no2i > threshd)
 
-    return ret, dates, newlats, newlons
+    # subset to region
+    subset=util.lat_lon_subset(newlats,newlons,region,[ret],has_time_dim=True)
+    ret=subset['data'][0]
+    lats,lons=subset['lats'],subset['lons']
+    return ret, dates, lats, lons
 
 def filter_high_latitudes(array, latres=0.25, lonres=0.3125, highest_lat=60.0):
     '''
@@ -846,81 +862,3 @@ def read_GC_output(date=datetime(2005,1,1), Isop=False,
         data=get_tropchem_data(date,keys=keys,monthavg=monthavg,surface=surface)
     return data
 
-
-def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1, adjacent=True):
-    '''
-        Return fire mask with dimensions [len(d0-dN), n_lats, n_lons]
-        looks at fires between [d0-days_masked+1, dN], for each day in d0 to dN
-
-        If days_masked extends before contained days then the fire mask is read from omhchorp files
-
-        mask is true where more than fire_thresh fire pixels exist.
-
-    '''
-    # first day of filtering
-    daylist=util.list_days(d0,dN)
-    first_day=daylist[0]-timedelta(days=prior_days_masked)
-    last_day=daylist[-1]
-
-    if __VERBOSE__:
-        print("VERBOSE: make_fire_mask will return rolling %d day fire masks between "%prior_days_masked+1, d0, '-', last_day)
-        print("VERBOSE: They will filter gridsquares with more than %d fire pixels detected"%fire_thresh)
-        print("VERBOSE: fire mask will be read from omhchorp now.")
-
-
-    om = omhchorp(first_day,last_day,keylist=['fires'])
-    fires = om.fires
-
-    # mask squares with more fire pixels than allowed
-    mask = fires>fire_thresh
-    retmask= np.zeros([len(daylist),self.n_lats,self.n_lons]).astype(np.bool)
-
-    # actual mask is made up of sums of daily masks over prior days_masked
-
-    if prior_days_masked>0:
-        # from end back to first day in daylist
-        for i in -np.arange(0,len(daylist)+1):
-            tempmask=mask[i-prior_days_masked-1:] # look at last N days (N is prior days masked)
-            if i < 0:
-                tempmask=tempmask[:i] # remove days past the 'current'
-
-            # mask is made up from prior N days, working backwards
-            retmask[i-1]=np.sum(tempmask,axis=0)
-
-    else:
-        retmask = mask
-    assert retmask.shape[0]==len(daylist), 'return mask is wrong!'
-
-    # mask adjacent squares also (if desired)
-    if adjacent:
-        for i in range(len(daylist)):
-            retmask[i]=util.set_adjacent_to_true(retmask[i])
-
-    return retmask
-
-def make_smoke_mask(self, d0, dN=None, aaod_thresh=0.2):
-    '''
-        Return smoke mask with dimensions [len(d0-dN), n_lats, n_lons]
-
-        Read OMAERUVd AAOD(500nm), regrid into local resoluion, mask days above thresh
-
-    '''
-    if dN is None:
-        dN = d0
-
-    if __VERBOSE__:
-        print("Making smoke mask for %s - %s"%(d0,dN))
-        print("Smoke mask being created for any square with aaod > %0.3f"%aaod_thresh)
-
-    if self.n_times < 2:
-        if __VERBOSE__:
-            print("smoke mask has no time dimension")
-        return self.AAOD>aaod_thresh
-
-    # Subset to the requested days:
-    dates=np.array(self.dates)
-    i = (dates <= dN) * (dates >= d0)
-    aaod=self.AAOD[i,:,:]
-
-    # mask squares with more aaod pixels than allowed
-    return aaod>aaod_thresh

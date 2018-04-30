@@ -171,7 +171,8 @@ class omhchorp:
             attr=getattr(self,vcstr)
 
             screened=(attr<self.VC_screen[0]) + (attr>self.VC_screen[1])
-            print("Removing %d gridsquares from %s using screen %s"%(np.sum(screened), vcstr, str(self.VC_screen)))
+            scrstr="[%.1e - %.1e]"%(self.VC_screen[0],self.VC_screen[1])
+            print("Removing %d gridsquares from %s using screen %s"%(np.sum(screened), vcstr, scrstr))
 
             attr[screened]=np.NaN
             setattr(self,vcstr,attr)

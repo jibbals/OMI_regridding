@@ -344,6 +344,19 @@ def monthly_averaged(dates,data):
     mid_dates=[d+timedelta(days=15) for d in mdates]
     return {'dates':mdates, 'data':mdata, 'std':mstd,'count':mcount, 'middates':mid_dates}
 
+def oceanmask(lats,lons,inlands=False):
+    '''
+        Return oceanmask, true over ocean squares
+        inlands=False means don't mask inland water squares
+    '''
+    mlats,mlons=lats,lons
+    if len(np.shape(lats)) == 1:
+        mlons,mlats=np.meshgrid(lons,lats)
+    # lonsin, latsin, datain arguments for maskoceans
+    # we just want mask, so datain doesn't matter
+    ocean=maskoceans(mlons,mlats,mlats,inlands=False).mask
+    return ocean
+
 def ppbv_to_molecs_per_cm2(ppbv, pedges):
     '''
     Inputs:

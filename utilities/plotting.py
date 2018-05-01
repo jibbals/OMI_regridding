@@ -31,7 +31,7 @@ import matplotlib.image as mpimg # for direct image plotting
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
 from utilities.utilities import regrid
-from utilities import fio
+
 #sys.path.pop(0)
 
 ###############
@@ -457,32 +457,32 @@ def plot_img(path):
     axes.get_yaxis().set_visible(False)
     axes.get_xaxis().set_visible(False)
 
-def plot_swath(day, reprocessed=False,
-              oneday=True, region=__AUSREGION__,
-              edges=False , vmin=None, vmax=None,
-              aus=False, linear=True, clabel='molec/cm2', colorbar=True,
-              cbarfmt=None, cbarxtickrot=None,
-              pname=None,title=None,suptitle=None, smoothed=False,
-              cmapname=None, fillcontinents=None):
-    '''
-        Wrapper to plot gridded swath output for a day
-    '''
-
-
-    #swaths=fio.read_omhcho_day(day)
-    dkey=['VC_OMI_RSC','VCC'][reprocessed]
-    swaths=fio.read_omhchorp(day,oneday=oneday,keylist=[dkey,'latitude','longitude'])
-    data=swaths[dkey]
-    lats=swaths['latitude']
-    lons=swaths['longitude']
-
-    return createmap(data, lats, lons, edges=edges ,
-              vmin=vmin, vmax=vmax, latlon=True,
-              region=region, aus=aus, linear=linear,
-              clabel=clabel, colorbar=colorbar, cbarfmt=cbarfmt,
-              cbarxtickrot=cbarxtickrot, pname=pname,title=title,
-              suptitle=suptitle, smoothed=smoothed,
-              cmapname=cmapname, fillcontinents=fillcontinents)
+#def plot_swath(day, reprocessed=False,
+#              oneday=True, region=__AUSREGION__,
+#              edges=False , vmin=None, vmax=None,
+#              aus=False, linear=True, clabel='molec/cm2', colorbar=True,
+#              cbarfmt=None, cbarxtickrot=None,
+#              pname=None,title=None,suptitle=None, smoothed=False,
+#              cmapname=None, fillcontinents=None):
+#    '''
+#        Wrapper to plot gridded swath output for a day
+#    '''
+#
+#
+#    #swaths=fio.read_omhcho_day(day)
+#    dkey=['VC_OMI_RSC','VCC'][reprocessed]
+#    swaths=fio.read_omhchorp(day,oneday=oneday,keylist=[dkey,'latitude','longitude'])
+#    data=swaths[dkey]
+#    lats=swaths['latitude']
+#    lons=swaths['longitude']
+#
+#    return createmap(data, lats, lons, edges=edges ,
+#              vmin=vmin, vmax=vmax, latlon=True,
+#              region=region, aus=aus, linear=linear,
+#              clabel=clabel, colorbar=colorbar, cbarfmt=cbarfmt,
+#              cbarxtickrot=cbarxtickrot, pname=pname,title=title,
+#              suptitle=suptitle, smoothed=smoothed,
+#              cmapname=cmapname, fillcontinents=fillcontinents)
 
 
 def plot_rec(bmap, inlimits, color=None, linewidth=1):

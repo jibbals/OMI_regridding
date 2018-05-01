@@ -29,8 +29,6 @@ import xarray
 import pandas as pd
 
 import utilities.utilities as util
-from classes import omhchorp
-from utilities.plotting import __AUSREGION__
 
 ###############
 ### GLOBALS ###
@@ -56,6 +54,69 @@ __GCHCHO_KEYS__ = [
     'PEDGES',           # pressure edges hPa
     'SIGMA',            # Sigma dimension
     'BOXHEIGHTS']       # box heights (m)
+
+# Coords for omhchorp:
+__OMHCHORP_COORDS__=[
+                     'latitude','longitude',
+                     ]
+
+# Keys for omhchorp:
+__OMHCHORP_KEYS__ = [
+    'gridentries',   # how many satellite pixels make up the pixel
+    'ppentries',     # how many pixels we got the PP_AMF for
+    'RSC',           # The reference sector correction [rsc_lats, 60]
+    'RSC_latitude',  # latitudes of RSC
+    'RSC_region',    # RSC region [S,W,N,E]
+    'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)
+    'VCC',           # The vertical column corrected using the RSC
+    'VCC_PP',        # Corrected Paul Palmer VC
+    'AMF_GC',        # AMF calculated using by GEOS-Chem
+    'AMF_GCz',       # secondary way of calculating AMF with GC
+    'AMF_OMI',       # AMF from OMI swaths
+    'AMF_PP',        # AMF calculated using Paul palmers code
+    'SC',            # Slant Columns
+    'VC_GC',         # GEOS-Chem Vertical Columns
+    'VC_OMI',        # OMI VCs
+    'VC_OMI_RSC',    # OMI VCs with Reference sector correction?
+    'col_uncertainty_OMI',
+    'fires',         # Fire count
+    #'AAOD',          # Smoke AAOD_500nm interpolated from OMAERUVd
+    ]
+    #'fire_mask_8',   # true where fires occurred over last 8 days
+    #'fire_mask_16' ] # true where fires occurred over last 16 days
+
+# attributes for omhchorp
+__OMHCHORP_ATTRS__ = {
+    'gridentries':          {'desc':'satellite pixels averaged per gridbox'},
+    'ppentries':            {'desc':'PP_AMF values averaged per gridbox'},
+    'VC_OMI':               {'units':'molec/cm2',
+                             'desc':'regridded OMI swathe VC'},
+    'VC_GC':                {'units':'molec/cm2',
+                             'desc':'regridded VC, using OMI SC recalculated using GEOSChem shape factor'},
+    'SC':                   {'units':'molec/cm2',
+                             'desc':'OMI slant colums'},
+    'VCC':                  {'units':'molec/cm2',
+                             'desc':'Corrected OMI columns using GEOS-Chem shape factor and reference sector correction'},
+    'VCC_PP':               {'units':'molec/cm2',
+                             'desc':'Corrected OMI columns using PPalmer and LSurl\'s lidort/GEOS-Chem based AMF'},
+    'VC_OMI_RSC':           {'units':'molec/cm2',
+                             'desc':'OMI\'s RSC corrected VC '},
+    'RSC':                  {'units':'molec/cm2',
+                             'desc':'GEOS-Chem/OMI based Reference Sector Correction: is applied to pixels based on latitude and track number'},
+    'RSC_latitude':         {'units':'degrees',
+                             'desc':'latitude centres for RSC'},
+    'RSC_GC':               {'units':'molec/cm2',
+                             'desc':'GEOS-Chem HCHO over reference sector'},
+    'col_uncertainty_OMI':  {'units':'molec/cm2',
+                             'desc':'mean OMI pixel uncertainty'},
+    'AMF_GC':               {'desc':'AMF based on GC recalculation of shape factor'},
+    'AMF_OMI':              {'desc':'AMF based on GC recalculation of shape factor'},
+    'AMF_PP':               {'desc':'AMF based on PPalmer code using OMI and GEOS-Chem'},
+    #'fire_mask_16':         {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day block"},
+    #'fire_mask_8':          {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"},
+    'fires':                {'desc':"daily gridded fire count from AQUA/TERRA"},
+    'AAOD':                 {'desc':'daily smoke AAOD_500nm from AURA (OMAERUVd)'},
+    }
 
 ###############
 ### METHODS ###
@@ -272,7 +333,7 @@ def read_smoke(d0,dN, latres=0.25, lonres=0.3125):
     return retsmoke, dates, lats, lons
 
 def make_smoke_mask(d0, dN=None, aaod_thresh=0.05,
-                    latres=0.25, lonres=0.3125, region=__AUSREGION__):
+                    latres=0.25, lonres=0.3125, region=None):
     '''
         Return smoke mask with dimensions [len(d0-dN), n_lats, n_lons]
 
@@ -290,9 +351,10 @@ def make_smoke_mask(d0, dN=None, aaod_thresh=0.05,
     smoke, dates, lats, lons = read_smoke(d0, dN, latres=latres, lonres=lonres)
 
     # Return mask for aaod over threshhold
-    subsets=util.lat_lon_subset(lats,lons,region,[smoke],has_time_dim=True)
-    smoke=subsets['data'][0]
-    lats,lons=subsets['lats'],subsets['lons']
+    if region is not None:
+        subsets=util.lat_lon_subset(lats,lons,region,[smoke],has_time_dim=True)
+        smoke=subsets['data'][0]
+        lats,lons=subsets['lats'],subsets['lons']
 
     return smoke>aaod_thresh, dates,lats,lons
 
@@ -355,7 +417,7 @@ def read_fires(d0, dN, latres=0.25, lonres=0.3125):
 
 def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1,
                    adjacent=True,
-                   latres=0.25,lonres=0.3125, region=__AUSREGION__):
+                   latres=0.25,lonres=0.3125, region=None):
     '''
         Return fire mask with dimensions [len(d0-dN), n_lats, n_lons]
         looks at fires between [d0-days_masked+1, dN], for each day in d0 to dN
@@ -367,15 +429,19 @@ def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1,
     daylist=util.list_days(d0,dN)
     first_day=daylist[0]-timedelta(days=prior_days_masked)
     last_day=daylist[-1]
-
+    has_time_dim= (len(daylist) > 1) + (prior_days_masked > 0)
     if __VERBOSE__:
         print("VERBOSE: make_fire_mask will return rolling %d day fire masks between "%(prior_days_masked+1), d0, '-', last_day)
         print("VERBOSE: They will filter gridsquares with more than %d fire pixels detected"%fire_thresh)
         print("VERBOSE: fire mask will be read from omhchorp now.")
 
     # read fires[dates,lats,lons]
-    fires, _dates, lats, lons = read_fires(d0=first_day,dN=last_day,
-                                           latres=latres,lonres=lonres)
+    # Takes too long!
+    #fires, _dates, lats, lons = read_fires(d0=first_day,dN=last_day,
+    #                                       latres=latres,lonres=lonres)
+    om=read_omhchorp(first_day,last_day,keylist=['fires'],latres=latres,lonres=lonres)
+    fires=om['fires']
+    lats,lons = om['lats'], om['lons']
 
     # mask squares with more fire pixels than allowed
     mask = fires>fire_thresh
@@ -386,7 +452,7 @@ def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1,
 
     if prior_days_masked>0:
         # from end back to first day in daylist
-        for i in -np.arange(0,len(daylist)+1):
+        for i in -np.arange(0,len(daylist)):
             tempmask=mask[i-prior_days_masked-1:] # look at last N days (N is prior days masked)
             if i < 0:
                 tempmask=tempmask[:i] # remove days past the 'current'
@@ -403,10 +469,13 @@ def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1,
         for i in range(len(daylist)):
             retmask[i]=util.set_adjacent_to_true(retmask[i])
 
-    subsets=util.lat_lon_subset(lats,lons,region,[retmask])
-    retmask=subsets['data'][0]
+    if region is not None:
+        subsets=util.lat_lon_subset(lats,lons,region,[retmask],has_time_dim=has_time_dim)
+        retmask=subsets['data'][0]
+        lats=subsets['lats']
+        lons=subsets['lons']
 
-    return retmask, daylist, subsets['lats'], subsets['lons']
+    return retmask, daylist, lats,lons
 
 # Fire code is for old fire product
 #def read_8dayfire(date=datetime(2005,1,1,0)):
@@ -658,12 +727,11 @@ def read_omhcho_8days(day=datetime(2005,1,1)):
             data8[key] = np.concatenate( (data8[key], data[key]), axis=axis)
     return data8
 
-def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, filename=None):
+def read_omhchorp_day(date, latres=0.25, lonres=0.3125, keylist=None, filename=None):
     '''
     Function to read a reprocessed omi file, by default reads an 8-day average (8p)
     Inputs:
         date = datetime(y,m,d) of file
-        oneday = False : read a single day average rather than 8 day average
         latres=0.25
         lonres=0.3125
         keylist=None : if set to a list of strings, just read those data from the file, otherwise read all data
@@ -671,7 +739,11 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
     Output:
         Structure containing omhchorp dataset
     '''
+    if keylist is None:
+        keylist=__OMHCHORP_KEYS__
 
+        # make sure coords are included
+    keylist=list(set(keylist+__OMHCHORP_COORDS__))
 
     if filename is None:
         fpath=determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True)
@@ -692,8 +764,65 @@ def read_omhchorp(date, oneday=False, latres=0.25, lonres=0.3125, keylist=None, 
                 retstruct[key]=np.NaN
     return retstruct
 
-def read_omhchorp_month(date):
-    ''' read a month of omhchorp data. '''
+def read_omhchorp(day0,dayn,keylist=None,latres=0.25,lonres=0.3125):
+    '''
+    '''
+
+    if keylist is None:
+        keylist=__OMHCHORP_KEYS__
+
+        # make sure coords are included
+    keylist=list(set(keylist+__OMHCHORP_COORDS__))
+
+    # Read the days we want to analyse:
+    daylist = util.list_days(day0, dayn) # includes last day.
+    nt=len(daylist)
+    struct = []
+    data={}
+    for day in daylist:
+        struct.append(read_omhchorp_day(date=day,
+                                        latres=latres, lonres=lonres,
+                                        keylist=keylist))
+
+    # Set all the data arrays in the same way, [[time],lat,lon]
+    ret_keylist=struct[0].keys()
+    for k in ret_keylist:
+        if nt ==1: # one day only, no time dimension
+            data[k] = np.squeeze(np.array(struct[0][k]))
+        else:
+            data[k] = np.array([struct[j][k] for j in range(nt)])
+        if __VERBOSE__:
+            print("Read from omhchorp: ",k, data[k].shape)
+
+    # Reference Sector Correction latitudes don't change with time
+    if 'RSC_latitude' in ret_keylist:
+        data['RSC_latitude']=struct[0]['RSC_latitude'] # rsc latitude bins
+    if 'RSC_region' in ret_keylist:
+        data['RSC_region']=struct[0]['RSC_region']
+
+    # Screen the Vert Columns to between these values:
+    VC_screen=[-5e15,1e17]
+    data['VC_screen']=VC_screen
+    for vcstr in ['VC_OMI_RSC','VCC_PP','VCC']:
+        if vcstr not in data.keys():
+            continue
+        attr=data[vcstr]
+
+        screened=(attr<VC_screen[0]) + (attr>VC_screen[1])
+        scrstr="[%.1e - %.1e]"%(VC_screen[0], VC_screen[1])
+        print("Removing %d gridsquares from %s using screen %s"%(np.sum(screened), vcstr, scrstr))
+
+        attr[screened]=np.NaN
+        data[vcstr]= attr
+
+    # Change latitude to lats...
+    data['lats']=struct[0]['latitude']
+    data['lons']=struct[0]['longitude']
+    data.pop('latitude') # remove latitudes
+    data.pop('longitude') # remove latitudes
+
+    return data
+
 
 def read_gchcho(date):
     '''
@@ -757,7 +886,7 @@ def read_omno2d(day0,dayN=None,month=False):
     ret={'tropno2':data,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
     return ret,attrs
 
-def make_anthro_mask(d0,dN, threshy=1.5e15, threshd=1e15, latres=0.25, lonres=0.3125, region=__AUSREGION__):
+def make_anthro_mask(d0,dN, threshy=1.5e15, threshd=1e15, latres=0.25, lonres=0.3125, region=None):
     '''
         Read year of OMNO2d
         Create filter from d0 to dN using yearly average over threshy
@@ -783,22 +912,23 @@ def make_anthro_mask(d0,dN, threshy=1.5e15, threshd=1e15, latres=0.25, lonres=0.
 
     # bool array we will return
     ret = np.zeros([len(dates),len(newlats),len(newlons)],dtype=np.bool)
-
-    # Yearly avg filter
-    no2mean = np.nanmean(no2,axis=0)
-    yfilt= no2mean>threshy
-    ret[:,yfilt] = True
+    no2i= np.zeros(ret.shape)+np.NaN
 
     # Daily filter: just for days in d0 to dN
-    i0=np.where(yates==dates[0])[0][0] # find first matching date
+    i0=np.where(np.array(yates)==dates[0])[0][0] # find first matching date
     for i,day in enumerate(dates):
-        no2i = util.regrid_to_lower(no2[i0+i],lats,lons,newlats,newlons,func=np.nanmean)
-        ret[i] = ret[i] + (no2i > threshd)
+        no2i[i] = util.regrid_to_lower(no2[i0+i],lats,lons,newlats,newlons,func=np.nanmean)
+        ret[i] = no2i[i] > threshd
+
+    no2mean=np.nanmean(no2i,axis=0)
+    yearmask=no2mean>threshy
+    ret[i,yearmask]=True # mask values where yearly avg threshhold is exceded
 
     # subset to region
-    subset=util.lat_lon_subset(newlats,newlons,region,[ret],has_time_dim=True)
-    ret=subset['data'][0]
-    lats,lons=subset['lats'],subset['lons']
+    if region is not None:
+        subset=util.lat_lon_subset(newlats,newlons,region,[ret],has_time_dim=len(dates)>1)
+        ret=subset['data'][0]
+        lats,lons=subset['lats'],subset['lons']
     return ret, dates, lats, lons
 
 def filter_high_latitudes(array, latres=0.25, lonres=0.3125, highest_lat=60.0):

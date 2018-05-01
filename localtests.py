@@ -42,8 +42,19 @@ d0=datetime(2005,1,1)
 dstr=d0.strftime('%Y%m%d')
 mstr=d0.strftime('%Y%m')
 
+dN=datetime(2005,1,5)
 
-tests.typical_aaods()
+dates=util.list_days(d0,dN,month=False)
+
+# Dates we read to make filter
+y0=datetime(d0.year,1,1)
+yN=util.last_day(datetime(d0.year,12,1))
+yates=util.list_days(y0,yN,month=False)
+
+# Daily filter: just for days in d0 to dN
+i0=np.where(np.array(yates)==dates[0])[0][0] # find first matching date
+
+fio.make_anthro_mask(d0,dN)
 
 
 def emisssions_vs_firefilter(d0=datetime(2005,1,1)):

@@ -19,17 +19,10 @@ from mpl_toolkits.basemap import maskoceans #Basemap, maskoceans
 import numpy as np
 from datetime import datetime, timedelta
 
-# Add parent folder to path
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-sys.path.insert(0,os.path.dirname(currentdir))
-
 # my file reading library
 from utilities import fio
 import utilities.utilities as util
 from utilities import plotting as pp
-
-sys.path.pop(0)
 
 ###############
 ### GLOBALS ###
@@ -38,70 +31,6 @@ sys.path.pop(0)
 __VERBOSE__=True
 __DEBUG__=False
 
-
-
-# Coords for omhchorp:
-__OMHCHORP_COORDS__=[
-                     'latitude','longitude',
-                     ]
-
-# Keys for omhchorp:
-__OMHCHORP_KEYS__ = [
-    'gridentries',   # how many satellite pixels make up the pixel
-    'ppentries',     # how many pixels we got the PP_AMF for
-    'RSC',           # The reference sector correction [rsc_lats, 60]
-    'RSC_latitude',  # latitudes of RSC
-    'RSC_region',    # RSC region [S,W,N,E]
-    'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)
-    'VCC',           # The vertical column corrected using the RSC
-    'VCC_PP',        # Corrected Paul Palmer VC
-    'AMF_GC',        # AMF calculated using by GEOS-Chem
-    'AMF_GCz',       # secondary way of calculating AMF with GC
-    'AMF_OMI',       # AMF from OMI swaths
-    'AMF_PP',        # AMF calculated using Paul palmers code
-    'SC',            # Slant Columns
-    'VC_GC',         # GEOS-Chem Vertical Columns
-    'VC_OMI',        # OMI VCs
-    'VC_OMI_RSC',    # OMI VCs with Reference sector correction?
-    'col_uncertainty_OMI',
-    'fires',         # Fire count
-    #'AAOD',          # Smoke AAOD_500nm interpolated from OMAERUVd
-    ]
-    #'fire_mask_8',   # true where fires occurred over last 8 days
-    #'fire_mask_16' ] # true where fires occurred over last 16 days
-
-# attributes for omhchorp
-__OMHCHORP_ATTRS__ = {
-    'gridentries':          {'desc':'satellite pixels averaged per gridbox'},
-    'ppentries':            {'desc':'PP_AMF values averaged per gridbox'},
-    'VC_OMI':               {'units':'molec/cm2',
-                             'desc':'regridded OMI swathe VC'},
-    'VC_GC':                {'units':'molec/cm2',
-                             'desc':'regridded VC, using OMI SC recalculated using GEOSChem shape factor'},
-    'SC':                   {'units':'molec/cm2',
-                             'desc':'OMI slant colums'},
-    'VCC':                  {'units':'molec/cm2',
-                             'desc':'Corrected OMI columns using GEOS-Chem shape factor and reference sector correction'},
-    'VCC_PP':               {'units':'molec/cm2',
-                             'desc':'Corrected OMI columns using PPalmer and LSurl\'s lidort/GEOS-Chem based AMF'},
-    'VC_OMI_RSC':           {'units':'molec/cm2',
-                             'desc':'OMI\'s RSC corrected VC '},
-    'RSC':                  {'units':'molec/cm2',
-                             'desc':'GEOS-Chem/OMI based Reference Sector Correction: is applied to pixels based on latitude and track number'},
-    'RSC_latitude':         {'units':'degrees',
-                             'desc':'latitude centres for RSC'},
-    'RSC_GC':               {'units':'molec/cm2',
-                             'desc':'GEOS-Chem HCHO over reference sector'},
-    'col_uncertainty_OMI':  {'units':'molec/cm2',
-                             'desc':'mean OMI pixel uncertainty'},
-    'AMF_GC':               {'desc':'AMF based on GC recalculation of shape factor'},
-    'AMF_OMI':              {'desc':'AMF based on GC recalculation of shape factor'},
-    'AMF_PP':               {'desc':'AMF based on PPalmer code using OMI and GEOS-Chem'},
-    #'fire_mask_16':         {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day block"},
-    #'fire_mask_8':          {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"},
-    'fires':                {'desc':"daily gridded fire count from AQUA/TERRA"},
-    'AAOD':                 {'desc':'daily smoke AAOD_500nm from AURA (OMAERUVd)'},
-    }
 
 ########################################################################
 ########################  OMHCHORP CLASS ###############################
@@ -123,66 +52,15 @@ class omhchorp:
         Output:
             Structure containing omhchorp dataset
         '''
-        # Read the days we want to analyse:
-        daylist = util.list_days(day0, dayn) # includes last day.
-        struct = []
-        if keylist is None:
-            keylist=__OMHCHORP_KEYS__
 
-        keylist=list(set(keylist+__OMHCHORP_COORDS__)) # make sure coords are included
 
-        for day in daylist:
-            struct.append(fio.read_omhchorp(date=day,
-                                            latres=latres, lonres=lonres,
-                                            keylist=keylist))
-        # dates and dimensions
-        self.dates=daylist
-        self.lats=struct[0]['latitude']
-        self.lons=struct[0]['longitude']
-        self.lat_res=self.lats[1]-self.lats[0]
-        self.lon_res=self.lons[1]-self.lons[0]
-        self.lats_e = util.edges_from_mids(self.lats)
-        self.lons_e = util.edges_from_mids(self.lons)
-        self.surface_areas=util.area_grid(self.lats,self.lons)
-        nt,self.n_lats,self.n_lons=len(daylist), len(self.lats), len(self.lons)
-        self.n_times=nt
+        data=fio.read_omhchorp(day0,dayn,keylist=keylist,latres=latres,lonres=lonres)
 
-        # Set all the data arrays in the same way, [[time],lat,lon]
-        ret_keylist=struct[0].keys()
-        for k in ret_keylist:
-            if nt ==1: # one day only, no time dimension
-                setattr(self, k, np.squeeze(np.array(struct[0][k])))
-            else:
-                setattr(self, k, np.array([struct[j][k] for j in range(nt)]))
-            if __VERBOSE__:
-                print("Read from omhchorp: ",k, getattr(self,k).shape)
+        # Make all the data attributes of this class
+        for k in data.keys():
+            setattr(self, k, np.squeeze(np.array(data[k])))
 
-        # Reference Sector Correction latitudes don't change with time
-        if 'RSC_latitude' in ret_keylist:
-            self.lats_RSC=struct[0]['RSC_latitude'] # rsc latitude bins
-        if 'RSC_region' in ret_keylist:
-            self.RSC_region=struct[0]['RSC_region']
-
-        # Screen the Vert Columns to between these values:
-        self.VC_screen=[-5e15,1e17]
-        for vcstr in ['VC_OMI_RSC','VCC_PP','VCC']:
-            if not hasattr(self,vcstr):
-                continue
-            attr=getattr(self,vcstr)
-
-            screened=(attr<self.VC_screen[0]) + (attr>self.VC_screen[1])
-            scrstr="[%.1e - %.1e]"%(self.VC_screen[0],self.VC_screen[1])
-            print("Removing %d gridsquares from %s using screen %s"%(np.sum(screened), vcstr, scrstr))
-
-            attr[screened]=np.NaN
-            setattr(self,vcstr,attr)
-        mlons,mlats=np.meshgrid(self.lons,self.lats)
-
-        self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=0).mask
-        #if 'VCC' in ret_keylist:
-        #    self.background=self.get_background_array()
-        #self.apply_fire_mask()
-
+        self.oceanmask=util.oceanmask(self.lats,self.lons)
 
 
     def inds_subset(self, lat0=None, lat1=None, lon0=None, lon1=None, maskocean=False, maskland=False):

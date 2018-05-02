@@ -41,20 +41,26 @@ region=pp.__AUSREGION__
 d0=datetime(2005,1,1)
 dstr=d0.strftime('%Y%m%d')
 mstr=d0.strftime('%Y%m')
+latres=0.25
+lonres=0.3125
 
 dN=datetime(2005,1,5)
 
 dates=util.list_days(d0,dN,month=False)
 
-# Dates we read to make filter
-y0=datetime(d0.year,1,1)
-yN=util.last_day(datetime(d0.year,12,1))
-yates=util.list_days(y0,yN,month=False)
 
-# Daily filter: just for days in d0 to dN
-i0=np.where(np.array(yates)==dates[0])[0][0] # find first matching date
+# masks here made using default values...
+start1=timeit.default_timer()
+firemask,_fdates,_flats,_flons=fio.make_fire_mask(d0, latres=latres,lonres=lonres)
+start2=timeit.default_timer()
+smokemask,_sdates,_slats,_slons=fio.make_smoke_mask(d0, latres=latres,lonres=lonres)
+start3=timeit.default_timer()
+anthmask,_adates,_alats,_alons=fio.make_anthro_mask(d0,latres=latres,lonres=lonres)
+end=timeit.default_timer()
 
-fio.make_anthro_mask(d0,dN)
+print("TIME: %6.2f seconds for firemask"%(start2-start1))
+print("TIME: %6.2f seconds for smokemask"%(start3-start2))
+print("TIME: %6.2f seconds for anthromask"%(end-start3))
 
 
 def emisssions_vs_firefilter(d0=datetime(2005,1,1)):

@@ -361,6 +361,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
         track_rsc=rsc_function(omi_lats[track_inds],track)
         track_sc=omi_SC[track_inds]
         omi_VCC[track_inds]= (track_sc - track_rsc) / omi_AMF_gc[track_inds]
+        # may be dividing by nans - but that's OK
         omi_VCC_pp[track_inds]=(track_sc - track_rsc) / omi_AMF_pp[track_inds]
     # that should cover all good pixels - except if we had a completely bad track some day
     #assert np.sum(np.isnan(omi_VCC))==0, "VCC not created at every pixel!"
@@ -386,6 +387,12 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     # Smoke filter similarly can be made from AAOD stored each day
     smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date,latres=latres,lonres=lonres)
     assert all(_flats == lats), "smoke aaod interpolation does not match our resolution"
+
+    # masks here made using default values...
+    # takes around 5 mins to do anthromask, <20 seconds for other masks
+    firemask,_fdates,_flats,_flons=fio.make_fire_mask(date, latres=latres,lonres=lonres)
+    smokemask,_sdates,_slats,_slons=fio.make_smoke_mask(date, latres=latres,lonres=lonres)
+    anthromask,_adates,_alats,_alons=fio.make_anthro_mask(date,latres=latres,lonres=lonres)
 
     ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -430,16 +437,9 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
             AMF_omi[i,j]    = np.mean(omi_AMF_omi[matches])
             AMF_pp[i,j]     = np.mean(omi_AMF_pp[matches])
 
-    ## 5)
-    # Save one day averages to file
-    #if ('VC' in name) or ('RSC' == name) or ('SC' == name) or ('col_uncertainty' in name):
-    #    dset.attrs["Units"] = "Molecules/cm2"
-    #if 'fire_mask_16' == name:
-    #    dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day blocks"
-    #if 'fire_mask_8' == name:
-    #    dset.attrs["description"] = "1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"
 
     outd=dict()
+
     outd['VC_OMI']              = VC_omi
     outd['VC_GC']               = VC_gc
     outd['SC']                  = SC
@@ -461,6 +461,11 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     outd['AMF_PP']              = AMF_pp
     outd['fires']               = fire_count.astype(np.int16)
     outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
+    outd['firemask']            = firemask
+    outd['smokemask']           = smokemask
+    outd['anthromask']          = anthromask
+    # Check we got everything:
+    assert all( [ keyname in outd.keys() for keyname in fio.__OMHCHORP_KEYS__] ), 'Missing some keys from OMHCHORP product'
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True)
 
     if __VERBOSE__:
@@ -468,7 +473,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     if __DEBUG__:
         print(("keys: ",outd.keys()))
 
-    fio.save_to_hdf5(outfilename, outd, attrdicts=omhchorp.__OMHCHORP_ATTRS__, verbose=__DEBUG__)
+    fio.save_to_hdf5(outfilename, outd, attrdicts=fio.__OMHCHORP_ATTRS__, verbose=__DEBUG__)
     if __DEBUG__:
         print("File should be saved now...")
     ## 5.1)
@@ -510,7 +515,7 @@ def create_omhchorp_justfires(date, latres=0.25, lonres=0.3125):
     if __DEBUG__:
         print(("keys: ",outd.keys()))
 
-    fio.save_to_hdf5(outfilename, outd, attrdicts=omhchorp.__OMHCHORP_ATTRS__, verbose=__DEBUG__)
+    fio.save_to_hdf5(outfilename, outd, attrdicts=fio.__OMHCHORP_ATTRS__, verbose=__DEBUG__)
     if __DEBUG__:
         print("File should be saved now...")
 
@@ -630,35 +635,8 @@ def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remo
         elapsed = timeit.default_timer() - start_time
         print ("Took %6.2f minutes to reprocess %3d days using %2d processes"%(elapsed/60.0,days,processes))
 
-## old fire method, now using daily modis product
-##
-#def get_8day_fires_mask(date=datetime(2005,1,1), latres=0.25, lonres=0.3125):
-#    '''
-#    1) read aqua 8 day fire count
-#    2) return a mask set to true where fire influence is expected
-#    '''
-#
-#
-#    # read day fires
-#    fires, flats, flons = fio.read_8dayfire_interpolated(date,latres=latres,lonres=lonres)
-#
-#    # TODO: read night fires:
-#
-#    # create a mask in squares with fires or adjacent to fires
-#    mask = fires > 0
-#    retmask = util.set_adjacent_to_true(mask)
-#
-#    return retmask
-#
-#def get_16day_fires_mask(date, latres=0.25, lonres=0.3125):
-#    '''
-#    '''
-#    # current 8 day fire mask
-#    mask = get_8day_fires_mask(date, latres, lonres)
-#    # prior 8 days fire mask:
-#    pridate=date-timedelta(days=8)
-#    if pridate >= datetime(2005,1,1):
-#        maskpri= get_8day_fires_mask(pridate,latres,lonres)
-#        mask = mask | maskpri
-#    return mask
-
+if __name__=='__main__':
+    # reprocess a day as a test of the process
+    start=timeit.default_timer()
+    create_omhchorp_1(datetime(2005,1,1))
+    print("Took %6.2f seconds to run for 1 day"%(timeit.default_timer()-start))

@@ -21,11 +21,11 @@ import numpy as np
 from datetime import datetime, timedelta
 from glob import glob
 import csv
+from os.path import isfile
 # interpolation method for ND arrays
 # todo: remove once this is ported to reprocess.py
 from scipy.interpolate import griddata
 import xarray
-
 import pandas as pd
 
 import utilities.utilities as util
@@ -80,7 +80,10 @@ __OMHCHORP_KEYS__ = [
     'VC_OMI_RSC',    # OMI VCs with Reference sector correction?
     'col_uncertainty_OMI',
     'fires',         # Fire count
-    #'AAOD',          # Smoke AAOD_500nm interpolated from OMAERUVd
+    'AAOD',          # AAOD from omaeruvd
+    'firemask',      # two days prior and adjacent fire activity
+    'smokemask',     # aaod over threshhold (0.03)
+    'anthromask',    # true if no2 for the year is over 1.5e15, or no2 on the day is over 1e15
     ]
     #'fire_mask_8',   # true where fires occurred over last 8 days
     #'fire_mask_16' ] # true where fires occurred over last 16 days
@@ -116,6 +119,9 @@ __OMHCHORP_ATTRS__ = {
     #'fire_mask_8':          {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"},
     'fires':                {'desc':"daily gridded fire count from AQUA/TERRA"},
     'AAOD':                 {'desc':'daily smoke AAOD_500nm from AURA (OMAERUVd)'},
+    'firemask':             {'desc':'fire mask using two days prior and adjacent fire activity'},
+    'smokemask':            {'desc':'aaod over threshhold (0.03)'},
+    'anthromask':           {'desc':'true (1) if no2 for the year is over 1.5e15, or no2 on the day is over 1e15'}
     }
 
 ###############
@@ -339,6 +345,7 @@ def make_smoke_mask(d0, dN=None, aaod_thresh=0.05,
 
         Read OMAERUVd AAOD(500nm), regrid into local resoluion, mask days above thresh
 
+        Takes a couple of seconds to mask a day
     '''
     if dN is None:
         dN = d0
@@ -423,6 +430,8 @@ def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1,
         looks at fires between [d0-days_masked+1, dN], for each day in d0 to dN
 
         mask is true where more than fire_thresh fire pixels exist.
+
+        takes around 13 seconds to mask a day with 2 prior days
 
     '''
     # first day of filtering
@@ -886,26 +895,65 @@ def read_omno2d(day0,dayN=None,month=False):
     ret={'tropno2':data,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
     return ret,attrs
 
-def make_anthro_mask(d0,dN, threshy=1.5e15, threshd=1e15, latres=0.25, lonres=0.3125, region=None):
+def yearly_anthro_avg(date,latres=0.25,lonres=0.3125,region=None):
+    '''
+        Read and save the yearly avg no2 product at natural resolution unless it is already saved
+        read it, regrid it, subset it, and return it
+    '''
+    year=date.year
+
+    filepath='Data/OMNO2d/yearavg_%4d.h5'%year
+    # Read and save file if it doesn't exist yet:
+    if not isfile(filepath):
+        if __VERBOSE__:
+            print("Reading OMNO2d %d then writing year avg to %s"%(year,filepath))
+        y0=datetime(year,1,1)
+        yN=util.last_day(datetime(year,12,1))
+
+        # Read whole year of omno2d and save to a yearly file
+        omno2, omno2_attrs = read_omno2d(day0=y0, dayN=yN, month=False)
+
+        # Average over the year:
+        omno2['tropno2'] = np.nanmean(omno2['tropno2'],axis=0)
+        # remove dates arrays
+        omno2.pop('dates')
+        omno2_attrs.pop('dates')
+
+        # save the file:
+        save_to_hdf5(filepath, omno2,attrdicts=omno2_attrs)
+    else:
+        omno2, omno2_attrs = read_hdf5(filepath)
+
+    # omno2d is saved on 0.25x0.25 grid, regrid_to_lower should always be the choice
+    newlats,newlons,_late,_lone=util.lat_lon_grid(latres=latres,lonres=lonres)
+    lats,lons=omno2['lats'],omno2['lons']
+    no2=util.regrid_to_lower(omno2['tropno2'],lats,lons,newlats,newlons)
+
+    if region is not None:
+        subset=util.lat_lon_subset(newlats,newlons,region,[no2])
+        newlats=subset['lats']
+        newlons=subset['lons']
+        no2=subset['data'][0]
+
+    return no2,newlats,newlons
+
+def make_anthro_mask(d0,dN=None, threshy=1.5e15, threshd=1e15, latres=0.25, lonres=0.3125, region=None):
     '''
         Read year of OMNO2d
         Create filter from d0 to dN using yearly average over threshy
         and daily amount over threshd
+
+        takes almost 5 mins to make a mask
     '''
 
     # Dates where we want filter
     dates=util.list_days(d0,dN,month=False)
 
-    # Dates we read to make filter
-    y0=datetime(d0.year,1,1)
-    yN=util.last_day(datetime(d0.year,12,1))
-    yates=util.list_days(y0,yN,month=False)
-
-    # Read the tropno2 columns for the year
-    omno2, omno2_attrs = read_omno2d(day0=y0, dayN=yN, month=False)
+    # Read the tropno2 columns for dates we want to look at
+    omno2, omno2_attrs = read_omno2d(day0=d0, dayN=dN, month=False)
     lats = omno2['lats']
     lons = omno2['lons']
-    no2  = omno2['tropno2'] # [dates, lats, lons]
+    no2  = omno2['tropno2'] # [[dates,] lats, lons]
 
     # regridding 0.25x0.25 to 0.25x0.3125 may cause issues, but lets see
     newlats, newlons, _nlate, _nlone = util.lat_lon_grid(latres=latres,lonres=lonres)
@@ -914,13 +962,16 @@ def make_anthro_mask(d0,dN, threshy=1.5e15, threshd=1e15, latres=0.25, lonres=0.
     ret = np.zeros([len(dates),len(newlats),len(newlons)],dtype=np.bool)
     no2i= np.zeros(ret.shape)+np.NaN
 
-    # Daily filter: just for days in d0 to dN
-    i0=np.where(np.array(yates)==dates[0])[0][0] # find first matching date
+    # Daily filter
     for i,day in enumerate(dates):
-        no2i[i] = util.regrid_to_lower(no2[i0+i],lats,lons,newlats,newlons,func=np.nanmean)
+        no2day=[no2,no2[i]][len(dates)>1]
+        no2i[i] = util.regrid_to_lower(no2day,lats,lons,newlats,newlons,func=np.nanmean)
         ret[i] = no2i[i] > threshd
 
-    no2mean=np.nanmean(no2i,axis=0)
+    no2mean,_lats,_lons=yearly_anthro_avg(d0,latres=latres,lonres=lonres,region=region)
+    #assert newlats==_lats, 'yearmask lats are fishy'
+    #assert newlons==_lons, 'yearmask lons are fishy'
+
     yearmask=no2mean>threshy
     ret[i,yearmask]=True # mask values where yearly avg threshhold is exceded
 

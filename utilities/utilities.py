@@ -17,12 +17,14 @@ import calendar
 import numpy as np
 from scipy.interpolate import griddata # for regrid function
 from mpl_toolkits.basemap import maskoceans #
+import timeit
+
 from utilities import GMAO
 
 ###############
 ### GLOBALS ###
 ###############
-__VERBOSE__=False
+__VERBOSE__=True
 __grams_per_mole__={'isop':60.06+8.08, # C5H8
                     'hcho':30.02598,
                     'carbon':12.01}
@@ -398,16 +400,25 @@ def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean):
         Regrid data to lower resolution
         using midpoints of new and old grid
     '''
+    start=timeit.default_timer()
+    if __VERBOSE__:
+        print('regridding from %s to %s'%(str(data.shape),str([len(newlats),len(newlons)])))
     newlats_e,newlons_e=edges_from_mids(newlats),edges_from_mids(newlons)
     ret=np.zeros([len(newlats_e)-1,len(newlons_e)-1])+np.NaN
-    for i in range(len(newlats_e)-1):
-        for j in range(len(newlons_e)-1):
-            lati= (lats >= newlats_e[i]) * (lats < newlats_e[i+1])
-            loni= (lons >= newlons_e[j]) * (lons < newlons_e[j+1])
+    # Ignore numpy warnings... (they suck)
+    with np.warnings.catch_warnings():
+        np.warnings.filterwarnings('ignore')
+        for i in range(len(newlats_e)-1):
+            for j in range(len(newlons_e)-1):
+                lati= (lats >= newlats_e[i]) * (lats < newlats_e[i+1])
+                loni= (lons >= newlons_e[j]) * (lons < newlons_e[j+1])
 
-            tmp=data[lati,:]
-            tmp=tmp[:,loni]
-            ret[i,j]=func(tmp)
+                tmp=data[lati,:]
+                tmp=tmp[:,loni]
+                ret[i,j]=func(tmp)
+
+    if __VERBOSE__:
+        print("TIMEIT: it took %6.2f seconds to REGRID"%(timeit.default_timer()-start))
     return ret
 
 def regrid(data,lats,lons,newlats,newlons, interp='nearest', groupfunc=np.nanmean):

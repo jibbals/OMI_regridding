@@ -12,11 +12,11 @@ This script is used to take GC output, OMI hcho swathes,
 from utilities import fio
 from utilities import utilities as util
 from classes.gchcho import gchcho
-import classes.omhchorp as omhchorp
+# Shouldn't use omhchorp while creating omhchorp
+#import classes.omhchorp as omhchorp
 import numpy as np
 import os.path
 import sys
-
 import timeit # to look at how long python code takes...
 
 # lets use sexy sexy parallelograms
@@ -285,7 +285,9 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     2) determine reference sector correction
     3) calculate VCs, VCC(ref corrected), Anything else
     4) place lists neatly into gridded latlon arrays
-    5) Save as hdf5 with nice enough attributes
+    5) save as hdf5 with nice enough attributes
+
+        Takes about 50 minutes to run a day (lots of reading and regridding)
     '''
 
     ## 1)
@@ -361,7 +363,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
         track_rsc=rsc_function(omi_lats[track_inds],track)
         track_sc=omi_SC[track_inds]
         omi_VCC[track_inds]= (track_sc - track_rsc) / omi_AMF_gc[track_inds]
-        # may be dividing by nans - but that's OK
+        # may be dividing by nans, ignore warnings
         omi_VCC_pp[track_inds]=(track_sc - track_rsc) / omi_AMF_pp[track_inds]
     # that should cover all good pixels - except if we had a completely bad track some day
     #assert np.sum(np.isnan(omi_VCC))==0, "VCC not created at every pixel!"
@@ -389,7 +391,9 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     assert all(_flats == lats), "smoke aaod interpolation does not match our resolution"
 
     # masks here made using default values...
-    # takes around 5 mins to do anthromask, <20 seconds for other masks
+    # takes around 5 mins to do anthromask,
+    # 10 mins for firemask,
+    # 15 seconds for smoke mask
     firemask,_fdates,_flats,_flons=fio.make_fire_mask(date, latres=latres,lonres=lonres)
     smokemask,_sdates,_slats,_slons=fio.make_smoke_mask(date, latres=latres,lonres=lonres)
     anthromask,_adates,_alats,_alons=fio.make_anthro_mask(date,latres=latres,lonres=lonres)
@@ -461,9 +465,9 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     outd['AMF_PP']              = AMF_pp
     outd['fires']               = fire_count.astype(np.int16)
     outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
-    outd['firemask']            = firemask
-    outd['smokemask']           = smokemask
-    outd['anthromask']          = anthromask
+    outd['firemask']            = np.squeeze(firemask.astype(np.int8))
+    outd['smokemask']           = np.squeeze(smokemask.astype(np.int8))
+    outd['anthromask']          = np.squeeze(anthromask.astype(np.int8))
     # Check we got everything:
     assert all( [ keyname in outd.keys() for keyname in fio.__OMHCHORP_KEYS__] ), 'Missing some keys from OMHCHORP product'
     outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True)

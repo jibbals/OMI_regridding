@@ -49,18 +49,20 @@ dN=datetime(2005,1,5)
 dates=util.list_days(d0,dN,month=False)
 
 
+om=fio.read_omhchorp(datetime(2004,12,26),datetime(2005,1,1),keylist=['fires'],latres=latres,lonres=lonres)
+
 # masks here made using default values...
 start1=timeit.default_timer()
-firemask,_fdates,_flats,_flons=fio.make_fire_mask(d0, latres=latres,lonres=lonres)
+#firemask,_fdates,_flats,_flons=fio.make_fire_mask(d0, latres=latres,lonres=lonres)
 start2=timeit.default_timer()
 smokemask,_sdates,_slats,_slons=fio.make_smoke_mask(d0, latres=latres,lonres=lonres)
 start3=timeit.default_timer()
-anthmask,_adates,_alats,_alons=fio.make_anthro_mask(d0,latres=latres,lonres=lonres)
+#anthmask,_adates,_alats,_alons=fio.make_anthro_mask(d0,latres=latres,lonres=lonres)
 end=timeit.default_timer()
 
-print("TIME: %6.2f seconds for firemask"%(start2-start1))
+#print("TIME: %6.2f seconds for firemask"%(start2-start1))
 print("TIME: %6.2f seconds for smokemask"%(start3-start2))
-print("TIME: %6.2f seconds for anthromask"%(end-start3))
+#print("TIME: %6.2f seconds for anthromask"%(end-start3))
 
 
 def emisssions_vs_firefilter(d0=datetime(2005,1,1)):

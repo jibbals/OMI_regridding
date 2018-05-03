@@ -1158,8 +1158,8 @@ def plot_VCC_rsc_gc_pp(month=datetime(2005,3,1),region=[-45, 99.5, -11, 160.0]):
     # Finally add density plots for each map
     plt.subplot(5,1,5)
 
-    area_list= np.transpose([[],[]])
-    plt.hist(,bins=np.linspace(vmins[0], vmaxs[0], 20), label=labels)
+    area_list= np.transpose([vec for vec in area_list]) # list of np arrays to array of vectors..
+    plt.hist(area_list,bins=np.linspace(vmins[0], vmaxs[0], 20), label=labels)
 
     #
     #ticks=[np.logspace(np.log10(vmin),np.log10(vmax),5),np.linspace(vmin,vmax,5)][linear]

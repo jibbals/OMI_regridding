@@ -802,8 +802,8 @@ if __name__=='__main__':
     print('plotting called!')
     InitMatplotlib()
     from datetime import datetime
-    plot_swath(datetime(2005,1,10),title="eg_swaths",
-               pname="Figs/Checks/eg_swaths.png",
-               vmin=2.0e15, vmax=2.0e16, cmapname='YlOrBr',
-               region=__GLOBALREGION__)#[-65.,-30.0,35.,170.],)
+    #plot_swath(datetime(2005,1,10),title="eg_swaths",
+    #           pname="Figs/Checks/eg_swaths.png",
+    #           vmin=2.0e15, vmax=2.0e16, cmapname='YlOrBr',
+    #           region=__GLOBALREGION__)#[-65.,-30.0,35.,170.],)
     print('done')

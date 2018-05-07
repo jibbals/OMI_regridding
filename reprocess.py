@@ -248,6 +248,7 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
     ref_lats=omi_lats[ref_inds]
     ref_SC=omi_SC[ref_inds] # molecs/cm2
     ref_track=omi_track[ref_inds]
+    # Ref AMF should be based on which VCC we are trying to determine (AMF_OMI, AMF GC, AMF PP )
     ref_amf=omi_AMF[ref_inds]
 
     ## Reference corrections for each reference sector pixel
@@ -320,6 +321,8 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     ## 2)
     # reference sector correction to slant column pixels
     # Correction and GC_ref_sec are both in molecules/cm2
+    # One correction for each of OMI, GC, PP amf determined
+    TODO: update here and in thesis - then run and check outputs are OK
     ref_sec_correction, GC_ref_sec=reference_sector_correction(date,latres=latres, lonres=lonres, goodpixels=goodpixels)
 
     # Now we turn it into an interpolated function with lat and track the inputs:

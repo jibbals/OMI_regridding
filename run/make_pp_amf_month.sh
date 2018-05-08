@@ -27,12 +27,14 @@ do
     
     # First run the code to make satellite data -> csv files for lidort code
     # 
+    # creates: Data/omhcho_csv/yyyy-mm-dd_for_AMF.csv
     job1=`qsub -N omicsv${mm}${dd} -v DAY=$i,MONTH=$2,YEAR=$1 -o logs/make_amf_${1}${mm}${dd}.log run/omi_csv_oneday.sh`
     echo "running: omi_csv_oneday.sh (${job1})"
     
     
     # when that one finishes run PP_AMF code
     # 
+    # creates: Data/pp_amf/tropchem/amf_yyyymmdd.csv
     job1_id=${job1%%.*} # remove .r-man2 from string
     job2=`qsub -W depend=afterok:${job1_id} -N ppamf${mm}${dd} -v DAY=$i,MONTH=$2,YEAR=$1 -o logs/PP_amf_${1}${mm}${dd}.log run/PP_AMF_oneday.sh`
     echo "running: PP_AMF_oneday.sh (${job2}) after ${job1} completes"

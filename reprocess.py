@@ -239,6 +239,8 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
     omi_SC=np.array(goodpixels['SC'])
     omi_track=np.array(goodpixels['track']) # list of track indexes
     omi_AMF=np.array(goodpixels['AMF_OMI']) # Old AMF seen by OMI
+    gc_AMF=np.array(goodpixels['AMF_GC']) # new amf from GC
+    pp_AMF=np.array(goodpixels['AMF_PP']) # new amf using GC and PP code
 
     ## Get indices of ref sector pixels
     #
@@ -249,22 +251,23 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
     ref_SC=omi_SC[ref_inds] # molecs/cm2
     ref_track=omi_track[ref_inds]
     # Ref AMF should be based on which VCC we are trying to determine (AMF_OMI, AMF GC, AMF PP )
-    ref_amf=omi_AMF[ref_inds]
+    ref_amfs=[omi_AMF[ref_inds],gc_AMF[ref_inds],pp_AMF[ref_inds]]
+    
 
     ## Reference corrections for each reference sector pixel
     # correction[lats] = OMI_refSC - GEOS_chem_Ref_VCs * AMF_omi
     # NB: ref_SC=molecs/cm2, gc=molecs/cm2 (converted from m2 above)
     # ref_corrections are in molecs/cm2
-    ref_corrections = ref_SC - gc_VC_ref_func(ref_lats) * ref_amf
+    ref_corrections = [ref_SC - gc_VC_ref_func(ref_lats) * ref_amf for ref_amf in ref_amfs]
 
     # use median at each lat bin along each of the 60 tracks
     #
-    ref_sec_correction = np.zeros((500,60), dtype=np.double) + np.NAN
+    ref_sec_correction = np.zeros((500,60,3), dtype=np.double) + np.NAN
     # for each track
     for i in range(60):
         track_inds= ref_track == i
         track_lats=ref_lats[track_inds]
-        track_corrections = ref_corrections[track_inds]
+        track_corrections = [ref_correction[track_inds] for ref_correction in ref_corrections]
         # reference sector is interpolated over 500 latitudes
         for j in range(500):
             lat_low=ref_lat_bounds[j]
@@ -274,8 +277,9 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
             test=np.sum(lat_range_inds)
             if test > 0:
                 # grab median of corrections within this lat range
-                median_correction=np.median(track_corrections[lat_range_inds])
-                ref_sec_correction[j,i]=median_correction
+                median_corrections=[np.median(track_correction[lat_range_inds]) for track_correction in track_corrections]
+                for k in range(3):
+                    ref_sec_correction[j,i,k]=median_corrections[k]
 
     # ref_sec_correction [500, 60] is done
     return(ref_sec_correction, gc_VC_ref_func(ref_lat_mids))
@@ -322,13 +326,16 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     # reference sector correction to slant column pixels
     # Correction and GC_ref_sec are both in molecules/cm2
     # One correction for each of OMI, GC, PP amf determined
-    TODO: update here and in thesis - then run and check outputs are OK
-    ref_sec_correction, GC_ref_sec=reference_sector_correction(date,latres=latres, lonres=lonres, goodpixels=goodpixels)
+    ref_sec_corrections, GC_ref_sec=reference_sector_correction(date,latres=latres, lonres=lonres, goodpixels=goodpixels)
+    
 
     # Now we turn it into an interpolated function with lat and track the inputs:
     #
-    def rsc_function(lats,track):
-        track_correction=ref_sec_correction[:,track]
+    def rsc_function(lats,track,k):
+        # k=0: OMI RSC
+        # k=1: GC RSC
+        # k=2: PP RSC
+        track_correction=ref_sec_corrections[k][:,track]
 
         # fix the NAN values through interpolation
         # [nan, 1, 2, nan, 4, nan, 4] -> [1, 1, 2, 3, 4, 4, 4]
@@ -363,11 +370,14 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
         # If track has one or less non-nan values then skip
         if np.isnan(omi_lats[track_inds]).all():
             continue
-        track_rsc=rsc_function(omi_lats[track_inds],track)
+        #track_rscs=[rsc_function(omi_lats[track_inds],track,k) for k in range(3)]
+        gc_track_rsc=rsc_function(omi_lats[track_inds],track,1)
+        pp_track_rsc=rsc_function(omi_lats[track_inds],track,2)
         track_sc=omi_SC[track_inds]
-        omi_VCC[track_inds]= (track_sc - track_rsc) / omi_AMF_gc[track_inds]
+        # GC based VCC
+        omi_VCC[track_inds]= (track_sc - gc_track_rsc) / omi_AMF_gc[track_inds]
         # may be dividing by nans, ignore warnings
-        omi_VCC_pp[track_inds]=(track_sc - track_rsc) / omi_AMF_pp[track_inds]
+        omi_VCC_pp[track_inds]=(track_sc - pp_track_rsc) / omi_AMF_pp[track_inds]
     # that should cover all good pixels - except if we had a completely bad track some day
     #assert np.sum(np.isnan(omi_VCC))==0, "VCC not created at every pixel!"
     if __VERBOSE__ and np.isnan(omi_VCC).any():
@@ -607,7 +617,7 @@ def create_omhchorp_justfires(date, latres=0.25, lonres=0.3125):
 #    fio.save_to_hdf5(outfilename, avgdict, attrdicts=fio.__OMHCHORP_ATTRS__)
 #    print("File Saved: "+outfilename)
 
-def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True,remove_fires=True):
+def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True):
     '''
     run the one day reprocessing function in parallel using N processes for M days
     '''
@@ -627,7 +637,7 @@ def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remo
 
     #arguments: date,latres,lonres,getsum
     # function arguments in a list, for each of N days
-    inputs = [(dd, latres, lonres, remove_clouds, remove_fires) for dd in daysN]
+    inputs = [(dd, latres, lonres, remove_clouds) for dd in daysN]
 
     # run all at once since each day can be independantly processed
     results = [ pool.apply_async(create_omhchorp_1, args=inp) for inp in inputs ]
@@ -647,3 +657,11 @@ if __name__=='__main__':
     start=timeit.default_timer()
     create_omhchorp_1(datetime(2005,1,1))
     print("Took %6.2f seconds to run for 1 day"%(timeit.default_timer()-start))
+
+if __name__ == '__main__':
+    print("Running quick test on reprocessing a single day")
+    
+    start_time=timeit.default_timer()
+    create_omhchorp_1(datetime(2005,1,1))
+    elapsed = timeit.default_timer() - start_time
+    print ("Took %6.2f minutes to reprocess %3d day(s)"%(elapsed/60.0, 1))

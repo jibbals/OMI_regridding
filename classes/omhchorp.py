@@ -124,7 +124,7 @@ class omhchorp:
         ''' return indices of Australia, with or without(default) ocean squares '''
         return self.inds_subset(lat0=-57,lat1=-6,lon0=101,lon1=160,maskocean=maskocean,maskland=maskland)
 
-    def background_VCC_averaged(self, lats=None):
+    def background_averaged(self, key='VCC_GC', lats=None):
         '''
             return average HCHO over a specific region
             In same units as VCC [ Molecules/cm2 ]
@@ -135,11 +135,11 @@ class omhchorp:
             region[2]=lats[1]
         # find the average HCHO column over the __REMOTEPACIFIC__
         inds = self.region_subset(region, maskocean=False, maskland=False)
-
-        BG=np.nanmean(self.VCC[inds])
+        attr=getattr(self,key)
+        BG=np.nanmean(attr[inds])
         return BG
 
-    def get_background_array(self, key='VCC', lats=None, lons=None):
+    def get_background_array(self, key='VCC_GC', lats=None, lons=None):
         '''
             Return background for key based on average over pacific region
             for given latitudes (can be gridded with longitudes)

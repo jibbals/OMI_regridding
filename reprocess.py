@@ -62,7 +62,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True):
     lats=list()
     lons=list()
     slants=list()       # Slant columns from (molec/cm2)
-    RSC_OMI=list()      # RSC vertical columns (molec/cm2) from abad15
+    VCC_OMI=list()      # RSC vertical columns (molec/cm2) from abad15
     ref_column=list()   # Median remote pacific reference radiance column (molec/cm2) # todo:remove- abad says this is not what I thought
     AMFos=list()        # AMFs from OMI
     AMFGs=list()        # Geometric AMFs from OMI
@@ -136,7 +136,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True):
 
         # add this file's lats,lons,SCs,AMFs to our lists
         slants.extend(list(fslants[goods]))
-        RSC_OMI.extend(list(omiswath['RSC_OMI'][goods]))
+        VCC_OMI.extend(list(omiswath['VCC_OMI'][goods]))
         lats.extend(flats)
         lons.extend(flons)
         AMFos.extend(list((omiswath['AMF'])[goods]))
@@ -186,7 +186,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True):
 
     return({'lat':lats, 'lon':lons, 'SC':slants, 'rad_ref_col':ref_column,
             'AMF_OMI':AMFos, 'AMF_GC':AMFgcs, 'AMF_GCz':AMFgczs, 'AMF_G':AMFGs,
-            'RSC_OMI':RSC_OMI, 'AMF_PP':AMFpp,
+            'VCC_OMI':VCC_OMI, 'AMF_PP':AMFpp,
             'sza':sza, 'vza':vza, 'ctp':ctp,
             'cloudfrac':cloudfracs, 'track':track, 'scan':scan,
             'qualityflag':flags, 'xtrackflag':xflags,
@@ -252,7 +252,7 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
     ref_track=omi_track[ref_inds]
     # Ref AMF should be based on which VCC we are trying to determine (AMF_OMI, AMF GC, AMF PP )
     ref_amfs=[omi_AMF[ref_inds],gc_AMF[ref_inds],pp_AMF[ref_inds]]
-    
+
 
     ## Reference corrections for each reference sector pixel
     # correction[lats] = OMI_refSC - GEOS_chem_Ref_VCs * AMF_omi
@@ -313,7 +313,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     omi_lats=np.array(goodpixels['lat'])
     # SC UNITS: Molecs/cm2
     omi_SC=np.array(goodpixels['SC'])
-    omi_RSC=np.array(goodpixels['RSC_OMI'])
+    omi_VCC_OMI=np.array(goodpixels['VCC_OMI'])
     omi_AMF_gc=np.array(goodpixels['AMF_GC'])
     omi_AMF_gcz=np.array(goodpixels['AMF_GCz'])
     omi_AMF_omi=np.array(goodpixels['AMF_OMI'])
@@ -327,7 +327,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     # Correction and GC_ref_sec are both in molecules/cm2
     # One correction for each of OMI, GC, PP amf determined
     ref_sec_corrections, GC_ref_sec=reference_sector_correction(date,latres=latres, lonres=lonres, goodpixels=goodpixels)
-    
+    # ref sec correction [latitude, track, k]
 
     # Now we turn it into an interpolated function with lat and track the inputs:
     #
@@ -335,7 +335,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
         # k=0: OMI RSC
         # k=1: GC RSC
         # k=2: PP RSC
-        track_correction=ref_sec_corrections[k][:,track]
+        track_correction=ref_sec_corrections[:,track,k]
 
         # fix the NAN values through interpolation
         # [nan, 1, 2, nan, 4, nan, 4] -> [1, 1, 2, 3, 4, 4, 4]
@@ -415,9 +415,9 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_omi  = np.zeros([ny,nx],dtype=np.double)+np.NaN
-    VCC     = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    VCC_GC  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VCC_pp  = np.zeros([ny,nx],dtype=np.double)+np.NaN
-    RSC_OMI = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    VCC_OMI = np.zeros([ny,nx],dtype=np.double)+np.NaN
     cunc_omi= np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_gc  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_gcz = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -444,9 +444,9 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
             SC[i,j]         = np.mean(omi_SC[matches])
             VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
             VC_omi[i,j]     = np.mean(omi_VC_omi[matches])
-            VCC[i,j]        = np.mean(omi_VCC[matches]) # RSC Corrected VC_GC
+            VCC_GC[i,j]     = np.mean(omi_VCC[matches]) # RSC Corrected VC_GC
             VCC_pp[i,j]     = np.mean(omi_VCC_pp[matches]) # RSC Corrected VC_PP
-            RSC_OMI[i,j]    = np.mean(omi_RSC[matches]) # RSC corrected VC_omi
+            VCC_OMI[i,j]    = np.mean(omi_VCC_OMI[matches])    # RSC corrected VC_omi
             # TODO: store analysis data for saving, when we decide what we want analysed
             cunc_omi[i,j]   = np.mean(omi_cunc[matches])
             AMF_gc[i,j]     = np.mean(omi_AMF_gc[matches])
@@ -460,14 +460,14 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     outd['VC_OMI']              = VC_omi
     outd['VC_GC']               = VC_gc
     outd['SC']                  = SC
-    outd['VCC']                 = VCC
+    outd['VCC_GC']              = VCC_GC
     outd['VCC_PP']              = VCC_pp
-    outd['VC_OMI_RSC']          = RSC_OMI # omi's VC (corrected by reference sector)
+    outd['VCC_OMI']          = VCC_OMI # omi's VC (corrected by reference sector)
     outd['gridentries']         = counts
     outd['ppentries']           = countspp
     outd['latitude']            = lats
     outd['longitude']           = lons
-    outd['RSC']                 = ref_sec_correction
+    outd['RSC']                 = ref_sec_corrections
     outd['RSC_latitude']        = ref_lat_bins
     outd['RSC_GC']              = GC_ref_sec
     outd['RSC_region']          = np.array([-90, -160, 90, -140])
@@ -556,8 +556,8 @@ def create_omhchorp_justfires(date, latres=0.25, lonres=0.3125):
 #    normallist=['latitude', 'longitude', 'RSC_latitude', 'RSC_region',
 #                'fires', 'fire_mask_8', 'fire_mask_16']
 #    # list of things we need to add together and average
-#    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI','VC_OMI_RSC',
-#             'VCC', 'col_uncertainty_OMI']
+#    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI','VCC_OMI',
+#             'VCC_GC', 'col_uncertainty_OMI']
 #    # other things need to be handled seperately
 #    otherlist=['gridentries','RSC', 'RSC_GC','ppentries','AMF_PP','VCC_PP']
 #
@@ -660,7 +660,7 @@ if __name__=='__main__':
 
 if __name__ == '__main__':
     print("Running quick test on reprocessing a single day")
-    
+
     start_time=timeit.default_timer()
     create_omhchorp_1(datetime(2005,1,1))
     elapsed = timeit.default_timer() - start_time

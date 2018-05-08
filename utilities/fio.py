@@ -71,7 +71,7 @@ __OMHCHORP_KEYS__ = [
     'RSC_latitude',  # latitudes of RSC
     'RSC_region',    # RSC region [S,W,N,E]
     'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)
-    'VCC',           # The vertical column corrected using the RSC
+    'VCC_GC',           # The vertical column corrected using the RSC
     'VCC_PP',        # Corrected Paul Palmer VC
     'AMF_GC',        # AMF calculated using by GEOS-Chem
     'AMF_GCz',       # secondary way of calculating AMF with GC
@@ -80,7 +80,7 @@ __OMHCHORP_KEYS__ = [
     'SC',            # Slant Columns
     'VC_GC',         # GEOS-Chem Vertical Columns
     'VC_OMI',        # OMI VCs
-    'VC_OMI_RSC',    # OMI VCs with Reference sector correction?
+    'VCC_OMI',    # OMI VCs with Reference sector correction?
     'col_uncertainty_OMI',
     'fires',         # Fire count
     'AAOD',          # AAOD from omaeruvd
@@ -101,14 +101,14 @@ __OMHCHORP_ATTRS__ = {
                              'desc':'regridded VC, using OMI SC recalculated using GEOSChem shape factor'},
     'SC':                   {'units':'molec/cm2',
                              'desc':'OMI slant colums'},
-    'VCC':                  {'units':'molec/cm2',
+    'VCC_GC':                  {'units':'molec/cm2',
                              'desc':'Corrected OMI columns using GEOS-Chem shape factor and reference sector correction'},
     'VCC_PP':               {'units':'molec/cm2',
                              'desc':'Corrected OMI columns using PPalmer and LSurl\'s lidort/GEOS-Chem based AMF'},
-    'VC_OMI_RSC':           {'units':'molec/cm2',
+    'VCC_OMI':              {'units':'molec/cm2',
                              'desc':'OMI\'s RSC corrected VC '},
     'RSC':                  {'units':'molec/cm2',
-                             'desc':'GEOS-Chem/OMI based Reference Sector Correction: is applied to pixels based on latitude and track number'},
+                             'desc':'GEOS-Chem/OMI based Reference Sector Correction: is applied to pixels based on latitude and track number. Third dimension is for AMF applied using [OMI, GC, PP] calculations'},
     'RSC_latitude':         {'units':'degrees',
                              'desc':'latitude centres for RSC'},
     'RSC_GC':               {'units':'molec/cm2',
@@ -489,7 +489,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=60, verbose=False)
         lats    = in_f[field_lat].value     #[ 1644, 60 ]
         lons    = in_f[field_lon].value     #
         hcho    = in_f[field_hcho].value    #
-        rsc_omi = in_f[field_rsc].value     # ref sector corrected vc
+        VCC_OMI = in_f[field_rsc].value     # ref sector corrected vc
         amf     = in_f[field_amf].value     #
         amfg    = in_f[field_amfg].value    # geometric amf
         clouds  = in_f[field_clouds].value  # cloud fraction
@@ -570,7 +570,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=60, verbose=False)
     #return everything in a structure
     return {'HCHO':hcho,'lats':lats,'lons':lons,'AMF':amf,'AMFG':amfg,
             'omega':w,'apriori':apri,'plevels':plevs, 'cloudfrac':clouds,
-            'rad_ref_col':ref_c, 'RSC_OMI':rsc_omi, 'ctp':ctp,
+            'rad_ref_col':ref_c, 'VCC_OMI':VCC_OMI, 'ctp':ctp,
             'qualityflag':qf, 'xtrackflag':xqf, 'sza':sza, 'vza':vza,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
 
@@ -677,7 +677,7 @@ def read_omhchorp(day0,dayn,keylist=None,latres=0.25,lonres=0.3125):
     # Screen the Vert Columns to between these values:
     VC_screen=[-5e15,1e17]
     data['VC_screen']=VC_screen
-    for vcstr in ['VC_OMI_RSC','VCC_PP','VCC']:
+    for vcstr in ['VCC_OMI','VCC_PP','VCC_GC']:
         if vcstr not in data.keys():
             continue
         attr=data[vcstr]

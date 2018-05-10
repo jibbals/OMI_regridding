@@ -1,8 +1,60 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
+# Everything will end up matching this resolution
+# Edges will be weird due to GMAO structuring...
+__LATRES__=0.25
+__LONRES__=0.3125
+
+
+def GMAO_lats(dy=__LATRES__):
+    '''
+        GMAO structure for latitudes (half spaced top and bottom)
+        returns lats_mids, lats_edges
+        mids are [-90+dy/4, -90+dy/4+dy, -90+dy/4+2dy, ...]
+        edges are [-90, -90+dy/2, -90+dy/2 + dy, -90+dy/2+2dy, ...]
+    '''
+    ny=int(180/dy) # how many latitudes
+    late=np.ndarray(ny+2)
+    #edges of latitude bounds
+    late[0]=-90
+    late[-1]=90
+    # the rest is regular from half spaced polar boxes
+    late[1:-1] = np.linspace(-90+dy/2.0, 90-dy/2.0, ny)
+    
+    # Latitude midpoints
+    latm=(late[0:-1]+late[1:]) / 2.0
+    return latm,late
+
+def GMAO_lons(dx=__LONRES__):
+    '''
+        GMAO structured longitudes (this one is regularly spaced)
+        returns lons_mids, lons_edges
+        mids are [-180, -180+dx, ...]
+    '''
+    nx=int(360/dx) # how many lons
+    lone=np.linspace(-180-dx/2.0, 180-dx/2.0, nx+1)
+    lonm=(lone[0:-1]+lone[1:]) / 2.0
+    
+    return lonm, lone
+
+# GMAO FOR 2x2.5 GEOS-Chem OUTPUT:
+lons_m,lons_e = GMAO_lons(2.5)
+lats_m,lats_e = GMAO_lats(2)
+
+def edges_containing_region(region):
+    '''
+        Determine smallest region containing input [SWNE]
+    '''
+    S,W,N,E=region
+    S=(lats_e[lats_e <= S])[-1]   # first edge less than S
+    W=(lons_e[lons_e <= W])[-1]   # ^^
+    N=(lats_e[lats_e >= N])[0]    # first edge greater than N
+    E=(lons_e[lons_e >= E])[0]    # ^^
+    return [S,W,N,E]
+
 #### GMAO 2x25 GRID ####
-lons_e = np.array([ -181.25, -178.75, -176.25, -173.75, -171.25, -168.75,
+assert all(lons_e == np.array([ -181.25, -178.75, -176.25, -173.75, -171.25, -168.75,
                     -166.25, -163.75, -161.25, -158.75, -156.25, -153.75,
                     -151.25, -148.75, -146.25, -143.75, -141.25, -138.75,
                     -136.25, -133.75, -131.25, -128.75, -126.25, -123.75,
@@ -26,8 +78,9 @@ lons_e = np.array([ -181.25, -178.75, -176.25, -173.75, -171.25, -168.75,
                       133.75,  136.25,  138.75,  141.25,  143.75,  146.25,
                       148.75,  151.25,  153.75,  156.25,  158.75,  161.25,
                       163.75,  166.25,  168.75,  171.25,  173.75,  176.25,
-                      178.75,])
-lons_m= np.array([-180.0, -177.5, -175.0, -172.5, -170.0, -167.5, -165.0, -162.5,
+                      178.75,]))
+    
+assert all(lons_m == np.array([-180.0, -177.5, -175.0, -172.5, -170.0, -167.5, -165.0, -162.5,
                        -160.0, -157.5, -155.0, -152.5, -150.0, -147.5, -145.0, -142.5,
                        -140.0, -137.5, -135.0, -132.5, -130.0, -127.5, -125.0, -122.5,
                        -120.0, -117.5, -115.0, -112.5, -110.0, -107.5, -105.0, -102.5,
@@ -45,9 +98,9 @@ lons_m= np.array([-180.0, -177.5, -175.0, -172.5, -170.0, -167.5, -165.0, -162.5
                        120.0,  122.5,  125.0,  127.5,  130.0,  132.5,  135.0,  137.5,
                        140.0,  142.5,  145.0,  147.5,  150.0,  152.5,  155.0,  157.5,
                        160.0,  162.5,  165.0,  167.5,  170.0,  172.5,  175.0,  177.5,
-                       ])
+                       ]))
 
-lats_e=np.array([  -90.,  -89.,  -87.,  -85.,  -83.,  -81.,  -79.,  -77.,
+assert all(lats_e == np.array([  -90.,  -89.,  -87.,  -85.,  -83.,  -81.,  -79.,  -77.,
                  -75.,  -73.,  -71.,  -69.,  -67.,  -65.,  -63.,  -61.,
                  -59.,  -57.,  -55.,  -53.,  -51.,  -49.,  -47.,  -45.,
                  -43.,  -41.,  -39.,  -37.,  -35.,  -33.,  -31.,  -29.,
@@ -58,9 +111,9 @@ lats_e=np.array([  -90.,  -89.,  -87.,  -85.,  -83.,  -81.,  -79.,  -77.,
                  37.,   39.,   41.,   43.,   45.,   47.,   49.,   51.,
                  53.,   55.,   57.,   59.,   61.,   63.,   65.,   67.,
                  69.,   71.,   73.,   75.,   77.,   79.,   81.,   83.,
-                 85.,   87.,   89.,   90., ])
+                 85.,   87.,   89.,   90., ]))
 
-lats_m=np.array([  -89.5, -88.,  -86.,  -84.,  -82.,  -80.,  -78.,  -76.,
+assert all(lats_m == np.array([  -89.5, -88.,  -86.,  -84.,  -82.,  -80.,  -78.,  -76.,
                 -74.,  -72.,  -70.,  -68.,  -66.,  -64.,  -62.,  -60.,
                 -58.,  -56.,  -54.,  -52.,  -50.,  -48.,  -46.,  -44.,
                 -42.,  -40.,  -38.,  -36.,  -34.,  -32.,  -30.,  -28.,
@@ -71,20 +124,7 @@ lats_m=np.array([  -89.5, -88.,  -86.,  -84.,  -82.,  -80.,  -78.,  -76.,
                 38.,   40.,   42.,   44.,   46.,   48.,   50.,   52.,
                 54.,   56.,   58.,   60.,   62.,   64.,   66.,   68.,
                 70.,   72.,   74.,   76.,   78.,   80.,   82.,   84.,
-                86.,   88.,   89.5, ])
-
-
-def edges_containing_region(region):
-    '''
-        Determine smallest region containing input [SWNE]
-    '''
-    S,W,N,E=region
-    S=(lats_e[lats_e <= S])[-1]   # first edge less than S
-    W=(lons_e[lons_e <= W])[-1]   # ^^
-    N=(lats_e[lats_e >= N])[0]    # first edge greater than N
-    E=(lons_e[lons_e >= E])[0]    # ^^
-    return [S,W,N,E]
-
+                86.,   88.,   89.5, ]))
 
 ##### DXYP-DXYP ######
 area_m2=np.array([[ 2.700794e+08, 2.700794e+08, 2.700794e+08, 2.700794e+08, 2.700794e+08,

@@ -31,6 +31,8 @@ from scipy.interpolate import griddata
 import xarray
 import pandas as pd
 
+from utilities.GMAO import __LATRES__
+from utilities.GMAO import __LONRES__
 import utilities.utilities as util
 
 ###############
@@ -43,8 +45,6 @@ datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
 __VERBOSE__=True
-
-
 
 __GCHCHO_KEYS__ = [
     'LONGITUDE','LATITUDE',
@@ -264,7 +264,7 @@ def read_hdf5(filename):
 
 
 
-def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded=False, reprocessed=False, geoschem=False, metaData=False):
+def determine_filepath(date, latres=__LATRES__,lonres=__LONRES__, omhcho=False, gridded=False, regridded=False, reprocessed=False, geoschem=False, metaData=False):
     '''
     Make filename based on date, resolution, and type of file.
     '''
@@ -274,19 +274,24 @@ def determine_filepath(date, latres=0.25,lonres=0.3125, gridded=False, regridded
         return glob('Data/omhchog/OMI-Aura*%4dm%02d%02d*.he5'%(date.year, date.month, date.day))[0]
     if metaData:
         return ('Data/omhchorp/metadata/metadata_%s.he5'%(date.strftime('%Y%m%d')))
-    if not (regridded or reprocessed):
+    if omhcho:
         return glob(date.strftime('Data/omhcho/%Y/OMI-Aura_L2-OMHCHO_%Ym%m%d*'))
 
     # geos chem output created via idl scripts match the following
     if geoschem:
         return ('Data/gchcho/hcho_%4d%2d.he5'%(date.year,date.month))
-
+    
+    
+    res_date='%1.2fx%1.2f_%4d%02d%02d'%(latres,lonres,date.year,date.month,date.day) 
+        
+    if reprocessed:
+        fpath="Data/omhchorp/omhchorp_%s.he5"%res_date
+        return date.strftime(fpath)
+    
     # reprocessed and regridded match the following:
-    avg='1' # one or 8 day average when applicable
-    typ=['p','g'][regridded] # reprocessed or regridded
-    res='%1.2fx%1.2f'%(latres,lonres) # resolution string
-    d = 'Data/omhchor'+typ+'/' # directory
-    fpath=d+"omhcho_%s_%4d%02d%02d.he5" %(avg+typ+res,date.year,date.month,date.day)
+    if regridded:
+       fpath="Data/omhchorg/omhcho_1g%s.he5"%res_date
+    
     return(fpath)
 
 def read_AAOD(date):
@@ -313,11 +318,11 @@ def read_AAOD(date):
     aaod[aaod<0] = np.NaN
     return aaod,lats,lons
 
-def read_AAOD_interpolated(date, latres=0.25,lonres=0.3125):
+def read_AAOD_interpolated(date, latres=__LATRES__,lonres=__LONRES__):
     '''
         Read OMAERUVd interpolated to a lat/lon grid
     '''
-    newlats,newlons,newlats_e,newlons_e= util.lat_lon_grid(latres,lonres)
+    newlats,newlons,newlats_e,newlons_e= util.lat_lon_grid(latres,lonres,GMAO=True)
     aaod,lats,lons=read_AAOD(date)
 
     newaaod=util.regrid(aaod,lats,lons,newlats,newlons)
@@ -377,18 +382,18 @@ def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
     return fires,lats,lons
 
 
-def read_MOD14A1_interpolated(date=datetime(2005,1,1), latres=0.25,lonres=0.3125):
+def read_MOD14A1_interpolated(date=datetime(2005,1,1), latres=__LATRES__,lonres=__LONRES__):
     '''
         Read firepixels/day from MOD14A1 daily gridded product
         returns fires, lats, lons
     '''
-    newlats,newlons,_nlate,_nlone= util.lat_lon_grid(latres=latres,lonres=lonres)
+    newlats,newlons,_nlate,_nlone= util.lat_lon_grid(latres=latres,lonres=lonres,GMAO=True)
     fires,lats,lons=read_MOD14A1(date,per_km2=False)
 
     newfires=util.regrid_to_lower(fires,lats,lons,newlats,newlons,np.nansum)
-    return newfires,newlats,newlons
+    return newfires, newlats, newlons
 
-def read_fires(d0, dN, latres=0.25, lonres=0.3125):
+def read_fires(d0, dN, latres=__LATRES__, lonres=__LONRES__):
     '''
         Read fires from MOD14A1 into a time,lat,lon array
         Returns Fires[dates,lats,lons], dates,lats,lons
@@ -804,16 +809,18 @@ def yearly_anthro_avg(date,latres=0.25,lonres=0.3125,region=None):
 
 
 
-def filter_high_latitudes(array, latres=0.25, lonres=0.3125, highest_lat=60.0):
+def filter_high_latitudes(array, lats, has_time_dim=False, highest_lat=60.0):
     '''
     Read an array, assuming globally gridded at latres/lonres, set the values polewards of 60 degrees
     to nans
     '''
-    # Array shape determines how many dimensions, and latdim tells us which is the latitude one
-    lats=np.arange(-90,90,latres) + latres/2.0
+    
     highlats= np.where(np.abs(lats) > highest_lat)
     newarr=np.array(array)
-    newarr[highlats, :] = np.NaN
+    if has_time_dim:
+        newarr[:,highlats,:] = np.NaN
+    else:
+        newarr[highlats, :] = np.NaN
     return (newarr)
 
 def read_AMF_pp(date=datetime(2005,1,1),troprun=True):
@@ -871,7 +878,7 @@ def read_GC_output(date=datetime(2005,1,1), Isop=False,
 
 def make_anthro_mask(d0,dN=None,
                      threshy=1.5e15, threshd=1e15,
-                     latres=0.25, lonres=0.3125, region=None):
+                     latres=__LATRES__, lonres=__LONRES__, region=None):
     '''
         Read year of OMNO2d
         Create filter from d0 to dN using yearly average over threshy
@@ -917,7 +924,7 @@ def make_anthro_mask(d0,dN=None,
     return ret, dates, lats, lons
 
 def make_smoke_mask(d0, dN=None, aaod_thresh=0.05,
-                    latres=0.25, lonres=0.3125, region=None):
+                    latres=__LATRES__, lonres=__LONRES__, region=None):
     '''
         Return smoke mask with dimensions [len(d0-dN), n_lats, n_lons]
 
@@ -945,7 +952,7 @@ def make_smoke_mask(d0, dN=None, aaod_thresh=0.05,
 
 def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1,
                    adjacent=True, use_omhchorp=False,
-                   latres=0.25,lonres=0.3125, region=None):
+                   latres=__LATRES__,lonres=__LONRES__, region=None):
     '''
         Return fire mask with dimensions [len(d0-dN), n_lats, n_lons]
         looks at fires between [d0-days_masked+1, dN], for each day in d0 to dN

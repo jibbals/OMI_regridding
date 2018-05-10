@@ -71,13 +71,13 @@ def area_quadrangle(SWNE):
 def area_grid(lats, lons):
     '''
         Area give lats and lons in a grid in km^2
-        can do non grid with provided latres, lonres arrays
+        can do non grid with provided lat, lon arrays
 
         Lats and Lons are centres of gridpoints
     '''
     areas=np.zeros([len(lats),len(lons)]) + np.NaN
-    latres=np.abs(lats[1]-lats[0])
-    lonres=np.abs(lons[1]-lons[0])
+    latres=np.abs(lats[2]-lats[1])
+    lonres=np.abs(lons[2]-lons[1])
     yr,xr=latres/2.0,lonres/2.0
 
     for yi,y in enumerate(lats):
@@ -128,7 +128,7 @@ def edges_from_mids(x,fix_max=179.99):
     '''
     if __VERBOSE__:
         print("VERBOSE: CHECK Edges_from_mids")
-        print("VERBOSE: ", x[0:5],x[-5:])
+        print("MIDS : ", x[0:5],x[-5:])
 
     # new vector for array
     newx=np.zeros(len(x)+1)
@@ -141,12 +141,12 @@ def edges_from_mids(x,fix_max=179.99):
     newx[-1]    = x[-1] + (x[-1]-x[-2]) / 2.0
 
     if __VERBOSE__:
-        print("VERBOSE: ", newx[0:5],newx[-5:])
+        print("EDGES: ", newx[0:5],newx[-5:])
 
     # Finally if the ends are outside 90N/S or 180E/W then bring them back
-    if newx[-1] > fix_max: newx[-1]=fix_max
-    if newx[0] < -1*fix_max: newx[0]=-1*fix_max
-
+    if fix_max is not None:
+        if newx[-1] > fix_max: newx[-1]=fix_max
+        if newx[0] < -1*fix_max: newx[0]=-1*fix_max
 
     return newx
 
@@ -217,24 +217,31 @@ def last_day(date):
     dayn=datetime(date.year,date.month,lastday)
     return dayn
 
-def lat_lon_grid(latres=0.25,lonres=0.3125):
+def lat_lon_grid(latres=GMAO.__LATRES__,lonres=GMAO.__LONRES__, GMAO=True):
     '''
     Returns lats, lons, latbounds, lonbounds for grid with input resolution
+    By default this uses GMAO structure of half length lats at +- 90 degrees
     '''
-    # lat and lon bin boundaries
-    lat_bounds=np.arange(-90, 90+latres/2.0, latres)
-    lon_bounds=np.arange(-180, 180+lonres/2.0, lonres)
-    # lat and lon bin midpoints
-    lats=np.arange(-90,90,latres)+latres/2.0
-    lons=np.arange(-180,180,lonres)+lonres/2.0
-
+    
+    if GMAO:
+        lats,lat_bounds=GMAO.GMAO_lats(latres)
+        lons,lon_bounds=GMAO.GMAO_lons(lonres)
+    else:        
+        # lat and lon bin boundaries
+        lat_bounds=np.arange(-90, 90+latres/2.0, latres)
+        lon_bounds=np.arange(-180, 180+lonres/2.0, lonres)
+        
+        # lat and lon bin midpoints
+        lats=np.arange(-90,90,latres)+latres/2.0
+        lons=np.arange(-180,180,lonres)+lonres/2.0
+        
     return (lats,lons,lat_bounds,lon_bounds)
 
 def lat_lon_index(lat,lon,lats,lons):
     ''' lat,lon index from lats,lons    '''
     with np.errstate(invalid='ignore'):
-            latind=(np.abs(lats-lat)).argmin()
-            lonind=(np.abs(lons-lon)).argmin()
+        latind=(np.abs(lats-lat)).argmin()
+        lonind=(np.abs(lons-lon)).argmin()
     return(latind,lonind)
 
 def lat_lon_range(lats,lons,region):
@@ -331,7 +338,8 @@ def monthly_averaged(dates,data):
     allyears=np.array([d.year for d in dates])
     allmonths=np.array([d.month for d in dates])
     #ind = [100*d.year+d.month for d in dates]
-    ret={}
+    
+    # Things that get returned
     mdates=[]
     mdata=[]
     mstd=[]
@@ -390,7 +398,7 @@ def regrid_to_higher(data,lats,lons,newlats,newlons,interp='nearest'):
     mnewlons,mnewlats = np.meshgrid(newlons,newlats)
 
     #https://docs.scipy.org/doc/scipy/reference/interpolate.html
-    # take nearest datapoint from old grid new gridpoint value
+    # take nearest datapoint from old to give value to new gridpoint value
     newdata = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
                       (mnewlats, mnewlons), method=interp)
     return newdata
@@ -436,10 +444,10 @@ def regrid(data,lats,lons,newlats,newlons, interp='nearest', groupfunc=np.nanmea
         print("data input looks like %s"%str(np.shape(data)))
     newdata=None
     # if no resolution change then just throw back input
-    oldy=lats[1]-lats[0]
-    newy=newlats[1]-newlats[0]
-    oldx=lons[1]-lons[0]
-    newx=newlons[1]-newlons[0]
+    oldy=lats[2]-lats[1]
+    newy=newlats[2]-newlats[1]
+    oldx=lons[2]-lons[1]
+    newx=newlons[2]-newlons[1]
     if oldx==newx and oldy==newy:
         return data
     # If new resolution is strictly finer, use griddata

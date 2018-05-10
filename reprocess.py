@@ -4,13 +4,14 @@ Created on Tue Apr 19 14:22:05 2016
 
 This script is used to take GC output, OMI hcho swathes,
     and OMNO2d gridded fire counts - to combine them into my omhcho dataset
-
+    
 @author: jesse
 """
 
 # module to read/write data to file
 from utilities import fio
 from utilities import utilities as util
+from utilities import GMAO
 from classes.gchcho import gchcho
 # Shouldn't use omhchorp while creating omhchorp
 #import classes.omhchorp as omhchorp
@@ -32,6 +33,15 @@ __DEBUG__=False # set to true for even more print statements
 
 # interpolate linearly to 500 points
 ref_lat_bins=np.arange(-90,90,0.36)+0.18
+# latitudes and longitudes which I will regrid everything to
+__latm__, __late__ = GMAO.GMAO_lats()
+__lonm__, __lone__ = GMAO.GMAO_lons()
+#latres=0.25, lonres=0.3125
+__LATRES__ = GMAO.__LATRES__
+__LONRES__ = GMAO.__LONRES__
+
+
+
 
 
 
@@ -98,7 +108,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True):
     #
 
     # loop through swaths
-    files = fio.determine_filepath(date)
+    files = fio.determine_filepath(date,omhcho=True)
     if __DEBUG__:
         print("%d omhcho files for %s"%(len(files),str(date)))
     for ff in files:
@@ -193,7 +203,7 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True):
             'omega':ws, 'omega_pmids':w_pmids, 'apriori':apris, 'sigma':sigmas,
             'columnuncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms})
 
-def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=None):
+def reference_sector_correction(date, goodpixels=None):
     '''
     Determine the reference sector correction for a particular day
     Returns reference sector correction array [ 500, 60 ]
@@ -284,7 +294,7 @@ def reference_sector_correction(date, latres=0.25, lonres=0.3125, goodpixels=Non
     # ref_sec_correction [500, 60] is done
     return(ref_sec_correction, gc_VC_ref_func(ref_lat_mids))
 
-def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
+def create_omhchorp(date):
     '''
     1) get good pixels list from OMI swath files
     2) determine reference sector correction
@@ -326,7 +336,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     # reference sector correction to slant column pixels
     # Correction and GC_ref_sec are both in molecules/cm2
     # One correction for each of OMI, GC, PP amf determined
-    ref_sec_corrections, GC_ref_sec=reference_sector_correction(date,latres=latres, lonres=lonres, goodpixels=goodpixels)
+    ref_sec_corrections, GC_ref_sec=reference_sector_correction(date,goodpixels=goodpixels)
     # ref sec correction [latitude, track, k]
 
     # Now we turn it into an interpolated function with lat and track the inputs:
@@ -389,27 +399,27 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     # majority of processing time in here ( 75 minutes? )
 
     # how many lats, lons
-    lats,lons,lat_bounds,lon_bounds=util.lat_lon_grid(latres=latres,lonres=lonres)
+    lats,lons,lat_bounds,lon_bounds=__latm__,__lonm__,__late__,__lone__
     ny,nx = len(lats), len(lons)
 
     # Filter for removing cloudy entries
     cloud_filter = omi_clouds < 0.4 # This is a list of booleans for the pixels
 
     # fire filter can be made from the fire_count
-    fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date,latres=latres,lonres=lonres)
+    fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date)
     assert all(_flats == lats), "fire interpolation does not match our resolution"
 
     # Smoke filter similarly can be made from AAOD stored each day
-    smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date,latres=latres,lonres=lonres)
+    smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date)
     assert all(_flats == lats), "smoke aaod interpolation does not match our resolution"
 
     # masks here made using default values...
     # takes around 5 mins to do anthromask,
     # 10 mins for firemask,
     # 15 seconds for smoke mask
-    firemask,_fdates,_flats,_flons=fio.make_fire_mask(date, latres=latres,lonres=lonres)
-    smokemask,_sdates,_slats,_slons=fio.make_smoke_mask(date, latres=latres,lonres=lonres)
-    anthromask,_adates,_alats,_alons=fio.make_anthro_mask(date,latres=latres,lonres=lonres)
+    firemask,_fdates,_flats,_flons=fio.make_fire_mask(date)
+    smokemask,_sdates,_slats,_slons=fio.make_smoke_mask(date)
+    anthromask,_adates,_alats,_alons=fio.make_anthro_mask(date)
 
     ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -432,8 +442,8 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
             matches=(omi_lats >= lat_bounds[i]) & (omi_lats < lat_bounds[i+1]) & (omi_lons >= lon_bounds[j]) & (omi_lons < lon_bounds[j+1])
 
             # remove clouds
-            if remove_clouds:
-                matches = matches & cloud_filter
+            #if remove_clouds:
+            matches = matches & cloud_filter
             counts[i,j]= np.sum(matches)
             if counts[i,j] < 1:
                 continue
@@ -483,7 +493,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     outd['anthromask']          = np.squeeze(anthromask.astype(np.int8))
     # Check we got everything:
     assert all( [ keyname in outd.keys() for keyname in fio.__OMHCHORP_KEYS__] ), 'Missing some keys from OMHCHORP product'
-    outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True)
+    outfilename=fio.determine_filepath(date,reprocessed=True)
 
     if __VERBOSE__:
         print("sending day average to be saved: "+outfilename)
@@ -497,7 +507,7 @@ def create_omhchorp_1(date, latres=0.25, lonres=0.3125, remove_clouds=True):
     ## TODO: Save analysis metadata like SSDs or other metrics
     #
 
-def create_omhchorp_justfires(date, latres=0.25, lonres=0.3125):
+def create_omhchorp_justfires(date):
     '''
         Function to create omhchorp with just fires, this is for fire filtering the first few days in 2005
     '''
@@ -508,15 +518,15 @@ def create_omhchorp_justfires(date, latres=0.25, lonres=0.3125):
         print("create_omhchorp_justfires called for %s"%ymdstr)
 
     # how many lats, lons
-    lats,lons,lat_bounds,lon_bounds=util.lat_lon_grid(latres=latres,lonres=lonres)
+    lats,lons,lat_bounds,lon_bounds=__latm__,__lonm__,__late__,__lone__
     ny,nx = len(lats), len(lons)
 
     # fire filter can be made from the fire_count
-    fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date,latres=latres,lonres=lonres)
+    fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date)
     assert all(_flats == lats), "fire interpolation does not match our resolution"
 
     # Smoke filter similarly can be made from AAOD stored each day
-    smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date,latres=latres,lonres=lonres)
+    smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date)
     assert all(_flats == lats), "smoke aaod interpolation does not match our resolution"
 
     # Save fires, smoke out to H5 format, along with dates, lats, lons
@@ -525,7 +535,7 @@ def create_omhchorp_justfires(date, latres=0.25, lonres=0.3125):
     outd['longitude']           = lons
     outd['fires']               = fire_count.astype(np.int16)
     outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
-    outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,reprocessed=True)
+    outfilename=fio.determine_filepath(date,reprocessed=True)
 
     if __VERBOSE__:
         print("sending day average to be saved: "+outfilename)
@@ -537,87 +547,7 @@ def create_omhchorp_justfires(date, latres=0.25, lonres=0.3125):
         print("File should be saved now...")
 
 
-# Working with 1-day stuff only from 29/3/2018
-#def create_omhchorp_8(date, latres=0.25, lonres=0.3125):
-#    '''
-#    Combine eight omhchorp_1 outputs to create an 8 day average file
-#    '''
-#    # check that there are 8 omhchorp_1 files
-#    # our 8 days in a list
-#    days8 = [ date + timedelta(days=dd) for dd in range(8)]
-#    files8= []
-#    for day in days8:
-#        #yyyymmdd=date.strftime("%Y%m%d")
-#        filename=fio.determine_filepath(day,latres=latres,lonres=lonres,oneday=True,reprocessed=True)
-#        assert os.path.isfile(filename), "ERROR: file not found for averaging : "+filename
-#        files8.append(filename)
-#
-#    # normal stuff will be identical between days
-#    normallist=['latitude', 'longitude', 'RSC_latitude', 'RSC_region',
-#                'fires', 'fire_mask_8', 'fire_mask_16']
-#    # list of things we need to add together and average
-#    sumlist=['AMF_GC', 'AMF_GCz', 'AMF_OMI', 'SC', 'VC_GC', 'VC_OMI','VCC_OMI',
-#             'VCC_GC', 'col_uncertainty_OMI']
-#    # other things need to be handled seperately
-#    otherlist=['gridentries','RSC', 'RSC_GC','ppentries','AMF_PP','VCC_PP']
-#
-#    # keylist is all keys
-#    keylist=sumlist.copy()
-#    keylist.extend(normallist)
-#    keylist.extend(otherlist)
-#
-#    # function adds arrays pretending nan entries are zero. two nans add to nan
-#    def addArraysWithNans(x, y):
-#        x = np.ma.masked_array(np.nan_to_num(x), mask=np.isnan(x) & np.isnan(y))
-#        y = np.ma.masked_array(np.nan_to_num(y), mask=x.mask)
-#        return (x+y).filled(np.nan)
-#
-#    # initialise sum dictionary with data from first day
-#    sumdict=dict()
-#    data=fio.read_omhchorp(date,latres=latres,lonres=lonres,oneday=True)
-#    for key in keylist:
-#        sumdict[key] = data[key].astype(np.float64)
-#
-#    # read in and sum the rest of the 8 reprocessed days
-#    for day in days8[1:]:
-#        data=fio.read_omhchorp(day,latres=latres,lonres=lonres,oneday=True)
-#        daycount=data['gridentries']
-#        daycountpp=data['ppentries']
-#        sumdict['gridentries'] = addArraysWithNans(sumdict['gridentries'], daycount)
-#        sumdict['ppentries'] = addArraysWithNans(sumdict['ppentries'], daycountpp)
-#        sumdict['RSC'] = addArraysWithNans(sumdict['RSC'], data['RSC'])
-#        sumdict['RSC_GC'] = sumdict['RSC_GC'] + data['RSC_GC']
-#
-#        for ppkey in ['AMF_PP','VCC_PP']:
-#            y=data[ppkey].astype(np.float64) * daycountpp
-#            sumdict[ppkey] = addArraysWithNans(sumdict[ppkey],y)
-#
-#        # for each averaged amount we want to sum together the totals
-#        for key in sumlist:
-#            # y is today's total amount ( gridcell avgs * gridcell counts )
-#            y=data[key].astype(np.float64) * daycount
-#            # add arrays treating nans as zero using masked arrays
-#            sumdict[key]= addArraysWithNans(sumdict[key],y)
-#
-#    # take the average and save out to netcdf
-#    avgdict=dict()
-#    counts=sumdict['gridentries']
-#    countspp=sumdict['ppentries']
-#    for key in sumlist:
-#        avgdict[key]= sumdict[key] / counts.astype(float)
-#    for key in normallist:
-#        avgdict[key]= sumdict[key]
-#    avgdict['gridentries']=counts.astype(int)
-#    avgdict['ppentries']=countspp.astype(int)
-#    avgdict['RSC']=sumdict['RSC']/8.0
-#    avgdict['RSC_GC']=sumdict['RSC_GC']/8.0
-#    avgdict['AMF_PP']=sumdict['AMF_PP']/countspp.astype(float)
-#    avgdict['VCC_PP']=sumdict['VCC_PP']/countspp.astype(float)
-#    outfilename=fio.determine_filepath(date,latres=latres,lonres=lonres,oneday=False,reprocessed=True)
-#    fio.save_to_hdf5(outfilename, avgdict, attrdicts=fio.__OMHCHORP_ATTRS__)
-#    print("File Saved: "+outfilename)
-
-def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remove_clouds=True):
+def Reprocess_N_days(date, days=8, processes=8):
     '''
     run the one day reprocessing function in parallel using N processes for M days
     '''
@@ -637,7 +567,7 @@ def Reprocess_N_days(date, latres=0.25, lonres=0.3125, days=8, processes=8, remo
 
     #arguments: date,latres,lonres,getsum
     # function arguments in a list, for each of N days
-    inputs = [(dd, latres, lonres, remove_clouds) for dd in daysN]
+    inputs = [(dd) for dd in daysN]
 
     # run all at once since each day can be independantly processed
     results = [ pool.apply_async(create_omhchorp_1, args=inp) for inp in inputs ]

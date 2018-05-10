@@ -6,13 +6,13 @@ Check the ncfiles created by bpch2coards
 Run from main project directory or else imports will not work
 '''
 ## Modules
-import matplotlib
-matplotlib.use('Agg') # don't actually display any plots, just create them
+#import matplotlib
+#matplotlib.use('Agg') # don't actually display any plots, just create them
 from matplotlib import gridspec
 
 # module for hdf eos 5
 #import h5py
-import netCDF4 as nc
+#import netCDF4 as nc
 import numpy as np
 from datetime import datetime, timedelta
 from glob import glob

@@ -322,7 +322,7 @@ def read_AAOD_interpolated(date, latres=__LATRES__,lonres=__LONRES__):
     '''
         Read OMAERUVd interpolated to a lat/lon grid
     '''
-    newlats,newlons,newlats_e,newlons_e= util.lat_lon_grid(latres,lonres,GMAO=True)
+    newlats,newlons,newlats_e,newlons_e= util.lat_lon_grid(latres,lonres,regular=False)
     aaod,lats,lons=read_AAOD(date)
 
     newaaod=util.regrid(aaod,lats,lons,newlats,newlons)
@@ -387,7 +387,7 @@ def read_MOD14A1_interpolated(date=datetime(2005,1,1), latres=__LATRES__,lonres=
         Read firepixels/day from MOD14A1 daily gridded product
         returns fires, lats, lons
     '''
-    newlats,newlons,_nlate,_nlone= util.lat_lon_grid(latres=latres,lonres=lonres,GMAO=True)
+    newlats,newlons,_nlate,_nlone= util.lat_lon_grid(latres=latres,lonres=lonres,regular=False)
     fires,lats,lons=read_MOD14A1(date,per_km2=False)
 
     newfires=util.regrid_to_lower(fires,lats,lons,newlats,newlons,np.nansum)

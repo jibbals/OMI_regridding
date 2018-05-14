@@ -488,9 +488,9 @@ def create_omhchorp(date):
     outd['AMF_PP']              = AMF_pp
     outd['fires']               = fire_count.astype(np.int16)
     outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
-    outd['firemask']            = np.squeeze(firemask.astype(np.int8))
-    outd['smokemask']           = np.squeeze(smokemask.astype(np.int8))
-    outd['anthromask']          = np.squeeze(anthromask.astype(np.int8))
+    outd['firemask']            = np.squeeze(firemask.astype(np.int16))
+    outd['smokemask']           = np.squeeze(smokemask.astype(np.int16))
+    outd['anthromask']          = np.squeeze(anthromask.astype(np.int16))
     # Check we got everything:
     assert all( [ keyname in outd.keys() for keyname in fio.__OMHCHORP_KEYS__] ), 'Missing some keys from OMHCHORP product'
     outfilename=fio.determine_filepath(date,reprocessed=True)
@@ -534,7 +534,9 @@ def create_omhchorp_justfires(date):
     outd['latitude']            = lats
     outd['longitude']           = lons
     outd['fires']               = fire_count.astype(np.int16)
-    outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
+    #outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
+    firemask,_fdates,_flats,_flons=fio.make_fire_mask(date)
+    outd['firemask']            = np.squeeze(firemask.astype(np.int16))
     outfilename=fio.determine_filepath(date,reprocessed=True)
 
     if __VERBOSE__:
@@ -585,13 +587,6 @@ def Reprocess_N_days(date, days=8, processes=8):
 if __name__=='__main__':
     # reprocess a day as a test of the process
     start=timeit.default_timer()
-    create_omhchorp_1(datetime(2005,1,1))
+    create_omhchorp(datetime(2005,1,1))
     print("Took %6.2f seconds to run for 1 day"%(timeit.default_timer()-start))
 
-if __name__ == '__main__':
-    print("Running quick test on reprocessing a single day")
-
-    start_time=timeit.default_timer()
-    create_omhchorp_1(datetime(2005,1,1))
-    elapsed = timeit.default_timer() - start_time
-    print ("Took %6.2f minutes to reprocess %3d day(s)"%(elapsed/60.0, 1))

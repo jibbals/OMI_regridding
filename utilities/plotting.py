@@ -242,7 +242,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
               clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
               cbarorient='bottom', set_bad=None,
               pname=None,title=None,suptitle=None, smoothed=False,
-              cmapname=None, fillcontinents=None):
+              cmapname=None):
     '''
         Pass in data[lat,lon], lats[lat], lons[lon]
         arguments:
@@ -258,7 +258,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         #print("Data %s, %d lats and %d lons"%(str(data.shape),len(lats), len(lons)))
 
     # First reduce data,lats,lons to the desired region (should save plotting time)
-    regionplus=np.array(region) + np.array([-5,-10,5,10]) # add a little padding for visual
+    regionplus=np.array(region) + np.array([-5,-10,5,10]) # add a little padding so edges aren't lost
     lati,loni=util.lat_lon_range(lats,lons,regionplus)
     data=data[lati,:]
     data=data[:,loni]
@@ -365,9 +365,6 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
     # draw coastline and equator(no latlon labels)
     m.drawcoastlines()
     m.drawparallels([0],labels=[0,0,0,0])
-
-    if fillcontinents is not None:
-        m.fillcontinents(fillcontinents)
 
     # add titles and cbar label
     if title is not None:

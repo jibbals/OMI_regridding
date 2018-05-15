@@ -48,7 +48,9 @@ import timeit
 Ohcho='$\Omega_{HCHO}$'
 Ovc='$\Omega_{VC}$'
 Ovcc='$\Omega_{VCC}$'
+Ovccgc='$\Omega_{VCC-GC}$'
 Ovccpp='$\Omega_{VCC-PP}$' # Paul Palmer VCC
+Ovccomi='$\Omega_{VCC-OMI}$'
 Oomi='$\Omega_{OMI}$'
 Oomic="$\Omega_{OMI_{RSC}}$" #corrected original product
 Ogc='$\Omega_{GC}$'
@@ -149,168 +151,148 @@ def compare_GC_OMI_new(date=datetime(2005,1,1),aus=True):
     plt.close()
 
 
-def compare_products(date=datetime(2005,1,1), oneday=True, positiveonly=False,
-                     lllat=-60, lllon=-179, urlat=50, urlon=179,pltname=""):
+def compare_products(month=datetime(2005,1,1), positiveonly=False,
+                     region=pp.__AUSREGION__):
     '''
-    Test a day or 8-day reprocessed HCHO map
+    look at remapped hcho (1day, 1month)
     Plot VCs, both OMI and Reprocessed, and the RMA corellations
     TODO: Update to look only at corrected, including RandalMartin calculated
     '''
 
-    # Grab reprocessed OMI data
-    om=omrp(date,oneday=oneday)
 
-    lons,lats =np.meshgrid(om.longitude,om.latitude)
-    oceanmask=om.oceanmask  # true for ocean squares
-    omi=om.VC_OMI
-    vcc=om.VCC
-    sgc='$\Omega_{OMIGCC}$'
-    somi='$\Omega_{OMI}$'
 
-    # Plot
-    # VC_omi, VC_rp
-    # diffs, Corellations
-
-    f = plt.figure(num=0,figsize=(16,18))
-
-    # Plot OMI, OMRP
-    # set currently active axis from [2,2] axes array
-    plt.subplot(221)
-    m,cs,cb = pp.createmap(omi,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    plt.title(somi)
-    plt.subplot(222)
-    m,cs,cb = pp.createmap(vcc,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    plt.title(sgc)
     #ax=plt.subplot(223)
     #m,cs,cb = pp.linearmap(100.0*(omi-vcc)/omi, lats, lons,
     #                       vmin=-120, vmax=120,
     #                       lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
     #plt.title('100(%s-%s)/%s'%(somi,sgc,somi))
-    plt.subplot(212)
-    if positiveonly:
-        omi[omi<0]=np.NaN
-        vcc[vcc<0]=np.NaN
-    pp.plot_corellation(omi, vcc, oceanmask=oceanmask,verbose=True)
-    plt.title('RMA corellation')
-    plt.xlabel(somi)
-    plt.ylabel(sgc)
+    #plt.subplot(212)
+    #if positiveonly:
+    #    omi[omi<0]=np.NaN
+    #    vcc[vcc<0]=np.NaN
+    #pp.plot_corellation(omi, vcc, oceanmask=oceanmask,verbose=True)
+    #plt.title('RMA corellation')
+    #plt.xlabel(somi)
+    #plt.ylabel(sgc)
 
     # save plots
     yyyymmdd = date.strftime("%Y%m%d")
     f.suptitle(yyyymmdd, fontsize=30)
     plt.tight_layout()
-    onedaystr= [ 'eight_day_','one_day_' ][oneday]
     outfig="Figs/%sproducts%s%s.png"%(onedaystr, yyyymmdd, pltname)
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
 
 
-def check_products(date=datetime(2005,1,1), oneday=True, pltname='',
-                   lllat=-60, lllon=-179, urlat=50, urlon=179):
+def check_products(month=datetime(2005,1,1), region=pp.__AUSREGION__):
     '''
     Test a day or 8-day reprocessed HCHO map
     Plot VCs, both OMI and Reprocessed, and the RMA corellations
     '''
 
-    # Grab reprocessed OMI data
-    om=omrp(date,oneday=oneday)
+    lllat, lllon, urlat, urlon= region
 
-    counts = om.gridentries
-    print( "at most %d entries "%np.nanmax(counts) )
-    print( "%d entries in total"%np.nansum(counts) )
-    lons,lats =np.meshgrid(om.longitude,om.latitude)
-    oceanmask=om.oceanmask  # true for ocean squares
-    omi=om.VC_OMI
-    vcc=om.VCC
-    sgc='$\Omega_{OMIGCC}$'
-    somi='$\Omega_{OMI}$'
+    # Grab reprocessed OMI data
+    om=omrp(month,util.last_day(month),keylist=['VCC_OMI','VCC_GC','VCC_PP'])
+
+    #oceanmask=om.oceanmask  # true for ocean squares
+    subsets=util.lat_lon_subset(om.lats,om.lons,region,[om.VCC_OMI, om.VCC_GC, om.VCC_PP], has_time_dim=True)
+    lats,lons=subsets['lats'],subsets['lons']
 
     # Plot
-    # VC_omi, VC_rp
-    # diffs, Corellations
+    # 1-day: VCC_omi, VCC_GC, VCC_PP
+    # 1-month: '', '', ''
+    f = plt.figure(num=0,figsize=(16,14))
+    titles=['OMI','GC','PP']
+    vmin,vmax=1e15,1e16
+    cmapname='YlOrBr'
+    for i,VC in enumerate(subsets['data']):
+        for j in [0,1]:
+            VCj=[VC[0],np.nanmean(VC,axis=0)][j]
+            plt.subplot(2,3,1+i+3*j)
+            bmap,cs,cb = pp.createmap(VCj,lats,lons, region=region,
+                                   vmin=vmin,vmax=vmax,
+                                   title=[titles[i],''][j], cmapname=cmapname,
+                                   colorbar=False)
 
-    plt.figure(num=0,figsize=(14,12))
+    yms = month.strftime('%Y%m')
+    plt.suptitle('$\Omega_{HCHO}$ for %s'%yms,fontsize=35)
+    pp.add_colourbar(f,cs,label='molec/cm2',fontsize=24)
 
-    pp.plot_corellation(omi, vcc, oceanmask=oceanmask, verbose=True, logscale=False, lims=[-1e16,1.01e17])
-    plt.xlabel(somi)
-    plt.ylabel(sgc)
-    #plt.tick_params(axis='both', which='major', labelsize=24)
-
-    # save plot
-    yyyymmdd = date.strftime("%Y%m%d")
-    plt.title('RMA corellation %s'%yyyymmdd)#, fontsize=30)
-    onedaystr= [ 'eight_day_','one_day_' ][oneday]
-    outfig="Figs/%sregress%s%s.png"%(onedaystr, yyyymmdd, pltname)
+    outfig=month.strftime("Figs/VCC_check_%Y%m.png")
+    #plt.tight_layout()
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
 
-def Test_Uncertainty(date=datetime(2005,1,1)):
+def Test_Uncertainty(month=datetime(2005,1,1), region=pp.__AUSREGION__):
     '''
         Effect on provided uncertainty with 8 day averaging
         Also calculate uncertainty as in DeSmedt2012
-        First plot:
-        Row1: 1 and 8 day uncertainty for 2005,1,1
-        Row2: Timeseries of average uncertainty over australia (one and 8 day (and desmedt?))
-        Second plot:
-        Row1: 8 day unc vs DeSmedt calculated
-        Row2: relative difference of top two,
+        2 rows, 3 Columns:
+             |  1 day  |   1 month    |  1 month filtered
+        HCHO |
+        Unc. |
+
     '''
-    daystr=date.strftime("%Y %m %d")
-    lllat=-50; lllon=110; urlat=-10; urlon=155
-    # omi uncertainty: TODO: fix this in it's own function
-    #plt.subplot(234)
+    yms=month.strftime("%Y%m")
+    lllat, lllon, urlat, urlon=region
 
-    # Grab one day of reprocessed OMI data
-    omrp1 = omrp(date,oneday=True)
-    #sub1  = omrp1.inds_subset(lat0=lllat,lat1=urlat,lon0=lllon,lon1=urlon, maskocean=False, maskland=False)
-    unc1  = omrp1.col_uncertainty_OMI
-    omrp8 = omrp(date,oneday=False)
-    #sub8  = omrp8.inds_subset(lat0=lllat,lat1=urlat,lon0=lllon,lon1=urlon, maskocean=False, maskland=False)
-    count = omrp8.gridentries
+    # Grab reprocessed OMI data: OMI columns, masks, uncertainties, entries
+    keylist=['VCC_OMI','firemask','anthromask','smokemask',
+             'col_uncertainty_OMI','gridentries']
+    om = omrp(month,util.last_day(month),keylist=keylist)
+    lats,lons=om.lats,om.lons
 
-    # divide avg uncertainty by 1 on sqrt count
+    # 1 day, 1 month, 1 month filtered
+    vccday=om.VCC_OMI[0]
+    vccmon=np.nanmean(om.VCC_OMI,axis=0)
+    vccmasked = np.copy(om.VCC_OMI)
+    counts = om.gridentries
+    countsmasked = np.copy(om.gridentries)
+    mask = (om.firemask+om.anthromask+om.smokemask).astype(np.bool)
+    vccmasked[mask] = np.NaN
+    countsmasked[mask] = 0
+    vccmasked=np.nanmean(vccmasked,axis=0)
+    # same but for uncertainty
+    unc=om.col_uncertainty_OMI
+    # divide avg uncertainty by sqrt count
     with np.errstate(divide='ignore', invalid='ignore'):
-        unc8 = omrp8.col_uncertainty_OMI / np.sqrt(count)
-        unc8[ ~ np.isfinite( unc8 )] = np.NaN
+        uncday=unc[0] / np.sqrt(counts[0])
+        uncmon=np.nanmean(unc,axis=0)/ np.nansum(counts,axis=0)
+        uncmasked=np.nanmean(unc,axis=0)/np.nansum(countsmasked,axis=0)
+        # Make sure div by zero are nans and not infinites
+        for arr in [uncday,uncmon,uncmasked]:
+            arr[~np.isfinite(arr)] = np.NaN
 
-    #lats,lons = omrp1.latlon_bounds()
-    lons, lats=np.meshgrid(omrp1.longitude,omrp1.latitude)
+    HCHO    = [vccday, vccmon, vccmasked]
+    UNCERTS  = [uncday, uncmon, uncmasked]
 
-    # Plot1:
-    #    Row1: 1 and 8 day uncertainty for 2005,1,1, and reduction map
-    #    Row2: Timeseries of average uncertainty over australia (one and 8 day (and desmedt?))
-    f = plt.figure(num=0,figsize=(16,12))
-    ax=plt.subplot(231)
-    m,cs,cb = pp.createmap(unc1,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    plt.title('One day')
-    ax=plt.subplot(232)
-    m,cs,cb = pp.createmap(unc8,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon)
-    plt.title('Eight days')
-    ax=plt.subplot(233)
-    m,cs,cb = pp.linearmap(count,lats,lons,lllat=lllat,lllon=lllon,urlat=urlat,urlon=urlon, vmin=1, vmax=24)
-    cb.set_ticks([1,5,10,15,20,24])
-    #cb.set_xticklabels()
-    plt.title('Pixel count')
-    ax=plt.subplot(212)
-    plt.plot(np.arange(5),np.square(np.arange(5)-2.5))
-    plt.title('Time series(TODO)')
+    f = plt.figure(num=0,figsize=(16,14))
+    titles= [ '$\Omega_{HCHO}$ '+s for s in ['Day', 'Month', 'Month masked'] ]
+    vmin,vmax=[1e15,1e14],[1e16,1e15]
+    cmapnames='YlOrBr','Reds'
+    for i in range(3):
+        for j in range(2):
+            arr=[HCHO[i],UNCERTS[i]][j]
+            plt.subplot(2,3,1+i+3*j)
+            bmap,cs,cb = pp.createmap(arr,lats,lons, region=region,
+                                      vmin=vmin[j],vmax=vmax[j],
+                                      title=[titles[i],'Uncertainty'][j],
+                                      cmapname=cmapnames[j],
+                                      clabel='molec/cm2')
+            ta=plt.gca().transAxes
+            plt.text(0.05,.05, 'mean=%.1e'%np.nanmean(arr),transform=ta)
 
-    # save plot
-    yyyymmdd = date.strftime("%Y%m%d")
-    f.suptitle('Uncertainty from %s'%daystr, fontsize=20)
+    yms = month.strftime('%Y%m')
+    plt.suptitle('OMI HCHO and uncertainty for %s'%yms,fontsize=35)
+    #pp.add_colourbar(f,cs,label='molec/cm2',fontsize=24)
+    outfig="Figs/Uncertainty_OMI_%s.png"%yms
     plt.tight_layout()
-    plt.subplots_adjust(top=0.90)
-    outfig="Figs/Uncertainty.png"
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
-
-    #Second plot:
-    #    Row1: 8 day unc vs DeSmedt calculated
-    #    Row2: relative difference of top two,
-    # First calculate the DeSmedt method
 
 def plot_swaths(region=pp.__AUSREGION__):
     '''
@@ -1964,7 +1946,9 @@ if __name__ == '__main__':
     # GEOS Chem trop vs ucx restarts
     #check_HEMCO_restarts()
 
-    plot_VCC_rsc_gc_pp()
+    #plot_VCC_rsc_gc_pp()
+    Test_Uncertainty()              # last run 15/5/18
+    #check_products()               # last run 15/5/18
     #analyse_VCC_pp(oneday=False)
 
 
@@ -1982,7 +1966,6 @@ if __name__ == '__main__':
     #test_amf_calculation(scount=5)
     #for aus_only in [True, False]:
     #    test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=aus_only)
-    #Test_Uncertainty()
 
     #compare_GC_OMI_new()
 
@@ -1995,7 +1978,6 @@ if __name__ == '__main__':
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
     #dates=[ datetime(2005,1,1) ]
-    #check_products(date=dates[0],oneday=False)
     #Summary_RSC(date=dates[0], oneday=False)
     #dates=[ ]
 

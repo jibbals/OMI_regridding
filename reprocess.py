@@ -4,7 +4,7 @@ Created on Tue Apr 19 14:22:05 2016
 
 This script is used to take GC output, OMI hcho swathes,
     and OMNO2d gridded fire counts - to combine them into my omhcho dataset
-    
+
 @author: jesse
 """
 
@@ -54,8 +54,6 @@ def sum_dicts(d1,d2):
     for k in set(d1) & set(d2):
         d3[k]=d1[k]+d2[k]
     return d3
-
-
 
 
 def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True):

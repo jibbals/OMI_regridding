@@ -280,18 +280,18 @@ def determine_filepath(date, latres=__LATRES__,lonres=__LONRES__, omhcho=False, 
     # geos chem output created via idl scripts match the following
     if geoschem:
         return ('Data/gchcho/hcho_%4d%2d.he5'%(date.year,date.month))
-    
-    
-    res_date='%1.2fx%1.2f_%4d%02d%02d'%(latres,lonres,date.year,date.month,date.day) 
-        
+
+
+    res_date='%1.2fx%1.2f_%4d%02d%02d'%(latres,lonres,date.year,date.month,date.day)
+
     if reprocessed:
         fpath="Data/omhchorp/omhchorp_%s.he5"%res_date
         return date.strftime(fpath)
-    
+
     # reprocessed and regridded match the following:
     if regridded:
        fpath="Data/omhchorg/omhcho_1g%s.he5"%res_date
-    
+
     return(fpath)
 
 def read_AAOD(date):
@@ -643,7 +643,7 @@ def read_omhchorp_day(date, latres=0.25, lonres=0.3125, keylist=None, filename=N
                 retstruct[key]=np.NaN
     return retstruct
 
-def read_omhchorp(day0,dayn,keylist=None,latres=0.25,lonres=0.3125):
+def read_omhchorp(day0,dayn=None,keylist=None,latres=0.25,lonres=0.3125):
     '''
     '''
 
@@ -814,7 +814,7 @@ def filter_high_latitudes(array, lats, has_time_dim=False, highest_lat=60.0):
     Read an array, assuming globally gridded at latres/lonres, set the values polewards of 60 degrees
     to nans
     '''
-    
+
     highlats= np.where(np.abs(lats) > highest_lat)
     newarr=np.array(array)
     if has_time_dim:

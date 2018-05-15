@@ -509,7 +509,7 @@ def Check_AMF():
     plt.savefig(pname)
     print('saved %s'%pname)
 
-def Summary_RSC(date=datetime(2005,1,1), oneday=True):
+def Summary_RSC(date=datetime(2005,1,1),oneday=True):
     '''
     Print and plot a summary of the effect of our remote sector correction
     Plot 1: Reference Correction
@@ -520,8 +520,12 @@ def Summary_RSC(date=datetime(2005,1,1), oneday=True):
     '''
 
     ymdstr=date.strftime('%Y%m%d')
+    dayn=date
+    if not oneday:
+        dayn=util.last_day(date)
+
     # read reprocessed data
-    dat=omrp(date,oneday=oneday)
+    dat=omrp(day0=date,dayn=dayn)
     lats,lons=dat.latitude,dat.longitude
     # read geos chem data
     gcdat=fio.read_gchcho(date)
@@ -1057,13 +1061,13 @@ def plot_VCC_rsc_gc_pp(month=datetime(2005,3,1),region=[-45, 99.5, -11, 160.0]):
 
     start_time=timeit.default_timer()
     # read in omhchorp
-    om=omrp(d0,dayn=dN, keylist=['VC_OMI_RSC','VCC','VCC_PP','gridentries','ppentries'])
+    om=omrp(d0,dayn=dN, keylist=['VCC_OMI','VCC_GC','VCC_PP','gridentries','ppentries'])
     elapsed = timeit.default_timer() - start_time
     print("TIMEIT: Took %6.2f seconds to read omhchorp"%elapsed)
 
     start_time2=timeit.default_timer()
     # Subset the data to our region
-    subsets=util.lat_lon_subset(om.lats,om.lons,region,[om.VC_OMI_RSC,om.VCC,om.VCC_PP,om.gridentries,om.ppentries],has_time_dim=True)
+    subsets=util.lat_lon_subset(om.lats,om.lons,region,[om.VCC_OMI,om.VCC_GC,om.VCC_PP,om.gridentries,om.ppentries],has_time_dim=True)
     lats,lons=subsets['lats'],subsets['lons']
     VCC_OM,VCC_GC,VCC_PP,pix,pix_pp = subsets['data']
 
@@ -1946,9 +1950,10 @@ if __name__ == '__main__':
     # GEOS Chem trop vs ucx restarts
     #check_HEMCO_restarts()
 
-    #plot_VCC_rsc_gc_pp()
     Test_Uncertainty()              # last run 15/5/18
     #check_products()               # last run 15/5/18
+    Summary_RSC(datetime(2005,1,1))
+    #plot_VCC_rsc_gc_pp()
     #analyse_VCC_pp(oneday=False)
 
 
@@ -1982,7 +1987,6 @@ if __name__ == '__main__':
     #dates=[ ]
 
     #CompareMaps(day=dates[0],oneday=False,ausonly=False)
-    #Summary_RSC(oneday=False)
     #for day in dates:
         #test_reprocess_corrected(date=day, oneday=oneday)
         #test_reprocess_corrected(date=day, oneday=oneday, lllat=-50,lllon=100,urlat=-10,urlon=170, pltname="zoomed")

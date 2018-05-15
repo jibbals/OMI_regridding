@@ -217,16 +217,14 @@ def last_day(date):
     dayn=datetime(date.year,date.month,lastday)
     return dayn
 
-def lat_lon_grid(latres=GMAO.__LATRES__,lonres=GMAO.__LONRES__, GMAO=True):
+def lat_lon_grid(latres=GMAO.__LATRES__,lonres=GMAO.__LONRES__, regular=False):
     '''
     Returns lats, lons, latbounds, lonbounds for grid with input resolution
     By default this uses GMAO structure of half length lats at +- 90 degrees
+        to turn this off use regular=True
     '''
     
-    if GMAO:
-        lats,lat_bounds=GMAO.GMAO_lats(latres)
-        lons,lon_bounds=GMAO.GMAO_lons(lonres)
-    else:        
+    if regular:
         # lat and lon bin boundaries
         lat_bounds=np.arange(-90, 90+latres/2.0, latres)
         lon_bounds=np.arange(-180, 180+lonres/2.0, lonres)
@@ -234,6 +232,9 @@ def lat_lon_grid(latres=GMAO.__LATRES__,lonres=GMAO.__LONRES__, GMAO=True):
         # lat and lon bin midpoints
         lats=np.arange(-90,90,latres)+latres/2.0
         lons=np.arange(-180,180,lonres)+lonres/2.0
+    else:        
+        lats,lat_bounds=GMAO.GMAO_lats(latres)
+        lons,lon_bounds=GMAO.GMAO_lons(lonres)
         
     return (lats,lons,lat_bounds,lon_bounds)
 

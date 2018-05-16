@@ -12,7 +12,8 @@ This script is used to take GC output, OMI hcho swathes,
 from utilities import fio
 from utilities import utilities as util
 from utilities import GMAO
-from classes.gchcho import gchcho
+#from classes.gchcho import gchcho
+from classes.GC_class import GC_sat
 # Shouldn't use omhchorp while creating omhchorp
 #import classes.omhchorp as omhchorp
 import numpy as np
@@ -98,8 +99,9 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True):
     AMFgczs=list()      # AMFs using S_z
 
     ## grab our GEOS-Chem apriori info (dimension: [ levs, lats, lons ])
-    gcdata = gchcho(date)
-    # GCHCHO UNITS ARE GENERALLY m AND hPa
+    #gcdata = gchcho(date)
+    # Satellite overpass data: [lats,lons,levs]
+    gcdata = GC_sat(date)
 
     ## 1) read in the good pixels for a particular date,
     ##  create and store the GEOS-Chem AMF along with the SC
@@ -213,7 +215,11 @@ def reference_sector_correction(date, goodpixels=None):
 
     ## Grab GEOS-Chem monthly average:
     #
-    gcdata=gchcho(date)
+    # Satellite overpass output from normal run:
+    gcdata=GC_sat(date,) # arrays like [lats,lons, 47levs]
+    #vars(gcdata).keys()
+    #   ['N_air', 'temp', '_has_time_dim', 'E_isop_bio_kgs', 'NO2', 'lons_e', 'dstr', 'E_isop_bio', 'nlons', 'OH', 'tplev', 'nlevs', 'ntimes', 'attrs', 'surftemp', 'hcho', 'O_hcho', 'area', 'nlats', 'lats', 'press', 'boxH', 'lats_e', 'dates', 'isop', 'time', 'lons', 'psurf'])
+
     gc_lons=gcdata.lons
     gc_ref_inds=(gc_lons <= -140) & (gc_lons >= -160)
     gc_lats=gcdata.lats
@@ -221,8 +227,8 @@ def reference_sector_correction(date, goodpixels=None):
     gc_lats[0]=-90
     gc_lats[-1]=90
 
-    # GEOS-CHEM VC HCHO in molecules/m2, convert to molecules/cm2
-    gc_VC=gcdata.VC_HCHO * 1e-4
+    # GEOS-CHEM VC HCHO in molecules/cm2
+    gc_VC=gcdata.O_hcho
     # pull out reference sector vertical columns
     gc_VC_ref=gc_VC[:,gc_ref_inds]
     # average over the longitude dimension

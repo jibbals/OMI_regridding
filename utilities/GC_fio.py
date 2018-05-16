@@ -110,12 +110,13 @@ def read_bpch(path,keys):
     diaginf='/'.join(splt)
     if not os.path.isfile(diaginf):
         diaginf='Data/GC_Output/diaginfo.dat'
-    
+
 
     # Improve read performance by only reading requested fields:
     fields=set(); categories=set()
     for key in keys:
         if '_' in key:
+            # Split key on the underscores: Category_Field
             c,_,f = key.rpartition('_')
             categories.add(c)
             fields.add(f)

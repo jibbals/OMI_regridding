@@ -223,19 +223,19 @@ def lat_lon_grid(latres=GMAO.__LATRES__,lonres=GMAO.__LONRES__, regular=False):
     By default this uses GMAO structure of half length lats at +- 90 degrees
         to turn this off use regular=True
     '''
-    
+
     if regular:
         # lat and lon bin boundaries
         lat_bounds=np.arange(-90, 90+latres/2.0, latres)
         lon_bounds=np.arange(-180, 180+lonres/2.0, lonres)
-        
+
         # lat and lon bin midpoints
         lats=np.arange(-90,90,latres)+latres/2.0
         lons=np.arange(-180,180,lonres)+lonres/2.0
-    else:        
+    else:
         lats,lat_bounds=GMAO.GMAO_lats(latres)
         lons,lon_bounds=GMAO.GMAO_lons(lonres)
-        
+
     return (lats,lons,lat_bounds,lon_bounds)
 
 def lat_lon_index(lat,lon,lats,lons):
@@ -330,6 +330,55 @@ def local_time_offsets(lons,n_lats=0, astimedeltas=False):
 
     return offset
 
+def match_bottom_levels(p1i, p2i, arr1i, arr2i):
+    '''
+    Takes two arrays of pressure (from surface to some altitude)
+    Returns the same two arrays with the lowest levels set to the same pressure
+    This method raises the lowest levels of the pressure arrays to match each other.
+    Also interpolates arr1, arr2 to the new pressures if their pedges have changed
+    '''
+    # update:20160905, 20161109
+    # one array will have a lower bottom level than the other
+    #
+    p1,p2=np.array(p1i.copy()),np.array(p2i.copy())
+    arr1,arr2=np.array(arr1i.copy()),np.array(arr2i.copy())
+    if p1[0] > p2[0]:
+        plow=p1
+        phigh=p2
+        alow=arr1
+    elif p1[0] == p2[0]:
+        return p1,p2,arr1,arr2
+    else:
+        plow=p2
+        phigh=p1
+        alow=arr2
+    plow_orig=plow.copy()
+
+    # now lower has a lower surface altitude(higher surface pressure)
+    movers=np.where(plow+0.05*plow[0] > phigh[0])[0] # index of pressure edges below higher surface pressure
+    above_ind = movers[-1]+1
+    if above_ind >= len(plow):
+        print("Whole plow array below surface of phigh array")
+        print("plow:",plow.shape)
+        print(plow)
+        print("phigh:",phigh.shape)
+        print(phigh)
+        assert False, "Fix this please"
+
+
+    above = plow[above_ind] # pressure edge above the ones we need to move upwards
+    rmovers=movers[::-1] # highest to lowest list of pmids to relevel
+    # for all but the lowest pmid, increase above lowest pmid in other pressure array
+    for ii in rmovers[0:-1]:
+        plow[ii]=(phigh[0]*above)**0.5
+        above=plow[ii]
+    # for the lowest pmid, raise to match other array's lowest pmid
+    plow[0]=phigh[0]
+
+    # now interpolate the changed array ( reversed as interp wants increasing array xp)
+    alow[:]=np.interp(plow,plow_orig[::-1],alow[::-1])
+
+    return p1,p2,arr1,arr2
 
 def monthly_averaged(dates,data):
     '''
@@ -339,7 +388,7 @@ def monthly_averaged(dates,data):
     allyears=np.array([d.year for d in dates])
     allmonths=np.array([d.month for d in dates])
     #ind = [100*d.year+d.month for d in dates]
-    
+
     # Things that get returned
     mdates=[]
     mdata=[]

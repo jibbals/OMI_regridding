@@ -16,9 +16,10 @@ import utilities.plotting as pp
 from utilities import GMAO,GC_fio,fio
 import Inversion
 import tests
+import reprocess
 
 from classes.E_new import E_new # E_new class
-from classes import GC_class
+from classes.GC_class import GC_sat
 from classes.omhchorp import omhchorp
 from classes.gchcho import gchcho
 from classes.campaign import campaign
@@ -36,33 +37,39 @@ __VERBOSE__=True
 region=pp.__AUSREGION__
 
 #####
-## DO STUFF
+## SETUP STUFFS
 #####
+
 d0=datetime(2005,1,1)
 dstr=d0.strftime('%Y%m%d')
 mstr=d0.strftime('%Y%m')
 latres=0.25
 lonres=0.3125
-
 dN=datetime(2005,1,5)
-
+d3=datetime(2005,3,1)
 dates=util.list_days(d0,dN,month=False)
 
-
-om=omhchorp(d0)
-
-# masks here made using default values...
+# start timer
 start1=timeit.default_timer()
 
-plt.figure(figsize=(10,16))
+##########
+### DO STUFFS
+##########
 
+
+reprocess.create_omhchorp(d3)
+
+
+###########
+### Record and time STUJFFS
+###########
 end=timeit.default_timer()
 
 #print("TIME: %6.2f seconds for firemask"%(start2-start1))
 print("TIME: %6.2f seconds for stuff"%(end-start1))
 #print("TIME: %6.2f seconds for anthromask"%(end-start3))
-plt.savefig('test_VCC.png')
-plt.show()
+#plt.savefig('test_VCC.png')
+#plt.show()
 
 
 def emisssions_vs_firefilter(d0=datetime(2005,1,1)):

@@ -14,7 +14,7 @@ from utilities.JesseRegression import RMA
 from utilities import utilities as util
 from classes.omhchorp import omhchorp as omrp
 from classes.gchcho import match_bottom_levels
-from classes.GC_class import GC_tavg
+from classes.GC_class import GC_tavg, GC_sat
 
 import numpy as np
 from numpy.ma import MaskedArray as ma
@@ -509,7 +509,7 @@ def Check_AMF():
     plt.savefig(pname)
     print('saved %s'%pname)
 
-def Summary_RSC(date=datetime(2005,1,1),oneday=True):
+def Summary_RSC(month=datetime(2005,1,1)):
     '''
     Print and plot a summary of the effect of our remote sector correction
     Plot 1: Reference Correction
@@ -518,17 +518,15 @@ def Summary_RSC(date=datetime(2005,1,1),oneday=True):
     Plot 2: OMI Sensors difference from apriori over RSC
         Contourf of RSC correction function [sensor(X) vs latitude(Y)]
     '''
-
-    ymdstr=date.strftime('%Y%m%d')
-    dayn=date
-    if not oneday:
-        dayn=util.last_day(date)
+    date=datetime(month.year,month.month,1)
+    yms=month.strftime('%Y%m')
+    dayn=util.last_day(month)
 
     # read reprocessed data
     dat=omrp(day0=date,dayn=dayn)
-    lats,lons=dat.latitude,dat.longitude
+    lats,lons = dat.lats, dat.lons
     # read geos chem data
-    gcdat=fio.read_gchcho(date)
+    gcdat=GC_sat(day0=date,dayN=dayn)
     gchcho=gcdat.VC_HCHO*1e-4 # molec/m2 -> molec/cm2
     gclats,gclons=gcdat.lats,gcdat.lons
     # plot 1) showing VCs before and after correction

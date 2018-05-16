@@ -57,7 +57,7 @@ class gchcho:
     Class for holding the GCHCHO data
     Generally data arrays will be shaped as [(levels, )lats, lons]
     Units will be in molecules, metres, hPa
-    THESE FILES ARE THE 1300-1400 averaged satellite outputs from GEOS-Chem    
+    THESE FILES ARE THE 1300-1400 averaged satellite outputs from GEOS-Chem
     '''
     date = 0
 
@@ -96,6 +96,7 @@ class gchcho:
         self.zmids =zmids                         # altitude midpoints
         assert np.all(zmids > 0), "zmids calculation error: %s"%str(zmids)
 
+
     def get_apriori(self, latres=0.25, lonres=0.3125):
         '''
         Read GC HCHO sigma shape factor and regrid to lat/lon res.
@@ -103,6 +104,7 @@ class gchcho:
         inputs:
             latres, lonres for resolution of GC 2x2.5 hcho columns to be regridded onto
         '''
+        assert False, "Method is old and wrong currently"
         # new latitude longitude we interpolate to.
         newlats= np.arange(-90,90, latres) + latres/2.0
         newlons= np.arange(-180,180, lonres) + lonres/2.0
@@ -400,8 +402,8 @@ def match_bottom_levels(p1i, p2i, arr1i, arr2i):
         print("phigh:",phigh.shape)
         print(phigh)
         assert False, "Fix this please"
-    
-        
+
+
     above = plow[above_ind] # pressure edge above the ones we need to move upwards
     rmovers=movers[::-1] # highest to lowest list of pmids to relevel
     # for all but the lowest pmid, increase above lowest pmid in other pressure array

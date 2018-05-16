@@ -17,15 +17,7 @@ History:
 import numpy as np
 from datetime import datetime, timedelta
 from scipy.constants import N_A as N_Avogadro
-from glob import glob
-#import matplotlib.pyplot as plt
-#from matplotlib.pyplot import cm
-
-# Read in including path from parent folder
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(currentdir)
-sys.path.insert(0,parentdir)
+#from glob import glob
 
 # 'local' modules
 from utilities import GC_fio
@@ -34,10 +26,7 @@ from utilities import plotting as pp
 from utilities.plotting import __AUSREGION__
 from utilities.JesseRegression import RMA
 import utilities.GMAO as GMAO
-#from classes.variable_names_mapped import GC_trac_avg
 
-# remove the parent folder from path. [optional]
-sys.path.pop(0)
 
 ##################
 #####GLOBALS######
@@ -543,11 +532,247 @@ class GC_sat(GC_base):
             # also calculate emissions in kg/s
             self._set_E_isop_bio_kgs()
 
+        # Calculate shape factors for faster AMF calculation later
+        # Only if we have all the stuff and no time dimension:
+        if all([hasattr(self, astr) for astr in ['hcho','N_air','psurf','boxH']]) and len(self.hcho.shape)==3:
+            # Nhcho (molec/cm3) = vmr_hcho (ppbv*1e-9) * Nair (molec/cm3)
+            self.N_hcho = self.hcho * self.N_air * 1e-9
+            self.attrs['N_hcho']={'units':'molec/cm3','desc':'HCHO number density'}
+
+            # levels are final dimension
+            arrshape=self.hcho.shape
+            n_lats,n_lons,n_levs = arrshape
+
+            # Column air (molec/cm2) = (molec/cm3 * m * 100cm/m)
+            self.O_air = np.sum(self.N_air * self.boxH * 100, axis=2)
+            # Column HCHO (molec/cm2)
+            self.O_hcho = np.sum(self.N_hcho * self.boxH * 100, axis=2)
+            # Add attributes
+            self.attrs['O_air']={'units':'molec/cm2','desc':'Total column Air'}
+            self.attrs['O_hcho']={'units':'molec/cm2','desc':'Total column HCHO'}
+
+            # Pressure at bottom edge of each level
+            pbots=self.psurf
+            # pressure edges
+            pedges=np.ndarray([n_lats,n_lons,n_levs+1])
+
+            pedges[:,:,:-1]=pbots
+            pedges[:,:,-1]=pbots[:,:,-1]*0.9 # Make TOA just a little less dense than seconds highest level
+            self.pedges=pedges
+            self.attrs['pedges']={'units':'hPa','desc':'pressure edges'}
+            pmids=np.sqrt(pedges[:,:,:-1]*pedges[:,:,1:])
+            self.pmids=pmids
+            self.attrs['pmids']={'units':'hPa','desc':'pressure midpoints'}
+
+            # Top pmid SHOULD be a little higher than 0.1
+            #assert np.all(pmids[:,:,-1]>0.1), "Problem with pmid calculation"
+            if not np.all(pmids[:,:,-1]>0.1):
+                print("WARNING: What's going on with TOA pressure? (should be 0.1)")
+                print("       : average TOA pedge = %.2e hPa"%np.mean(pedges[:,:,-1]))
+                #print(self.psurf[5,5,:])
+                #print(pedges[5,5,:])
+                #print(pmids[5,5,:])
+                #print(pmids[:,:,-1])
+                #print(pedges[:,:,-1])
+                #print(pedges[:,:,-2])
+
+            # surface pressure matching pmids array
+            psurf=pbots[:,:,0]
+            psurfs = np.repeat(psurf[:,:,np.newaxis],n_levs,axis=2)
+            toa  = pedges[:,:,-1]
+            toa  = np.repeat(toa[:,:,np.newaxis],n_levs,axis=2)
+
+            # box heights (m)
+            h=self.boxH
+
+            # Altitudes (m)
+            self.zmids=np.cumsum(h,axis=2)-h/2.0
+            self.attrs['zmids']={'units':'metres','desc':'altitude at middle of each level'}
+            # Altitudes in sigmas coordinates
+            #self.smids = (pmids - 0.1) / (psurfs - 0.1)
+            self.smids = (pmids - toa) / (psurfs - toa)
+            self.attrs['smids']={'units':'unitless','desc':'sigma at middle of each level'}
+
+            ## The shape factors!
+            # First repeat total column amounts (molec/cm2) along level dimension
+            # to avoid looping
+            O_hcho_rep = np.copy(self.O_hcho)
+            O_hcho_rep = np.repeat(O_hcho_rep[:,:,np.newaxis],n_levs, axis=2)
+            O_air_rep = np.copy(self.O_air)
+            O_air_rep = np.repeat(O_air_rep[:,:,np.newaxis],n_levs, axis=2)
+
+            # S_z (1/m) = N_HCHO (molec/cm3) / O_HCHO (molec/cm2)  * 100(cm/m)
+            self.Shape_z = self.N_hcho / O_hcho_rep * 100
+            self.attrs['Shape_z']={'units':'1/m','desc':'Shape_z at each level'}
+
+            # S_s (unitless) = vmr (molec hcho/air) Column_air (molec/cm2) / Column_H (molec/cm2)
+            self.Shape_s = self.hcho * 1e-9 * (O_air_rep / O_hcho_rep)
+            self.attrs['Shape_s']={'units':'unitless','desc':'Shape_sigma at each level'}
+
+
         # fix dates:
         if len(dates) > 1:
             self._has_time_dim=True
             #ASSUME WE HAVE ALL DAYS IN THIS MONTH:
             self.dates=dates
+
+    def calculate_AMF(self, w, w_pmids, AMF_G, lat, lon, plotname=None, debug_levels=False):
+        '''
+        Return AMF calculated using normalized shape factors
+        uses both S_z and S_sigma integrations
+
+        Determines
+            AMF_z = \int_0^{\infty} { w(z) S_z(z) dz }
+            AMF_s = \int_0^1 { w(s) S_s(s) ds } # this one uses sigma dimension
+            AMF_Chris = \Sigma_i (Shape(P_i) * \omega(P_i) * \Delta P_i) /  \Sigma_i (Shape(P_i) * \omega(P_i) )
+
+        update:20180516
+            Moved from gchcho class to GC_sat class - which reads directly from bpch files
+            This should make the gchcho creation unnecessary
+        update:20161109
+            Chris AMF calculated, along with normal calculation without AMF_G
+            lowest level fix now moved to a function to make this method more readable
+        update:20160905
+            Fix lowest level of both GC box and OMI pixel to match the pressure
+            of the least low of the two levels, and remove any level which is
+            entirely below the other column's lowest level.
+        update:20160829
+            LEFT AND RIGHT NOW SET TO 0 ()
+        OLD:
+            Determine AMF_z using AMF_G * \int_0^{\infty} { w(z) S_z(z) dz }
+            Determine AMF_sigma using AMF_G * \int_0^1 { w(s) S_s(s) ds }
+
+        '''
+        # column index, pressures, altitudes, sigmas:
+        #
+        lati, loni=self.lat_lon_index(lat,lon)
+
+        # pressure edges and mids (hPa)
+        pedges=self.pedges[lati,loni,:]
+        pmids=self.pmids[lati,loni]
+
+        # box heights (m)
+        h=self.boxH[lati,loni]
+
+        # Altitudes (m)
+        zmids=self.zmids[lati,loni]
+
+        # Altitudes in sigmas coordinates
+        smids = self.smids[lati,loni]
+
+        ## The shape factors!
+
+        # S_z (1/m) = N_HCHO (molec/cm3) / O_HCHO (molec/cm2)  * 100(cm/m)
+        S_z = self.Shape_z[lati,loni]
+
+        # S_s (unitless) = vmr (molec hcho/air) Column_air (molec/cm2) / Column_H (molec/cm2)
+        S_s = self.Shape_s[lati,loni]
+
+        # Interpolate the shape factors to these new pressure levels:
+        # S_s=np.interp(S_pmids, S_pmids_init[::-1], S_s[::-1])
+        # also do S_z? currently I'm leaving this for comparison. AMF_z will be sanity check
+
+        # calculate sigma edges
+        sedges = (pedges - pedges[-1]) / (pedges[0]-pedges[-1])
+        dsigma = sedges[0:-1]-sedges[1:]  # change in sigma at each level
+
+        # Default left,right values (now zero)
+        lv,rv=0.,0.
+
+        # sigma midpoints for interpolation
+        w_smids = (w_pmids - pedges[-1])/ (pedges[0]-pedges[-1])
+
+        # convert w(press) to w(z) and w(s), on GEOS-Chem's grid
+        #
+        w_zmids = np.interp(w_pmids, pmids[::-1], zmids[::-1])
+        w_z     = np.interp(zmids, w_zmids, w,left=lv,right=rv) # w_z does not account for differences between bottom levels of GC vs OMI pixel
+        w_s     = np.interp(smids, w_smids[::-1], w[::-1],left=lv,right=rv)
+        w_s_2   = np.interp(smids, w_smids[::-1], w[::-1]) # compare without fixed edges!
+
+        # Integrate w(z) * S_z(z) dz using sum(w(z) * S_z(z) * height(z))
+        AMF_z = np.sum(w_z * S_z * h)
+        AMF_s= np.sum(w_s * S_s * dsigma)
+
+        # Calculations with bottom relevelled
+        # match he bottom levels in the pressure midpoints dimension
+        w_pmids_new,S_pmids_new,w_new,S_s_new = util.match_bottom_levels(w_pmids,pmids,w,S_s)
+        S_pedges_new = pedges.copy()
+        for i in range(1,len(S_pedges_new)-1):
+            S_pedges_new[i]=(S_pmids_new[i-1]*S_pmids_new[i]) ** 0.5
+        S_sedges_new = (S_pedges_new - S_pedges_new[-1]) / (S_pedges_new[0]-S_pedges_new[-1])
+        dsigma_new = S_sedges_new[0:-1]-S_sedges_new[1:]
+        w_smids_new = (w_pmids_new - S_pedges_new[-1])/ (S_pedges_new[0]-S_pedges_new[-1])
+        S_smids_new=(S_pmids_new - S_pedges_new[-1]) / (S_pedges_new[0]-S_pedges_new[-1])
+        w_s_new     = np.interp(S_smids_new, w_smids_new[::-1], w_new[::-1], left=lv, right=rv)
+        AMF_s_new = np.sum(w_s_new * S_s_new * dsigma_new)
+
+        if plotname is not None:
+            import matplotlib.pyplot as plt
+            from matplotlib.ticker import FormatStrFormatter as fsf # formatter for labelling
+
+            integral_s_old=np.sum(w_s_2 * S_s * dsigma)
+            AMF_s_old= AMF_G * integral_s_old
+
+            f,axes=plt.subplots(2,2,figsize=(14,12))
+            # omega vs pressure, interpolated and not interpolated
+            plt.sca(axes[0,0])
+            plt.plot(w, w_pmids, linestyle='-',marker='o', linewidth=2, label='original',color='k')
+            plt.title('$\omega$')
+            plt.ylabel('p(hPa)'); plt.ylim([1015, 0.01]); plt.yscale('log')
+            ax=plt.twinx(); ax.set_ylabel('z(m)'); plt.sca(ax)
+            plt.plot(w_z, zmids, linestyle='-',marker='x', label='$\omega$(z)',color='fuchsia')
+            # add legend from both axes
+            h1,l1 = axes[0,0].get_legend_handles_labels()
+            h2,l2 = ax.get_legend_handles_labels()
+            ax.legend(h1+h2, l1+l2,loc=0)
+
+            # omega vs sigma levels
+            plt.sca(axes[0,1])
+            plt.plot(w_s, smids, '.')
+            plt.title('$\omega(\sigma)$')
+            plt.ylabel('$\sigma$')
+            plt.yscale('log')
+            plt.ylim(1.01, 0.001)
+            axes[0,1].yaxis.tick_right()
+            axes[0,1].yaxis.set_label_position("right")
+            # add AMF value to plot
+            for yy,lbl in zip([0.6, 0.7, 0.8, 0.9], ['AMF$_z$=%5.2f'%AMF_z, 'AMF$_{\sigma}$=%5.2f'%AMF_s, 'AMF$_{\sigma}$(pre-fix)=%5.2f'%AMF_s_old, 'AMF$_{\sigma relevelled}$=%5.2f'%AMF_s_new]):
+                plt.text(.1,yy,lbl,transform=axes[0,1].transAxes,fontsize=16)
+
+            # shape factor z plots
+            plt.sca(axes[1,0])
+            plt.plot(S_z, pmids, '.',label='S$_z$(p)', color='k')
+            plt.ylim([1015,0.01])
+            plt.title('Shape')
+            plt.ylabel('p(hPa)')
+            plt.yscale('log')
+            plt.xlabel('m$^{-1}$')
+            # overplot omega*shape factor on second y axis
+            ax=plt.twinx(); ax.set_ylabel('z(m)'); plt.sca(ax)
+            plt.plot(S_z*w_z, zmids,label='$S_z(z) * \omega(z)$',color='fuchsia')
+            # legend
+            h1,l1 = axes[1,0].get_legend_handles_labels()
+            h2,l2 = ax.get_legend_handles_labels()
+            ax.legend(h1+h2,l1+l2,loc=0)
+            axes[1,0].xaxis.set_major_formatter(fsf('%2.1e'))
+
+            # sigma shape factor plots
+            plt.sca(axes[1,1]);
+            plt.title('Shape$_\sigma$')
+            plt.plot(S_s, smids, label='S$_\sigma$', color='k')
+            plt.plot(S_s*w_s, smids, label='S$_\sigma * \omega_\sigma$', color='fuchsia')
+            plt.plot(S_s_new*w_s_new, S_smids_new, label='new S$_\sigma * \omega_\sigma$', color='orange')
+            plt.plot(S_s*w_s_2, smids, '--', label='old product', color='cyan')
+            plt.legend(loc=0)
+            plt.ylim([1.05,-0.05])
+            plt.ylabel('$\sigma$')
+            plt.xlabel('unitless')
+
+            plt.suptitle('amf calculation factors')
+            f.savefig(plotname)
+            print('%s saved'%plotname)
+            plt.close(f)
+        return (AMF_s, AMF_z)
 
 
 class Hemco_diag(GC_base):

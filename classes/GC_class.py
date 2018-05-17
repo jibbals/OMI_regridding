@@ -508,13 +508,19 @@ class GC_sat(GC_base):
         attrs['init_date']=day0
         super(GC_sat,self).__init__(data,attrs,nlevs=nlevs)
 
+        # fix dates:
+        if len(dates) > 1:
+            self._has_time_dim=True
+            #ASSUME WE HAVE ALL DAYS IN THIS MONTH:
+            self.dates=dates
+
         # fix TR-PAUSE_TPLEV output:
         if hasattr(self,'tplev'):
-            if len(self.tplev.shape)==3:
-                self.tplev=self.tplev[:,:,0]
-            if len(self.tplev.shape)==4:
+            if self.has_time_dim:
                 self.tplev=self.tplev[:,:,:,0]
-
+            else:
+                self.tplev=self.tplev[:,:,0]
+                
         # fix emissions shape:
         if hasattr(self, 'E_isop_bio'):
             E=self.E_isop_bio
@@ -556,19 +562,21 @@ class GC_sat(GC_base):
             # pressure edges
             pedges=np.ndarray([n_lats,n_lons,n_levs+1])
 
+            TOA=GMAO.__TOA__
             pedges[:,:,:-1]=pbots
-            pedges[:,:,-1]=pbots[:,:,-1]*0.9 # Make TOA just a little less dense than seconds highest level
+            #pedges[:,:,-1]=pbots[:,:,-1]*0.9 # Make TOA just a little less dense than seconds highest level
+            pedges[:,:,-1] = TOA
             self.pedges=pedges
             self.attrs['pedges']={'units':'hPa','desc':'pressure edges'}
             pmids=np.sqrt(pedges[:,:,:-1]*pedges[:,:,1:])
             self.pmids=pmids
             self.attrs['pmids']={'units':'hPa','desc':'pressure midpoints'}
 
-            # Top pmid SHOULD be a little higher than 0.1
-            #assert np.all(pmids[:,:,-1]>0.1), "Problem with pmid calculation"
-            if not np.all(pmids[:,:,-1]>0.1):
-                print("WARNING: What's going on with TOA pressure? (should be 0.1)")
-                print("       : average TOA pedge = %.2e hPa"%np.mean(pedges[:,:,-1]))
+            # Top pmid SHOULD be a little higher than 0.01
+            assert np.all(pmids[:,:,-1]> TOA), "Problem with pmid calculation"
+            #if not np.all(pmids[:,:,-1]>0.1):
+            #    print("WARNING: What's going on with TOA pressure? (should be 0.1)")
+            #    print("       : average TOA pedge = %.2e hPa"%np.mean(pedges[:,:,-1]))
                 #print(self.psurf[5,5,:])
                 #print(pedges[5,5,:])
                 #print(pmids[5,5,:])
@@ -579,8 +587,8 @@ class GC_sat(GC_base):
             # surface pressure matching pmids array
             psurf=pbots[:,:,0]
             psurfs = np.repeat(psurf[:,:,np.newaxis],n_levs,axis=2)
-            toa  = pedges[:,:,-1]
-            toa  = np.repeat(toa[:,:,np.newaxis],n_levs,axis=2)
+            #toa  = pedges[:,:,-1]
+            #toa  = np.repeat(toa[:,:,np.newaxis],n_levs,axis=2)
 
             # box heights (m)
             h=self.boxH
@@ -590,7 +598,7 @@ class GC_sat(GC_base):
             self.attrs['zmids']={'units':'metres','desc':'altitude at middle of each level'}
             # Altitudes in sigmas coordinates
             #self.smids = (pmids - 0.1) / (psurfs - 0.1)
-            self.smids = (pmids - toa) / (psurfs - toa)
+            self.smids = (pmids - TOA) / (psurfs - TOA)
             self.attrs['smids']={'units':'unitless','desc':'sigma at middle of each level'}
 
             ## The shape factors!
@@ -610,11 +618,6 @@ class GC_sat(GC_base):
             self.attrs['Shape_s']={'units':'unitless','desc':'Shape_sigma at each level'}
 
 
-        # fix dates:
-        if len(dates) > 1:
-            self._has_time_dim=True
-            #ASSUME WE HAVE ALL DAYS IN THIS MONTH:
-            self.dates=dates
 
     def calculate_AMF(self, w, w_pmids, AMF_G, lat, lon, plotname=None, debug_levels=False):
         '''

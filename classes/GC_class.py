@@ -91,7 +91,7 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     _bxh+'AD':'AD', # air mass in grid box, kg
     _bxh+'AVGW':'avgW', # Mixing ratio of H2O vapor, v/v
     _bxh+'N(AIR)':'N_air', # Air density: molec/m3 from tavg output
-    'TIME-SER_AIRDEN':'N_air', # Air density: molec/cm3 from satellite output
+    'TIME-SER_AIRDEN':'N_air', # Air density: molec/cm3 OR MOLEC/M3 from satellite output
     'DXYP_DXYP':'area', # gridbox surface area: m2
     'TR-PAUSE_TP-LEVEL':'tplev',
     'TR-PAUSE_TPLEV':'tplev', # this one is added to satellite output manually
@@ -144,7 +144,7 @@ class GC_base:
                 arr = util.reshape_time_lat_lon_lev(arr,self.ntimes,self.nlats,self.nlons,self.nlevs)
 
             # Fix air density units to molec/m3, in case they are in molec/cm3
-            if key == 'TIME-SER_AIRDEN':
+            if (key == 'TIME-SER_AIRDEN') or (key == 'BXHGHT-$_N(AIR)'):
                 # grab surface air density to check units
                 surf_air=np.nanmean(arr[:,:,0])
                 if len(arr.shape)==4:
@@ -153,7 +153,9 @@ class GC_base:
                 if __VERBOSE__:
                     print(key,np.shape(arr),'surface N_air:',surf_air)
                 if key in attrs:
-                    print("attrs:",attrs[key])
+                    if __VERBOSE__:
+                        print("attrs          :     values")
+                        _blah = [ print('%15s:%15s'%(k, v)) for k,v in attrs[key].items() ]
                     if 'unit' in attrs[key]:
                         # we want molec/m3
                         attrs[key]['orig_unit']=attrs[key]['unit']
@@ -163,6 +165,8 @@ class GC_base:
                     attrs[key]={'units':'molec/m3'}
 
                 if surf_air < 1e23: # probably molec/cm3
+                    if __VERBOSE__:
+                        print(key,' being changed from molec/cm3 to molec/m3')
                     arr=arr*1e6
 
                 attrs[key]['units']='molec/m3'
@@ -174,15 +178,17 @@ class GC_base:
             setattr(self, nkey, arr)
             # just use 'units' not 'unit'
             if 'unit' in attrs[key]:
-                attrs[key]['units'] = attrs[key]['unit'] # save unit to units
+                if not ('units' in attrs[key].keys()):
+                    attrs[key]['units'] = attrs[key]['unit'] # save unit to units
                 attrs[key].pop('unit',None) # delete 'unit' attribute
 
             self.attrs[nkey] = attrs[key]
 
-
-
             if __VERBOSE__:
-                print("GC_tavg reading %s %s"%(key,data[key].shape))
+                print("READING %s(now %s) %s(now %s)"%(key,nkey,data[key].shape,np.shape(getattr(self,nkey))))
+                if self.attrs[nkey] is not None:
+                    print("attrs          :     values")
+                    _blah = [ print('%15s:%15s'%(k, v)) for k,v in self.attrs[nkey].items() ]
 
         # Grab area if file doesn't have it
         if not hasattr(self,'area'):
@@ -509,18 +515,16 @@ class GC_sat(GC_base):
         super(GC_sat,self).__init__(data,attrs,nlevs=nlevs)
 
         # fix dates:
-        if len(dates) > 1:
-            self._has_time_dim=True
-            #ASSUME WE HAVE ALL DAYS IN THIS MONTH:
-            self.dates=dates
+        #self.has_time_dim= len(dates) > 1
+        #self.dates=dates
 
         # fix TR-PAUSE_TPLEV output:
         if hasattr(self,'tplev'):
-            if self.has_time_dim:
+            if self._has_time_dim:
                 self.tplev=self.tplev[:,:,:,0]
             else:
                 self.tplev=self.tplev[:,:,0]
-                
+
         # fix emissions shape:
         if hasattr(self, 'E_isop_bio'):
             E=self.E_isop_bio
@@ -540,9 +544,11 @@ class GC_sat(GC_base):
 
         # Calculate shape factors for faster AMF calculation later
         # Only if we have all the stuff and no time dimension:
-        if all([hasattr(self, astr) for astr in ['hcho','N_air','psurf','boxH']]) and len(self.hcho.shape)==3:
-            # Nhcho (molec/cm3) = vmr_hcho (ppbv*1e-9) * Nair (molec/cm3)
-            self.N_hcho = self.hcho * self.N_air * 1e-9
+        if all([hasattr(self, astr) for astr in ['hcho','N_air','psurf','boxH']]) and not self._has_time_dim:
+            # Nhcho (molec/cm3) = vmr_hcho (ppbv*1e-9) * Nair (molec/m3 * 1e-6 m3/cm3)
+            print(self.attrs['N_air']['units'])
+            assert self.attrs['N_air']['units'] == 'molec/m3', 'N_air is not molec/m3'
+            self.N_hcho = self.hcho * self.N_air * 1e-15
             self.attrs['N_hcho']={'units':'molec/cm3','desc':'HCHO number density'}
 
             # levels are final dimension

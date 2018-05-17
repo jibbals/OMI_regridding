@@ -13,7 +13,7 @@ from utilities import plotting as pp
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
 from classes.omhchorp import omhchorp as omrp
-from classes.gchcho import match_bottom_levels
+from utilities.utilities import match_bottom_levels
 from classes.GC_class import GC_tavg, GC_sat
 
 import numpy as np

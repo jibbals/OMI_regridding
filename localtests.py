@@ -19,9 +19,9 @@ import tests
 import reprocess
 
 from classes.E_new import E_new # E_new class
-from classes.GC_class import GC_sat
+from classes.GC_class import GC_sat, GC_tavg
 from classes.omhchorp import omhchorp
-from classes.gchcho import gchcho
+
 from classes.campaign import campaign
 import xbpch
 import xarray
@@ -33,7 +33,6 @@ import timeit
 ### Globals ###
 ###############
 __VERBOSE__=True
-
 region=pp.__AUSREGION__
 
 #####
@@ -56,6 +55,9 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+#date=d3
+#gcsat = GC_sat(date)
+#gcta = GC_tavg(d0)
 
 reprocess.create_omhchorp(d3)
 
@@ -65,9 +67,8 @@ reprocess.create_omhchorp(d3)
 ###########
 end=timeit.default_timer()
 
-#print("TIME: %6.2f seconds for firemask"%(start2-start1))
-print("TIME: %6.2f seconds for stuff"%(end-start1))
-#print("TIME: %6.2f seconds for anthromask"%(end-start3))
+
+print("TIME: %6.2f minutes for stuff"%((end-start1)/60.0))
 #plt.savefig('test_VCC.png')
 #plt.show()
 

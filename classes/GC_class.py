@@ -230,7 +230,7 @@ class GC_base:
     def ppbv_to_molec_cm2(self,keys=['hcho']):
         ''' return dictionary with data in format molecules/cm2 [or /m2]'''
         out={}
-        N_air=self.N_air
+        N_air=self.N_air # molec/m3
 
         for k in keys:
             ppbv=getattr(self,k)
@@ -546,7 +546,6 @@ class GC_sat(GC_base):
         # Only if we have all the stuff and no time dimension:
         if all([hasattr(self, astr) for astr in ['hcho','N_air','psurf','boxH']]) and not self._has_time_dim:
             # Nhcho (molec/cm3) = vmr_hcho (ppbv*1e-9) * Nair (molec/m3 * 1e-6 m3/cm3)
-            print(self.attrs['N_air']['units'])
             assert self.attrs['N_air']['units'] == 'molec/m3', 'N_air is not molec/m3'
             self.N_hcho = self.hcho * self.N_air * 1e-15
             self.attrs['N_hcho']={'units':'molec/cm3','desc':'HCHO number density'}
@@ -557,11 +556,9 @@ class GC_sat(GC_base):
 
             # Column air (molec/cm2) = (molec/cm3 * m * 100cm/m)
             self.O_air = np.sum(self.N_air * self.boxH * 100, axis=2)
-            # Column HCHO (molec/cm2)
-            self.O_hcho = np.sum(self.N_hcho * self.boxH * 100, axis=2)
+
             # Add attributes
             self.attrs['O_air']={'units':'molec/cm2','desc':'Total column Air'}
-            self.attrs['O_hcho']={'units':'molec/cm2','desc':'Total column HCHO'}
 
             # Pressure at bottom edge of each level
             pbots=self.psurf

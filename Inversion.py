@@ -422,7 +422,7 @@ def Emissions_old(day0, dayn, GC = None, OMI = None,
     # 'lats','lons'
     return outdict, attrs
 
-def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
+def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                           region=pp.__AUSREGION__):
     '''
         Store a month of new emissions estimates into an he5 file
@@ -451,22 +451,25 @@ def store_emissions_month(month=datetime(2005,1,1), GC=None, OMI=None,
     outattrs={}
 
     # Read omhchorp VCs, AMFs, Fires, Smoke, etc...
-    if OMI is None:
-        OMI=omhchorp(day0=day0,dayn=dayn, ignorePP=False)
-    if GC is None:
-        GC=GC_class.GC_biogenic(day0,) # data like [time,lat,lon,lev]
+    if OMHCHORP is None:
+        OMHCHORP=omhchorp(day0=day0,dayn=dayn, ignorePP=False)
+    if GCB is None:
+        GCB=GC_class.GC_biogenic(day0,) # data like [time,lat,lon,lev]
 
     # subset our lats/lons
-    omilats=OMI.lats
-    omilons=OMI.lons
-    omilati, omiloni = util.lat_lon_range(omilats,omilons,region=region)
-    newlats=omilats[omilati]
-    newlons=omilons[omiloni]
+    #omilats=OMI.lats
+    #omilons=OMI.lons
+    #omilati, omiloni = util.lat_lon_range(omilats,omilons,region=region)
+    #newlats=omilats[omilati]
+    #newlons=omilons[omiloni]
+    # Arrays to be subset
+    arrs=[getattr(OMHCHORP,s) for s in ['firemask','smokemask','anthromask']]
+    subsets=util.lat_lon_subset(OMHCHORP.lats,OMHCHORP.lons,region,)
 
     # We need to make the anthropogenic, fire and smoke masks:
-    firemask=fio.make_fire_mask(d0=day0, dN=dayn, prior_days_masked=2, fire_thresh=1, adjacent=True)
-    smokemask=fio.make_smoke_mask(d0=day0, dN=dayn, aaod_thresh=0.2)
-    anthrofilter=fio.make_anthro_mask(d0=day0, dN=dayn)
+    #firemask=fio.make_fire_mask(d0=day0, dN=dayn, prior_days_masked=2, fire_thresh=1, adjacent=True)
+    #smokemask=fio.make_smoke_mask(d0=day0, dN=dayn, aaod_thresh=0.2)
+    #anthrofilter=fio.make_anthro_mask(d0=day0, dN=dayn)
 
     # fire filter made up of two masks:
     firefilter=(firemask+smokemask).astype(np.bool)

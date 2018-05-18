@@ -59,7 +59,7 @@ start1=timeit.default_timer()
 #gcsat = GC_sat(date)
 #gcta = GC_tavg(d0)
 
-reprocess.create_omhchorp(d3)
+
 
 
 ###########

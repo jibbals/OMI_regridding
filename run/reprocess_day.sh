@@ -2,9 +2,9 @@
 #PBS -P m19
 #PBS -q normal
 #PBS -N RP_Day
-#PBS -l walltime=02:00:00
+#PBS -l walltime=01:40:00
 #PBS -l mem=10000MB
-#PBS -l cput=02:00:00
+#PBS -l cput=01:40:00
 #PBS -l wd
 #PBS -l ncpus=1
 #PBS -j oe
@@ -21,9 +21,9 @@ if [ -z ${PBS_O_LOGNAME} ] || [ -z ${dstr} ]; then
     if [ $# -lt 3 ]; then
         dstr="20050203"
         echo "EG usage 1: $0 2005 2 5"
-        echo "  To reprocess omhchorp_1 for feb 5 2005"
-        echo "EG usage 2: qsub -v dstr=$dstr -o logs/reprocess$dstr.log  run/reprocess_oneday.sh"
-        echo " To reprocess and get omhchorp_1 for 3/feb/2005"
+        echo "  To reprocess omhchorp for feb 5 2005"
+        echo "EG usage 2: qsub -v dstr=$dstr -o logs/reprocess$dstr.log  $0"
+        echo " To reprocess and get omhchorp for 3/feb/2005"
         exit 0
     else
         printf -v dstr "%4d%02d%02d" $1 $2 $3

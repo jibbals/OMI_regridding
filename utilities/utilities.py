@@ -512,7 +512,9 @@ def regrid(data,lats,lons,newlats,newlons, interp='nearest', groupfunc=np.nanmea
 
     return newdata
 
-def remote_pacific_background(data,lats,lons, average_lons=False, average_lats=False):
+def remote_pacific_background(data,lats,lons,
+                              average_lons=False, average_lats=False,
+                              has_time_dim=False):
     '''
         Get remote pacific ocean background from data array
         Can average the lats and lons if desired
@@ -526,17 +528,18 @@ def remote_pacific_background(data,lats,lons, average_lons=False, average_lats=F
     # First pull out region in the remote pacific
     # Use the lats from input data
     remote_bg_region=[lats[0],__REMOTEPACIFIC__[1],lats[-1],__REMOTEPACIFIC__[3]]
-    subset=lat_lon_subset(lats, lons, remote_bg_region, [data])
+    subset=lat_lon_subset(lats, lons, remote_bg_region, [data],has_time_dim=has_time_dim)
     rp=subset['data'][0]
     bglats=subset['lats']
     bglons=subset['lons']
 
+    htd=[0,1][has_time_dim] # True to int
     if average_lons:
-        rp=np.nanmean(rp,axis=1)
+        rp=np.nanmean(rp,axis=1+htd)
         bglons = np.nanmean(bglons)
 
     if average_lats:
-        rp=np.nanmean(rp,axis=0)
+        rp=np.nanmean(rp,axis=0+htd)
         bglats = np.nanmean(bglats)
 
     return rp, bglats, bglons

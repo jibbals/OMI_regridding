@@ -952,6 +952,9 @@ class GC_biogenic:
         assert megan.attrs['E_isop_bio']['units'] == 'atomC/cm2/s', 'units are bad in E_isop_bio %s'%megan.attrs['E_isop_bio']['units']
 
         hcho = sat_out.get_trop_columns(keys=['hcho'])['hcho'] # ppbv -> molec/cm2
+        O_hcho=sat_out.O_hcho # should be very similar to hcho molec/cm2
+        print("satellite output: trop column vs total column")
+        print("    %.2e    %.2e "%(np.nanmean(hcho),np.nanmean(O_hcho)))
 
         # what lats and lons do we want?
         lats,lons = sat_out.lats, sat_out.lons

@@ -46,10 +46,10 @@ import seaborn # kdeplots
 ############# Globals ###################
 #########################################
 
-__Thresh_NO2_d__ = 1e15 # daily threshhold
-__Thresh_NO2_y__ = 1.5e15 # yearly avg threshhold
-__Thresh_AAOD__  = 0.03 # AAOD smoke threshhold
-__Thresh_fires__ = 1 # active fire pixel count threshhold
+__Thresh_NO2_d__ = fio.__Thresh_NO2_d__ # 1e15 # daily threshhold
+__Thresh_NO2_y__ = fio.__Thresh_NO2_y__ # 1.5e15 # yearly avg threshhold
+__Thresh_AAOD__  = fio.__Thresh_AAOD__  # 0.03 # AAOD smoke threshhold
+__Thresh_fires__ = fio.__Thresh_fires__ # 1 # active fire pixel count threshhold
 
 cities=pp.__cities__
 

@@ -534,18 +534,18 @@ def Summary_RSC(month=datetime(2005,1,1)):
     gchcho=np.nanmean(gcdat.O_hcho,axis=0) # molec/cm2
     gclats,gclons=gcdat.lats,gcdat.lons
     # plot 1) showing VCs before and after correction
-    vmin,vmax=1e14,1e17
+    vmin,vmax=1e14,4e16
     f=plt.figure(0,figsize=(17,16))
     lims=(-60,30,45,160)
     lims2=(-65,-185,65,-115)
     for i,arr in enumerate([VC_GC,VCC_GC]):
-        #plt.subplot(221+i)
+        #2 rows, 6 columns, this plot will take up space of subplots 0,1,2 and 3,4,5
         plt.subplot2grid((2, 6), (0, 3*i), colspan=3)
         m,cs,cb=pp.createmap(arr,lats,lons,
                              colorbar=False,vmin=vmin,vmax=vmax,
                              region=lims)
         plt.title([Ovcgc,Ovccgc][i],fontsize=25)
-        m.drawparallels([-40,0,40],labels=[1-i,0,0,0],linewidth=1.0)
+        m.drawparallels([-40,0,40],labels=[1-i,0,0,0],linewidth=0.0)
 
     # print some stats of changes
     diffs=dat.VCC_GC-dat.VC_GC
@@ -556,8 +556,10 @@ def Summary_RSC(month=datetime(2005,1,1)):
     # plot c) RSC by sensor and latitude
     plt.subplot2grid((2, 6), (1, 0), colspan=2)
     RSC_GC=np.nanmean(dat.RSC[:,:,:,1],axis=0) # average over time
-    print(RSC_GC.shape)
-    cp=plt.contourf(np.arange(1,60.1,1),dat.RSC_latitude,RSC_GC, cmap=plt.cm.coolwarm)
+    norm = plt.cm.colors.Normalize(vmin=-4e14,vmax=4e14)
+    cmap=plt.cm.coolwarm
+
+    cp=plt.contourf(np.arange(1,60.1,1),dat.RSC_latitude,RSC_GC, cmap=cmap,norm=norm)
     plt.colorbar(cp)
     plt.xlabel('sensor'); plt.ylabel('latitude')
     plt.title('OMI corrections')

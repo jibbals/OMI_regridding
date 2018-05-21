@@ -46,6 +46,12 @@ geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
 __VERBOSE__=True
 
+__Thresh_NO2_d__ = 1e15 # daily threshhold for anthro filter
+__Thresh_NO2_y__ = 1.5e15 # yearly avg threshhold
+__Thresh_AAOD__  = 0.03 # AAOD smoke threshhold
+__Thresh_fires__ = 1 # active fire pixel count threshhold
+
+
 __GCHCHO_KEYS__ = [
     'LONGITUDE','LATITUDE',
     'VCHCHO',           # molecs/m2
@@ -877,7 +883,7 @@ def read_GC_output(date=datetime(2005,1,1), Isop=False,
 ##############
 
 def make_anthro_mask(d0,dN=None,
-                     threshy=1.5e15, threshd=1e15,
+                     threshy=__Thresh_NO2_y__, threshd=__Thresh_NO2_d__,
                      latres=__LATRES__, lonres=__LONRES__, region=None):
     '''
         Read year of OMNO2d
@@ -923,7 +929,7 @@ def make_anthro_mask(d0,dN=None,
         lats,lons=subset['lats'],subset['lons']
     return ret, dates, lats, lons
 
-def make_smoke_mask(d0, dN=None, aaod_thresh=0.05,
+def make_smoke_mask(d0, dN=None, aaod_thresh=__Thresh_AAOD__,
                     latres=__LATRES__, lonres=__LONRES__, region=None):
     '''
         Return smoke mask with dimensions [len(d0-dN), n_lats, n_lons]
@@ -950,7 +956,7 @@ def make_smoke_mask(d0, dN=None, aaod_thresh=0.05,
 
     return smoke>aaod_thresh, dates,lats,lons
 
-def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=1,
+def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires__,
                    adjacent=True, use_omhchorp=False,
                    latres=__LATRES__,lonres=__LONRES__, region=None):
     '''

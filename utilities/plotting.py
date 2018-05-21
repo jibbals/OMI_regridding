@@ -64,7 +64,7 @@ def InitMatplotlib():
     matplotlib.rcParams["axes.labelsize"]   = 20        #
     matplotlib.rcParams["xtick.labelsize"]  = 16        #
     matplotlib.rcParams["ytick.labelsize"]  = 16        #
-    matplotlib.rcParams['image.cmap'] = 'PuRd' #'inferno_r'       # Colormap default
+    matplotlib.rcParams['image.cmap'] = 'plasma' #'PuRd' #'inferno_r'       # Colormap default
 
 def regularbounds(x,fix=False):
     '''

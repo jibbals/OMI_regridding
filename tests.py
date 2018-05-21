@@ -45,16 +45,17 @@ import timeit
 
 
 
-Ohcho='$\Omega_{HCHO}$'
-Ovc='$\Omega_{VC}$'
-Ovcc='$\Omega_{VCC}$'
-Ovccgc='$\Omega_{VCC-GC}$'
-Ovccpp='$\Omega_{VCC-PP}$' # Paul Palmer VCC
-Ovccomi='$\Omega_{VCC-OMI}$'
-Oomi='$\Omega_{OMI}$'
-Oomic="$\Omega_{OMI_{RSC}}$" #corrected original product
-Ogc='$\Omega_{GC}$'
-Opp='$\Omega_{PP}$'
+Ohcho='VC$_{HCHO}$'
+Ovc='VC'
+Ovcgc='VC$_{GC}$'
+Ovcc='VCC'
+Ovccgc='VCC$_{GC}$'
+Ovccpp='VCC$_{PP}$' # Paul Palmer VCC
+Ovccomi='VCC$_{OMI}$'
+Ovcomi='VC$_{OMI}$'
+Ovccomi="VCC$_{OMI}$" #corrected original product
+Ovcgc='VC$_{GC}$'
+Ovcpp='VC$_{PP}$'
 
 
 ##############################
@@ -521,36 +522,42 @@ def Summary_RSC(month=datetime(2005,1,1)):
     date=datetime(month.year,month.month,1)
     yms=month.strftime('%Y%m')
     dayn=util.last_day(month)
+    cbarname='plasma'
 
     # read reprocessed data
     dat=omrp(day0=date,dayn=dayn)
+    VCC_GC=np.nanmean(dat.VCC_GC,axis=0) # avg over month
+    VC_GC =np.nanmean(dat.VC_GC, axis=0)
     lats,lons = dat.lats, dat.lons
     # read geos chem data
     gcdat=GC_sat(day0=date,dayN=dayn)
-    gchcho=gcdat.VC_HCHO*1e-4 # molec/m2 -> molec/cm2
+    gchcho=np.nanmean(gcdat.O_hcho,axis=0) # molec/cm2
     gclats,gclons=gcdat.lats,gcdat.lons
     # plot 1) showing VCs before and after correction
     vmin,vmax=1e14,1e17
     f=plt.figure(0,figsize=(17,16))
     lims=(-60,30,45,160)
-    lim2=(-65,-185,65,-115)
-    for i,arr in enumerate([dat.VC_GC,dat.VCC]):
+    lims2=(-65,-185,65,-115)
+    for i,arr in enumerate([VC_GC,VCC_GC]):
         #plt.subplot(221+i)
         plt.subplot2grid((2, 6), (0, 3*i), colspan=3)
-        m,cs=pp.createmap(arr,lats,lons,colorbar=False,vmin=vmin,vmax=vmax,
-                       lllat=lims[0],lllon=lims[1],urlat=lims[2],urlon=lims[3])
-        plt.title([Ovc,Ovcc][i],fontsize=25)
+        m,cs,cb=pp.createmap(arr,lats,lons,
+                             colorbar=False,vmin=vmin,vmax=vmax,
+                             region=lims)
+        plt.title([Ovcgc,Ovccgc][i],fontsize=25)
         m.drawparallels([-40,0,40],labels=[1-i,0,0,0],linewidth=1.0)
 
     # print some stats of changes
-    diffs=dat.VCC-dat.VC_GC
+    diffs=dat.VCC_GC-dat.VC_GC
     print ("Mean difference VC - VCC:%7.5e "%np.nanmean(diffs))
     print ("%7.2f%%"%(np.nanmean(diffs)*100/np.nanmean(dat.VC_GC)))
     print ("std VC - VCC:%7.5e "%np.nanstd(diffs))
 
     # plot c) RSC by sensor and latitude
     plt.subplot2grid((2, 6), (1, 0), colspan=2)
-    cp=plt.contourf(np.arange(1,60.1,1),dat.RSC_latitude,dat.RSC)
+    RSC_GC=np.nanmean(dat.RSC[:,:,:,1],axis=0) # average over time
+    print(RSC_GC.shape)
+    cp=plt.contourf(np.arange(1,60.1,1),dat.RSC_latitude,RSC_GC, cmap=plt.cm.coolwarm)
     plt.colorbar(cp)
     plt.xlabel('sensor'); plt.ylabel('latitude')
     plt.title('OMI corrections')
@@ -559,11 +566,12 @@ def Summary_RSC(month=datetime(2005,1,1)):
     # plt.imshow(dat.RSC, extent=(0,60,-65,65), interpolation='nearest', cmap=cm.jet, aspect="auto")
 
     # plot d,e) RSC effect
-    for i,arr in enumerate([gchcho, dat.VCC]):
+    for i,arr in enumerate([gchcho, VCC_GC]):
         plt.subplot2grid((2, 6), (1, 2*i+2), colspan=2)
-        m,cs=pp.createmap(arr,[gclats,lats][i],[gclons,lons][i],colorbar=False,vmin=vmin,vmax=vmax,
-                       lllat=lim2[0],lllon=lim2[1],urlat=lim2[2],urlon=lim2[3])
-        plt.title([Ogc,Ovcc][i],fontsize=25)
+        m,cs,cb=pp.createmap(arr,[gclats,lats][i],[gclons,lons][i],
+                          colorbar=False,vmin=vmin,vmax=vmax,
+                          region=lims2)
+        plt.title([Ovcgc,Ovccgc][i],fontsize=25)
         # rectangle around RSC
         #plot_rec(m,dat.RSC_region,color='k',linewidth=4)
         meridians=m.drawmeridians([-160,-140],labels=[0,0,0,1], linewidth=4.0, dashes=(None,None))
@@ -574,7 +582,7 @@ def Summary_RSC(month=datetime(2005,1,1)):
             except:
                 pass
 
-    f.suptitle('Reference Sector Correction '+ymdstr,fontsize=30)
+    f.suptitle('Reference Sector Correction '+yms,fontsize=30)
     # Add colourbar to the right
     f.tight_layout()
     f.subplots_adjust(top=0.95)
@@ -584,7 +592,7 @@ def Summary_RSC(month=datetime(2005,1,1)):
     cb.set_ticks(np.logspace(13,17,5))
     cb.set_label('molec/cm$^2$',fontsize=24)
 
-    pltname='Figs/Summary_RSC_Effect%s_%s.png'%(['8d',''][oneday],ymdstr)
+    pltname='Figs/Summary_RSC_Effect_%s.png'%(yms)
     f.savefig(pltname)
     print ('%s saved'%pltname)
     plt.close(f)
@@ -1948,7 +1956,7 @@ if __name__ == '__main__':
     # GEOS Chem trop vs ucx restarts
     #check_HEMCO_restarts()
 
-    Test_Uncertainty()              # last run 15/5/18
+    #Test_Uncertainty()              # last run 15/5/18
     #check_products()               # last run 15/5/18
     Summary_RSC(datetime(2005,1,1))
     #plot_VCC_rsc_gc_pp()

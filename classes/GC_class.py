@@ -166,7 +166,7 @@ class GC_base:
 
                 if surf_air < 1e23: # probably molec/cm3
                     if __VERBOSE__:
-                        print(key,' being changed from molec/cm3 to molec/m3')
+                        print(key,' being changed from molec/m3 to molec/cm3')
                     arr=arr*1e6
 
                 attrs[key]['units']='molec/m3'

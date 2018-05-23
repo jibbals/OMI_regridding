@@ -1960,8 +1960,8 @@ if __name__ == '__main__':
 
     #Test_Uncertainty()              # last run 15/5/18
     #check_products()               # last run 15/5/18
-    Summary_RSC(datetime(2005,1,1))
-    #plot_VCC_rsc_gc_pp()
+    #Summary_RSC(datetime(2005,1,1))  # last run 18/5/18 - needs work
+    plot_VCC_rsc_gc_pp()
     #analyse_VCC_pp(oneday=False)
 
 

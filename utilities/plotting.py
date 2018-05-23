@@ -50,6 +50,15 @@ __cities__ = {'Syd':[-33.87,151.21], # Sydney
               'Ade':[-34.93,138.60], # Adelaide
              }
 
+# Want to look at timeseires and densities in these subregions:
+__subzones_AUS__ = [__AUSREGION__,  # first zone is container for the rest
+                    [-36,148,-32,153], # Canberra, Newcastle, and Sydney
+                    [-36,134,-33,140], # Adelaide and port lincoln
+                    [-30,125,-25,135], # Emptly land
+                    [-39,142,-36,148], # Melbourne
+                   ]
+__subzones_colours__ = ['k', 'red', 'green', 'cyan', 'darkred']
+
 ###############
 ### METHODS ###
 ###############
@@ -606,6 +615,155 @@ def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legen
         plt.savefig(pname)
         print('%s saved'%pname)
         plt.close()
+
+
+def subzones_map(data, lats, lons, cmapname='plasma',
+                 cities=__cities__,
+                 subzones=__subzones_AUS__,
+                 colors=__subzones_colours__,
+                 **createmapargs):
+    '''
+        Plot australia, with subzones and stuff added
+        Extra named arguments can be sent to createmap using **createmapargs
+    '''
+
+
+    region=subzones[0]
+
+    bmap,cs,cb = createmap(data, lats, lons, region=region,
+                           cmapname=cmapname, **createmapargs)
+    # Add cities to map
+    for city,latlon in cities.items():
+        add_point(bmap,latlon[0],latlon[1],markersize=12,
+                  color='floralwhite', label=city, fontsize=12,
+                  xlabeloffset=-50000,ylabeloffset=30000)
+
+    # Add squares to map:
+    for i,subzone in enumerate(subzones[1:]):
+        add_rectangle(bmap,subzone,color=colors[i+1],linewidth=2)
+
+    return bmap,cs,cb
+
+def subzones_TS(data, dates, lats, lons,
+                subzones=__subzones_AUS__,colors=__subzones_colours__,
+                maskoceans=True, logy=False,
+                ylims=None):
+    '''
+        time series for each subzone in data[time,lats,lons]
+    '''
+
+    doys=[d.timetuple().tm_yday for d in dates]
+
+    # loop over subzones
+    for i,subzone in enumerate(subzones):
+        # Subset our data to subzone
+        datz=np.copy(data)
+        lati,loni=util.lat_lon_range(lats,lons,subzone)
+        datz = datz[:,lati,:]
+        datz = datz[:,:,loni]
+
+        # Mask ocean
+        if maskoceans:
+            oceanmask=util.get_mask(datz[0],lats[lati],lons[loni],masknan=False,maskocean=True)
+            print("Removing %d ocean squares"%(365*np.sum(oceanmask)))
+            datz[:,oceanmask] = np.NaN
+
+        # Also remove negatives
+        #negmask=datz < 0
+        #print("Removing %d negative squares"%(np.sum(negmask)))
+        #datz[negmask]=np.NaN
+
+        # get mean and percentiles of interest for plot
+        #std = np.nanstd(no2,axis=(1,2))
+        upper = np.nanpercentile(datz,75,axis=(1,2))
+        lower = np.nanpercentile(datz,25,axis=(1,2))
+        mean = np.nanmean(datz,axis=(1,2))
+        totmean = np.nanmean(datz)
+
+        lw=[1,4][i==0] # linewidth
+
+        # plot timeseries
+        plt.plot(doys, mean, color=colors[i],linewidth=lw)
+        # Add IQR shading for first plot
+        if i==0:
+            plt.fill_between(doys, lower, upper, color=colors[i],alpha=0.2)
+
+        # show yearly mean
+        endbit=np.max(doys)
+        doyslen=np.max(doys)-np.min(doys)
+        plt.xlim([np.min(doys)-doyslen/100.0, endbit + doyslen*.15])
+        plt.plot([endbit+doyslen*.02,endbit+doyslen*.1],[totmean,totmean], color=colors[i],linewidth=lw)
+
+        # change to log y scale?
+        if logy:
+            plt.yscale('log')
+
+
+        if ylims is not None:
+            plt.ylim(ylims)
+            #yticks=list(ylims)
+            #ytickstr=['%.0e'%tick for tick in yticks]
+            #plt.yticks(yticks,ytickstr)
+
+        #plt.ylabel(ylabel)
+        plt.xlabel('Day of year')
+
+def subzones(data, dates, lats, lons, mask=None, subzones=__subzones_AUS__,
+             pname=None,title=None,suptitle=None, masktitle=None,
+             clabel=None, vmin=None, vmax=None, linear=False,
+             maskoceans=True,
+             colors=__subzones_colours__):
+    '''
+        Look at map of data[time,lats,lons], draw subzones, show time series over map and subzones
+        can clear ocean with maskoceans=True (default).
+        Region mapped is the first of the subzones
+        If a mask is applied then also show map and time series after applying mask
+    '''
+    region=subzones[0]
+    j=int(mask is not None)
+
+    data_mean = np.nanmean(data,axis=0)
+
+    plt.subplot(2,j+1,1)
+    createmapargs={'vmin':vmin, 'vmax':vmax, 'clabel':clabel,
+                 'title':title, 'suptitle':suptitle, 'linear':linear}
+    subzones_map(data_mean,lats,lons,subzones=subzones,colors=colors,
+                 **createmapargs)
+
+    #createmap(data_mean, lats,lons,region=region,
+    #          title=title, suptitle=suptitle,
+    #          clabel=clabel, vmin=vmin,vmax=vmax,linear=linear)
+
+    # For each subset here, plot the timeseries
+    plt.subplot(2,j+1,2+j)
+    subzones_TS(data, dates, lats, lons, subzones=subzones,colors=colors,
+                ylims=[vmin,vmax])
+
+    if mask is not None:
+        data_masked=np.copy(data)
+        data_masked[mask]=np.NaN
+        data_masked_mean=np.nanmean(data_masked,axis=0)
+
+        plt.subplot(2,2,2)
+        createmapargs['title']=masktitle
+        createmapargs['suptitle']=None
+        subzones_map(data_masked_mean, lats, lons,
+                     subzones=subzones,colors=colors,
+                     **createmapargs)
+
+        plt.subplot(2,2,4)
+        subzones_TS(data_masked,dates,lats,lons,
+                    subzones=subzones, colors=colors,
+                    ylims=[vmin,vmax])
+
+
+    if pname is not None:
+        plt.savefig(pname)
+        print("saved ",pname)
+        plt.close()
+
+
+
 
 def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
                  clabel=None, region=__AUSREGION__, vmin=None, vmax=None,

@@ -34,25 +34,23 @@ __VERBOSE__=True
 __DEBUG__=False
 __E_new_keys__=[            # #  # {time, lats, lons}
                 'BG_OMI',       #  {31, 152, 152}
-                'BG_OMI_m',     #  {152, 152}
                 'BG_PP',        #  {31, 152, 152}
-                'BG_PP_m',      #  {152, 152}
                 'BG_VCC',       #  {31, 152, 152}
-                'BG_VCC_m',     #  {152, 152}
-                'E_VCC',        #  {31, 152, 152}
-                'E_VCC_f',      #  Without fire filter
+                'E_VCC_GC',        #  {31, 152, 152}
+                'E_VCC_GC_f',      #  With fire filtered
+                'E_VCC_GC_a',      #  With all filters applied
                 'E_VCC_OMI',    #  {31, 152, 152}
-                'E_VCC_OMI_f',  #  Without using fire filter
+                'E_VCC_OMI_f',  #  With fire filter
+                'E_VCC_OMI_a',      #  With all filters applied
                 'E_VCC_PP',     #  {31, 152, 152}
                 'E_VCC_PP_f',   #  without using fire filter
                 'firefilter',   # Fire filter used for e estimates [time,lat,lon]
-                'VCC',          # {31, 152, 152}
+                'anthrofilter', # anthro filter
+                'smearfilter',  # smearing filter
+                'VCC_GC',       # {31, 152, 152}
                 'VCC_OMI',      # {31, 152, 152}
-                'VCC_OMI_m',    # {152, 152}
                 'VCC_PP',       # {31, 152, 152}
-                'VCC_PP_m',     # {152, 152}
-                'VCC_m',        # {152, 152}
-                'smearing',     # {19, 19}
+                'smearing',     # {152, 152} # linearly interped from 19x19 2x2.5 resolution to higher
                 'pixels',       # OMI pixel count
                 'pixels_PP',    # OMI pixel count using PP code
                 'uncert_OMI',   # OMI grid averaged pixel uncertainty

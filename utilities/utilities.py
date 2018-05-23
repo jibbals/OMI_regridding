@@ -440,8 +440,12 @@ def ppbv_to_molecs_per_cm2(ppbv, pedges):
             out[:,x,y] = t*ppbv[:,x,y]
     return out
 
-def regrid_to_higher(data,lats,lons,newlats,newlons,interp='nearest'):
+def regrid_to_higher(data,lats,lons,newlats,newlons,interp='nearest',fill_value=np.NaN):
     '''
+        regrid data[lats,lons] to data[newlats,newlnos] using interp method
+        interp = {‘linear’, ‘nearest’, ‘cubic’}
+            gridsquares outside the convex hull of input points are filled with fill_value
+            (does not affect 'nearest' method)
     '''
     # make into higher resolution
     mlons,mlats = np.meshgrid(lons,lats)
@@ -450,7 +454,7 @@ def regrid_to_higher(data,lats,lons,newlats,newlons,interp='nearest'):
     #https://docs.scipy.org/doc/scipy/reference/interpolate.html
     # take nearest datapoint from old to give value to new gridpoint value
     newdata = griddata( (mlats.ravel(), mlons.ravel()), data.ravel(),
-                      (mnewlats, mnewlons), method=interp)
+                      (mnewlats, mnewlons), method=interp, fill_value=fill_value)
     return newdata
 
 def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean):

@@ -90,8 +90,8 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     _bxh+'BXHEIGHT':'boxH', # metres
     _bxh+'AD':'AD', # air mass in grid box, kg
     _bxh+'AVGW':'avgW', # Mixing ratio of H2O vapor, v/v
-    _bxh+'N(AIR)':'N_air', # Air density: molec/m3 from tavg output
-    'TIME-SER_AIRDEN':'N_air', # Air density: molec/cm3 OR MOLEC/M3 from satellite output
+    _bxh+'N(AIR)':'N_air', # Air density: molec/cm3 from tavg output
+    'TIME-SER_AIRDEN':'N_air', # Air density: molec/cm3 from satellite output
     'DXYP_DXYP':'area', # gridbox surface area: m2
     'TR-PAUSE_TP-LEVEL':'tplev',
     'TR-PAUSE_TPLEV':'tplev', # this one is added to satellite output manually
@@ -130,7 +130,7 @@ class GC_base:
         #self.boxH  = 0      #box heights (m)
         #self.psurf = 0      #pressure surfaces (hPa)
         #self.area  = 0      #XY grid area (m2)
-        #self.N_air = 0      #air dens (molec_air/m3)
+        #self.N_air = 0      #air dens (molec_air/cm3)
         #self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
         self.attrs={}       # Attributes from bpch file
 
@@ -143,7 +143,7 @@ class GC_base:
             if len(arr.shape) > 1:
                 arr = util.reshape_time_lat_lon_lev(arr,self.ntimes,self.nlats,self.nlons,self.nlevs)
 
-            # Fix air density units to molec/m3, in case they are in molec/cm3
+            # Fix air density units to molec/cm3, in case they are in molec/m3
             if (key == 'TIME-SER_AIRDEN') or (key == 'BXHGHT-$_N(AIR)'):
                 # grab surface air density to check units
                 surf_air=np.nanmean(arr[:,:,0])
@@ -157,19 +157,20 @@ class GC_base:
                         print("attrs          :     values")
                         _blah = [ print('%15s:%15s'%(k, v)) for k,v in attrs[key].items() ]
                     if 'unit' in attrs[key]:
-                        # we want molec/m3
+                        # we want molec/cm3
                         attrs[key]['orig_unit']=attrs[key]['unit']
                 else:
                     if __VERBOSE__:
                         print(key,' has no attributes!!, assuming molec/cm3 or molec/m3')
-                    attrs[key]={'units':'molec/m3'}
+                    attrs[key]={'units':'molec/cm3'}
 
-                if surf_air < 1e23: # probably molec/cm3
+                if surf_air > 1e23: # probably molec/cm3
+                    arr=arr*1e-6
                     if __VERBOSE__:
                         print(key,' being changed from molec/m3 to molec/cm3')
-                    arr=arr*1e6
+                        print(key, np.shape(arr), 'surface N_air:', arr)
 
-                attrs[key]['units']='molec/m3'
+                attrs[key]['units']='molec/cm3'
 
             nkey=key
             if key in _GC_names_to_nice.keys():
@@ -187,8 +188,9 @@ class GC_base:
             if __VERBOSE__:
                 print("READING %s(now %s) %s(now %s)"%(key,nkey,data[key].shape,np.shape(getattr(self,nkey))))
                 if self.attrs[nkey] is not None:
-                    print("attrs          :     values")
-                    _blah = [ print('%15s:%15s'%(k, v)) for k,v in self.attrs[nkey].items() ]
+                    for k,v in self.attrs[nkey].items():
+                        if k in ['full_name','original_shape','units','orig_unit','axis','standard_name']:
+                            print('    %15s:%15s\n'%(k, v))
 
         # Grab area if file doesn't have it
         if not hasattr(self,'area'):
@@ -228,18 +230,19 @@ class GC_base:
         return util.lat_lon_index(lat,lon,self.lats,self.lons)
 
     def ppbv_to_molec_cm2(self,keys=['hcho']):
-        ''' return dictionary with data in format molecules/cm2 [or /m2]'''
+        ''' return dictionary with data in format molecules/cm2'''
         out={}
-        N_air=self.N_air # molec/m3
+        N_air=self.N_air # molec/cm3
+        assert self.attrs['N_air']['units']=='molec/cm3', 'N_air units are NOT molec/cm3, they are %s'%self.attrs['N_air']['units']
 
         for k in keys:
             ppbv=getattr(self,k)
             if k=='isop':
                 ppbv=ppbv/5.0 # ppb carbon to ppb isoprene
 
-            # ppbv * 1e-9 * molec_air/m3 * boxH(m) * m2/cm2
+            # ppb * 1e-9 * molec_air/cm3 * boxH(m) * cm/m
             # scale=0.0
-            out[k] = ppbv * 1e-9 * N_air * self.boxH * 1e-4 # molec/cm2
+            out[k] = ppbv * 1e-9 * N_air * self.boxH * 100 # molec/cm2 over 3dims
         return out
 
     def get_trop_columns(self, keys=['hcho']):
@@ -460,12 +463,12 @@ class GC_tavg(GC_base):
         # tropchem dims [time,lat,lon,lev]
         # UCX dims: lev = 72; alt059 = 59; lat = 91; lon = 144;
         # LATS AND LONS ARE BOX MIDPOINTS
-        self.hcho  = PPBV
+        self.hcho  = PPBV (molec/molec_air)
         self.isop  = PPBC (=PPBV*5)
         self.boxH  = box heights (m)
         self.psurf = pressure surfaces (hPa)
         self.area  = XY grid area (m2)
-        self.N_air = air dens (molec_air/m3)
+        self.N_air = air dens (molec_air/cm3)
         self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
@@ -544,17 +547,17 @@ class GC_sat(GC_base):
 
         # Calculate shape factors for faster AMF calculation later
         # Only if we have all the stuff and no time dimension:
-        if all([hasattr(self, astr) for astr in ['hcho','N_air','psurf','boxH']]) and not self._has_time_dim:
-            # Nhcho (molec/cm3) = vmr_hcho (ppbv*1e-9) * Nair (molec/m3 * 1e-6 m3/cm3)
-            assert self.attrs['N_air']['units'] == 'molec/m3', 'N_air is not molec/m3'
-            self.N_hcho = self.hcho * self.N_air * 1e-15
+        if all([hasattr(self, astr) for astr in ['hcho','N_air','psurf','boxH','O_hcho']]) and not self._has_time_dim:
+            # Nhcho (molec/cm3) = vmr_hcho (ppb*1e-9) * Nair (molec/cm3)
+            assert self.attrs['N_air']['units'] == 'molec/cm3', 'N_air is NOT molec/cm3'
+            self.N_hcho = self.hcho * self.N_air * 1e-9
             self.attrs['N_hcho']={'units':'molec/cm3','desc':'HCHO number density'}
 
             # levels are final dimension
             arrshape=self.hcho.shape
             n_lats,n_lons,n_levs = arrshape
 
-            # Column air (molec/cm2) = (molec/cm3 * m * 100cm/m)
+            # Column air (molec/cm2) = (molec/cm3 * m * 100 cm/m)
             self.O_air = np.sum(self.N_air * self.boxH * 100, axis=2)
 
             # Add attributes
@@ -598,7 +601,7 @@ class GC_sat(GC_base):
 
             # Altitudes (m)
             self.zmids=np.cumsum(h,axis=2)-h/2.0
-            self.attrs['zmids']={'units':'metres','desc':'altitude at middle of each level'}
+            self.attrs['zmids']={'units':'m','desc':'altitude at middle of each level'}
             # Altitudes in sigmas coordinates
             #self.smids = (pmids - 0.1) / (psurfs - 0.1)
             self.smids = (pmids - TOA) / (psurfs - TOA)
@@ -1017,7 +1020,7 @@ class GC_biogenic:
 
 def check_units(d=datetime(2005,1,1)):
     '''
-        N_air (molecs/m3)
+        N_air (molecs/cm3)
         boxH (m)
         trop_cols (molecs/cm2)
         E_isop (TODO)
@@ -1032,7 +1035,7 @@ def check_units(d=datetime(2005,1,1)):
         #data in form [time,lat,lon,lev]
         gcm=gc.month_average(keys=['hcho','N_air'])
         hcho=gcm['hcho']
-        nair=gcm['N_air']
+        nair=gcm['N_air'] # molec/cm3
 
         # Mean surface HCHO in ppbv
         hcho=np.mean(hcho[:,:,0])
@@ -1040,9 +1043,9 @@ def check_units(d=datetime(2005,1,1)):
 
         # N_air is molec/m3 in User manual, and ncfile: check it's sensible:
         nair=np.mean(nair[:,:,0])
-        airmass=nair/N_ave * airkg  # kg/m3 at surface
-        print("Mean surface N_air=%e molec/m3"%nair)
-        print(" = %.3e mole/m3, = %4.2f kg/m3"%(nair/N_ave, airmass ))
+        airmass=nair/N_ave * airkg  * 1e6 # kg/cm3 * cm3/m3 at surface
+        print("Mean surface N_air=%e molec/cm3"%nair)
+        print(" = %.3e mole/cm3, = %4.2f kg/m3"%(nair/N_ave, airmass ))
         assert (airmass > 0.9) and (airmass < 1.5), "surface airmass should be around 1.25kg/m3"
 
         # Boxheight is in metres in User manual and ncfile: check surface height

@@ -52,48 +52,6 @@ colours = ['chartreuse','magenta','aqua']
 ###FUNCTIONS####
 ################
 
-def check_units(day=datetime(2005,1,1)):
-    '''
-        Check unites read in from GEOS-Chem satellite, tavg, and HEMCO_DIAG files
-    '''
-    outfname="Data/units_summary.txt"
-    outfile=open(outfname,"w")
-
-
-    keysofinterest= ['hcho','isop','boxH','psurf','lats','lons','OH','NO2',
-                     'AD','N_air','N_hcho',
-                     'O_hcho','O_air','Shape_s','Shape_z']
-
-    def summarise_class(dataclass, keys=keysofinterest):
-        for key in keys:
-            if key in vars(dataclass).keys():
-                data=getattr(dataclass,key)
-                surfmean=np.nanmean(data)
-                if len(data.shape) == 3:
-                    surfmean=np.nanmean(data[:,:,0])
-                elif len(data.shape) == 4:
-                    surfmean=np.nanmean(data[:,:,:,0])
-                outfile.write("%s %s \n     surface mean=%.2e\n"%(key, str(data.shape), surfmean))
-                for k,v in dataclass.attrs[key].items():
-                    if k in ['full_name','original_shape','units','axis','standard_name']:
-                        outfile.write('    %15s:%15s\n'%(k, v))
-
-    for runtype in ['tropchem','halfisop','biogenic']:
-        outfile.write("===========================================\n")
-        outfile.write("=======GEOS-Chem %s Satellite output=======\n"%runtype)
-        outfile.write("===========================================\n")
-        dat = GC_class.GC_sat(day,run=runtype)
-        summarise_class(dat)
-
-    for runtype in ['tropchem','halfisop','nochem']:
-        outfile.write("===========================================\n")
-        outfile.write("=======GEOS-Chem %s traceravg output=======\n"%runtype)
-        outfile.write("===========================================\n")
-        dat = GC_class.GC_tavg(day,run=runtype)
-        summarise_class(dat)
-
-    print("SAVED FILE: ",outfname)
-    outfile.close()
 
 def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,
                  region=SEA,regionlabel='SEA',regionplus=pp.__AUSREGION__):

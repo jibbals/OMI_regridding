@@ -17,6 +17,7 @@ History:
 import numpy as np
 from datetime import datetime, timedelta
 from scipy.constants import N_A as N_Avogadro
+
 #from glob import glob
 
 # 'local' modules
@@ -112,9 +113,8 @@ class GC_base:
         Class for GEOS-Chem output, inherited by tavg and sat
     '''
     def __init__(self, data,attrs, nlevs=47):
-        ''' Read data for ONE MONTH into self
-            run= 'tropchem'|'halfisop'|'UCX'|'nochem'
-            output= 'satellite'|'tavg'
+        '''
+
         '''
         self.ntimes=1
         if 'time' in data:

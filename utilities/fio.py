@@ -22,8 +22,10 @@ from datetime import datetime, timedelta
 from glob import glob
 import csv
 from os.path import isfile
+import os.path, time # for modification times
 import timeit # to check how long stuff takes
 import warnings
+
 
 # interpolation method for ND arrays
 # todo: remove once this is ported to reprocess.py
@@ -334,7 +336,7 @@ def read_AAOD_interpolated(date, latres=__LATRES__,lonres=__LONRES__):
     newaaod=util.regrid(aaod,lats,lons,newlats,newlons)
     return newaaod,newlats,newlons
 
-def read_smoke(d0,dN, latres=0.25, lonres=0.3125):
+def read_smoke(d0,dN, latres=__LATRES__, lonres=__LONRES__):
     '''
         Read AAOD interpolated over some date dimension
         returns AAOD, dates,lats,lons
@@ -612,13 +614,13 @@ def read_omhcho_8days(day=datetime(2005,1,1)):
             data8[key] = np.concatenate( (data8[key], data[key]), axis=axis)
     return data8
 
-def read_omhchorp_day(date, latres=0.25, lonres=0.3125, keylist=None, filename=None):
+def read_omhchorp_day(date, latres=__LATRES__, lonres=__LONRES__, keylist=None, filename=None):
     '''
     Function to read a reprocessed omi file, by default reads an 8-day average (8p)
     Inputs:
         date = datetime(y,m,d) of file
-        latres=0.25
-        lonres=0.3125
+        latres=__LATRES__
+        lonres=__LONRES__
         keylist=None : if set to a list of strings, just read those data from the file, otherwise read all data
         filename=None : if set then read this file ( used for testing )
     Output:
@@ -647,9 +649,11 @@ def read_omhchorp_day(date, latres=0.25, lonres=0.3125, keylist=None, filename=N
                 print("Key Error in %s"%fpath)
                 print(ke)
                 retstruct[key]=np.NaN
+
+    retstruct['mod_times']= time.ctime(os.path.getmtime(p))
     return retstruct
 
-def read_omhchorp(day0,dayn=None,keylist=None,latres=0.25,lonres=0.3125):
+def read_omhchorp(day0,dayn=None,keylist=None,latres=__LATRES__,lonres=__LONRES__):
     '''
     '''
 
@@ -742,6 +746,11 @@ def read_omno2d(day0,dayN=None,month=False):
 
     dates=util.list_days(day0,dayN)
     data=np.zeros([len(dates),720,1440])+np.NaN
+    # OMNO2d dataset has these lats/lons
+    #   0.25x0.25 horizontal resolution into 720 lats x 1440 lons
+    #   full coverage implies
+    #   lats: -89.875 ... dy=0.25 ... 89.875
+    #   lons: -179.875 ... dx=0.25 ... 179.875
     lats=np.arange(-90,90,0.25)+0.125
     lons=np.arange(-180,180,0.25)+0.125
     lats_e=np.arange(-180,180.001,0.25)
@@ -771,7 +780,7 @@ def read_omno2d(day0,dayN=None,month=False):
     ret={'tropno2':data,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
     return ret,attrs
 
-def yearly_anthro_avg(date,latres=0.25,lonres=0.3125,region=None):
+def yearly_anthro_avg(date,latres=__LATRES__,lonres=__LONRES__,region=None):
     '''
         Read and save the yearly avg no2 product at natural resolution unless it is already saved
         read it, regrid it, subset it, and return it

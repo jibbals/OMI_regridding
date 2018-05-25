@@ -12,6 +12,7 @@ import numpy as np
 from datetime import datetime, timedelta
 from pathlib import Path
 from glob import glob
+import os.path, time # for file modification time
 
 # Add parent folder to path
 import os,sys,inspect
@@ -132,13 +133,18 @@ def read_bpch(path,keys):
     bpchargs={'fields':list(fields), 'categories':list(categories),
               'tracerinfo_file':tracinf,'diaginfo_file':diaginf,
               'decode_cf':False,'dask':True}
+    mod_times=[]
     if multi:
         ds=open_mfbpchdataset(paths,**bpchargs)
+        for p in paths:
+            mod_times.append(time.ctime(os.path.getmtime(p)))
     else:
         ds=open_bpchdataset(path,**bpchargs)
+        mod_times=[time.ctime(os.path.getmtime(path))]
 
     data,attrs=dataset_to_dicts(ds,keys)
-
+    data['modification_times']=np.array(mod_times)
+    attrs['modification_times']={'desc':'When was file last modified'}
     return data,attrs
 
 def read_Hemco_diags(d0,d1=None,month=False):
@@ -170,6 +176,12 @@ def read_Hemco_diags(d0,d1=None,month=False):
 
     with xarray.open_mfdataset(files) as ds:
         data,attrs=dataset_to_dicts(ds,['ISOP_BIOG'])
+
+    mod_times=[]
+    for p in files:
+        mod_times.append(time.ctime(os.path.getmtime(p)))
+    data['modification_times']=np.array(mod_times)
+    attrs['modification_times']={'desc':'When was file last modified'}
 
     return data,attrs
 

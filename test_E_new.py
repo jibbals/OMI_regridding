@@ -57,44 +57,6 @@ Ovcpp='VC$_{PP}$'
 ########## TESTS     #########
 ##############################
 
-def Filter_affects(d0=datetime(2005,1,1),dn=None,region=pp.__AUSREGION__):
-    '''
-        Look at affects of filters to both VCC and E_new
-    '''
-    if dn is None:
-        dn=util.last_day(d0)
-    dstr="%s-%s"%(d0.strftime("%Y%m%d"),dn.strftime("%Y%m%d"))
-    suptitles="%%s with and without filtering over %s"%dstr
-    pnames="Figs/Emiss/filtered_%%s_%%s_%s.png"%dstr
-    titles="%s"
-    masktitles="masked by %s"
-
-    Enew=E_new(d0,dn)
-    dates=Enew.dates
-    lats,lons=Enew.lats,Enew.lons
-    masks=[mask.astype(np.bool) for mask in [Enew.firefilter,Enew.anthrofilter,Enew.firefilter+Enew.anthrofilter]]
-    mask_names=['fire','anthro','fire+anthro']
-    arr_names=['VCC_GC','VCC_OMI','E_VCC_GC','E_VCC_OMI']
-    arr_vmins=[ 1e14   ,  1e14   ,  1e9     ,   1e9     ]
-    arr_vmaxs=[ 1e16   ,  1e16   ,  5e12    ,   5e12    ]
-    for arr_name,vmin,vmax in zip(arr_names,arr_vmins,arr_vmaxs):
-        arr = getattr(Enew,arr_name)
-        units= Enew.attributes[arr_name]['unit'] # TODO change to units when implemented
-        for mask,mask_name in zip(masks,mask_names):
-            #(data, dates, lats, lons, mask=None, subzones=__subzones_AUS__,
-            #pname=None,title=None,suptitle=None, masktitle=None,
-            #clabel=None, vmin=None, vmax=None, linear=False,
-            #maskoceans=True,
-            #colors=__subzones_colours__):
-            title=titles%arr_name
-            suptitle=suptitles%arr_name
-            pname=pnames%(arr_name,mask_name)
-            masktitle=masktitles%mask_name
-            pp.subzones(arr,dates,lats,lons, mask=mask,
-                        vmin=vmin,vmax=vmax,
-                        title=title,suptitle=suptitle,masktitle=masktitle,
-                        pname=pname,clabel=units)
-
 def Summary_E_new(month=datetime(2005,1,1)):
     '''
         Check E_new and stdev and time series
@@ -241,4 +203,3 @@ def VCC_comparison(month=datetime(2005,1,1),region=pp.__AUSREGION__):
 if __name__ == '__main__':
 
     #Summary_E_new() # Not yet run?
-    Filter_affects() # Run 23/5/18

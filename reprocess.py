@@ -592,5 +592,5 @@ if __name__=='__main__':
     # reprocess a day as a test of the process
     start=timeit.default_timer()
     create_omhchorp(datetime(2005,1,1))
-    print("Took %6.2f seconds to run for 1 day"%(timeit.default_timer()-start))
+    print("Took %6.2f minutes to run for 1 day"%((timeit.default_timer()-start)/60.0))
 

@@ -16,6 +16,9 @@ from classes.omhchorp import omhchorp as omrp
 from utilities.utilities import match_bottom_levels
 from classes.GC_class import GC_tavg, GC_sat
 
+# Tests are pulled in from tests/blah.py
+from tests import check_files, test_filters
+
 import numpy as np
 from numpy.ma import MaskedArray as ma
 from scipy import stats
@@ -1953,7 +1956,16 @@ def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
 if __name__ == '__main__':
     print("Running tests.py")
     pp.InitMatplotlib()
+
     #Summary_Single_Profile()
+
+    # make sure units are as expected...
+    check_files.write_GC_units() # last run: 25/5/18
+
+    # See what impact the filters have
+    test_filters.Filter_affects_on_outputs() # last run: ??
+    # Determine affect of NO filter on OMNO2d to see if it's working right:
+    test_filters.check_no2_filter(year=datetime(2005,1,1))# Run 23/5/18
 
     # GEOS Chem trop vs ucx restarts
     #check_HEMCO_restarts()
@@ -1961,7 +1973,7 @@ if __name__ == '__main__':
     #Test_Uncertainty()              # last run 15/5/18
     #check_products()               # last run 15/5/18
     #Summary_RSC(datetime(2005,1,1))  # last run 18/5/18 - needs work
-    plot_VCC_rsc_gc_pp()
+    #plot_VCC_rsc_gc_pp()
     #analyse_VCC_pp(oneday=False)
 
 

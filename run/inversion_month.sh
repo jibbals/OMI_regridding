@@ -1,12 +1,12 @@
 #!/bin/bash
 #PBS -P m19
-#PBS -q express
+#PBS -q normal
 #PBS -N Inversion
-#PBS -l walltime=00:25:00
+#PBS -l walltime=00:15:00
 #PBS -l mem=10000MB
-#PBS -l cput=00:40:00
+#PBS -l cput=00:30:00
 #PBS -l wd
-#PBS -l ncpus=2
+#PBS -l ncpus=1
 #PBS -j oe
 
 #---------------------------------
@@ -16,15 +16,15 @@
 if [ -z ${PBS_O_LOGNAME} ] || [ -z ${MONTH} ]; then
     if [ $# -lt 1 ]; then
         echo "EG 1: $0 200505"
-        echo "EG 2: qsub -o logs/inversion_200505 -v MONTH=200505 run/inversion_month.sh"
+        echo "EG 2: qsub -o logs/inversion_200505.log -v MONTH=200505 run/inversion_month.sh"
         echo "   to save E_new fOR 200505 "
         exit 0
     else
-        echo "qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh"
-        read -r -p "run that command? [y/N] " response
+        echo "qsub -o logs/inversion_${1}.log -v MONTH=${1} run/inversion_month.sh"
+        read -r -p "run that command? (N will run directly) [y/N] " response
         response=${response,,}    # tolower
         if [[ "$response" =~ ^(yes|y)$ ]]; then
-            qsub -o logs/inversion_${1} -v MONTH=${1} run/inversion_month.sh
+            qsub -o logs/inversion_${1}.log -v MONTH=${1} run/inversion_month.sh
             exit 0
         fi
         MONTH=$1

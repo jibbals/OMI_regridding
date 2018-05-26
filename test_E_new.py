@@ -60,15 +60,29 @@ Ovcpp='VC$_{PP}$'
 def Summary_E_new(month=datetime(2005,1,1)):
     '''
         Check E_new and stdev and time series
+        Do whole year once it's ready
     '''
     # Read month of data
     day0=datetime(month.year,month.month,1)
     dayn=util.last_day(month)
     Enew=E_new(day0,dayn)
+    dates=Enew.dates
+    lats=Enew.lats
+    lons=Enew.lons
 
-    pp.createmap(np.nanmean(Enew.E_VCC_GC,axis=0),Enew.lats,Enew.lons,
-                 region=pp.__AUSREGION__,
-                 pname='test_Enew.png')
+    #pp.createmap(np.nanmean(Enew.E_VCC_GC,axis=0),Enew.lats,Enew.lons,
+    #             region=pp.__AUSREGION__,
+    #             pname='test_Enew.png')
+    
+    # First plot each of the E_VCC plots and time series over time:
+    vmin=1e10
+    vmax=1e13 # atom C/cm2/s I think scale is
+    titles=['E_VCC_OMI','E_VCC_GC','E_VCC_PP']
+    pnames=['Figs/Emiss/%s.png'%s for s in titles]
+    for i,arr in enumerate([Enew.E_VCC_OMI, Enew.E_VCC_GC, Enew.E_VCC_PP]):
+        pp.subzones(arr, dates,lats,lons, pname=pnames[i], title=titles[i],
+                    clabel='Atom C/cm2/s', vmin=vmin,vmax=vmax,linear=False)
+
 
 
 def VCC_comparison(month=datetime(2005,1,1),region=pp.__AUSREGION__):
@@ -202,4 +216,4 @@ def VCC_comparison(month=datetime(2005,1,1),region=pp.__AUSREGION__):
 
 if __name__ == '__main__':
 
-    #Summary_E_new() # Not yet run?
+    Summary_E_new() # Not yet run?

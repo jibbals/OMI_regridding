@@ -650,7 +650,7 @@ def read_omhchorp_day(date, latres=__LATRES__, lonres=__LONRES__, keylist=None, 
                 print(ke)
                 retstruct[key]=np.NaN
 
-    retstruct['mod_times']= time.ctime(os.path.getmtime(p))
+    retstruct['mod_times']= [time.ctime(os.path.getmtime(fpath))]
     return retstruct
 
 def read_omhchorp(day0,dayn=None,keylist=None,latres=__LATRES__,lonres=__LONRES__):

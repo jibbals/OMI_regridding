@@ -391,11 +391,11 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
         # run with filters
         allmasks            = firefilter[i] + anthrofilter[i] # + smearfilter
         vcc_gci             = np.copy(VCC_GC[i])
-        vcc_gci[faf]        = np.NaN
+        vcc_gci[allmasks]   = np.NaN
         vcc_ppi             = np.copy(VCC_PP[i])
-        vcc_ppi[faf]        = np.NaN
+        vcc_ppi[allmasks]   = np.NaN
         vcc_omii            = np.copy(VCC_OMI[i])
-        vcc_omii[faf]       = np.NaN
+        vcc_omii[allmasks]  = np.NaN
         E_gc[i,:,:]         = (vcc_gci - BG_VCCi) / GC_slope
         E_pp[i,:,:]         = (vcc_ppi - BG_PPi) / GC_slope
         E_omi[i,:,:]        = (vcc_omii - BG_OMIi) / GC_slope
@@ -436,18 +436,6 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                                'desc':'Isoprene Emissions based on VCC_PP and GC_slope'}
     outattrs['E_VCC_OMI']   = {'units':'molec OR/cm2/s',
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope'}
-    outattrs['E_VCC_GC_f']  = {'units':'molec OR atom C???/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC and GC_slope, just fires masked'}
-    outattrs['E_VCC_PP_f']  = {'units':'molec OR atom C??/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope, just fires masked'}
-    outattrs['E_VCC_OMI_f'] = {'units':'molec OR/cm2/s',
-                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope, just fires masked'}
-    outattrs['E_VCC_GC_a']  = {'units':'molec OR atom C???/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC and GC_slope, just anthro masked'}
-    outattrs['E_VCC_PP_a']  = {'units':'molec OR atom C??/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope, just anthro masked'}
-    outattrs['E_VCC_OMI_a'] = {'units':'molec OR/cm2/s',
-                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope, just anthro masked'}
     outattrs['E_VCC_GC_u']  = {'units':'molec OR atom C???/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope, unmasked by fire or anthro'}
     outattrs['E_VCC_PP_u']  = {'units':'molec OR atom C??/cm2/s',

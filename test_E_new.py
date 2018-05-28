@@ -83,7 +83,44 @@ def Summary_E_new(month=datetime(2005,1,1)):
         pp.subzones(arr, dates,lats,lons, pname=pnames[i], title=titles[i],
                     clabel='Atom C/cm2/s', vmin=vmin,vmax=vmax,linear=False)
 
+    # also do VCC
+    vmin=1e14
+    vmax=2e16
+    titles=['VCC_OMI','VCC_GC','VCC_PP']
+    pnames=['Figs/Emiss/%s.png'%s for s in titles]
+    for i,arr in enumerate([Enew.VCC_OMI, Enew.VCC_GC, Enew.VCC_PP]):
+        pp.subzones(arr, dates,lats,lons, pname=pnames[i], title=titles[i],
+                    clabel='molec/cm2', vmin=vmin,vmax=vmax,linear=False)
 
+def VCC_check(month=datetime(2005,1,1),region=pp.__AUSREGION__):
+    '''
+        Look at VCC vs each type in seperate plots
+    '''
+    
+    ymstr=month.strftime('%Y%m')
+    d0=datetime(month.year,month.month,1)
+    dN=util.last_day(month)
+    titles=['VCC_OMI','VCC_GC','VCC_PP']
+    
+    pnames='Figs/Emiss/%%s_vs_%%s_%s.png'%ymstr
+
+    start_time=timeit.default_timer()
+    # read in omhchorp
+    enew=E_new(d0,dayn=dN)
+    
+    elapsed = timeit.default_timer() - start_time
+    print("TIMEIT: Took %6.2f seconds to read E_new"%elapsed)
+    vmin=1e14
+    vmax=2e16
+    for i in range(3):
+        to_plot=[titles[i],titles[(i+1)%3]]
+        pname=pnames%tuple([s for s in to_plot])
+        arrs=[np.nanmean(getattr(enew,s),axis=0) for s in to_plot]
+        lats=[enew.lats,enew.lats]
+        lons=[enew.lons,enew.lons]
+        pp.compare_maps(arrs,lats,lons,pname=pname,titles=[titles[i],titles[(i+1)%3]],
+                        clabel='molec/cm2',region=region,vmin=vmin,vmax=vmax)
+    
 
 def VCC_comparison(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     '''
@@ -216,4 +253,5 @@ def VCC_comparison(month=datetime(2005,1,1),region=pp.__AUSREGION__):
 
 if __name__ == '__main__':
 
-    Summary_E_new() # Not yet run?
+    VCC_check()
+    #Summary_E_new() #  Last run: 28/5/18

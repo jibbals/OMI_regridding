@@ -190,7 +190,7 @@ class GC_base:
                 if self.attrs[nkey] is not None:
                     for k,v in self.attrs[nkey].items():
                         if k in ['full_name','original_shape','units','orig_unit','axis','standard_name']:
-                            print('    %15s:%15s\n'%(k, v))
+                            print('    %15s:%15s'%(k, v))
 
         # Grab area if file doesn't have it
         if not hasattr(self,'area'):

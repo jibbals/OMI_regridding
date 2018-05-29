@@ -20,6 +20,7 @@ import numpy as np
 import os.path
 import sys
 import timeit # to look at how long python code takes...
+from scipy import interpolate
 
 # lets use sexy sexy parallelograms
 from multiprocessing import Pool
@@ -33,7 +34,9 @@ __VERBOSE__=True # set to true for more print statements
 __DEBUG__=False # set to true for even more print statements
 
 # interpolate linearly to 500 points
-ref_lat_bins=np.arange(-90,90,0.36)+0.18
+__RSC_lat_bins__ = np.arange(-90,90,0.36)+0.18
+__RSC_region__   = [-90, -160, 90, -140]
+
 # latitudes and longitudes which I will regrid everything to
 __latm__, __late__ = GMAO.GMAO_lats()
 __lonm__, __lone__ = GMAO.GMAO_lons()
@@ -203,6 +206,38 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True):
             'omega':ws, 'omega_pmids':w_pmids, 'apriori':apris, 'sigma':sigmas,
             'columnuncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms})
 
+def GC_ref_sector(month):
+    '''
+        Reference sector over remote pacific binned into 500 latitudes
+        From GEOS-Chem satellite overpass data averaged monthly
+    '''
+    # Read O_hcho for the month
+    keylist=['IJ-AVG-$_CH2O','TIME-SER_AIRDEN','BXHGHT-$_BXHEIGHT']
+    gcdata= GC_sat(util.first_day(month),util.last_day(month),keys=keylist, run='tropchem')
+
+    gc_lons=gcdata.lons
+    gc_ref_inds=(gc_lons <= -140) & (gc_lons >= -160)
+    gc_lats=gcdata.lats
+    # fix endpoints so that lats array is [-90, -88, ..., 88, 90]
+    gc_lats[0]=-90
+    gc_lats[-1]=90
+
+    # GEOS-CHEM VC HCHO in molecules/cm2
+    VC=np.nanmean(gcdata.O_hcho,axis=0) # [lats,lons] - month averaged
+
+    # pull out reference sector vertical columns
+    VC_ref=VC[:,gc_ref_inds]
+    # average over the longitude dimension
+    VC_ref=np.mean(VC_ref,axis=1)
+
+    # interpolate linearly to 500 points
+    ref_lat_mids=__RSC_lat_bins__
+
+    gc_VC_ref_interp=np.interp(ref_lat_mids, gc_lats, VC_ref)
+
+    return gc_VC_ref_interp, ref_lat_mids
+
+
 def reference_sector_correction(date, goodpixels=None):
     '''
     Determine the reference sector correction for a particular day
@@ -216,33 +251,15 @@ def reference_sector_correction(date, goodpixels=None):
     ## Grab GEOS-Chem monthly average:
     #
     # Satellite overpass output from normal run:
-    gcdata=GC_sat(date,) # arrays like [lats,lons, 47levs]
+    # Can do daily RSC... but shouldn't I think
+    #gcdata=GC_sat(date,) # arrays like [lats,lons, 47levs]
     #vars(gcdata).keys()
     #   ['N_air', 'temp', '_has_time_dim', 'E_isop_bio_kgs', 'NO2', 'lons_e', 'dstr', 'E_isop_bio', 'nlons', 'OH', 'tplev', 'nlevs', 'ntimes', 'attrs', 'surftemp', 'hcho', 'O_hcho', 'area', 'nlats', 'lats', 'press', 'boxH', 'lats_e', 'dates', 'isop', 'time', 'lons', 'psurf'])
 
-    gc_lons=gcdata.lons
-    gc_ref_inds=(gc_lons <= -140) & (gc_lons >= -160)
-    gc_lats=gcdata.lats
-    # fix endpoints so that lats array is [-90, -88, ..., 88, 90]
-    gc_lats[0]=-90
-    gc_lats[-1]=90
-
-    # GEOS-CHEM VC HCHO in molecules/cm2
-    gc_VC=gcdata.O_hcho
-    # pull out reference sector vertical columns
-    gc_VC_ref=gc_VC[:,gc_ref_inds]
-    # average over the longitude dimension
-    gc_VC_ref=np.mean(gc_VC_ref,axis=1)
-    # interpolate linearly to 500 points
-    ref_lat_mids=np.arange(-90,90,0.36)+0.18
-    ref_lat_bounds=np.arange(-90, 90.01, 0.36)
-    #gc_VC_ref_interp=np.interp(ref_lat_bins, gc_lats, gc_VC_ref)
-
-    ## for any latitude, return the gc_VC_ref value using linear interpolation
-    # over 90S to 90N, in molecules/cm2:
-    def gc_VC_ref_func(lat):
-        return (np.interp(lat,gc_lats,gc_VC_ref))
-
+    # GC_ref[500], lats[500]
+    gc_VC_ref, gc_ref_lats = GC_ref_sector(date)
+    gc_VC_ref_interp = interpolate.interp1d(gc_ref_lats,gc_VC_ref,kind='nearest')
+    ref_lat_bounds = util.edges_from_mids(gc_ref_lats)
     ## NOW we grab the OMI satellite reference pixels
     # if we don't have a list of goodpixels passed in then get them
     if goodpixels is None:
@@ -264,15 +281,17 @@ def reference_sector_correction(date, goodpixels=None):
     ref_lats=omi_lats[ref_inds]
     ref_SC=omi_SC[ref_inds] # molecs/cm2
     ref_track=omi_track[ref_inds]
-    # Ref AMF should be based on which VCC we are trying to determine (AMF_OMI, AMF GC, AMF PP )
+    # Ref AMF should be based on which VCC we are trying to determine (AMF_OMI, AMF_GC, AMF_PP )
     ref_amfs=[omi_AMF[ref_inds],gc_AMF[ref_inds],pp_AMF[ref_inds]]
 
 
     ## Reference corrections for each reference sector pixel
     # correction[lats] = OMI_refSC - GEOS_chem_Ref_VCs * AMF_omi
-    # NB: ref_SC=molecs/cm2, gc=molecs/cm2 (converted from m2 above)
+    # NB: ref_SC=molecs/cm2, gc=molecs/cm2
     # ref_corrections are in molecs/cm2
-    ref_corrections = [ref_SC - gc_VC_ref_func(ref_lats) * ref_amf for ref_amf in ref_amfs]
+    # VCC_x = (SC_omi - ref_SC + VC_gc_0 x AMF_omi ) / AMF_x
+    # correction_x = SC_omi_0 - ref_GC*AMF_omi
+    ref_corrections = [ref_SC - gc_VC_ref_interp(ref_lats) * ref_amf for ref_amf in ref_amfs]
 
     # use median at each lat bin along each of the 60 tracks
     #
@@ -280,13 +299,13 @@ def reference_sector_correction(date, goodpixels=None):
     # for each track
     for i in range(60):
         track_inds= ref_track == i
-        track_lats=ref_lats[track_inds]
+        track_lats= ref_lats[track_inds]
         track_corrections = [ref_correction[track_inds] for ref_correction in ref_corrections]
         # reference sector is interpolated over 500 latitudes
         for j in range(500):
             lat_low=ref_lat_bounds[j]
             lat_high=ref_lat_bounds[j+1]
-            lat_range_inds = (track_lats >= lat_low) & (track_lats <= lat_high)
+            lat_range_inds = (track_lats >= lat_low) & (track_lats < lat_high)
             # if no entries then skip calculation
             test=np.sum(lat_range_inds)
             if test > 0:
@@ -295,8 +314,8 @@ def reference_sector_correction(date, goodpixels=None):
                 for k in range(3):
                     ref_sec_correction[j,i,k]=median_corrections[k]
 
-    # ref_sec_correction [500, 60] is done
-    return(ref_sec_correction, gc_VC_ref_func(ref_lat_mids))
+    # ref_sec_correction [500, 60, 3] and gc_VC_ref[500] are returned
+    return(ref_sec_correction, gc_VC_ref)
 
 def create_omhchorp(date):
     '''
@@ -351,7 +370,7 @@ def create_omhchorp(date):
         # k=2: PP RSC
         track_correction=ref_sec_corrections[:,track,k]
 
-        # fix the NAN values through interpolation
+        # fix the NAN values through linear interpolation
         # [nan, 1, 2, nan, 4, nan, 4] -> [1, 1, 2, 3, 4, 4, 4]
         nans=np.isnan(track_correction)
         latnans=np.isnan(lats)
@@ -360,23 +379,24 @@ def create_omhchorp(date):
             return np.repeat(np.NaN,len(lats))
 
         try:
-            track_correction = np.interp(ref_lat_bins, ref_lat_bins[~nans], track_correction[~nans])
+            track_correction = np.interp(__RSC_lat_bins__, __RSC_lat_bins__[~nans], track_correction[~nans])
         except ValueError as verr:
             print("ERROR:")
             print(verr)
             print("Warning: Continuing on after that ERROR")
             return np.repeat(np.NaN, len(lats))
-        return(np.interp(lats, ref_lat_bins, track_correction))
+        return(np.interp(lats, __RSC_lat_bins__, track_correction))
 
     ## 3)
     # Calculate VCs:
     omi_VC_gc   = omi_SC / omi_AMF_gc
     omi_VC_omi  = omi_SC / omi_AMF_omi
-    # omi_VC_pp   = omi_SC / omi_AMF_pp # just look at corrected for now...
+    omi_VC_pp   = omi_SC / omi_AMF_pp
+
     # Calculate GC Ref corrected VC (called VCC by me)
     omi_VCC = np.zeros(omi_VC_gc.shape)+np.NaN
     omi_VCC_pp=np.zeros(omi_VC_gc.shape)+np.NaN
-    # TODO: also here calculate the full VCC from RM code where the AMF exists
+    omi_VCC_omi_newrsc=np.zeros(omi_VC_gc.shape)+np.NaN
 
     for track in range(60):
         track_inds= omi_tracks==track
@@ -384,14 +404,17 @@ def create_omhchorp(date):
         # If track has one or less non-nan values then skip
         if np.isnan(omi_lats[track_inds]).all():
             continue
-        #track_rscs=[rsc_function(omi_lats[track_inds],track,k) for k in range(3)]
-        gc_track_rsc=rsc_function(omi_lats[track_inds],track,1)
-        pp_track_rsc=rsc_function(omi_lats[track_inds],track,2)
+        track_rscs=[rsc_function(omi_lats[track_inds],track,k) for k in range(3)]
+        #gc_track_rsc=rsc_function(omi_lats[track_inds],track,1)
+        #pp_track_rsc=rsc_function(omi_lats[track_inds],track,2)
         track_sc=omi_SC[track_inds]
+        # original SC corrected by our new RSC
+        omi_VCC_omi_newrsc[track_inds] = (track_sc - track_rscs[0]) / omi_AMF_omi[track_inds]
         # GC based VCC
-        omi_VCC[track_inds]= (track_sc - gc_track_rsc) / omi_AMF_gc[track_inds]
+        omi_VCC[track_inds]     = (track_sc - track_rscs[1]) / omi_AMF_gc[track_inds]
         # may be dividing by nans, ignore warnings
-        omi_VCC_pp[track_inds]=(track_sc - pp_track_rsc) / omi_AMF_pp[track_inds]
+        omi_VCC_pp[track_inds]  = (track_sc - track_rscs[2]) / omi_AMF_pp[track_inds]
+
     # that should cover all good pixels - except if we had a completely bad track some day
     #assert np.sum(np.isnan(omi_VCC))==0, "VCC not created at every pixel!"
     if __VERBOSE__ and np.isnan(omi_VCC).any():
@@ -400,7 +423,7 @@ def create_omhchorp(date):
 
     ## 4)
     # take list and turn into gridded product...
-    # majority of processing time in here ( 75 minutes? )
+    # majority of processing time in here ( 55 minutes? )
 
     # how many lats, lons
     lats,lons,lat_bounds,lon_bounds=__latm__,__lonm__,__late__,__lone__
@@ -429,9 +452,11 @@ def create_omhchorp(date):
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_omi  = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    VC_pp   = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VCC_GC  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VCC_pp  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VCC_OMI = np.zeros([ny,nx],dtype=np.double)+np.NaN
+    VCC_OMI_newrsc = np.zeros([ny,nx],dtype=np.double)+np.NaN
     cunc_omi= np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_gc  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     AMF_gcz = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -449,42 +474,45 @@ def create_omhchorp(date):
             #if remove_clouds:
             matches = matches & cloud_filter
             counts[i,j]= np.sum(matches)
-            if counts[i,j] < 1:
-                continue
             #Different count for PP entries
             countspp[i,j]= np.sum(~np.isnan(omi_VCC_pp[matches]))
 
             # Save the means of each good grid pixel
-            SC[i,j]         = np.mean(omi_SC[matches])
-            VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
-            VC_omi[i,j]     = np.mean(omi_VC_omi[matches])
-            VCC_GC[i,j]     = np.mean(omi_VCC[matches]) # RSC Corrected VC_GC
-            VCC_pp[i,j]     = np.mean(omi_VCC_pp[matches]) # RSC Corrected VC_PP
-            VCC_OMI[i,j]    = np.mean(omi_VCC_OMI[matches])    # RSC corrected VC_omi
-            # TODO: store analysis data for saving, when we decide what we want analysed
-            cunc_omi[i,j]   = np.mean(omi_cunc[matches])
-            AMF_gc[i,j]     = np.mean(omi_AMF_gc[matches])
-            AMF_gcz[i,j]    = np.mean(omi_AMF_gcz[matches])
-            AMF_omi[i,j]    = np.mean(omi_AMF_omi[matches])
-            AMF_pp[i,j]     = np.mean(omi_AMF_pp[matches])
+            if counts[i,j] > 0
+                SC[i,j]         = np.mean(omi_SC[matches])
+                VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
+                VC_omi[i,j]     = np.mean(omi_VC_omi[matches])
+                VCC_GC[i,j]     = np.mean(omi_VCC[matches]) # RSC Corrected VC_GC
+                VCC_OMI[i,j]    = np.mean(omi_VCC_OMI[matches])  # RSC corrected VC_omi
+                VCC_OMI_newrsc[i,j] = np.mean(omi_VCC_omi_newrsc[matches])  # RSC corrected VC_omi
+                cunc_omi[i,j]   = np.mean(omi_cunc[matches])
+                AMF_gc[i,j]     = np.mean(omi_AMF_gc[matches])
+                AMF_gcz[i,j]    = np.mean(omi_AMF_gcz[matches])
+                AMF_omi[i,j]    = np.mean(omi_AMF_omi[matches])
 
+            if countspp[i,j] > 0
+                VC_pp[i,j]      = np.mean(omi_VC_pp[matches])
+                VCC_pp[i,j]     = np.mean(omi_VCC_pp[matches]) # RSC Corrected VC_PP
+                AMF_pp[i,j]     = np.mean(omi_AMF_pp[matches])
 
     outd=dict()
 
     outd['VC_OMI']              = VC_omi
     outd['VC_GC']               = VC_gc
+    outd['VC_PP']               = VC_pp
     outd['SC']                  = SC
     outd['VCC_GC']              = VCC_GC
     outd['VCC_PP']              = VCC_pp
-    outd['VCC_OMI']          = VCC_OMI # omi's VC (corrected by reference sector)
+    outd['VCC_OMI']             = VCC_OMI # omi's VC (corrected by reference sector)
+    outd['VCC_OMI_newrsc']      = VCC_OMI_newrsc
     outd['gridentries']         = counts
     outd['ppentries']           = countspp
     outd['latitude']            = lats
     outd['longitude']           = lons
     outd['RSC']                 = ref_sec_corrections
-    outd['RSC_latitude']        = ref_lat_bins
+    outd['RSC_latitude']        = __RSC_lat_bins__
     outd['RSC_GC']              = GC_ref_sec
-    outd['RSC_region']          = np.array([-90, -160, 90, -140])
+    outd['RSC_region']          = np.array(__RSC_region__)
     outd['col_uncertainty_OMI'] = cunc_omi
     outd['AMF_GC']              = AMF_gc
     outd['AMF_GCz']             = AMF_gcz
@@ -576,7 +604,7 @@ def Reprocess_N_days(date, days=8, processes=8):
     inputs = [(dd) for dd in daysN]
 
     # run all at once since each day can be independantly processed
-    results = [ pool.apply_async(create_omhchorp_1, args=inp) for inp in inputs ]
+    results = [ pool.apply_async(create_omhchorp, args=inp) for inp in inputs ]
 
     if __DEBUG__:
         print("apply_async called for each day")

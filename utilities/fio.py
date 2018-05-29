@@ -88,7 +88,9 @@ __OMHCHORP_KEYS__ = [
     'SC',            # Slant Columns
     'VC_GC',         # GEOS-Chem Vertical Columns
     'VC_OMI',        # OMI VCs
-    'VCC_OMI',    # OMI VCs with Reference sector correction?
+    'VC_PP',         # VCs from PP amf
+    'VCC_OMI',       # OMI VCCs from original satellite swath outputs
+    'VCC_OMI_newrsc', # OMI VCCs using original VC_OMI and new RSC corrections
     'col_uncertainty_OMI',
     'fires',         # Fire count
     'AAOD',          # AAOD from omaeruvd
@@ -106,21 +108,25 @@ __OMHCHORP_ATTRS__ = {
     'VC_OMI':               {'units':'molec/cm2',
                              'desc':'regridded OMI swathe VC'},
     'VC_GC':                {'units':'molec/cm2',
-                             'desc':'regridded VC, using OMI SC recalculated using GEOSChem shape factor'},
+                             'desc':'regridded VC, using OMI SC recalculated using GEOSChem shapefactor'},
+    'VC_PP':                {'units':'molec/cm2',
+                             'desc':'regridded VC, using OMI SC recalculated using PP AMF'},
     'SC':                   {'units':'molec/cm2',
                              'desc':'OMI slant colums'},
-    'VCC_GC':                  {'units':'molec/cm2',
+    'VCC_GC':               {'units':'molec/cm2',
                              'desc':'Corrected OMI columns using GEOS-Chem shape factor and reference sector correction'},
     'VCC_PP':               {'units':'molec/cm2',
                              'desc':'Corrected OMI columns using PPalmer and LSurl\'s lidort/GEOS-Chem based AMF'},
     'VCC_OMI':              {'units':'molec/cm2',
-                             'desc':'OMI\'s RSC corrected VC '},
+                             'desc':'OMI\'s RSC corrected VC'},
+    'VCC_OMI_newrsc':       {'units':'molec/cm2',
+                             'desc':'OMI\'s VC, using new GEOS-Chem RSC corrections'},
     'RSC':                  {'units':'molec/cm2',
                              'desc':'GEOS-Chem/OMI based Reference Sector Correction: is applied to pixels based on latitude and track number. Third dimension is for AMF applied using [OMI, GC, PP] calculations'},
     'RSC_latitude':         {'units':'degrees',
                              'desc':'latitude centres for RSC'},
     'RSC_GC':               {'units':'molec/cm2',
-                             'desc':'GEOS-Chem HCHO over reference sector'},
+                             'desc':'GEOS-Chem HCHO over reference sector (monthly avg, interp to 500 lats)'},
     'col_uncertainty_OMI':  {'units':'molec/cm2',
                              'desc':'mean OMI pixel uncertainty'},
     'AMF_GC':               {'desc':'AMF based on GC recalculation of shape factor'},

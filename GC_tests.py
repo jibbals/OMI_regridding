@@ -15,6 +15,7 @@ from matplotlib import gridspec
 #import netCDF4 as nc
 import numpy as np
 from datetime import datetime, timedelta
+from scipy import interpolate
 from glob import glob
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -22,7 +23,7 @@ import matplotlib.cm as cm
 import seaborn # Plotting density function
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import warnings # To catch annoying warnings
-
+import timeit
 
 # local imports:
 import utilities.plotting as pp
@@ -52,6 +53,38 @@ colours = ['chartreuse','magenta','aqua']
 ###FUNCTIONS####
 ################
 
+def check_rsc_interp(d0=datetime(2005,1,1)):
+    '''
+    Look at calc of RSC from month of sat output, and it's interpolation
+    by scipy.interpolation.interp1d
+    '''
+
+    # start timer
+    start1=timeit.default_timer()
+
+    ##########
+    ### DO STUFFS
+    ##########
+
+    # get ref sector
+
+
+    ref, lats = reprocess.GC_ref_sector(d0)
+    ref_interp = interpolate.interp1d(lats, ref, kind='nearest')
+
+    plt.plot(lats, ref, label='original')
+    plt.plot(lats, ref_interp(lats),'+k',label='interpolation')
+    lats_unordered=np.random.random_integers(-5,50,50)
+    plt.plot(lats_unordered,ref_interp(lats_unordered), 'xr', label='interpolated (lats unordered)')
+    plt.legend()
+    ###########
+    ### Record and time STUJFFS
+    ###########
+    end=timeit.default_timer()
+    print("TIME: %6.2f minutes for stuff"%((end-start1)/60.0))
+
+    plt.savefig('Figs/GC/interp.png')
+    plt.close()
 
 def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,
                  region=SEA,regionlabel='SEA',regionplus=pp.__AUSREGION__):
@@ -1095,6 +1128,7 @@ if __name__=='__main__':
 
     # Checking units:
     check_units()
+    check_rsc_interp()   # last run 29/5/18
 
     #HCHO_vs_temp(d0=d0,d1=d1,
     #             region=SEA,regionlabel='SEA',

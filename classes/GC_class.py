@@ -61,7 +61,7 @@ __emiss__  = ['BIOGSRCE_ISOP',      # biogenic source of isoprene () []
              ]
 __other__  = ['PEDGE-$_PSURF',      # pressure at surface of each gridbox (hPa)
               'BXHGHT-$_BXHEIGHT',  # box height (?)
-              'BXHGHT-$_AD',        # Air density (?)
+              'BXHGHT-$_AD',        # Air density (kg)
               'BXHGHT-$_AVGW',      # water ??
               'BXHGHT-$_N(AIR)',    # air density (?)
               'DXYP_DXYP',          # gridbox horizontal area (m?)
@@ -198,7 +198,7 @@ class GC_base:
 
         # Calculate total columns hcho
         # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
-        if all([hasattr(self,attr) for attr in ['hcho','N_air','boxH','tplev']]):
+        if all([hasattr(self,attr) for attr in ['hcho','N_air','boxH']]):
             n_dims=len(np.shape(self.hcho))
             print("CHECK:hcho %s, mean = %.2e %s"%(str(np.shape(self.hcho)),np.mean(self.hcho),self.attrs['hcho']['units']))
             self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)

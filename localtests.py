@@ -10,6 +10,7 @@ from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 # local modules
 import utilities.utilities as util
 import utilities.plotting as pp
@@ -55,22 +56,17 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-#date=d3
-#gcsat = GC_sat(date)
-#gcta = GC_tavg(d0)
-
-
 
 
 ###########
 ### Record and time STUJFFS
 ###########
+
 end=timeit.default_timer()
-
-
 print("TIME: %6.2f minutes for stuff"%((end-start1)/60.0))
-#plt.savefig('test_VCC.png')
-#plt.show()
+
+#plt.savefig('Figs/GC/interp.png')
+#plt.close()
 
 
 def emisssions_vs_firefilter(d0=datetime(2005,1,1)):

@@ -29,7 +29,7 @@ sys.path.pop(0)
 #####GLOBALS######
 ##################
 
-__VERBOSE__=True
+__VERBOSE__=False
 
 run_number={"tropchem":0,"UCX":1,"halfisop":2,"zeroisop":3,"nochem":4}
 runs=["geos5_2x25_tropchem","UCX_geos5_2x25",

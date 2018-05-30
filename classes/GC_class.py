@@ -919,7 +919,7 @@ class GC_biogenic:
         # also get satellite output
         self.sat_out=GC_sat(month, dayN=util.last_day(month) ,run='biogenic')
 
-    def model_slope(self, region=pp.__AUSREGION__, overpass_hour=13):
+    def model_slope(self, region=pp.__AUSREGION__, overpass_hour=13, return_X_and_Y=False):
         '''
             Use RMA regression between E_isop and tropcol_HCHO to determine S:
                 HCHO = S * E_isop + b
@@ -958,6 +958,7 @@ class GC_biogenic:
         O_hcho=sat_out.O_hcho # should be very similar to hcho molec/cm2
         print("satellite output: trop column vs total column")
         print("    %.2e    %.2e "%(np.nanmean(hcho),np.nanmean(O_hcho)))
+        hcho = O_hcho # We will apply the slope to total columns from OMHCHORP.
 
         # what lats and lons do we want?
         lats,lons = sat_out.lats, sat_out.lons
@@ -1012,6 +1013,9 @@ class GC_biogenic:
                              'lati':lati, 'loni':loni,
                              # regression, background, and slope
                              'r':reg, 'b':bg, 'slope':slope}
+        if return_X_and_Y:
+            self.modelled_slope['hcho']=hcho
+            self.modelled_slope['isop']=isop
         return self.modelled_slope
 
 ################

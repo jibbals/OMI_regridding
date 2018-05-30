@@ -41,7 +41,7 @@ from utilities.utilities import regrid
 __VERBOSE__=False
 
 # S W N E
-__AUSREGION__=[-45, 108.75, -11, 156.25] # picked from lons_e and lats_e in GMAO.py
+__AUSREGION__=[-45, 108.75, -10, 156.25]
 __GLOBALREGION__=[-69, -178.75, 69, 178.75]
 
 __cities__ = {'Syd':[-33.87,151.21], # Sydney
@@ -455,6 +455,10 @@ def hatchmap(m, datamap, lats, lons, thresh, region=None,hatch='x',color='k'):
     mx,my = m(mlons,mlats)
     m.pcolor(mx, my, aaod_masked, hatch=hatch, color=color, alpha=0.)
 
+def get_colors(cmapname,howmany):
+    cmap=plt.cm.cmap_d[cmapname]
+    return cmap(np.linspace(0, 1, howmany))
+
 def plot_img(path):
     ''' '''
     img=mpimg.imread(path)
@@ -719,7 +723,7 @@ def subzones(data, dates, lats, lons, mask=None, subzones=__subzones_AUS__,
         Region mapped is the first of the subzones
         If a mask is applied then also show map and time series after applying mask
     '''
-    region=subzones[0]
+    #region=subzones[0]
     j=int(mask is not None)
 
     data_mean = np.nanmean(data,axis=0)
@@ -952,13 +956,35 @@ def plot_daily_cycle(dates, data, houroffset=0, color='k', overplot=False):
     #plt.savefig(pname)
     #print("SAVED FIGURE:",pname)
 
+def add_dots_to_map(bmap, lats, lons, region, cmapname='rainbow', add_rectangle=True, landonly=True):
+    '''
+        Add dots (optionally coloured) to the bmap
+        lats, lons will be subset to subregion
+    '''
 
-if __name__=='__main__':
-    print('plotting called!')
-    InitMatplotlib()
-    from datetime import datetime
-    #plot_swath(datetime(2005,1,10),title="eg_swaths",
-    #           pname="Figs/Checks/eg_swaths.png",
-    #           vmin=2.0e15, vmax=2.0e16, cmapname='YlOrBr',
-    #           region=__GLOBALREGION__)#[-65.,-30.0,35.,170.],)
-    print('done')
+    # Read omhcho (reprocessed)
+
+
+    lati,loni=util.lat_lon_range(lats,lons,region)
+    #lats,lons=lats[lati],lons[loni]
+    oceanmask=util.oceanmask(lats,lons, inlands=False)
+
+    if add_rectangle:
+        # Add rectangle around where we are correlating
+        add_rectangle(bmap,region,linewidth=2)
+
+    colors=get_colors(cmapname,len(lati)*len(loni))
+
+    # iterator ii, one for each land grid square we will regress
+    ii=0
+    for y in lati:
+        for x in loni:
+            # Don't correlate oceanic squares
+            if oceanmask[y,x]:
+                ii=ii+1
+                continue
+
+            # Add dot to map
+            mx,my = bmap(lons[x], lats[y])
+            bmap.plot(mx, my, 'o', markersize=5, color=colors[ii])
+    return colors

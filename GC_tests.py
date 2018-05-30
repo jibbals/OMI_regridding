@@ -34,7 +34,7 @@ from utilities import utilities as util
 from classes import GC_class
 from classes.omhchorp import omhchorp
 from classes.campaign import campaign
-
+import reprocess
 
 
 ##################
@@ -969,7 +969,7 @@ def compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
 
 
 
-def isop_hcho_RMA(gc):
+def Examine_Model_Slope(month=datetime(2005,1,1)):
     '''
         compares isop emission [atom_C/cm2/s] against hcho vert_column [molec_hcho/cm2]
         as done in Palmer et al. 2003
@@ -977,86 +977,101 @@ def isop_hcho_RMA(gc):
     '''
 
     # Retrieve data
-    isop = gc.E_isop # atom_C/cm2/s
-    hcho = gc.get_trop_columns(keys=['hcho'])['hcho'] # molec/cm2
-    dates= gc.dates # datetime list
+    dates= util.list_days(month,month=True)
+    GC=GC_class.GC_biogenic(month)
+    region=pp.__AUSREGION__
+    ymstr=month.strftime('%b, %Y')
+    hcho_min=1e14
+    hcho_max=3e16
+    Eisop_min=1e11
+    Eisop_max=1.2e13
+    cmapname='gnuplot'
+    # plot names
+    pname=month.strftime('Figs/GC/E_isop_vs_hcho_%Y%m.png')
 
-    # plot name
-    pname1='Figs/GC/E_isop_vs_hcho_series_%s.png'%gc.dstr
-    pname2='Figs/GC/E_isop_vs_hcho_map_%s.png'%gc.dstr
 
-    # subset region
-    region=gc._get_region(aus=True, region=None)
-    lats,lons=gc.lats,gc.lons
-    lati,loni = pp.lat_lon_range(lats,lons,region)
-    isop_sub=isop[lati,:,:]
-    isop_sub=isop_sub[:,loni,:]
-    hcho_sub=hcho[lati,:,:]
-    hcho_sub=hcho_sub[:,loni,:]
+    # Get slope and stuff we want to plot
+    model   = GC.model_slope(return_X_and_Y=True)
+    lats    = model['lats']
+    lons    = model['lons']
+    hcho    = model['hcho']
+    isop    = model['isop']
+    # Y=slope*X+b with regression coeff r
+    reg     = model['r']
+    off     = model['b']
+    slope   = model['slope']
+    ocean   = util.oceanmask(lats,lons)
+    hcho[:,ocean] = np.NaN
+    isop[:,ocean] = np.NaN
 
-    f,axes=plt.subplots(2,1,figsize=(10,14))
+    f,axes=plt.subplots(2,2,figsize=(20,14))
+
+    # Now plot the slope and r^2 on the map of Aus:
+    plt.sca(axes[0,0]) # first plot slope
+    vmin=1e-7
+    slope[slope < vmin] = np.NaN # Nan the zeros and negatives for nonlinear plot
+    pp.createmap(slope, lats, lons, vmin=1e3, vmax=1e6,
+                 aus=True, linear=False, cmapname=cmapname,
+                 suptitle="HCHO trop column vs isoprene emissions %s"%ymstr,
+                 clabel='slope', title=r'$\Omega_{HCHO}$ = slope x E$_{isop}$ + b')
+    plt.sca(axes[1,0]) # then plot r2 and save figure
+    bmap,cs,cb = pp.createmap(reg**2,lats,lons,vmin=0,vmax=1.0,
+                              aus=True,linear=True, cmapname=cmapname,
+                              clabel=r'r$^2$')
+
     # plot time series (spatially averaged)
-    ts_isop=np.mean(isop_sub,axis=(0,1))
-    ts_hcho=np.mean(hcho_sub,axis=(0,1))
-    plt.sca(axes[0])
-    pp.plot_time_series(dates,ts_isop,ylabel=r'E$_{isoprene}$ [atom$_C$ cm$^{-2}$ s$^{-1}$]',
-        title='time series for %s'%gc.dstr, dfmt="%m%d", color='r')
-    twinx=axes[0].twinx()
+    ts_isop=np.nanmean(isop,axis=(1,2))
+    ts_hcho=np.nanmean(hcho,axis=(1,2))
+    plt.sca(axes[0,1])
+    pp.plot_time_series(dates,ts_isop,ylabel=r'E$_{isop}$ [atom C cm$^{-2}$ s$^{-1}$]',
+        title='time series for %s'%ymstr, dfmt="%d", color='r',legend=False, label=r'E$_{isop}$')
+    h1, l1 = axes[0,1].get_legend_handles_labels()
+    twinx=axes[0,1].twinx()
     plt.sca(twinx)
-    pp.plot_time_series(dates,ts_hcho,ylabel=r'$\Omega_{HCHO}$ [ molec$_{HCHO}$ cm$^{-2}$ ]',
-        xlabel='time', dfmt="%m%d", color='m')
+    pp.plot_time_series(dates,ts_hcho,ylabel=r'$\Omega_{HCHO}$ [ molec cm$^{-2}$ ]',
+        xlabel='time', dfmt="%d", color='m', legend=False, label=r'$\Omega_{HCHO}$')
+    h2, l2 = twinx.get_legend_handles_labels()
+    plt.legend(h1+h2, l1+l2, loc='best')
 
-    plt.sca(axes[1])
+
+    plt.sca(axes[0,1])
     plt.autoscale(True)
     # plot a sample of ii_max scatter plots and their regressions
     ii=0; ii_max=9
     colours=[cm.rainbow(i) for i in np.linspace(0, 0.9, ii_max)]
-    randlatis= np.random.choice(lati, size=30)
-    randlonis= np.random.choice(loni, size=30)
+    randlats= np.random.choice(range(len(lats)), size=30)
+    randlons= np.random.choice(range(len(lons)), size=30)
     # loop over random lats and lons
-    for xi,yi in zip(randlonis,randlatis):
+    for xi,yi in zip(randlons,randlats):
         if ii==ii_max: break
-        lat=gc.lats[yi]; lon=gc.lons[xi]
-        X=isop[yi,xi,:]; Y=hcho[yi,xi,:]
-        if np.isclose(np.mean(X),0.0): continue
-        lims=np.array([np.min(X),np.max(X)])
-        plt.scatter(X,Y,color=colours[ii])
-        m,b,r,CI1,CI2=RMA(X, Y) # get regression
-        plt.plot(lims, m*np.array(lims)+b,color=colours[ii],
-            label='Y[%5.1fS,%5.1fE] = %.1eX + %.2e, r=%.2f'%(-1*lat,lon,m,b,r))
-        ii=ii+1
-    plt.xlabel(r'E$_{isop}$ [atom$_C$ cm$^{-2}$ s$^{-1}$]')
-    plt.ylabel(r'$\Omega_{HCHO}$ [molec$_{HCHO}$ cm$^{-2}$]')
-    plt.title('Sample of regressions over Australia')
-    plt.legend(loc=0,fontsize=9) # show legend
-    plt.savefig(pname1)
-    print("Saved "+pname1)
-    plt.close()
+        lat=lats[yi]; lon=lons[xi]
+        X=isop[:,yi,xi]; Y=hcho[:,yi,xi]
+        if np.isclose(np.mean(X),0.0) or np.isnan(np.mean(X)): continue
+        xlims=np.array([Eisop_min,Eisop_max])
+        # add dot to map
+        plt.sca(axes[1,0])
+        bmap.plot(lon,lat,latlon=True,markersize=10,marker='o',)
 
-    # Now plot the slope and r^2 on the map of Aus:
-    fig,axes=plt.subplots(2,1,figsize=(10,14))
-    dims=hcho.shape[0:2] # lat,lon dims
-    r2=np.zeros(dims)
-    slope=np.zeros(dims)
-    offset=np.zeros(dims)
-    for yi in lati:
-        for xi in loni: # loop over lats and lons
-            lat=gc.lats[yi]; lon=gc.lons[xi]
-            X=isop[yi,xi,:]; Y=hcho[yi,xi,:]
-            if np.isclose(np.mean(X),0): # if we're on an all ocean square
-                continue
-            m,b,r,CI1,CI2=RMA(X, Y) # get regression slope and r values
-            r2[yi,xi]=r**2
-            slope[yi,xi]=m
-            offset=b
-    plt.sca(axes[0]) # first plot slope
-    vmin=1e-7
-    slope[slope < vmin] = np.NaN # Nan the zeros and negatives for nonlinear plot
-    pp.createmap(slope, lats, lons, vmin=vmin, aus=True, linear=False,
-                clabel=r'm for: $\Omega_{HCHO}$ = m E$_{isop}$ + b')
-    plt.sca(axes[1]) # then plot r2 and save figure
-    pp.createmap(r2,lats,lons,vmin=0.01,vmax=1.0,aus=True,linear=True,clabel=r'r$^2$',
-        title="HCHO trop column vs isoprene emissions %s"%gc.dstr, pname=pname2)
+        # Plot scatter and regression
+        plt.sca(axes[1,1])
+        plt.scatter(X,Y,color=colours[ii])
+        m,b,r = slope[yi,xi],off[yi,xi],reg[yi,xi]
+        plt.plot(xlims, m*xlims+b,color=colours[ii],
+            label='Y[%5.1fS,%5.1fE] = %.1eX + %.2e, r=%.2f'%(-1*lat,lon,m,b,r))
+
+        ii=ii+1
+    plt.xlim(xlims)
+    plt.ylim([hcho_min,hcho_max])
+    plt.xlabel(r'E$_{isop}$ [atom C cm$^{-2}$ s$^{-1}$]')
+    plt.ylabel(r'$\Omega_{HCHO}$ [molec cm$^{-2}$]')
+    plt.title('Sample of regressions')
+    plt.legend(loc=0,fontsize=9) # show legend
+
+    plt.savefig(pname)
+    plt.close()
+    print("SAVED: ",pname)
+
+
 
 def E_isop_series(gc, aus=False, region=None):
     ''' Plot E_isop time series '''
@@ -1127,7 +1142,8 @@ if __name__=='__main__':
     label='AUS'
 
     # Checking units:
-    check_units()
+
+    Examine_Model_Slope() # unfinished 30/5/18
     check_rsc_interp()   # last run 29/5/18
 
     #HCHO_vs_temp(d0=d0,d1=d1,

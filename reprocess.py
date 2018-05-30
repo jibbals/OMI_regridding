@@ -478,7 +478,7 @@ def create_omhchorp(date):
             countspp[i,j]= np.sum(~np.isnan(omi_VCC_pp[matches]))
 
             # Save the means of each good grid pixel
-            if counts[i,j] > 0
+            if counts[i,j] > 0:
                 SC[i,j]         = np.mean(omi_SC[matches])
                 VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
                 VC_omi[i,j]     = np.mean(omi_VC_omi[matches])
@@ -490,7 +490,7 @@ def create_omhchorp(date):
                 AMF_gcz[i,j]    = np.mean(omi_AMF_gcz[matches])
                 AMF_omi[i,j]    = np.mean(omi_AMF_omi[matches])
 
-            if countspp[i,j] > 0
+            if countspp[i,j] > 0:
                 VC_pp[i,j]      = np.mean(omi_VC_pp[matches])
                 VCC_pp[i,j]     = np.mean(omi_VCC_pp[matches]) # RSC Corrected VC_PP
                 AMF_pp[i,j]     = np.mean(omi_AMF_pp[matches])

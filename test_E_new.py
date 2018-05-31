@@ -40,9 +40,9 @@ import timeit
 ##############################
 
 
-Ohcho='VC$_{HCHO}$'
-Ovc='VC'
-Ovcgc='VC$_{GC}$'
+Ohcho='\Omega$_{HCHO}$'
+Ovc='\Omega'
+Ovcgc='\Omega$_{GC}$'
 Ovcc='VCC'
 Ovccgc='VCC$_{GC}$'
 Ovccpp='VCC$_{PP}$' # Paul Palmer VCC
@@ -73,7 +73,7 @@ def Summary_E_new(month=datetime(2005,1,1)):
     #pp.createmap(np.nanmean(Enew.E_VCC_GC,axis=0),Enew.lats,Enew.lons,
     #             region=pp.__AUSREGION__,
     #             pname='test_Enew.png')
-    
+
     # First plot each of the E_VCC plots and time series over time:
     vmin=1e10
     vmax=1e13 # atom C/cm2/s I think scale is
@@ -96,18 +96,18 @@ def VCC_check(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     '''
         Look at VCC vs each type in seperate plots
     '''
-    
+
     ymstr=month.strftime('%Y%m')
     d0=datetime(month.year,month.month,1)
     dN=util.last_day(month)
     titles=['VCC_OMI','VCC_GC','VCC_PP']
-    
+
     pnames='Figs/Emiss/%%s_vs_%%s_%s.png'%ymstr
 
     start_time=timeit.default_timer()
     # read in omhchorp
     enew=E_new(d0,dayn=dN)
-    
+
     elapsed = timeit.default_timer() - start_time
     print("TIMEIT: Took %6.2f seconds to read E_new"%elapsed)
     vmin=1e14
@@ -120,7 +120,7 @@ def VCC_check(month=datetime(2005,1,1),region=pp.__AUSREGION__):
         lons=[enew.lons,enew.lons]
         pp.compare_maps(arrs,lats,lons,pname=pname,titles=[titles[i],titles[(i+1)%3]],
                         clabel='molec/cm2',region=region,vmin=vmin,vmax=vmax)
-    
+
 
 def VCC_comparison(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     '''

@@ -17,7 +17,7 @@ from utilities.utilities import match_bottom_levels
 from classes.GC_class import GC_tavg, GC_sat
 
 # Tests are pulled in from tests/blah.py
-from tests import check_files, test_filters
+from tests import check_files, test_filters, RSC_tests
 
 import numpy as np
 from numpy.ma import MaskedArray as ma
@@ -46,20 +46,15 @@ import timeit
 ######### GLOBALS ############
 ##############################
 
-
-
-Ohcho='VC$_{HCHO}$'
-Ovc='VC'
-Ovcgc='VC$_{GC}$'
-Ovcc='VCC'
-Ovccgc='VCC$_{GC}$'
-Ovccpp='VCC$_{PP}$' # Paul Palmer VCC
-Ovccomi='VCC$_{OMI}$'
-Ovcomi='VC$_{OMI}$'
-Ovccomi="VCC$_{OMI}$" #corrected original product
-Ovcgc='VC$_{GC}$'
-Ovcpp='VC$_{PP}$'
-
+# STRINGS FOR THINGS
+Ohcho='$\Omega_{HCHO}$' # VC of HCHO
+Ovc='\Omega'
+Og='$\Omega_{G}$'       # GEOS-Chem VC
+Ogc='$\Omega_{GC}$'     # GC VCC
+Op='$\Omega_{P}$'       # Palmer VC
+Opc='$\Omega_{PC}$'     # Palmer VCC
+Oo='$\Omega_{O}$'       # OMI VC
+Ooc='$\Omega_{OC}$'     # OMI VCC
 
 ##############################
 ########## FUNCTIONS #########
@@ -181,7 +176,7 @@ def compare_products(month=datetime(2005,1,1), positiveonly=False,
 
     # save plots
     yyyymmdd = date.strftime("%Y%m%d")
-    f.suptitle(yyyymmdd, fontsize=30)
+    plt.suptitle(yyyymmdd, fontsize=30)
     plt.tight_layout()
     outfig="Figs/%sproducts%s%s.png"%(onedaystr, yyyymmdd, pltname)
     plt.savefig(outfig)
@@ -513,94 +508,7 @@ def Check_AMF():
     plt.savefig(pname)
     print('saved %s'%pname)
 
-def Summary_RSC(month=datetime(2005,1,1)):
-    '''
-    Print and plot a summary of the effect of our remote sector correction
-    Plot 1: Reference Correction
-        showing VCs before and after correction, with rectangle around region
 
-    Plot 2: OMI Sensors difference from apriori over RSC
-        Contourf of RSC correction function [sensor(X) vs latitude(Y)]
-    '''
-    date=datetime(month.year,month.month,1)
-    yms=month.strftime('%Y%m')
-    dayn=util.last_day(month)
-    cbarname='plasma'
-
-    # read reprocessed data
-    dat=omrp(day0=date,dayn=dayn)
-    VCC_GC=np.nanmean(dat.VCC_GC,axis=0) # avg over month
-    VC_GC =np.nanmean(dat.VC_GC, axis=0)
-    lats,lons = dat.lats, dat.lons
-    # read geos chem data
-    gcdat=GC_sat(day0=date,dayN=dayn)
-    gchcho=np.nanmean(gcdat.O_hcho,axis=0) # molec/cm2
-    gclats,gclons=gcdat.lats,gcdat.lons
-    # plot 1) showing VCs before and after correction
-    vmin,vmax=1e14,4e16
-    f=plt.figure(0,figsize=(17,16))
-    lims=(-60,30,45,160)
-    lims2=(-65,-185,65,-115)
-    for i,arr in enumerate([VC_GC,VCC_GC]):
-        #2 rows, 6 columns, this plot will take up space of subplots 0,1,2 and 3,4,5
-        plt.subplot2grid((2, 6), (0, 3*i), colspan=3)
-        m,cs,cb=pp.createmap(arr,lats,lons,
-                             colorbar=False,vmin=vmin,vmax=vmax,
-                             region=lims)
-        plt.title([Ovcgc,Ovccgc][i],fontsize=25)
-        m.drawparallels([-40,0,40],labels=[1-i,0,0,0],linewidth=0.0)
-
-    # print some stats of changes
-    diffs=dat.VCC_GC-dat.VC_GC
-    print ("Mean difference VC - VCC:%7.5e "%np.nanmean(diffs))
-    print ("%7.2f%%"%(np.nanmean(diffs)*100/np.nanmean(dat.VC_GC)))
-    print ("std VC - VCC:%7.5e "%np.nanstd(diffs))
-
-    # plot c) RSC by sensor and latitude
-    plt.subplot2grid((2, 6), (1, 0), colspan=2)
-    RSC_GC=np.nanmean(dat.RSC[:,:,:,1],axis=0) # average over time
-    norm = plt.cm.colors.Normalize(vmin=-4e14,vmax=4e14)
-    cmap=plt.cm.coolwarm
-
-    cp=plt.contourf(np.arange(1,60.1,1),dat.RSC_latitude,RSC_GC, cmap=cmap,norm=norm)
-    plt.colorbar(cp)
-    plt.xlabel('sensor'); plt.ylabel('latitude')
-    plt.title('OMI corrections')
-    plt.xlim([-1,61]);plt.ylim([-70,70])
-    plt.yticks(np.arange(-60,61,15))
-    # plt.imshow(dat.RSC, extent=(0,60,-65,65), interpolation='nearest', cmap=cm.jet, aspect="auto")
-
-    # plot d,e) RSC effect
-    for i,arr in enumerate([gchcho, VCC_GC]):
-        plt.subplot2grid((2, 6), (1, 2*i+2), colspan=2)
-        m,cs,cb=pp.createmap(arr,[gclats,lats][i],[gclons,lons][i],
-                          colorbar=False,vmin=vmin,vmax=vmax,
-                          region=lims2)
-        plt.title([Ovcgc,Ovccgc][i],fontsize=25)
-        # rectangle around RSC
-        #plot_rec(m,dat.RSC_region,color='k',linewidth=4)
-        meridians=m.drawmeridians([-160,-140],labels=[0,0,0,1], linewidth=4.0, dashes=(None,None))
-        m.drawparallels([-60,0,60],labels=[1,0,0,0],linewidth=0.0)
-        for m in meridians:
-            try:
-                meridians[m][1][0].set_rotation(45)
-            except:
-                pass
-
-    f.suptitle('Reference Sector Correction '+yms,fontsize=30)
-    # Add colourbar to the right
-    f.tight_layout()
-    f.subplots_adjust(top=0.95)
-    f.subplots_adjust(right=0.84)
-    cbar_ax = f.add_axes([0.87, 0.20, 0.04, 0.6])
-    cb=f.colorbar(cs,cax=cbar_ax)
-    cb.set_ticks(np.logspace(13,17,5))
-    cb.set_label('molec/cm$^2$',fontsize=24)
-
-    pltname='Figs/Summary_RSC_Effect_%s.png'%(yms)
-    f.savefig(pltname)
-    print ('%s saved'%pltname)
-    plt.close(f)
 
 
 def Summary_Single_Profile():
@@ -1099,9 +1007,9 @@ def plot_VCC_rsc_gc_pp(month=datetime(2005,3,1),region=[-45, 99.5, -11, 160.0]):
     # Plot rows,cols,size:
     f=plt.figure(figsize=[18,18])
 
-    # first line is maps of VCC, VC_GC, VCC_PP
-    titles=[[Oomi,Ogc+" (S(z) updated)",Opp+" (S(z)+$\omega$(z) updated)"],
-            [Ogc+'-'+Oomi,Opp+"-"+Ogc,Oomi+"-"+Opp],
+    # first line is maps of VCC_OMI, VCC_GC, VCC_PP
+    titles=[[Ooc,Ogc+" (S(z) updated)",Opc+" (S(z)+$\omega$(z) updated)"],
+            [Ogc+'-'+Ooc,Opc+"-"+Ogc,Ooc+"-"+Opc],
             ['','','']
             ]
     maps = [[VCC_OM, VCC_GC, VCC_PP], # orig
@@ -1149,7 +1057,7 @@ def plot_VCC_rsc_gc_pp(month=datetime(2005,3,1),region=[-45, 99.5, -11, 160.0]):
 
     # Add time series for each VCC
     plt.subplot(5,1,4)
-    labels=[Oomi,Ogc,Opp]
+    labels=[Ooc,Ogc,Opc]
     plt.plot(ts_list,label=labels)
 
     # Finally add density plots for each map
@@ -1231,8 +1139,6 @@ def CompareMaps(day=datetime(2005,1,1), oneday=False, ausonly=True, PP=False):
     plt.close(f)
 
 
-
-
 def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=False):
     '''
     Look closely at AMFs over Australia, specifically over land
@@ -1243,7 +1149,7 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
 
     # read in omhchorp
     om=omrp(day,oneday=oneday)
-    VCC=om.VCC
+    VCC=om.VCC_GC
     VCC_PP=om.VCC_PP
     VC_OMI_RSC=om.VC_OMI_RSC
     VC_OMI=om.VC_OMI
@@ -1281,8 +1187,8 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     # Plot the histogram of VC entries land and sea
     land_data=np.transpose([VC_OMI_RSC[landinds],VCC[landinds]])
     ocean_data=np.transpose([VC_OMI_RSC[oceaninds],VCC[oceaninds]])
-    olabel=['ocean '+thing for thing in [Oomic,Ovcc]]
-    llabel=['land ' +thing for thing in [Oomic,Ovcc]]
+    olabel=['ocean '+thing for thing in [Ooc,'VCC']]
+    llabel=['land ' +thing for thing in [Ooc,'VCC']]
     plt.hist(ocean_data, bins=np.logspace(13, 17, 20), color=['darkblue','lightblue'], label=olabel)
     plt.hist(land_data, bins=np.logspace(13, 17, 20), color=['orange','yellow'], label=llabel)
     plt.xscale("log")
@@ -1293,8 +1199,8 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
     ta=plt.gca().transAxes
     plt.text(0.05,.95, 'land count=%d'%np.sum(landinds),transform=ta)
     plt.text(.05,.90, 'ocean count=%d'%np.sum(oceaninds),transform=ta)
-    plt.text(.05,.86, '%s mean(land)=%5.3e'%(Ovcc,np.nanmean(vcc_l)),transform=ta)
-    plt.text(.05,.82, '%s mean(land)=%5.3e'%(Oomic,np.nanmean(vcomic_l)),transform=ta)
+    plt.text(.05,.86, '%s mean(land)=%5.3e'%('VCC',np.nanmean(vcc_l)),transform=ta)
+    plt.text(.05,.82, '%s mean(land)=%5.3e'%(Ooc,np.nanmean(vcomic_l)),transform=ta)
     ausstr=['','_AUS'][aus_only]
     eightstr=['_8day',''][oneday]
     pname='Figs/land_VC_hist%s%s_%s.png'%(eightstr,ausstr,ymdstr)
@@ -1313,17 +1219,17 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
 
     # OMI_RSC map
     m,cs,cb = pp.createmap(vcomic_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
-    plt.title(Oomic,fontsize=20)
+    plt.title(Ooc,fontsize=20)
 
     # VCC map
     plt.subplot(232)
     m,cs,cb = pp.createmap(vcc_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon)
-    plt.title(Ovcc,fontsize=20)
+    plt.title('VCC',fontsize=20)
 
     # (VCC- OMI_RSC)/OMI_RSC*100 map
     plt.subplot(233)
     m,cs,cb = pp.linearmap((vcc_l-vcomic_l)*100/vcomic_l,mlats,mlons,lllat=lllat, urlat=urlat, lllon=lllon, urlon=urlon, vmin=-200,vmax=200)
-    plt.title('(%s - %s)*100/%s'%(Ovcc,Oomic,Oomic),fontsize=20)
+    plt.title('(%s - %s)*100/%s'%('VCC',Ooc,Ooc),fontsize=20)
 
     # show corellations for OMI_RSC- VCC
     nans=np.isnan(vcc_l) + np.isnan(vcomic_l) + vcomic_l.mask # all the nans we won't fit
@@ -1336,7 +1242,7 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
             label='Land: m=%.5f, r=%.5f'%(m,r))
     plt.plot( X, X, 'k--', label='1-1' )
     plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False)
-    plt.ylabel(Ovcc); plt.xlabel(Oomic)
+    plt.ylabel('VCC'); plt.xlabel(Ooc)
 
     # show corellations for OMI - VCC
     plt.subplot(224)
@@ -1349,7 +1255,7 @@ def test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=
             label='Land: m=%4.2f, r=%.2f'%(m,r))
     plt.plot( X, X, 'k--', label='1-1' )
     plt.legend(loc=2,scatterpoints=1, fontsize=10,frameon=False)
-    plt.ylabel(Ovcc); plt.xlabel(Oomi)
+    plt.ylabel('VCC'); plt.xlabel(Oomi)
 
     # save plot
     pname='Figs/correlations%s%s_%s.png'%(eightstr,ausstr,ymdstr)
@@ -1618,8 +1524,8 @@ def test_fires_removed(day=datetime(2005,1,25),oneday=False):
     # Fires Counts?
 
     vmin,vmax=1e14,1e17
-    Ovcc='$\Omega_{VCC}$'
-    titles= [ Ovcc+s for s in ['',' - 8 days of fires', ' - 16 days of fires'] ]
+
+    titles= [ 'VCC'+s for s in ['',' - 8 days of fires', ' - 16 days of fires'] ]
     for i,arr in enumerate([pre,post8,post16]):
         plt.subplot(131+i)
         m,cs = pp.ausmap(arr,lats,lons,vmin=vmin,vmax=vmax,colorbar=False)
@@ -1957,22 +1863,45 @@ if __name__ == '__main__':
     print("Running tests.py")
     pp.InitMatplotlib()
 
+    date=datetime(2005,1,1)
     #Summary_Single_Profile()
 
     # make sure units are as expected...
-    check_files.write_GC_units() # last run: 25/5/18
+    #####################
+    ### Files tests
+    #####################
+    #check_files.write_GC_units() # last run: 25/5/18
 
-    # See what impact the filters have
-    test_filters.Filter_affects_on_outputs() # last run: ??
-    # Determine affect of NO filter on OMNO2d to see if it's working right:
-    test_filters.check_no2_filter(year=datetime(2005,1,1))# Run 23/5/18
+    #####################
+    ### RSC TESTS
+    #####################
+    ## original omi VCC vs same with new RSC
+    RSC_tests.new_vs_old(date)  # last run 31/5/18
+
+    ## Plots showing how it works
+    #RSC_tests.summary(date) # Last run 31/5/18 # last run 18/5/18 - needs work
+
+    ## Look at different ways of making the RSC (different AMFs)
+    #RSC_tests.intercomparison(date) # not run
+
+
+    #####################
+    ### FILTERS TESTS
+    #####################
+    ## See what impact the filters have
+    #test_filters.Filter_affects_on_outputs() # last run: ??
+    ## Determine affect of NO filter on OMNO2d to see if it's working right:
+    #test_filters.check_no2_filter(year=datetime(2005,1,1))# Run 23/5/18
+
+    ######
+    ### Tests to be sorted into files
+    ######
+    #Test_Uncertainty()              # last run 15/5/18
+    #check_products()               # last run 15/5/18
 
     # GEOS Chem trop vs ucx restarts
     #check_HEMCO_restarts()
 
-    #Test_Uncertainty()              # last run 15/5/18
-    #check_products()               # last run 15/5/18
-    #Summary_RSC(datetime(2005,1,1))  # last run 18/5/18 - needs work
     #plot_VCC_rsc_gc_pp()
     #analyse_VCC_pp(oneday=False)
 
@@ -2003,7 +1932,7 @@ if __name__ == '__main__':
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [0, 8, 16, 24, 32, 112] ]
     #dates=[ datetime(2005,1,1) + timedelta(days=d) for d in [112] ]
     #dates=[ datetime(2005,1,1) ]
-    #Summary_RSC(date=dates[0], oneday=False)
+
     #dates=[ ]
 
     #CompareMaps(day=dates[0],oneday=False,ausonly=False)

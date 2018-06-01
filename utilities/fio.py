@@ -75,7 +75,7 @@ __OMHCHORP_COORDS__=[
 __OMHCHORP_KEYS__ = [
     'gridentries',   # how many satellite pixels make up the pixel
     'ppentries',     # how many pixels we got the PP_AMF for
-    'RSC',           # The reference sector correction [rsc_lats, 60]
+    'RSC',           # The reference sector correction [rsc_lats, 60,3]
     'RSC_latitude',  # latitudes of RSC
     'RSC_region',    # RSC region [S,W,N,E]
     'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)

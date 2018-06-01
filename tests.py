@@ -31,6 +31,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm # for lognormal colour bar
 from matplotlib.ticker import FormatStrFormatter # tick formats
 
+
+
 #import matplotlib.patches as mpatches
 import seaborn # kdeplots
 
@@ -1704,107 +1706,7 @@ def check_high_amfs(day=datetime(2005,1,1)):
     plt.savefig(outpic)
     print('saved %s'%outpic)
 
-def check_RSC(day=datetime(2005,1,1), track_corrections=False):
-    '''
-    Grab the RSC from both GEOS-Chem and OMI for a particular day
-    Plot and compare the RSC region
-    Plot the calculated corrections
-    '''
-    print("Running check_RSC")
-    # Read in one day average
-    omhchorp1=fio.read_omhchorp(day,oneday=True)
-    yyyymmdd=day.strftime("%Y%m%d")
-    rsc=omhchorp1['RSC']
-    ref_lat_bins=omhchorp1['RSC_latitude']
-    rsc_gc=omhchorp1['RSC_GC'] # RSC_GC is in molecs/cm2 as of 11/08/2016
 
-    ## plot each track with a slightly different colour
-    #
-    if track_corrections:
-        f1=plt.figure(0,figsize=(8,10))
-        colors=[plt.cm.jet(i) for i in np.linspace(0, 1, 60)]
-        for track in range(60):
-            plt.plot(rsc[:,track], ref_lat_bins, '.', color=colors[track])
-            #plt.plot(rsc_function(ref_lat_bins,track), ref_lat_bins, color=colors[track])
-        plt.ylabel('latitude')
-        plt.xlabel('molecules/cm2')
-        plt.title('Reference sector correction for %s'%yyyymmdd)
-        sm = plt.cm.ScalarMappable(cmap=plt.cm.jet,norm=plt.Normalize(vmin=0,vmax=60))
-        sm._A=[]
-        cb=plt.colorbar(sm)
-        cb.set_label('track')
-        outfig1='Figs/track_corrections%s.png'%yyyymmdd
-        plt.savefig(outfig1)
-        print(outfig1+' saved')
-        plt.close(f1)
-
-    def RSC_map(lons,lats,data,labels=[0,0,0,0]):
-        ''' Draw standard map around RSC region '''
-        vmin, vmax= 5e14, 1e16
-        lat0, lat1, lon0, lon1=-75, 75, -170, -130
-        m=Basemap(lon0,lat0,lon1,lat1, resolution='i', projection='merc')
-        cs=m.pcolormesh(lons, lats, data, latlon=True,
-              vmin=vmin,vmax=vmax,norm = LogNorm(), clim=(vmin,vmax))
-        cs.cmap.set_under('white')
-        cs.cmap.set_over('pink')
-        cs.set_clim(vmin,vmax)
-        m.drawcoastlines()
-        m.drawmeridians([ -160, -140],labels=labels)
-        return m, cs
-
-    ## plot the reference region,
-    #
-    # we need 501x3 bounding edges for our 500x2 2D data (which is just the 500x1 data twice)
-    rsc_lat_edges= list(ref_lat_bins-0.18)
-    rsc_lat_edges.append(90.)
-    rsc_lat_edges = np.array(rsc_lat_edges)
-    lons_gc, lats_gc = np.meshgrid( [-160., -150, -140.], rsc_lat_edges )
-
-    # Make the GC map:
-    f2=plt.figure(1, figsize=(14,10))
-    plt.subplot(141)
-    rsc_gc_new = np.transpose(np.array([ rsc_gc, rsc_gc] ))
-    m,cs = RSC_map(lons_gc,lats_gc,rsc_gc_new, labels=[0,0,0,1])
-    m.drawparallels([-45,0,45],labels=[1,0,0,0])
-    cb=m.colorbar(cs,"right",size="8%", pad="3%")
-    cb.set_label('Molecules/cm2')
-    plt.title('RSC_GC')
-
-    # add the OMI reference sector for comparison
-    sc_omi=omhchorp1['SC'] # [ 720, 1152 ] molecs/cm2
-    lats_rp=omhchorp1['latitude']
-    lons_rp=omhchorp1['longitude']
-    rsc_lons= (lons_rp > -160) * (lons_rp < -140)
-    newlons=pp.regularbounds(lons_rp[rsc_lons])
-    newlats=pp.regularbounds(lats_rp)
-    newlons,newlats = np.meshgrid(newlons,newlats)
-    # new map with OMI SC data
-    plt.subplot(142)
-    plt.title("SC_OMI")
-    m,cs=RSC_map(newlons, newlats, sc_omi[:,rsc_lons])
-    m.drawmeridians([ -160, -140],labels=[0,0,0,0])
-
-    ## Another plot using OMI_VC (old reprocessed data)
-    #
-    vc_omi=omhchorp1['VC_OMI']
-    plt.subplot(143)
-    plt.title('VC_OMI')
-    m,cs=RSC_map(newlons,newlats,vc_omi[:,rsc_lons])
-
-    ## One more with VC_GC over the ref sector
-    #
-    vc_gc=omhchorp1['VC_GC'] # [ 720, 1152 ] molecs/cm2
-    # new map with OMI SC data
-    plt.subplot(144)
-    plt.title("VC_GC")
-    m,cs=RSC_map(newlons,newlats,vc_gc[:,rsc_lons])
-
-
-    f2.suptitle('GEOS_Chem VC vs OMI SC over RSC on %s'%yyyymmdd)
-    outfig2='Figs/RSC_GC_%s.png'%yyyymmdd
-    plt.savefig(outfig2)
-    print(outfig2+' saved')
-    plt.close(f2)
 
 def check_flags_and_entries(day=datetime(2005,1,1), oneday=True):
     '''
@@ -1876,13 +1778,14 @@ if __name__ == '__main__':
     ### RSC TESTS
     #####################
     ## original omi VCC vs same with new RSC
-    RSC_tests.new_vs_old(date)  # last run 31/5/18
+    #RSC_tests.new_vs_old(date)  # last run 1/6/18
 
     ## Plots showing how it works
     #RSC_tests.summary(date) # Last run 31/5/18 # last run 18/5/18 - needs work
+    RSC_tests.check_RSC(date) # needs update
 
     ## Look at different ways of making the RSC (different AMFs)
-    #RSC_tests.intercomparison(date) # not run
+    RSC_tests.intercomparison(date) # last run 1/6/18
 
 
     #####################

@@ -22,7 +22,7 @@ from copy import deepcopy as dcopy
 from datetime import datetime#, timedelta
 
 import matplotlib.pyplot as plt
-
+from mpl_toolkits.mplot3d import Axes3D # 3d scatter
 #from matplotlib.colors import LogNorm # for lognormal colour bar
 #from matplotlib.ticker import FormatStrFormatter # tick formats
 #import matplotlib.patches as mpatches
@@ -45,8 +45,29 @@ Oo='$\Omega_{O}$'       # OMI VC
 Ooc='$\Omega_{OC}$'     # OMI VCC
 
 
+######################
+##      plotting functions
+######################
 
+def plot_tracks(RSC,RSC_lats=np.linspace(-90,90,500),
+                linestyle='.',
+                cmapname='jet', labels=True, colorbar=True):
+    ## plot each track with a slightly different colour
 
+    cmap=plt.cm.cmap_d[cmapname]
+    colors=[cmap(i) for i in np.linspace(0, 1, 60)]
+    for track in range(60):
+        plt.plot(RSC[:,track], RSC_lats, linestyle, color=colors[track])
+
+    if labels:
+        plt.ylabel('latitude')
+        plt.xlabel('molec/cm2')
+
+    if colorbar:
+        sm = plt.cm.ScalarMappable(cmap=plt.cm.jet,norm=plt.Normalize(vmin=0,vmax=60))
+        sm._A=[]
+        cb=plt.colorbar(sm)
+        cb.set_label('track')
 
 
 
@@ -65,6 +86,7 @@ def new_vs_old(month=datetime(2005,1,1)):
     d0=util.first_day(month)
     dn=util.last_day(month)
     titles=['VCC_OMI','VCC_OMI_newrsc']
+    lables=[Ooc,r'$\Omega_{Oc,new}$']
     om=omrp(d0,dayn=dn, keylist=titles)
 
     # Compare old vs new avg for one month
@@ -72,8 +94,146 @@ def new_vs_old(month=datetime(2005,1,1)):
     lats=[om.lats,om.lats]
     lons=[om.lons,om.lons]
     pp.compare_maps(datas,lats,lons,pname=pname, linear=True,
-                    titles=titles,rmin=-50,rmax=50,
-                    suptitle='RSC effect on OMI VCC (%s)'%ymstr)
+                    vmin=1e14,vmax=2e16,
+                    titles=lables,rmin=-50,rmax=50, amin=-5e15,amax=5e15,
+                    suptitle='%s with and without updated RSC (%s)'%(Ooc,ymstr))
+
+def intercomparison(month=datetime(2005,1,1)):
+    '''
+        Look at RSC in a month between AMF types used to turn model VC into SC
+    '''
+     # plot name
+    ymstr=month.strftime('%Y%m')
+    pname='Figs/RSC_intercomparison_%s.png'%ymstr
+    cmapname='plasma'
+
+    # read in VCC_OMI and VCC_OMI_newrsc for month
+    d0=util.first_day(month)
+    dn=util.last_day(month)
+    titles=['RSC','RSC_latitude']
+    lables=['RSC$_O$','RSC$_G$','RSC$_P$']
+    colours=['orange','green','purple']
+    om=omrp(d0,dayn=dn, keylist=titles) #
+    lats=om.RSC_latitude
+    RSC=np.nanmean(om.RSC,axis=0) # RSC=[time, lats, track, type]
+
+    vmin=-1e16
+    vmax=1e16
+
+    plt.figure(figsize=(15,15))
+    for i in range(3):
+        plt.subplot(2,3,1+i)
+        plt.contourf(range(60),lats,RSC[:,:,i],cmap=cmapname,vmin=vmin,vmax=vmax)
+        plt.title(lables[i])
+        plt.xlabel('track')
+        plt.ylabel('latitude')
+        # plot the 60 tracks as lines
+        plt.subplot(2,3,4+i)
+        plot_tracks(RSC[:,:,i],labels=False, colorbar=i==2)
+        if i==0:
+            plt.ylabel('latitude')
+        if i==1:
+            plt.xlabel('molec/cm2')
+        plt.title(lables[i])
+
+
+    #[[plt.plot(lats, RSC[:,i,j],color=colours[j],label=[None,lables[j]][i==0]) for i in range(60)] for j in range(3)]
+    #plt.legend()
+
+
+    plt.savefig(pname)
+    print ('%s saved'%pname)
+    plt.close()
+
+def check_RSC(day=datetime(2005,1,1), track_corrections=True):
+    '''
+    Grab the RSC from both GEOS-Chem and OMI for a particular day
+    Plot and compare the RSC region
+    Plot the calculated corrections
+    '''
+    print("Running check_RSC")
+    # Read in one day average
+    omhchorp1=fio.read_omhchorp(day)
+    yyyymmdd=day.strftime("%Y%m%d")
+    rsc=omhchorp1['RSC']
+    ref_lat_bins=omhchorp1['RSC_latitude']
+    rsc_gc=omhchorp1['RSC_GC'] # RSC_GC is in molecs/cm2 as of 11/08/2016
+
+    if track_corrections:
+        plot_tracks(rsc[:,:,0])
+        plt.title('Reference sector corrections for %s'%yyyymmdd,fontsize=20)
+        pname='Figs/RSC_track_corrections%s.png'%yyyymmdd
+        plt.savefig(pname)
+        print('SAVED: ',pname)
+        plt.close()
+
+    def RSC_map(lons,lats,data,labels=[0,0,0,0]):
+        ''' Draw standard map around RSC region '''
+        vmin, vmax= 5e14, 1e16
+        lat0, lat1, lon0, lon1=-75, 75, -170, -130
+        m=Basemap(lon0,lat0,lon1,lat1, resolution='i', projection='merc')
+        cs=m.pcolormesh(lons, lats, data, latlon=True,
+              vmin=vmin,vmax=vmax,norm = LogNorm(), clim=(vmin,vmax))
+        cs.cmap.set_under('white')
+        cs.cmap.set_over('pink')
+        cs.set_clim(vmin,vmax)
+        m.drawcoastlines()
+        m.drawmeridians([ -160, -140],labels=labels)
+        return m, cs
+
+    ## plot the reference region,
+    #
+    # we need 501x3 bounding edges for our 500x2 2D data (which is just the 500x1 data twice)
+    rsc_lat_edges= list(ref_lat_bins-0.18)
+    rsc_lat_edges.append(90.)
+    rsc_lat_edges = np.array(rsc_lat_edges)
+    lons_gc, lats_gc = np.meshgrid( [-160., -150, -140.], rsc_lat_edges )
+
+    # Make the GC map:
+    f2=plt.figure(1, figsize=(14,10))
+    plt.subplot(141)
+    rsc_gc_new = np.transpose(np.array([ rsc_gc, rsc_gc] ))
+    m,cs = RSC_map(lons_gc,lats_gc,rsc_gc_new, labels=[0,0,0,1])
+    m.drawparallels([-45,0,45],labels=[1,0,0,0])
+    cb=m.colorbar(cs,"right",size="8%", pad="3%")
+    cb.set_label('Molecules/cm2')
+    plt.title('RSC_GC')
+
+    # add the OMI reference sector for comparison
+    sc_omi=omhchorp1['SC'] # [ 720, 1152 ] molecs/cm2
+    lats_rp=omhchorp1['latitude']
+    lons_rp=omhchorp1['longitude']
+    rsc_lons= (lons_rp > -160) * (lons_rp < -140)
+    newlons=pp.regularbounds(lons_rp[rsc_lons])
+    newlats=pp.regularbounds(lats_rp)
+    newlons,newlats = np.meshgrid(newlons,newlats)
+    # new map with OMI SC data
+    plt.subplot(142)
+    plt.title("SC_OMI")
+    m,cs=RSC_map(newlons, newlats, sc_omi[:,rsc_lons])
+    m.drawmeridians([ -160, -140],labels=[0,0,0,0])
+
+    ## Another plot using OMI_VC (old reprocessed data)
+    #
+    vc_omi=omhchorp1['VC_OMI']
+    plt.subplot(143)
+    plt.title('VC_OMI')
+    m,cs=RSC_map(newlons,newlats,vc_omi[:,rsc_lons])
+
+    ## One more with VC_GC over the ref sector
+    #
+    vc_gc=omhchorp1['VC_GC'] # [ 720, 1152 ] molecs/cm2
+    # new map with OMI SC data
+    plt.subplot(144)
+    plt.title("VC_GC")
+    m,cs=RSC_map(newlons,newlats,vc_gc[:,rsc_lons])
+
+
+    f2.suptitle('GEOS_Chem VC vs OMI SC over RSC on %s'%yyyymmdd)
+    outfig2='Figs/RSC_GC_%s.png'%yyyymmdd
+    plt.savefig(outfig2)
+    print(outfig2+' saved')
+    plt.close(f2)
 
 def Summary_RSC(month=datetime(2005,1,1)):
     '''

@@ -455,8 +455,18 @@ def hatchmap(m, datamap, lats, lons, thresh, region=None,hatch='x',color='k'):
     mx,my = m(mlons,mlats)
     m.pcolor(mx, my, aaod_masked, hatch=hatch, color=color, alpha=0.)
 
-def get_colors(cmapname,howmany):
+def get_colors(cmapname,howmany, values=None,vmin=None,vmax=None):
     cmap=plt.cm.cmap_d[cmapname]
+    if values is not None:
+        if vmin is None:
+            vmin = np.nanmin(values)
+        if vmax is None:
+            vmax = np.nanmax(values)
+        norm=matplotlib.colors.Normalize(vmin=vmin,vmax=vmax,clip=True)
+
+        #mapper=plt.cm.ScalarMappable(norm=norm, cmap=cmap)
+        return cmap(norm(values))
+
     return cmap(np.linspace(0, 1, howmany))
 
 def plot_img(path):

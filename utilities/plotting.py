@@ -118,8 +118,10 @@ def add_colourbar(f,cs,ticks=None,label=None,fontsize=15):
     f.subplots_adjust(right=0.84)
     cbar_ax = f.add_axes([0.87, 0.20, 0.04, 0.6])
     cb=f.colorbar(cs,cax=cbar_ax)
-    cb.set_ticks(ticks)
+    if ticks is not None:
+        cb.set_ticks(ticks)
     cb.set_label(label,fontsize=fontsize)
+    return cb
 
 def add_rectangle(bmap, limits, color='k', linewidth=1):
     '''
@@ -272,6 +274,9 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
     data=data[lati,:]
     data=data[:,loni]
     lats=lats[lati]
+    #print(lons)
+    #print(loni)
+
     lons=lons[loni]
 
 
@@ -366,6 +371,8 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         shapes=tuple([ str(np.shape(a)) for a in [mlats_e, mlons_e, mdata, mdata.mask] ])
         print("lats: %s, lons: %s, data: %s, mask: %s"%shapes)
 
+    #for arr in mlons_e,mlats_e,mdata:
+    #    print(np.shape(arr))
     cs=m.pcolormesh(mlons_e, mlats_e, mdata, **pcmeshargs)
     # colour limits for contour mesh
     cs.set_clim(vmin,vmax)
@@ -455,7 +462,7 @@ def hatchmap(m, datamap, lats, lons, thresh, region=None,hatch='x',color='k'):
     mx,my = m(mlons,mlats)
     m.pcolor(mx, my, aaod_masked, hatch=hatch, color=color, alpha=0.)
 
-def get_colors(cmapname,howmany, values=None,vmin=None,vmax=None):
+def get_colors(cmapname, howmany, values=None,vmin=None,vmax=None):
     cmap=plt.cm.cmap_d[cmapname]
     if values is not None:
         if vmin is None:

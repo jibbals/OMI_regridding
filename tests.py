@@ -4,7 +4,7 @@
 '''
 ## Modules
 import matplotlib
-matplotlib.use('Agg') # don't actually display any plots, just create them
+#matplotlib.use('Agg') # don't actually display any plots, just create them
 
 # my file reading and writing module
 from utilities import fio
@@ -1782,10 +1782,10 @@ if __name__ == '__main__':
 
     ## Plots showing how it works
     #RSC_tests.summary(date) # Last run 31/5/18 # last run 18/5/18 - needs work
-    RSC_tests.check_RSC(date) # needs update
+    #RSC_tests.check_RSC(date) # Last run 4/6/18
 
     ## Look at different ways of making the RSC (different AMFs)
-    RSC_tests.intercomparison(date) # last run 1/6/18
+    RSC_tests.intercomparison(date) # last run 4/6/18
 
 
     #####################

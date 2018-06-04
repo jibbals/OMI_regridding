@@ -48,7 +48,6 @@ lonres=0.3125
 dN=datetime(2005,1,5)
 d3=datetime(2005,3,1)
 dates=util.list_days(d0,dN,month=False)
-
 # start timer
 start1=timeit.default_timer()
 
@@ -57,6 +56,16 @@ start1=timeit.default_timer()
 ##########
 
 
+month=datetime(2005,1,1)
+d0=util.first_day(month)
+om=omhchorp(d0)
+lats=om.RSC_latitude
+tracks=np.arange(1,61,1) # excludes last point
+om.RSC.shape
+RSC=np.ma.masked_invalid(om.RSC[:,:,0])
+
+plt.pcolormesh(tracks,lats,RSC,cmap='plasma',vmin=-1e16,vmax=1e16)
+cb=plt.colorbar()
 
 ###########
 ### Record and time STUJFFS

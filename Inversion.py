@@ -331,12 +331,12 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # emissions using different columns as basis
     # Fully filtered
     out_shape=VCC_GC.shape
-    E_gc       = np.zeros(out_shape) + np.NaN
+    E_gc        = np.zeros(out_shape) + np.NaN
     E_pp        = np.zeros(out_shape) + np.NaN
     E_omi       = np.zeros(out_shape) + np.NaN
 
     # unfiltered:
-    E_gc_u     = np.zeros(out_shape) + np.NaN
+    E_gc_u      = np.zeros(out_shape) + np.NaN
     E_pp_u      = np.zeros(out_shape) + np.NaN
     E_omi_u     = np.zeros(out_shape) + np.NaN
 
@@ -384,7 +384,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
         BG_OMI[i,:,:] = BG_OMIi
 
         # Run calculation with no filters applied:
-        E_gc_u[i,:,:]      = (VCC_GC[i] - BG_VCCi) / GC_slope
+        E_gc_u[i,:,:]       = (VCC_GC[i] - BG_VCCi) / GC_slope
         E_pp_u[i,:,:]       = (VCC_PP[i] - BG_PPi) / GC_slope
         E_omi_u[i,:,:]      = (VCC_OMI[i] - BG_OMIi) / GC_slope
 

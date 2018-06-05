@@ -37,13 +37,11 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'BG_PP',        #  {31, 152, 152}
                 'BG_VCC',       #  {31, 152, 152}
                 'E_VCC_GC',        #  {31, 152, 152}
-                'E_VCC_GC_f',      #  With fire filtered
-                'E_VCC_GC_a',      #  With all filters applied
+                'E_VCC_GC_u',      #  With unfiltered by fire/smoke/anthro
                 'E_VCC_OMI',    #  {31, 152, 152}
-                'E_VCC_OMI_f',  #  With fire filter
-                'E_VCC_OMI_a',      #  With all filters applied
+                'E_VCC_OMI_u',  #  E_VCC_OMI without any filters applied
                 'E_VCC_PP',     #  {31, 152, 152}
-                'E_VCC_PP_f',   #  without using fire filter
+                'E_VCC_PP_u',   #  without using filters
                 'firefilter',   # Fire filter used for e estimates [time,lat,lon]
                 'anthrofilter', # anthro filter
                 'smearfilter',  # smearing filter

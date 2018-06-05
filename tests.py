@@ -4,7 +4,7 @@
 '''
 ## Modules
 import matplotlib
-#matplotlib.use('Agg') # don't actually display any plots, just create them
+matplotlib.use('Agg') # don't actually display any plots, just create them
 
 # my file reading and writing module
 from utilities import fio
@@ -17,7 +17,7 @@ from utilities.utilities import match_bottom_levels
 from classes.GC_class import GC_tavg, GC_sat
 
 # Tests are pulled in from tests/blah.py
-from tests import check_files, test_filters, RSC_tests
+from tests import check_files, test_filters, RSC_tests, test_E_new
 
 import numpy as np
 from numpy.ma import MaskedArray as ma
@@ -1768,10 +1768,19 @@ if __name__ == '__main__':
     date=datetime(2005,1,1)
     #Summary_Single_Profile()
 
-    # make sure units are as expected...
+    #####################
+    ### E_new tests
+    #####################
+
+    # Plot E_new and stdev of E_new (all 3 types)
+    test_E_new.Summary_E_new() # Last run
+
+    test_E_new.VCC_check()
+
     #####################
     ### Files tests
     #####################
+    # make sure units are as expected...
     #check_files.write_GC_units() # last run: 25/5/18
 
     #####################
@@ -1785,7 +1794,7 @@ if __name__ == '__main__':
     #RSC_tests.check_RSC(date) # Last run 4/6/18
 
     ## Look at different ways of making the RSC (different AMFs)
-    RSC_tests.intercomparison(date) # last run 4/6/18
+    #RSC_tests.intercomparison(date) # last run 4/6/18
 
 
     #####################

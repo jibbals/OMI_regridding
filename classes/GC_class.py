@@ -356,75 +356,6 @@ class GC_base:
             raise ie
         return out
 
-    def model_slope(self, region=pp.__AUSREGION__, overpass_hour=13):
-        '''
-            Use RMA regression between E_isop and tropcol_HCHO to determine S:
-                HCHO = S * E_isop + b
-            Notes:
-                Slope = Yield_isop / k_hcho
-                HCHO: molec/cm2
-                E_isop: Atom C/cm2/s
-
-
-            Return {'lats','lons','r':regression, 'b':bg, 'slope':slope}
-
-        '''
-        # if this calc is already done, short cut it
-        if hasattr(self, 'modelled_slope'):
-            # unless we're looking at a new area
-            if self.modelled_slope['region'] == region:
-                if __VERBOSE__:
-                    print("Slope has already been modelled, re-returning")
-                return self.modelled_slope
-
-        # Read MEGAN outputs from biogenic run:
-        megan=Hemco_diag(self.dates[0], month=True)
-        isop = megan.daily_LT_averaged(hour=overpass_hour) # lat/lon kgC/cm2/s [days,lat,lon]
-        # use hcho from calling class
-        hcho = self.get_trop_columns(keys=['hcho'])['hcho']
-        # used to be atom C/cm2/s
-
-        lats,lons = self.lats, self.lons
-        lati,loni = util.lat_lon_range(lats,lons,region=region)
-
-        isop = isop[:, lati, :]
-        isop = isop[:, :, loni]
-        hcho = hcho[:, lati, :]
-        hcho = hcho[:, :, loni]
-
-        sublats, sublons = lats[lati], lons[loni]
-        n_x = len(loni)
-        n_y = len(lati)
-        slope  = np.zeros([n_y,n_x]) + np.NaN
-        bg     = np.zeros([n_y,n_x]) + np.NaN
-        reg    = np.zeros([n_y,n_x]) + np.NaN
-
-        for xi in range(n_x):
-            for yi in range(n_y):
-                # Y = m X + B
-                X=isop[:, yi, xi]
-                Y=hcho[:, yi, xi]
-
-                # Skip ocean or no emissions squares:
-                if np.isclose(np.mean(X), 0.0): continue
-
-                # get regression
-                m, b, r, CI1, CI2=RMA(X, Y)
-                slope[yi, xi] = m
-                bg[yi, xi] = b
-                reg[yi, xi] = r
-
-        if __VERBOSE__:
-            print('GC_tavg.model_yield() calculates avg. slope of %.2e'%np.nanmean(slope))
-
-        # Return all the data and the lats/lons of our subregion:
-                            # lats and lons for slope, (and region for later)
-        self.modelled_slope={'lats':sublats,'lons':sublons, 'region':region,
-                             # indexes of lats/lons for slope
-                             'lati':lati, 'loni':loni,
-                             # regression, background, and slope
-                             'r':reg, 'b':bg, 'slope':slope}
-        return self.modelled_slope
 
     def plot_hcho_columns(self, region=pp.__AUSREGION__):
         ''' plot map of hcho columns over a region '''
@@ -954,10 +885,12 @@ class GC_biogenic:
         # isop should be atom C/cm2/s
         assert megan.attrs['E_isop_bio']['units'] == 'atomC/cm2/s', 'units are bad in E_isop_bio %s'%megan.attrs['E_isop_bio']['units']
 
-        hcho = sat_out.get_trop_columns(keys=['hcho'])['hcho'] # ppbv -> molec/cm2
+
         O_hcho=sat_out.O_hcho # should be very similar to hcho molec/cm2
-        print("satellite output: trop column vs total column")
-        print("    %.2e    %.2e "%(np.nanmean(hcho),np.nanmean(O_hcho)))
+        if __VERBOSE__:
+            hcho = sat_out.get_trop_columns(keys=['hcho'])['hcho'] # ppbv -> molec/cm2
+            print("satellite output: trop column vs total column")
+            print("    %.2e    %.2e "%(np.nanmean(hcho),np.nanmean(O_hcho)))
         hcho = O_hcho # We will apply the slope to total columns from OMHCHORP.
 
         # what lats and lons do we want?
@@ -975,9 +908,10 @@ class GC_biogenic:
         #isop=isop * self.hemco.kgC_per_m2_to_atomC_per_cm2
         #assert self.hemco.attrs['E_isop_bio']['units'] == 'kgC/cm2/s', 'units are bad for E_isop_bio (%s)'%self.hemco.attrs['E_isop_bio']
 
-        print("in slope function: ")
-        print("  nanmean E_isop = %.2e %s"%(np.nanmean(isop),'atom C/cm2/s'))
-        print("  nanmean trop_hcho = %.2e %s"%(np.nanmean(hcho),'molec/cm2'))
+        if __VERBOSE__:
+            print("in slope function: ")
+            print("  nanmean E_isop = %.2e %s"%(np.nanmean(isop),'atom C/cm2/s'))
+            print("  nanmean trop_hcho = %.2e %s"%(np.nanmean(hcho),'molec/cm2'))
 
         # arrays to hold the month's slope, background, and regression coeff
         n_x = len(loni)

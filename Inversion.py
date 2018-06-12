@@ -402,7 +402,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
 
     elapsed = timeit.default_timer() - time_emiss_calc
     print ("TIMEIT: Took %6.2f seconds to calculate backgrounds and estimate emissions()"%elapsed)
-    # should take very little time
+    # should take < 1 second
 
     # Lets save both monthly averages and the daily amounts
     #

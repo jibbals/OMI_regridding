@@ -179,9 +179,10 @@ def add_regression(X,Y,label=None, addlabel=True, exponential=False, **pargs):
 
     # set up lable
     if addlabel and (label is None):
-        label='Y = %.2fX + %.2f ; r=%.2f'%(m,b,r)
+        n=len(X)
+        label='Y = %.2fX + %.2f ; r=%.2f, N=%d'%(m,b,r,n)
         if exponential:
-            label='Y = exp(%.2fX + %.2f) ; r=%.2f'%(m,b,r)
+            label='Y = exp(%.2fX + %.2f) ; r=%.2f, N=%d'%(m,b,r,n)
 
     plt.plot(Xspace,Yline,label=label, **pargs)
     return m,b,r,ci1,ci2

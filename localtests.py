@@ -265,7 +265,7 @@ for i,day in enumerate(days):
 
 if True:
     vmin=0
-    vmax=2
+    vmax=1
     f=plt.figure(figsize=(14,14))
     plt.subplot(221)
     pp.createmap(firefilter[0],omilats,omilons,vmin=vmin,vmax=vmax,

@@ -69,3 +69,70 @@ def write_GC_units(day=datetime(2005,1,1)):
 
     print("SAVED FILE: ",outfname)
     outfile.close()
+
+def test_fires_fio():
+    '''
+    Test 8 day average fire interpolation and fio
+    '''
+    day = datetime(2005,1,1)
+    ## get normal and interpolated fire
+    orig, lats, lons=fio.read_8dayfire(day)
+
+    lonres,latres = 0.3125, 0.25
+    regr, lats2, lons2=fio.read_8dayfire_interpolated(day, latres=latres, lonres=lonres)
+
+    check_array(orig)
+    check_array(regr)
+
+    # Number checks..
+    assert np.max(orig) == np.max(regr), "Maximum values don't match..."
+    print ("Mean orig = %4.2f\nMean regridded = %4.2f"%(np.mean(orig[orig>-1]), np.mean(regr[regr>-1])))
+
+    ## PLOTTING
+    ##
+
+    # EG plot of grids...
+    plt.figure(0,figsize=(10,8))
+    # tasmania lat lon = -42, 153
+    m0=Basemap(llcrnrlat=-45, urcrnrlat=-37, llcrnrlon=142, urcrnrlon=150,
+              resolution='i',projection='merc')
+    m0.drawcoastlines()
+    m0.fillcontinents(color='coral',lake_color='aqua')
+    m0.drawmapboundary(fill_color='white')
+
+    # original grid = thick black
+    d=[1000,1]
+    m0.drawparallels(lats-0.25, linewidth=2.5, dashes=d)
+    m0.drawmeridians(lons-0.25, linewidth=2.5, dashes=d)
+    # new grid = thin brown
+    m0.drawparallels(lats2-latres/2.0, color='brown', dashes=d)
+    m0.drawmeridians(lons2-lonres/2.0, color='brown', dashes=d)
+    plt.title('Original grid(black) vs new grid(red)')
+    plt.savefig('Figs/AQUAgrids.png')
+    plt.close()
+    ## Regridded Data plot comparison
+    # plot on two subplots
+    fig=plt.figure(1, figsize=(14,9))
+    fig.patch.set_facecolor('white')
+
+    # mesh lon/lats
+    mlons,mlats = np.meshgrid(lons,lats)
+    mlons2,mlats2 = np.meshgrid(lons2,lats2)
+    axtitles=['original (0.5x0.5)',
+              'regridded to %1.4fx%1.4f (latxlon)' % (latres,lonres)]
+
+    ax1=plt.subplot(121)
+    m1,cs1, cb1 = pp.linearmap(orig,mlats,mlons, vmin=1, vmax=10,
+        lllat=-57, urlat=1, lllon=110, urlon=170)
+    ax2=plt.subplot(122)
+    m2,cs2, cb2 = pp.linearmap(regr,mlats2,mlons2, vmin=1, vmax=10,
+        lllat=-57, urlat=1, lllon=110, urlon=170)
+
+    for i in range(2):
+        [ax1,ax2][i].set_title(axtitles[i])
+        [cb1, cb2][i].set_label('Fire Count (8 day)')
+
+    plt.suptitle('AQUA 2005001',fontsize=20)
+    plt.tight_layout()
+    plt.savefig('Figs/AQUA2005001.png')
+    plt.close()

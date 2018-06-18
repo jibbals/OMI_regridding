@@ -1426,119 +1426,9 @@ def compare_cloudy_map():
     plt.savefig("Figs/cloud_filter_effects.png")
     plt.close()
 
-def test_fires_fio():
-    '''
-    Test 8 day average fire interpolation and fio
-    '''
-    day = datetime(2005,1,1)
-    ## get normal and interpolated fire
-    orig, lats, lons=fio.read_8dayfire(day)
 
-    lonres,latres = 0.3125, 0.25
-    regr, lats2, lons2=fio.read_8dayfire_interpolated(day, latres=latres, lonres=lonres)
 
-    check_array(orig)
-    check_array(regr)
 
-    # Number checks..
-    assert np.max(orig) == np.max(regr), "Maximum values don't match..."
-    print ("Mean orig = %4.2f\nMean regridded = %4.2f"%(np.mean(orig[orig>-1]), np.mean(regr[regr>-1])))
-
-    ## PLOTTING
-    ##
-
-    # EG plot of grids...
-    plt.figure(0,figsize=(10,8))
-    # tasmania lat lon = -42, 153
-    m0=Basemap(llcrnrlat=-45, urcrnrlat=-37, llcrnrlon=142, urcrnrlon=150,
-              resolution='i',projection='merc')
-    m0.drawcoastlines()
-    m0.fillcontinents(color='coral',lake_color='aqua')
-    m0.drawmapboundary(fill_color='white')
-
-    # original grid = thick black
-    d=[1000,1]
-    m0.drawparallels(lats-0.25, linewidth=2.5, dashes=d)
-    m0.drawmeridians(lons-0.25, linewidth=2.5, dashes=d)
-    # new grid = thin brown
-    m0.drawparallels(lats2-latres/2.0, color='brown', dashes=d)
-    m0.drawmeridians(lons2-lonres/2.0, color='brown', dashes=d)
-    plt.title('Original grid(black) vs new grid(red)')
-    plt.savefig('Figs/AQUAgrids.png')
-    plt.close()
-    ## Regridded Data plot comparison
-    # plot on two subplots
-    fig=plt.figure(1, figsize=(14,9))
-    fig.patch.set_facecolor('white')
-
-    # mesh lon/lats
-    mlons,mlats = np.meshgrid(lons,lats)
-    mlons2,mlats2 = np.meshgrid(lons2,lats2)
-    axtitles=['original (0.5x0.5)',
-              'regridded to %1.4fx%1.4f (latxlon)' % (latres,lonres)]
-
-    ax1=plt.subplot(121)
-    m1,cs1, cb1 = pp.linearmap(orig,mlats,mlons, vmin=1, vmax=10,
-        lllat=-57, urlat=1, lllon=110, urlon=170)
-    ax2=plt.subplot(122)
-    m2,cs2, cb2 = pp.linearmap(regr,mlats2,mlons2, vmin=1, vmax=10,
-        lllat=-57, urlat=1, lllon=110, urlon=170)
-
-    for i in range(2):
-        [ax1,ax2][i].set_title(axtitles[i])
-        [cb1, cb2][i].set_label('Fire Count (8 day)')
-
-    plt.suptitle('AQUA 2005001',fontsize=20)
-    plt.tight_layout()
-    plt.savefig('Figs/AQUA2005001.png')
-    plt.close()
-
-def test_fires_removed(day=datetime(2005,1,25),oneday=False):
-    '''
-    Check that fire affected pixels are actually removed
-    '''
-    # Read one or 8 day average:
-    #
-    omhchorp= omrp(day, oneday=oneday)
-    pre     = omhchorp.VCC
-    count   = omhchorp.gridentries
-    lats,lons=omhchorp.latitude,omhchorp.longitude
-    pre_n   = np.nansum(count)
-    ymdstr=day.strftime(" %Y%m%d")
-    # apply fire masks
-    #
-    fire8           = omhchorp.fire_mask_8 == 1
-    fire16          = omhchorp.fire_mask_16 == 1
-    post8           = dcopy(pre)
-    post8[fire8]    = np.NaN
-    post16          = dcopy(pre)
-    post16[fire16]  = np.NaN
-    post8_n         = np.nansum(count[~fire8])
-    post16_n        = np.nansum(count[~fire16])
-
-    # print the sums
-    print("%1e entries, %1e after 8day fire removal, %1e after 16 day fire removal"%(pre_n,post8_n,post16_n))
-
-    # compare and beware
-    #
-    f = plt.figure(num=0,figsize=(16,6))
-    # Plot pre, post8, post16
-    # Fires Counts?
-
-    vmin,vmax=1e14,1e17
-
-    titles= [ 'VCC'+s for s in ['',' - 8 days of fires', ' - 16 days of fires'] ]
-    for i,arr in enumerate([pre,post8,post16]):
-        plt.subplot(131+i)
-        m,cs = pp.ausmap(arr,lats,lons,vmin=vmin,vmax=vmax,colorbar=False)
-        plt.title(titles[i])
-    pname='Figs/fire_exclusion_%s.png'%['8d','1d'][oneday]
-    plt.suptitle("Effects of Fire masks"+ymdstr,fontsize=28)
-    plt.tight_layout()
-    #plt.subplots_adjust(top=0.92)
-    f.savefig(pname)
-    print("%s saved"%pname)
-    plt.close(f)
 
 def test_gchcho():
     '''
@@ -1773,15 +1663,18 @@ if __name__ == '__main__':
     #####################
 
     # Plot E_new and stdev of E_new (all 3 types)
-    test_E_new.Summary_E_new() # Last run
+    #test_E_new.Summary_E_new() # Last run
 
-    test_E_new.VCC_check()
+    #test_E_new.VCC_check()
 
     #####################
     ### Files tests
     #####################
     # make sure units are as expected...
     #check_files.write_GC_units() # last run: 25/5/18
+    # are fires read in and interpolated OK?
+    #check_files.test_fires_fio() #
+
 
     #####################
     ### RSC TESTS
@@ -1804,7 +1697,8 @@ if __name__ == '__main__':
     #test_filters.Filter_affects_on_outputs() # last run: ??
     ## Determine affect of NO filter on OMNO2d to see if it's working right:
     #test_filters.check_no2_filter(year=datetime(2005,1,1))# Run 23/5/18
-
+    ## Look at whether fire filter affects hcho vs temp correlation
+    [test_filters.HCHO_vs_temp_vs_fire(datetime(2005,1,1),subset=v) for v in [0,1,2]] # Run over three subsets
     ######
     ### Tests to be sorted into files
     ######
@@ -1834,10 +1728,6 @@ if __name__ == '__main__':
     #    test_calculation_corellation(day=datetime(2005,1,1), oneday=False, aus_only=aus_only)
 
     #compare_GC_OMI_new()
-
-    # fires things
-    #test_fires_fio()
-    #test_fires_removed()
 
     #check_flags_and_entries() # check how many entries are filtered etc...
     # check some days (or one or no days)

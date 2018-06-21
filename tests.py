@@ -1698,7 +1698,7 @@ if __name__ == '__main__':
     ## Determine affect of NO filter on OMNO2d to see if it's working right:
     #test_filters.check_no2_filter(year=datetime(2005,1,1))# Run 23/5/18
     ## Look at whether fire filter affects hcho vs temp correlation
-    [test_filters.HCHO_vs_temp_vs_fire(datetime(2005,1,1),subset=v) for v in [0,1,2]] # Run over three subsets
+    [test_filters.HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=datetime(2005,2,28),subset=v) for v in [0,1,2]] # Run over three subsets
     ######
     ### Tests to be sorted into files
     ######

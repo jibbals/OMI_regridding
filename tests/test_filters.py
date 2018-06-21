@@ -32,6 +32,7 @@ import numpy as np
 from numpy.ma import MaskedArray as ma
 from scipy import stats
 from copy import deepcopy as dcopy
+import random
 
 from datetime import datetime#, timedelta
 
@@ -69,7 +70,8 @@ __colors__ = pp.__subzones_colours__
 ############# Functions #################
 #########################################
 
-def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=None, subset=2,
+def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=datetime(2005,3,31), subset=2,
+                         detrend=False,
                          regionplus = pp.__AUSREGION__):
     '''
     Look at Modelled Temperature vs satellite HCHO, low tmp with high HCHO could suggest fire
@@ -104,16 +106,17 @@ def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=None, subset=2,
 
     # read modelled hcho, and temperature at midday
     gc=GC_sat(d0,d1,keys=['IJ-AVG-$_CH2O','DAO-FLDS_TS'],run='tropchem')
+    n_times=gc.ntimes
 
     # read satellite HCHO (VCC original) and fire counts, fire mask, and smoke mask
     omi=omhchorp(d0,d1,keylist=['VCC_OMI','fires','firemask','smokemask','gridentries'])
 
     # Regrid omi columns to lower GC resolution
-    omivcc=np.zeros([gc.ntimes,gc.nlats,gc.nlons])
-    omifires=np.zeros([gc.ntimes,gc.nlats,gc.nlons])
-    omifiremask=np.zeros([gc.ntimes,gc.nlats,gc.nlons])
-    omismokemask=np.zeros([gc.ntimes,gc.nlats,gc.nlons])
-    for ti in range(omi.n_times):
+    omivcc=np.zeros([n_times,gc.nlats,gc.nlons])
+    omifires=np.zeros([n_times,gc.nlats,gc.nlons])
+    omifiremask=np.zeros([n_times,gc.nlats,gc.nlons])
+    omismokemask=np.zeros([n_times,gc.nlats,gc.nlons])
+    for ti in range(n_times):
         omivcc[ti,:,:]=util.regrid(omi.VCC_OMI[ti,:,:],omi.lats,omi.lons,gc.lats,gc.lons)
         omifires[ti,:,:]=util.regrid(omi.fires[ti,:,:],omi.lats,omi.lons,gc.lats,gc.lons)
         omifiremask[ti,:,:]=util.regrid(omi.firemask[ti,:,:],omi.lats,omi.lons,gc.lats,gc.lons)
@@ -124,7 +127,7 @@ def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=None, subset=2,
     surfmeantemp=np.mean(temp,axis=0)
 
     # Figure will be map and corellation in subregion, two rows
-    plt.figure(figsize=[12,16])
+    plt.figure(figsize=[16,12])
 
     # First plot temp map of region
     #
@@ -132,17 +135,26 @@ def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=None, subset=2,
     smt=surfmeantemp[lati,:]
     smt=smt[:,loni]
     tmin,tmax=np.min(smt),np.max(smt)
-
-    plt.subplot(211)
+    hmin,hmax=1e15, 2e16
+    ax0=plt.subplot(221)
     m, cs, cb=pp.createmap(surfmeantemp, gc.lats, gc.lons,
                          region=regionplus, cmapname='rainbow',
-                         cbarorient='right',
+                         cbarorient='bottom',
                          vmin=tmin,vmax=tmax,
                          GC_shift=True, linear=True,
                          title='Temperature '+ymd, clabel='Kelvin')
+
     # Add rectangle around where we are correlating
     pp.add_rectangle(m,region,linewidth=2)
 
+    # Also plot average HCHO
+    plt.subplot(222)
+    pp.createmap(np.nanmean(omi.VCC_OMI,axis=0),omi.lats,omi.lons,
+                 region=regionplus, cmapname='rainbow',
+                 cbarorient='bottom',
+                 vmin=hmin,vmax=hmax,
+                 GC_shift=True, linear=False,
+                 title='VCC$_{OMI}$', clabel='molec/cm2')
 
     # Get fire and hcho subsetted to region
     subsets=util.lat_lon_subset(gc.lats,gc.lons,region,data=[temp,omivcc,omifires,omifiremask,omismokemask],has_time_dim=True)
@@ -150,19 +162,27 @@ def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=None, subset=2,
     lats,lons=subsets['lats'],subsets['lons']
     temp,hcho,fires,firemask,smokemask = subsets['data']
 
+    # remove mean (detrend spatially before correlation)
+    if detrend:
+        for arr in [temp,hcho,fires,firemask]:
+            # Average over time dim, then repeat over time dim
+            arrmean=np.repeat(np.nanmean(arr,axis=0)[np.newaxis,:,:],n_times,axis=0)
+            arr[:,:,:] = arr-arrmean
+
     # Get ocean and fire/smoke masks
     oceanmask=util.oceanmask(lats,lons)
-    oceanmask= np.repeat(oceanmask[np.newaxis, :, :], gc.ntimes, axis=0) # repeat along time dimension
+    oceanmask= np.repeat(oceanmask[np.newaxis, :, :], n_times, axis=0) # repeat along time dimension
     fullmask=oceanmask + (firemask>0) + (smokemask>0)
 
     # Colour the scatter plot by fire count
-    norm = plt.Normalize(vmin=0., vmax=np.nanmax(fires[~oceanmask]))
+    norm = plt.Normalize(vmin=0., vmax=1.)
     cmap = plt.cm.get_cmap('rainbow')
-    colors = [ cmap(norm(value)) for value in fires[~oceanmask] ] # colour by fire count
+    # colour by fire mask
+    colors = [ cmap(norm([0,1][value])) for value in fullmask[~oceanmask] ]
 
     # Next will be scatter between hcho and temp, coloured by fire counts
     #
-    ax=plt.subplot(212)
+    ax=plt.subplot(223)
     plt.scatter(temp[~oceanmask],hcho[~oceanmask], color=colors,)
     plt.title('Scatter (coloured by firecounts)')
     plt.ylabel('VCC$_{OMI}$ [molec/cm2]')
@@ -178,22 +198,91 @@ def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=None, subset=2,
         plt.rc(attr, labelsize=fs)
     plt.rc('font',size=fs)
 
+    #cax, _ = matplotlib.colorbar.make_axes(ax)
+    #matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
 
-    cax, _ = matplotlib.colorbar.make_axes(ax)
-    matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
+    # Final plot with regression on sample of gridsquares
+    landsample=list(np.argwhere(~oceanmask[0])) # list of indices lat,lon of land squares
+    jj=0
+    NP=3
+    for i,j in random.sample(landsample,NP):
+        jj=jj+1
+        lat=lats[i]; lon=lons[j]
+        X,Y = temp[:,i,j],hcho[:,i,j]
+        mx,my = m(lons[j], lats[i])
 
-    #    for ax in ax1,ax2:
-    #        # reset lower bounds
-    #        ylims=ax.get_ylim()
-    #        plt.ylim([max([-2,ylims[0]]), ylims[1]])
-    #        xlims=ax.get_xlim()
-    #        plt.xlim([max([xlims[0],270]),xlims[1]])
+        # Add dot to map
+        plt.sca(ax0)
+        m.plot(mx, my, 'd', markersize=8, color='white')
 
+        # Colour scatter by whether it's masked or not
+        M=fullmask[:,i,j]
+        if len(X[~M]) < 1:
+            print('all of ',lat,lon,'masked')
+            continue
+        #colors = [ cmap(norm([0,1][value])) for value in M ]
+        colors = [ ['k','m'][value] for value in M] # purple if masked
+
+        # Add scatter and regressions
+        plt.subplot(2,NP,NP+jj)
+        plt.scatter(X,Y, color=colors)
+        pp.add_regression(X, Y, addlabel=True,
+                          exponential=True, color='k',linewidth=1)
+        pp.add_regression(X[~M], Y[~M], addlabel=True,
+                          exponential=True, color='r',linewidth=1)
+
+        plt.title('lat,lon=%.1f,%.1f'%(lat,lon), fontsize=10)
+        plt.ylabel('VCC$_{OMI}$ [molec/cm2]')
+        plt.xlabel('Kelvin')
+        plt.legend(loc='best',fontsize=8)
     plt.savefig(pname)
     plt.close()
     print('Saved ',pname)
 
+def test_mask_effects(month=datetime(2005,1,1), output='VCC_OMI'):
+    '''
+        Show and count how many pixels are removed by each filter per day/month
+        Show affect on HCHO columns over Aus from each filter per month
 
+        Four plots, one for each mask and one with all masks
+            output, output masked
+            Entries, Entries
+            table of differences for AUS land squares
+
+        Can decide output from VCCs or E_VCCs (remember to use _u for unfiltered ones)
+
+    '''
+    d0=datetime(month.year,month.month,1)
+    dn=util.last_day(d0)
+    dstr="%s-%s"%(d0.strftime("%Y%m%d"),dn.strftime("%Y%m%d"))
+    suptitle="%s with and without filtering over %s"%(output,dstr)
+    pnames=["Figs/Filters/filtered_%%s_%%s_%s.png"%dstr]
+    titles="%s"
+    masktitles="masked by %s"
+
+    # Read E_new to get both masks and HCHO (and E_new if desired)
+    Enew=E_new(d0,dn)
+    dates=Enew.dates
+    lats,lons=Enew.lats,Enew.lons
+
+    masks=[mask.astype(np.bool) for mask in [Enew.firefilter, Enew.smokefilter, Enew.anthrofilter]]
+    mask_names=['fire','smoke','anthro']
+
+    arr_names=['VCC_GC','VCC_OMI','E_VCC_GC','E_VCC_OMI']
+    arr_vmins=[ 1e14   ,  1e14   ,  1e9     ,   1e9     ]
+    arr_vmaxs=[ 1e16   ,  1e16   ,  5e12    ,   5e12    ]
+    for arr_name,vmin,vmax in zip(arr_names,arr_vmins,arr_vmaxs):
+        arr = getattr(Enew,arr_name)
+        units= Enew.attributes[arr_name]['unit'] # TODO change to units when implemented
+        for mask,mask_name in zip(masks,mask_names):
+            title=titles%arr_name
+            suptitle=suptitles%arr_name
+            pname=pnames%(arr_name,mask_name)
+            masktitle=masktitles%mask_name
+            pp.subzones(arr,dates,lats,lons, mask=mask,
+                        vmin=vmin,vmax=vmax,
+                        title=title,suptitle=suptitle,masktitle=masktitle,
+                        pname=pname,clabel=units)
 
 def test_fires_removed(day=datetime(2005,1,25)):
     '''
@@ -241,39 +330,6 @@ def test_fires_removed(day=datetime(2005,1,25)):
     f.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
-
-def Filter_affects_on_outputs(d0=datetime(2005,1,1),dn=None,region=pp.__AUSREGION__):
-    '''
-        Look at affects of filters to both VCC and E_new
-    '''
-    if dn is None:
-        dn=util.last_day(d0)
-    dstr="%s-%s"%(d0.strftime("%Y%m%d"),dn.strftime("%Y%m%d"))
-    suptitles="%%s with and without filtering over %s"%dstr
-    pnames="Figs/Emiss/filtered_%%s_%%s_%s.png"%dstr
-    titles="%s"
-    masktitles="masked by %s"
-
-    Enew=E_new(d0,dn)
-    dates=Enew.dates
-    lats,lons=Enew.lats,Enew.lons
-    masks=[mask.astype(np.bool) for mask in [Enew.firefilter,Enew.anthrofilter,Enew.firefilter+Enew.anthrofilter]]
-    mask_names=['fire','anthro','fire+anthro']
-    arr_names=['VCC_GC','VCC_OMI','E_VCC_GC','E_VCC_OMI']
-    arr_vmins=[ 1e14   ,  1e14   ,  1e9     ,   1e9     ]
-    arr_vmaxs=[ 1e16   ,  1e16   ,  5e12    ,   5e12    ]
-    for arr_name,vmin,vmax in zip(arr_names,arr_vmins,arr_vmaxs):
-        arr = getattr(Enew,arr_name)
-        units= Enew.attributes[arr_name]['unit'] # TODO change to units when implemented
-        for mask,mask_name in zip(masks,mask_names):
-            title=titles%arr_name
-            suptitle=suptitles%arr_name
-            pname=pnames%(arr_name,mask_name)
-            masktitle=masktitles%mask_name
-            pp.subzones(arr,dates,lats,lons, mask=mask,
-                        vmin=vmin,vmax=vmax,
-                        title=title,suptitle=suptitle,masktitle=masktitle,
-                        pname=pname,clabel=units)
 
 
 def no2_map(data, lats, lons, vmin, vmax,

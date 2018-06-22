@@ -247,10 +247,19 @@ for i,day in enumerate(days):
     E_gc_u[i,:,:]       = (VCC_GC[i] - BG_VCCi) / GC_slope
     E_pp_u[i,:,:]       = (VCC_PP[i] - BG_PPi) / GC_slope
     E_omi_u[i,:,:]      = (VCC_OMI[i] - BG_OMIi) / GC_slope
+    if i == 0:
+        print("UNFILTERED:")
+        print(np.nanmean(E_omi_u))
 
     # run with filters
     # apply filters
     allmasks            = firefilter[i] + anthrofilter[i] # + smearfilter
+    if True:
+        print("ALLMASKS")
+        print(allmasks)
+        print(np.sum(allmasks))
+        print(np.nansum(VCC_GC[i][allmasks]))
+        exit(0)
     vcc_gci             = np.copy(VCC_GC[i])
     vcc_gci[allmasks]   = np.NaN
     vcc_ppi             = np.copy(VCC_PP[i])
@@ -262,6 +271,9 @@ for i,day in enumerate(days):
     E_gc[i,:,:]         = (vcc_gci - BG_VCCi) / GC_slope
     E_pp[i,:,:]         = (vcc_ppi - BG_PPi) / GC_slope
     E_omi[i,:,:]        = (vcc_omii - BG_OMIi) / GC_slope
+    if i == 0:
+        print("FILTERED")
+        print(np.nanmean(E_omi))
 
 if True:
     vmin=0
@@ -337,6 +349,11 @@ outdata['E_VCC_OMI']    = E_omi
 outdata['E_VCC_GC_u']   = E_gc_u
 outdata['E_VCC_PP_u']   = E_pp_u
 outdata['E_VCC_OMI_u']  = E_omi_u
+if True:
+    print("______EMISSIONS_____")
+    print("Filtered  ,    Unfiltered")
+    _blah = [print("%.2e  ,  %.2e  "%(np.nanmean(E),np.nanmean(E_u))) for E,E_u in zip([E_omi,E_gc,E_pp],[E_omi_u,E_gc_u,E_pp_u])]
+
 outattrs['E_VCC_GC']    = {'units':'molec OR atom C???/cm2/s',
                            'desc':'Isoprene Emissions based on VCC and GC_slope'}
 outattrs['E_VCC_PP']    = {'units':'molec OR atom C??/cm2/s',
@@ -362,7 +379,7 @@ outattrs['firefilter']  = {'units':'N/A',
 outattrs['anthrofilter']= {'units':'N/A',
                            'desc':'Squares with tropNO2 from OMI greater than %.1e or yearly averaged tropNO2 greater than %.1e'%(fio.__Thresh_NO2_d__,fio.__Thresh_NO2_y__)}
 outattrs['smearfilter'] = {'units':'N/A',
-                           'desc':'Squares where smearing greater than %.1f'%(__Thresh_Smearing__)}
+                           'desc':'Squares where smearing greater than %.1f'%(Inversion.__Thresh_Smearing__)}
 outattrs['uncert_OMI']  = {'units':'?? molec/cm2 ??',
                            'desc':'OMI pixel uncertainty averaged for each gridsquare'}
 outattrs['pixels']      = {'units':'n',
@@ -386,7 +403,8 @@ outdata['lons_e']=util.edges_from_mids(outdata['lons'])
 
 
 # Save file, with attributes
-fio.save_to_hdf5(fname,outdata,attrdicts=outattrs,fattrs=fattrs)
+print("NORMALLY WOULD SAVE NOW BUT THS IS TEST ENV")
+#fio.save_to_hdf5(fname,outdata,attrdicts=outattrs,fattrs=fattrs)
 if __VERBOSE__:
     print("%s should now be saved"%fname)
 

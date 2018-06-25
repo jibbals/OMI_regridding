@@ -17,6 +17,7 @@ from matplotlib import ticker
 from mpl_toolkits.basemap import Basemap, interp
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import warnings # To ignore warnings
 #import matplotlib.colors as mcolors #, colormapping
 from matplotlib.colors import LogNorm # for lognormal colour bar
 from datetime import timedelta
@@ -291,7 +292,10 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
     if not linear:
         if __VERBOSE__:
             print('removing %d negative datapoints in createmap'%np.nansum(data<0))
-        data[data<=0] = np.NaN
+        # ignore warnings of NaN comparison
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore",category =RuntimeWarning)
+            data[data<=0] = np.NaN
         pcmeshargs['norm']=LogNorm()
 
     # Set vmin and vmax if necessary

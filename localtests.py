@@ -212,6 +212,9 @@ if True:
 
 
 for i,day in enumerate(days):
+    if True:
+        if i==2:
+            break
 
     BG_VCCi = BG_VCCa[i]
     BG_PPi  = BG_PPa[i]
@@ -228,8 +231,11 @@ for i,day in enumerate(days):
     BG_PPi  = BG_PPi[omilati]
     BG_OMIi = BG_OMIi[omilati]
 
-    plt.plot(omilats,BG_VCCi,'r')
-    plt.plot(omilats,BG_OMIi,'m')
+    plt.plot(omilats,BG_VCCi,'r',label='BG VCC %d'%i)
+    plt.plot(omilats,BG_OMIi,'m', label='BG OMI %d'%i)
+    if i==1:
+        plt.legend()
+        plt.title('Background over latitude')
 
     # The backgrounds need to be the same shape so we can subtract from whole array at once.
     # done by repeating the BG values ([lats]) N times, then reshaping to [lats,N]
@@ -247,33 +253,50 @@ for i,day in enumerate(days):
     E_gc_u[i,:,:]       = (VCC_GC[i] - BG_VCCi) / GC_slope
     E_pp_u[i,:,:]       = (VCC_PP[i] - BG_PPi) / GC_slope
     E_omi_u[i,:,:]      = (VCC_OMI[i] - BG_OMIi) / GC_slope
-    if i == 0:
-        print("UNFILTERED:")
-        print(np.nanmean(E_omi_u))
 
     # run with filters
     # apply filters
     allmasks            = firefilter[i] + anthrofilter[i] # + smearfilter
-    if True:
-        print("ALLMASKS")
-        print(allmasks)
-        print(np.sum(allmasks))
-        print(np.nansum(VCC_GC[i][allmasks]))
-        exit(0)
-    vcc_gci             = np.copy(VCC_GC[i])
-    vcc_gci[allmasks]   = np.NaN
-    vcc_ppi             = np.copy(VCC_PP[i])
-    vcc_ppi[allmasks]   = np.NaN
-    vcc_omii            = np.copy(VCC_OMI[i])
-    vcc_omii[allmasks]  = np.NaN
-    plt.plot(allmasks)
+    print('FILTER DEETS')
+    print(allmasks.shape)
+    print(np.nansum(allmasks))
+
+    assert not np.isnan(np.nansum(VCC_GC[i][allmasks])), 'Filtering nothing!?'
+
     # estimate emissions
-    E_gc[i,:,:]         = (vcc_gci - BG_VCCi) / GC_slope
-    E_pp[i,:,:]         = (vcc_ppi - BG_PPi) / GC_slope
-    E_omi[i,:,:]        = (vcc_omii - BG_OMIi) / GC_slope
+    E_gc[i,:,:]         = np.copy(E_gc_u[i])
+    E_pp[i,:,:]         = np.copy(E_pp_u[i])
+    E_omi[i,:,:]        = np.copy(E_pp_u[i])
+    E_gc[i][allmasks]   = np.NaN
+    E_pp[i,allmasks]   = np.NaN
+    E_omi[i,allmasks]   = np.NaN
     if i == 0:
-        print("FILTERED")
-        print(np.nanmean(E_omi))
+        # lets have a close look at these things
+        vmin=1e10
+        vmax=1e13
+        f=plt.figure(figsize=(14,14))
+        plt.subplot(211)
+        # Plot E_new before and after filtering
+        m,cs,cb=pp.createmap(E_gc_u[i],omilats,omilons, title='E_GC_u', region=[-40,130,-20,155],
+                             vmin=vmin,vmax=vmax)
+
+        # plot dots where filter should be
+        for yi,y in enumerate(omilats):
+            for xi,x in enumerate(omilons):
+                if firefilter[i,yi,xi]:
+                   mx,my = m(x,y)
+                   m.plot(mx,my,'x',markersize=6,color='k')
+                if anthrofilter[i,yi,xi]:
+                   mx,my = m(x,y)
+                   m.plot(mx,my,'d',markersize=3,color='k')
+        plt.subplot(212)
+        m,cs,cb=pp.createmap(E_gc[i],omilats,omilons, title='E_GC', region=[-40,130,-20,155],
+                             vmin=vmin,vmax=vmax)
+
+        pname='temp_E_filtering_check.png'
+        plt.savefig(pname)
+        print('saved ',pname)
+        plt.close()
 
 if True:
     vmin=0
@@ -352,7 +375,7 @@ outdata['E_VCC_OMI_u']  = E_omi_u
 if True:
     print("______EMISSIONS_____")
     print("Filtered  ,    Unfiltered")
-    _blah = [print("%.2e  ,  %.2e  "%(np.nanmean(E),np.nanmean(E_u))) for E,E_u in zip([E_omi,E_gc,E_pp],[E_omi_u,E_gc_u,E_pp_u])]
+    _blah = [print("%.5e  ,  %.5e "%(np.nanmean(E),np.nanmean(E_u))) for E,E_u in zip([E_omi,E_gc,E_pp],[E_omi_u,E_gc_u,E_pp_u])]
 
 outattrs['E_VCC_GC']    = {'units':'molec OR atom C???/cm2/s',
                            'desc':'Isoprene Emissions based on VCC and GC_slope'}

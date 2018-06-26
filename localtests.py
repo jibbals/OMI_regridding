@@ -108,6 +108,7 @@ OMHsubsets=util.lat_lon_subset(OMHCHORP.lats,OMHCHORP.lons,region,data=arrs, has
 omilats=OMHsubsets['lats']
 omilons=OMHsubsets['lons']
 omilati=OMHsubsets['lati']
+omiloni=OMHsubsets['loni']
 # map subsetted arrays into another dictionary
 OMHsub = {s:OMHsubsets['data'][arrs_i[s]] for s in arrs_names}
 
@@ -211,92 +212,78 @@ if True:
     plt.close()
 
 
-for i,day in enumerate(days):
-    if True:
-        if i==2:
-            break
-
-    BG_VCCi = BG_VCCa[i]
-    BG_PPi  = BG_PPa[i]
-    BG_OMIi = BG_OMIa[i]
-
-    # can check that reshaping makes sense with:
-    #bgcolumn=np.copy(BG_VCCi)
-    #BG_VCCi = BG_VCCi.repeat(len(omilons)).reshape([len(omilats),len(omilons)])
-    # check all values in column are either equal or both nan
-    #assert all( (bgcolumn == BG_VCCi[:,0]) + (np.isnan(bgcolumn) * np.isnan(BG_VCCi[:,0])))
-
-    # we only want the subset of background values matching our region
-    BG_VCCi = BG_VCCi[omilati]
-    BG_PPi  = BG_PPi[omilati]
-    BG_OMIi = BG_OMIi[omilati]
-
-    plt.plot(omilats,BG_VCCi,'r',label='BG VCC %d'%i)
-    plt.plot(omilats,BG_OMIi,'m', label='BG OMI %d'%i)
-    if i==1:
-        plt.legend()
-        plt.title('Background over latitude')
-
-    # The backgrounds need to be the same shape so we can subtract from whole array at once.
-    # done by repeating the BG values ([lats]) N times, then reshaping to [lats,N]
-    BG_VCCi = BG_VCCi.repeat(len(omilons)).reshape([len(omilats),len(omilons)])
-    BG_PPi  = BG_PPi.repeat(len(omilons)).reshape([len(omilats),len(omilons)])
-    BG_OMIi = BG_OMIi.repeat(len(omilons)).reshape([len(omilats),len(omilons)])
+# cut the omhchorp backgrounds down to our latitudes
+BG_VCC = BG_VCCa[:,omilati]
+BG_PP = BG_PPa[:,omilati]
+BG_OMI = BG_OMIa[:,omilati]
+# Repeat them along our longitudes so we don't need to loop
+BG_VCC = np.repeat(BG_VCC[:,:,np.newaxis],len(omiloni),axis=2)
+BG_PP = np.repeat(BG_PP[:,:,np.newaxis],len(omiloni),axis=2)
+BG_OMI = np.repeat(BG_OMI[:,:,np.newaxis],len(omiloni),axis=2)
+# Also repeat Slope array along time axis to avoid looping
+GC_slope= np.repeat(GC_slope[np.newaxis,:,:], len(days),axis=0)
 
 
-    # Store the backgrounds for later analysis
-    BG_VCC[i,:,:] = BG_VCCi
-    BG_PP[i,:,:]  = BG_PPi
-    BG_OMI[i,:,:] = BG_OMIi
 
-    # Run calculation with no filters applied:
-    E_gc_u[i,:,:]       = (VCC_GC[i] - BG_VCCi) / GC_slope
-    E_pp_u[i,:,:]       = (VCC_PP[i] - BG_PPi) / GC_slope
-    E_omi_u[i,:,:]      = (VCC_OMI[i] - BG_OMIi) / GC_slope
+if True:
+    print("Enew Calc Shapes")
+    print(VCC_GC.shape,BG_VCC.shape,GC_slope.shape)
+    plt.plot(omilats,BG_VCC[0,:,0],'r',label='BG VCC')
+    plt.plot(omilats,BG_OMI[0,:,0],'m', label='BG OMI')
+    plt.legend()
+    plt.title('Background over latitude')
 
-    # run with filters
-    # apply filters
-    allmasks            = firefilter[i] + anthrofilter[i] # + smearfilter
-    print('FILTER DEETS')
-    print(allmasks.shape)
-    print(np.nansum(allmasks))
+# Run calculation with no filters applied:
+E_gc_u       = (VCC_GC - BG_VCC) / GC_slope
+E_pp_u       = (VCC_PP - BG_PP) / GC_slope
+E_omi_u      = (VCC_OMI - BG_OMI) / GC_slope
 
-    assert not np.isnan(np.nansum(VCC_GC[i][allmasks])), 'Filtering nothing!?'
+# run with filters
+# apply filters
+allmasks            = (firefilter + anthrofilter)>0 # + smearfilter
+print('FILTER DEETS')
+print(allmasks.shape)
+print(E_gc.shape)
+print(np.nansum(allmasks))
+print(np.nanmean(E_gc_u),np.nanmean(E_gc_u[allmasks]))
 
-    # estimate emissions
-    E_gc[i,:,:]         = np.copy(E_gc_u[i])
-    E_pp[i,:,:]         = np.copy(E_pp_u[i])
-    E_omi[i,:,:]        = np.copy(E_pp_u[i])
-    E_gc[i][allmasks]   = np.NaN
-    E_pp[i,allmasks]   = np.NaN
-    E_omi[i,allmasks]   = np.NaN
-    if i == 0:
-        # lets have a close look at these things
-        vmin=1e10
-        vmax=1e13
-        f=plt.figure(figsize=(14,14))
-        plt.subplot(211)
-        # Plot E_new before and after filtering
-        m,cs,cb=pp.createmap(E_gc_u[i],omilats,omilons, title='E_GC_u', region=[-40,130,-20,155],
-                             vmin=vmin,vmax=vmax)
 
-        # plot dots where filter should be
-        for yi,y in enumerate(omilats):
-            for xi,x in enumerate(omilons):
-                if firefilter[i,yi,xi]:
-                   mx,my = m(x,y)
-                   m.plot(mx,my,'x',markersize=6,color='k')
-                if anthrofilter[i,yi,xi]:
-                   mx,my = m(x,y)
-                   m.plot(mx,my,'d',markersize=3,color='k')
-        plt.subplot(212)
-        m,cs,cb=pp.createmap(E_gc[i],omilats,omilons, title='E_GC', region=[-40,130,-20,155],
-                             vmin=vmin,vmax=vmax)
+assert not np.isnan(np.nansum(E_gc_u[allmasks])), 'Filtering nothing!?'
 
-        pname='temp_E_filtering_check.png'
-        plt.savefig(pname)
-        print('saved ',pname)
-        plt.close()
+# Mask gridsquares using fire and anthro filters
+E_gc                = np.copy(E_gc_u)
+E_pp                = np.copy(E_pp_u)
+E_omi               = np.copy(E_pp_u)
+E_gc[allmasks]      = np.NaN
+E_pp[allmasks]      = np.NaN
+E_omi[allmasks]     = np.NaN
+if True:
+    # lets have a close look at these things
+    vmin=1e10
+    vmax=1e13
+    f=plt.figure(figsize=(14,14))
+    plt.subplot(211)
+    # Plot E_new before and after filtering
+    m,cs,cb=pp.createmap(E_gc_u[0],omilats,omilons, title='E_GC_u', region=[-40,130,-20,155],
+                         vmin=vmin,vmax=vmax)
+
+    # plot dots where filter should be
+    for yi,y in enumerate(omilats):
+        for xi,x in enumerate(omilons):
+            if firefilter[0,yi,xi]:
+               mx,my = m(x,y)
+               m.plot(mx,my,'x',markersize=6,color='k')
+            if anthrofilter[0,yi,xi]:
+               mx,my = m(x,y)
+               m.plot(mx,my,'d',markersize=3,color='k')
+    plt.subplot(212)
+    m,cs,cb=pp.createmap(E_gc[0],omilats,omilons, title='E_GC', region=[-40,130,-20,155],
+                         vmin=vmin,vmax=vmax)
+
+    pname='temp_E_filtering_check.png'
+    plt.savefig(pname)
+    print('saved ',pname)
+    plt.close()
 
 if True:
     vmin=0

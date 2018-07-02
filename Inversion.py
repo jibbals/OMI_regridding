@@ -430,6 +430,9 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['E_VCC_GC_u']   = E_gc_u
     outdata['E_VCC_PP_u']   = E_pp_u
     outdata['E_VCC_OMI_u']  = E_omi_u
+    outdata['E_VCC_GC_LR']  = E_gc_lr
+    outdata['E_VCC_PP_LR']  = E_pp_lr
+    outdata['E_VCC_OMI_LR'] = E_omi_lr
     outattrs['E_VCC_GC']    = {'units':'molec OR atom C???/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope'}
     outattrs['E_VCC_PP']    = {'units':'molec OR atom C??/cm2/s',
@@ -440,7 +443,13 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                                'desc':'Isoprene Emissions based on VCC and GC_slope, unmasked by fire or anthro'}
     outattrs['E_VCC_PP_u']  = {'units':'molec OR atom C??/cm2/s',
                                'desc':'Isoprene Emissions based on VCC_PP and GC_slope, unmasked by fire or anthro'}
-    outattrs['E_VCC_OMI_u'] = {'units':'molec OR/cm2/s',
+    outattrs['E_VCC_OMI_u'] = {'units':'molec/cm2/s',
+                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope, unmasked by fire or anthro'}
+    outattrs['E_VCC_GC_LR'] = {'units':'molec OR atom C???/cm2/s',
+                               'desc':'Isoprene Emissions based on VCC and GC_slope, unmasked by fire or anthro'}
+    outattrs['E_VCC_PP_LR'] = {'units':'molec OR atom C??/cm2/s',
+                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope, unmasked by fire or anthro'}
+    outattrs['E_VCC_OMI_LR']= {'units':'molec/cm2/s',
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope, unmasked by fire or anthro'}
 
     # Extras like pixel counts etc..

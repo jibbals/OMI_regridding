@@ -3,7 +3,7 @@
 #PBS -q normal
 #PBS -N makeAMFcsv
 #PBS -l walltime=01:00:00
-#PBS -l mem=5000MB
+#PBS -l mem=3000MB
 #PBS -l cput=00:15:00
 #PBS -l wd
 #PBS -l ncpus=4

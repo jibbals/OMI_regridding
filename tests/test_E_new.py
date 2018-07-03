@@ -143,7 +143,7 @@ def VCC_comparison(month=datetime(2005,1,1),region=pp.__AUSREGION__):
 
     start_time=timeit.default_timer()
     # read in omhchorp
-    om=omrp(d0,dayn=dN, keylist=['VCC_OMI','VCC_GC','VCC_PP','gridentries','ppentries'])
+    om=E_new(d0,dayn=dN, keylist=['VCC_OMI','VCC_GC','VCC_PP','gridentries','ppentries'])
     elapsed = timeit.default_timer() - start_time
     print("TIMEIT: Took %6.2f seconds to read omhchorp"%elapsed)
 

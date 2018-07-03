@@ -54,251 +54,28 @@ start1=timeit.default_timer()
 ##########
 ### DO STUFFS
 ##########
+om=util.maskoceans([1,2,3,4,5],[1,2,3,4,5],np.zeros([5,5]))
+OMHCHORP=omhchorp(day0=d0, ignorePP=False)
+arr_names=['VCC_OMI','gridentries','ppentries','col_uncertainty_OMI','firemask','smokemask','anthromask']
+arrs= [getattr(OMHCHORP,s) for s in arr_names]
+arrs_i= {arr_names[i]:i for i in range(len(arr_names))}
 
-def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
-                          region=pp.__AUSREGION__):
-    '''
-        Store a month of new emissions estimates into an he5 file
-        TODO: Add monthly option to just store month averages and month emissions
-    '''
-    # Dates required: day0, dayN, and list of days between
-    day0=util.first_day(month)
-    dayn=util.last_day(day0)
-    days=util.list_days(day0,dayn)
-
-    # Handy date strings
-    mstr=dayn.strftime('%Y%m')
-    d0str=day0.strftime("%Y%m%d")
-    dnstr=dayn.strftime("%Y%m%d")
-
-    # File location to write to
-    ddir="Data/Isop/E_new/"
-    fname=ddir+"emissions_%s.h5"%(mstr)
-
-    if __VERBOSE__:
-        print("Calculating %s-%s estimated emissions over %s"%(d0str,dnstr,str(region)))
-        print("will save to file %s"%(fname))
-
-    # Dicts which will be saved:
-    outdata={}
-    outattrs={}
-
-    # Read omhchorp VCs, AMFs, Fires, Smoke, etc...
-    if OMHCHORP is None:
-        OMHCHORP=omhchorp(day0=day0,dayn=dayn, ignorePP=False)
-    if GCB is None:
-        GCB=GC_class.GC_biogenic(day0,) # data like [time,lat,lon,lev]
-
-    # subset our lats/lons
-    # Arrays to be subset
-    arrs_names=['VCC_OMI','VCC_GC','VCC_PP',
-                'firemask','smokemask','anthromask',
-                'gridentries','ppentries','col_uncertainty_OMI',
-                ]
-    # list indices
-    arrs_i={s:i for i,s in enumerate(arrs_names)}
-    # data from OMHCHORP
-    arrs=[getattr(OMHCHORP,s) for s in arrs_names]
-
-    OMHsubsets=util.lat_lon_subset(OMHCHORP.lats,OMHCHORP.lons,region,data=arrs, has_time_dim=True)
-    omilats=OMHsubsets['lats']
-    omilons=OMHsubsets['lons']
-    omilati=OMHsubsets['lati']
-    # map subsetted arrays into another dictionary
-    OMHsub = {s:OMHsubsets['data'][arrs_i[s]] for s in arrs_names}
-
-    # Need Vertical colums, slope, and backgrounds all at same resolution to get emissions
-    VCC_GC                = OMHsub['VCC_GC']
-    VCC_PP                = OMHsub['VCC_PP']
-    VCC_OMI               = OMHsub['VCC_OMI']
-    pixels                = OMHsub['gridentries']
-    pixels_PP             = OMHsub['ppentries']
-    uncert                = OMHsub['col_uncertainty_OMI']
-    firefilter            = OMHsub['firemask']+OMHsub['smokemask']
-    anthrofilter          = OMHsub['anthromask']
+OMHsubsets=util.lat_lon_subset(OMHCHORP.lats,OMHCHORP.lons,region,data=arrs, has_time_dim=True)
+omilats=OMHsubsets['lats']
+omilons=OMHsubsets['lons']
+omilati=OMHsubsets['lati']
+# map subsetted arrays into another dictionary
+OMHsub = {s:OMHsubsets['data'][arrs_i[s]] for s in arr_names}
 
 
-    # GC.model_slope gets slope and subsets the region
-    # Then Map slope onto higher omhchorp resolution:
-    slope_dict=GCB.model_slope(region=region)
-    GC_slope=slope_dict['slope']
-    gclats,gclons = slope_dict['lats'],slope_dict['lons']
-    GC_slope = util.regrid_to_higher(GC_slope,gclats,gclons,omilats,omilons,interp='nearest')
-
-    # Also save smearing
-    smear, slats,slons = smearing(month,region=region)
-    pp.createmap(smear,slats,slons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
-                 linear=True, vmin=1000, vmax=10000,
-                 clabel='S', pname='Figs/GC/smearing_%s.png'%mstr, title='Smearing %s'%mstr)
-    smear = util.regrid_to_higher(smear,slats,slons,omilats,omilons,interp='nearest')
-    pp.createmap(smear,omilats,omilons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
-                 linear=True, vmin=1000, vmax=10000,
-                 clabel='S', pname='Figs/GC/smearing_%s_interp.png'%mstr, title='Smearing %s'%mstr)
-    print("Smearing plots saved in Figs/GC/smearing...")
-    outdata['smearing'] = smear
-    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for %s, interpolated linearly from 2x2.5 to 0.25x0.3125 resolution'%mstr}
-
-    # TODO: Smearing Filter
-    smearfilter = smear > __Thresh_Smearing__#5000 # something like this
+VCC_OMI               = OMHsub['VCC_OMI']
+pixels                = OMHsub['gridentries']
+pixels_PP             = OMHsub['ppentries']
+uncert                = OMHsub['col_uncertainty_OMI']
+firefilter            = OMHsub['firemask']+OMHsub['smokemask']
+anthrofilter          = OMHsub['anthromask']
 
 
-    # emissions using different columns as basis
-    # Fully filtered
-    out_shape=VCC_GC.shape
-    E_gc        = np.zeros(out_shape) + np.NaN
-    E_pp        = np.zeros(out_shape) + np.NaN
-    E_omi       = np.zeros(out_shape) + np.NaN
-
-    # unfiltered:
-    E_gc_u      = np.zeros(out_shape) + np.NaN
-    E_pp_u      = np.zeros(out_shape) + np.NaN
-    E_omi_u     = np.zeros(out_shape) + np.NaN
-
-    BG_VCC      = np.zeros(out_shape) + np.NaN
-    BG_PP       = np.zeros(out_shape) + np.NaN
-    BG_OMI      = np.zeros(out_shape) + np.NaN
-
-    # Need background values from remote pacific
-    BG_VCCa, bglats, bglons = util.remote_pacific_background(OMHCHORP.VCC_GC,
-                                                            OMHCHORP.lats, OMHCHORP.lons,
-                                                            average_lons=True,has_time_dim=True)
-    BG_PPa , bglats, bglons = util.remote_pacific_background(OMHCHORP.VCC_PP,
-                                                            OMHCHORP.lats, OMHCHORP.lons,
-                                                            average_lons=True,has_time_dim=True)
-    BG_OMIa, bglats, bglons = util.remote_pacific_background(OMHCHORP.VCC_OMI,
-                                                            OMHCHORP.lats, OMHCHORP.lons,
-                                                            average_lons=True,has_time_dim=True)
-    time_emiss_calc=timeit.default_timer()
-    for i,day in enumerate(days):
-
-        BG_VCCi = BG_VCCa[i]
-        BG_PPi  = BG_PPa[i]
-        BG_OMIi = BG_OMIa[i]
-
-        # can check that reshaping makes sense with:
-        #bgcolumn=np.copy(BG_VCCi)
-        #BG_VCCi = BG_VCCi.repeat(len(omilons)).reshape([len(omilats),len(omilons)])
-        # check all values in column are either equal or both nan
-        #assert all( (bgcolumn == BG_VCCi[:,0]) + (np.isnan(bgcolumn) * np.isnan(BG_VCCi[:,0])))
-
-        # we only want the subset of background values matching our region
-        BG_VCCi = BG_VCCi[omilati]
-        BG_PPi  = BG_PPi[omilati]
-        BG_OMIi = BG_OMIi[omilati]
-
-        # The backgrounds need to be the same shape so we can subtract from whole array at once.
-        # done by repeating the BG values ([lats]) N times, then reshaping to [lats,N]
-        BG_VCCi = BG_VCCi.repeat(len(omilons)).reshape([len(omilats),len(omilons)])
-        BG_PPi  = BG_PPi.repeat(len(omilons)).reshape([len(omilats),len(omilons)])
-        BG_OMIi = BG_OMIi.repeat(len(omilons)).reshape([len(omilats),len(omilons)])
-
-        # Store the backgrounds for later analysis
-        BG_VCC[i,:,:] = BG_VCCi
-        BG_PP[i,:,:]  = BG_PPi
-        BG_OMI[i,:,:] = BG_OMIi
-
-        # Run calculation with no filters applied:
-        E_gc_u[i,:,:]       = (VCC_GC[i] - BG_VCCi) / GC_slope
-        E_pp_u[i,:,:]       = (VCC_PP[i] - BG_PPi) / GC_slope
-        E_omi_u[i,:,:]      = (VCC_OMI[i] - BG_OMIi) / GC_slope
-
-        # run with filters
-        allmasks            = firefilter[i] + anthrofilter[i] # + smearfilter
-        vcc_gci             = np.copy(VCC_GC[i])
-        vcc_gci[allmasks]   = np.NaN
-        vcc_ppi             = np.copy(VCC_PP[i])
-        vcc_ppi[allmasks]   = np.NaN
-        vcc_omii            = np.copy(VCC_OMI[i])
-        vcc_omii[allmasks]  = np.NaN
-        E_gc[i,:,:]         = (vcc_gci - BG_VCCi) / GC_slope
-        E_pp[i,:,:]         = (vcc_ppi - BG_PPi) / GC_slope
-        E_omi[i,:,:]        = (vcc_omii - BG_OMIi) / GC_slope
-
-    elapsed = timeit.default_timer() - time_emiss_calc
-    print ("TIMEIT: Took %6.2f seconds to calculate backgrounds and estimate emissions()"%elapsed)
-    # should take very little time
-
-    # Lets save both monthly averages and the daily amounts
-    #
-
-    # Save the backgrounds, as well as units/descriptions
-    outdata['BG_VCC']    = BG_VCC
-    outdata['BG_PP']     = BG_PP
-    outdata['BG_OMI']    = BG_OMI
-    outattrs['BG_VCC']   = {'units':'molec/cm2','desc':'Background: VCC zonally averaged from remote pacific'}
-    outattrs['BG_PP']    = {'units':'molec/cm2','desc':'Background: VCC_PP zonally averaged from remote pacific'}
-    outattrs['BG_OMI']   = {'units':'molec/cm2','desc':'Background: VCC_OMI zonally averaged from remote pacific'}
-
-    # Save the Vertical columns, as well as units/descriptions
-    outdata['VCC_GC']     = VCC_GC
-    outdata['VCC_PP']     = VCC_PP
-    outdata['VCC_OMI']    = VCC_OMI
-    outattrs['VCC_GC']    = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, fire and anthro masked'}
-    outattrs['VCC_PP']    = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code, fire and anthro masked'}
-    outattrs['VCC_OMI']   = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column, fire and anthro masked'}
-
-    # Save the Emissions estimates, as well as units/descriptions
-    outdata['E_VCC_GC']     = E_gc
-    outdata['E_VCC_PP']     = E_pp
-    outdata['E_VCC_OMI']    = E_omi
-    outdata['E_VCC_GC_u']   = E_gc_u
-    outdata['E_VCC_PP_u']   = E_pp_u
-    outdata['E_VCC_OMI_u']  = E_omi_u
-    outattrs['E_VCC_GC']    = {'units':'molec OR atom C???/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC and GC_slope'}
-    outattrs['E_VCC_PP']    = {'units':'molec OR atom C??/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope'}
-    outattrs['E_VCC_OMI']   = {'units':'molec OR/cm2/s',
-                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope'}
-    outattrs['E_VCC_GC_u']  = {'units':'molec OR atom C???/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC and GC_slope, unmasked by fire or anthro'}
-    outattrs['E_VCC_PP_u']  = {'units':'molec OR atom C??/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope, unmasked by fire or anthro'}
-    outattrs['E_VCC_OMI_u'] = {'units':'molec OR/cm2/s',
-                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope, unmasked by fire or anthro'}
-
-    # Extras like pixel counts etc..
-    outdata['firefilter']   = firefilter.astype(np.int)
-    outdata['anthrofilter'] = anthrofilter.astype(np.int)
-    outdata['smearfilter']  = smearfilter.astype(np.int)
-    outdata['pixels']       = pixels
-    outdata['pixels_PP']    = pixels_PP
-    outdata['uncert_OMI']   = uncert
-    outattrs['firefilter']  = {'units':'N/A',
-                               'desc':'Squares with more than one fire (over today or last two days, in any adjacent square) or AAOD greater than %.1f'%(fio.__Thresh_AAOD__)}
-    outattrs['anthrofilter']= {'units':'N/A',
-                               'desc':'Squares with tropNO2 from OMI greater than %.1e or yearly averaged tropNO2 greater than %.1e'%(fio.__Thresh_NO2_d__,fio.__Thresh_NO2_y__)}
-    outattrs['smearfilter'] = {'units':'N/A',
-                               'desc':'Squares where smearing greater than %.1f'%(__Thresh_Smearing__)}
-    outattrs['uncert_OMI']  = {'units':'?? molec/cm2 ??',
-                               'desc':'OMI pixel uncertainty averaged for each gridsquare'}
-    outattrs['pixels']      = {'units':'n',
-                               'desc':'OMI pixels used for gridsquare VC'}
-    outattrs['pixels_PP']   = {'units':'n',
-                               'desc':'OMI pixels after PP code used for gridsquare VC'}
-
-    # Adding time dimension (needs to be utf8 for h5 files)
-    #dates = np.array([d.strftime("%Y%m%d").encode('utf8') for d in days])
-    dates = np.array([int(d.strftime("%Y%m%d")) for d in days])
-    outdata["time"]=dates
-    outattrs["time"]={"format":"%Y%m%d", "desc":"year month day as integer (YYYYMMDD)"}
-    fattrs={'region':"SWNE: %s"%str(region)}
-    fattrs['date range']="%s to %s"%(d0str,dnstr)
-
-    # Save lat,lon
-    outdata['lats']=omilats
-    outdata['lons']=omilons
-    outdata['lats_e']=util.edges_from_mids(outdata['lats'])
-    outdata['lons_e']=util.edges_from_mids(outdata['lons'])
-
-
-    # Save file, with attributes
-    fio.save_to_hdf5(fname,outdata,attrdicts=outattrs,fattrs=fattrs)
-    if __VERBOSE__:
-        print("%s should now be saved"%fname)
-
-#plt.pcolormesh(tracks,lats,RSC,cmap='plasma',vmin=-1e16,vmax=1e16)
-#cb=plt.colorbar()
 
 ###########
 ### Record and time STUJFFS

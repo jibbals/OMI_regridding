@@ -304,8 +304,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     uncert                = OMHsub['col_uncertainty_OMI']
     firefilter            = OMHsub['firemask']+OMHsub['smokemask']
     anthrofilter          = OMHsub['anthromask']
-
-
+    
     # GC.model_slope gets slope and subsets the region
     # Then Map slope onto higher omhchorp resolution:
     slope_dict=GCB.model_slope(region=region)
@@ -394,6 +393,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     E_pp[allmasks]      = np.NaN
     E_omi[allmasks]     = np.NaN
     
+    # Now do the low resolution version:
+    LR = util.
     
     elapsed = timeit.default_timer() - time_emiss_calc
     print ("TIMEIT: Took %6.2f seconds to calculate backgrounds and estimate emissions()"%elapsed)
@@ -441,11 +442,11 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outattrs['E_VCC_OMI_u'] = {'units':'molec/cm2/s',
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope, unmasked by fire or anthro'}
     outattrs['E_VCC_GC_LR'] = {'units':'molec OR atom C???/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC and GC_slope, unmasked by fire or anthro'}
+                               'desc':'Isoprene Emissions based on VCC and GC_slope, binned after filtering'}
     outattrs['E_VCC_PP_LR'] = {'units':'molec OR atom C??/cm2/s',
-                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope, unmasked by fire or anthro'}
+                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope, binned after filtering'}
     outattrs['E_VCC_OMI_LR']= {'units':'molec/cm2/s',
-                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope, unmasked by fire or anthro'}
+                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope, binned after filtering'}
 
     # Extras like pixel counts etc..
     outdata['firefilter']   = firefilter.astype(np.int)
@@ -453,6 +454,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['smearfilter']  = smearfilter.astype(np.int)
     outdata['pixels']       = pixels
     outdata['pixels_PP']    = pixels_PP
+    outdata['pixels_LR']    = pixels_LR
+    outdata['pixels_PP_LR'] = pixels_PP_LR
     outdata['uncert_OMI']   = uncert
     outattrs['firefilter']  = {'units':'N/A',
                                'desc':'Squares with more than one fire (over today or last two days, in any adjacent square) or AAOD greater than %.1f'%(fio.__Thresh_AAOD__)}
@@ -466,6 +469,10 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                                'desc':'OMI pixels used for gridsquare VC'}
     outattrs['pixels_PP']   = {'units':'n',
                                'desc':'OMI pixels after PP code used for gridsquare VC'}
+    outattrs['pixels_LR']   = {'units':'n',
+                               'desc':'OMI pixels used for gridsquare VC after filtering and at low resolution'}
+    outattrs['pixels_PP_LR']= {'units':'n',
+                               'desc':'OMI pixels after PP code used for gridsquare VC after filtering and at low resolution'}
 
     # Adding time dimension (needs to be utf8 for h5 files)
     #dates = np.array([d.strftime("%Y%m%d").encode('utf8') for d in days])

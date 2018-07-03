@@ -239,7 +239,7 @@ def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=datetime(2005,3,31), subset=2,
     plt.close()
     print('Saved ',pname)
 
-def test_mask_effects(month=datetime(2005,1,1), output='VCC_OMI'):
+def test_mask_effects(month=datetime(2005,1,1)):
     '''
         Show and count how many pixels are removed by each filter per day/month
         Show affect on HCHO columns over Aus from each filter per month
@@ -252,11 +252,12 @@ def test_mask_effects(month=datetime(2005,1,1), output='VCC_OMI'):
         Can decide output from VCCs or E_VCCs (remember to use _u for unfiltered ones)
 
     '''
+    output = 'VCC_OMI' # This is the array we will test our filters on...
     d0=datetime(month.year,month.month,1)
     dn=util.last_day(d0)
     dstr="%s-%s"%(d0.strftime("%Y%m%d"),dn.strftime("%Y%m%d"))
     suptitle="%s with and without filtering over %s"%(output,dstr)
-    pnames=["Figs/Filters/filtered_%%s_%%s_%s.png"%dstr]
+    pnames="Figs/Filters/filtered_%%s_%%s_%s.png"%dstr
     titles="%s"
     masktitles="masked by %s"
 
@@ -265,24 +266,30 @@ def test_mask_effects(month=datetime(2005,1,1), output='VCC_OMI'):
     dates=Enew.dates
     lats,lons=Enew.lats,Enew.lons
 
-    masks=[mask.astype(np.bool) for mask in [Enew.firefilter, Enew.smokefilter, Enew.anthrofilter]]
-    mask_names=['fire','smoke','anthro']
+    masks=[mask.astype(np.bool) for mask in [Enew.firefilter, Enew.anthrofilter]]
+    mask_names=['fire+smoke','anthro']
 
-    arr_names=['VCC_GC','VCC_OMI','E_VCC_GC','E_VCC_OMI']
-    arr_vmins=[ 1e14   ,  1e14   ,  1e9     ,   1e9     ]
-    arr_vmaxs=[ 1e16   ,  1e16   ,  5e12    ,   5e12    ]
-    for arr_name,vmin,vmax in zip(arr_names,arr_vmins,arr_vmaxs):
-        arr = getattr(Enew,arr_name)
-        units= Enew.attributes[arr_name]['unit'] # TODO change to units when implemented
-        for mask,mask_name in zip(masks,mask_names):
-            title=titles%arr_name
-            suptitle=suptitles%arr_name
-            pname=pnames%(arr_name,mask_name)
-            masktitle=masktitles%mask_name
-            pp.subzones(arr,dates,lats,lons, mask=mask,
-                        vmin=vmin,vmax=vmax,
-                        title=title,suptitle=suptitle,masktitle=masktitle,
-                        pname=pname,clabel=units)
+    vmin = 1e14; vmax=4e16
+    arr = getattr(Enew,output)
+    units= Enew.attributes[output]['units']
+    if units is None:
+        units='???'
+    print(units)
+    for mask,mask_name in zip(masks,mask_names):
+        title=titles%output
+        pname=pnames%(output,mask_name)
+        masktitle=masktitles%mask_name
+
+        pp.subzones(arr,dates,lats,lons, mask=mask,
+                    vmin=vmin,vmax=vmax,
+                    title=title,suptitle=suptitle,masktitle=masktitle,
+                    clabel=units)
+        #TODO: Add axes and table of lost pixel counts...
+
+
+        plt.savefig(pname)
+        print('saved ',pname)
+        plt.close()
 
 def test_fires_removed(day=datetime(2005,1,25)):
     '''

@@ -457,10 +457,11 @@ def regrid_to_higher(data,lats,lons,newlats,newlons,interp='nearest',fill_value=
                       (mnewlats, mnewlons), method=interp, fill_value=fill_value)
     return newdata
 
-def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean):
+def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean, pixels=None):
     '''
         Regrid data to lower resolution
         using midpoints of new and old grid
+        optionally weight by pixel counts (at same resolution as data)
     '''
     start=timeit.default_timer()
     if __VERBOSE__:
@@ -475,13 +476,34 @@ def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean):
                 lati= (lats >= newlats_e[i]) * (lats < newlats_e[i+1])
                 loni= (lons >= newlons_e[j]) * (lons < newlons_e[j+1])
 
+                # data set subsetted to new lat/lon bin
                 tmp=data[lati,:]
                 tmp=tmp[:,loni]
+                # potentially pixels weighting the same subset
+                if pixels is not None:
+                    print('pre_binning, subset mean:%.2e'%np.nanmean(tmp))
+                    sub_pixels = pixels[lati,:]
+                    sub_pixels = sub_pixels[:,loni]
+                    n_pixels   = float(np.nansum(sub_pixels))
+                    nanpix= np.nansum(sub_pixels[np.isnan(tmp)])
+                    pos=np.copy(tmp)
+                    pos[pos<0] = np.NaN
+                    pos2=np.copy(tmp)
+                    pos2[pos<0] = 0.
+                    # check how many pixels are added in NaN squares...
+                    assert nanpix==0, 'nan pixels: %d, (Should be zero)'%nanpix
+                    tmp= (tmp * sub_pixels) / n_pixels
+                    print('post_binning, subset mean:%.2e'%np.nanmean(tmp))
+                    print('post_binning, positive subset mean: %.2e'%np.nanmean(pos))
+                    print('post_binning, positive2 subset mean: %.2e'%np.nanmean(pos2))
+
+
                 ret[i,j]=func(tmp)
 
     if __VERBOSE__:
         print("TIMEIT: it took %6.2f seconds to REGRID"%(timeit.default_timer()-start))
     return ret
+
 
 def regrid(data,lats,lons,newlats,newlons, interp='nearest', groupfunc=np.nanmean):
     '''

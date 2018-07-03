@@ -697,18 +697,20 @@ def read_omhchorp(day0,dayn=None,keylist=None,latres=__LATRES__,lonres=__LONRES_
 
     # Screen the Vert Columns to between these values:
     VC_screen=[-5e15,1e17]
+    # Already screened when reading OMHCHO before recreating PP and GC AMFs
     data['VC_screen']=VC_screen
-    for vcstr in ['VCC_OMI','VCC_PP','VCC_GC']:
-        if vcstr not in data.keys():
-            continue
-        attr=data[vcstr]
+    #for vcstr in ['VCC_OMI','VCC_PP','VCC_GC']:
+    #    if vcstr not in data.keys():
+    #        continue
+    #    attr=data[vcstr]
 
-        screened=(attr<VC_screen[0]) + (attr>VC_screen[1])
-        scrstr="[%.1e - %.1e]"%(VC_screen[0], VC_screen[1])
-        print("Removing %d gridsquares from %s using screen %s"%(np.sum(screened), vcstr, scrstr))
+    #    screened=(attr<VC_screen[0]) + (attr>VC_screen[1])
+    #    scrstr="[%.1e - %.1e]"%(VC_screen[0], VC_screen[1])
+    #    print("Removing %d gridsquares from %s using screen %s"%(np.sum(screened), vcstr, scrstr))
 
-        attr[screened]=np.NaN
-        data[vcstr]= attr
+    #    attr[screened]=np.NaN
+    #    #TODO: Also update pixel counts...
+    #    data[vcstr]= attr
 
     # Change latitude to lats...
     data['lats']=struct[0]['latitude']

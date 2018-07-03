@@ -123,6 +123,7 @@ class E_new:
         mlons,mlats=np.meshgrid(self.lons,self.lats)
         self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=False).mask
 
+
     def get_season(self,key,region,maskocean=True):
         '''
             Monthly average of key over region

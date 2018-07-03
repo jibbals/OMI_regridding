@@ -54,13 +54,13 @@ start1=timeit.default_timer()
 ##########
 ### DO STUFFS
 ##########
-om=util.maskoceans([1,2,3,4,5],[1,2,3,4,5],np.zeros([5,5]))
+
 OMHCHORP=omhchorp(day0=d0, ignorePP=False)
 arr_names=['VCC_OMI','gridentries','ppentries','col_uncertainty_OMI','firemask','smokemask','anthromask']
 arrs= [getattr(OMHCHORP,s) for s in arr_names]
 arrs_i= {arr_names[i]:i for i in range(len(arr_names))}
 
-OMHsubsets=util.lat_lon_subset(OMHCHORP.lats,OMHCHORP.lons,region,data=arrs, has_time_dim=True)
+OMHsubsets=util.lat_lon_subset(OMHCHORP.lats,OMHCHORP.lons,region,data=arrs, has_time_dim=False)
 omilats=OMHsubsets['lats']
 omilons=OMHsubsets['lons']
 omilati=OMHsubsets['lati']
@@ -75,9 +75,25 @@ uncert                = OMHsub['col_uncertainty_OMI']
 firefilter            = OMHsub['firemask']+OMHsub['smokemask']
 anthrofilter          = OMHsub['anthromask']
 
+lats_lr,lons_lr, lats_e_lr, lons_e_lr = util.lat_lon_grid(GMAO.__LATRES_GC__,GMAO.__LONRES_GC__)
 
+lati_lr,loni_lr = util.lat_lon_range(lats_lr,lons_lr,region)
+lats_lr,lons_lr = lats_lr[lati_lr], lons_lr[loni_lr]
 
+VCC_OMI_lr=util.regrid_to_lower(VCC_OMI,omilats,omilons,lats_lr,lons_lr,pixels=pixels)
+pixels_lr=util.regrid_to_lower(pixels,omilats,omilons,lats_lr,lons_lr,func=np.nansum)
 
+# Map showing before and after binning: also counts...
+plt.figure(figsize=(16,16))
+plt.subplot(221)
+pp.createmap(VCC_OMI,omilats,omilons,vmin=1e14,vmax=4e16,title='HighRes VCC OMI', region=region)
+plt.subplot(222)
+pp.createmap(VCC_OMI_lr,lats_lr,lons_lr,vmin=1e14,vmax=4e16,title='LowRes VCC OMI',region=region)
+plt.subplot(223)
+pp.createmap(pixels,omilats,omilons,vmin=0,vmax=20,title='HighRes pixels', linear=True, region=region)
+plt.subplot(224)
+pname='test_lower_resolution.png'
+pp.createmap(pixels_lr,lats_lr,lons_lr,vmin=0,vmax=200,title='LowRes pixels', linear=True, pname=pname, region=region)
 
 ###########
 ### Record and time STUJFFS
@@ -187,30 +203,30 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
     day0=util.first_day(month)
     dayn=util.last_day(day0)
     days=util.list_days(day0,dayn)
-    
+
     # Handy date strings
     mstr=dayn.strftime('%Y%m')
     d0str=day0.strftime("%Y%m%d")
     dnstr=dayn.strftime("%Y%m%d")
-    
+
     # File location to write to
     ddir="Data/Isop/E_new/"
     fname=ddir+"emissions_%s.h5"%(mstr)
-    
+
     if __VERBOSE__:
         print("Calculating %s-%s estimated emissions over %s"%(d0str,dnstr,str(region)))
         print("will save to file %s"%(fname))
-    
+
     # Dicts which will be saved:
     outdata={}
     outattrs={}
-    
+
     # Read omhchorp VCs, AMFs, Fires, Smoke, etc...
     if OMHCHORP is None:
         OMHCHORP=omhchorp(day0=day0,dayn=dayn, ignorePP=False)
     if GCB is None:
         GCB=GC_class.GC_biogenic(day0,) # data like [time,lat,lon,lev]
-    
+
     # subset our lats/lons
     # Arrays to be subset
     arrs_names=['VCC_OMI','VCC_GC','VCC_PP',
@@ -221,7 +237,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
     arrs_i={s:i for i,s in enumerate(arrs_names)}
     # data from OMHCHORP
     arrs=[getattr(OMHCHORP,s) for s in arrs_names]
-    
+
     OMHsubsets=util.lat_lon_subset(OMHCHORP.lats,OMHCHORP.lons,region,data=arrs, has_time_dim=True)
     omilats=OMHsubsets['lats']
     omilons=OMHsubsets['lons']
@@ -229,7 +245,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
     omiloni=OMHsubsets['loni']
     # map subsetted arrays into another dictionary
     OMHsub = {s:OMHsubsets['data'][arrs_i[s]] for s in arrs_names}
-    
+
     # Need Vertical colums, slope, and backgrounds all at same resolution to get emissions
     VCC_GC                = OMHsub['VCC_GC']
     VCC_PP                = OMHsub['VCC_PP']
@@ -239,7 +255,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
     uncert                = OMHsub['col_uncertainty_OMI']
     firefilter            = OMHsub['firemask']+OMHsub['smokemask']
     anthrofilter          = OMHsub['anthromask']
-    
+
     # lets have a look at these things
     if True:
         vmin=1e14
@@ -255,7 +271,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
         pp.createmap(np.nanmean(VCC_OMI,axis=0),omilats,omilons, title='mean_OMI', region=region,vmin=vmin,vmax=vmax)
         plt.savefig('temp_VCC_check.png')
         plt.close()
-    
+
     # GC.model_slope gets slope and subsets the region
     # Then Map slope onto higher omhchorp resolution:
     slope_dict=GCB.model_slope(region=region)
@@ -269,7 +285,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
                      linear=True,vmin=vmin,vmax=vmax,title='GC_slope')
         plt.savefig('temp_slope_check.png')
         plt.close()
-    
+
     # Also save smearing
     smear, slats,slons = Inversion.smearing(month,region=region)
     pp.createmap(smear,slats,slons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
@@ -282,27 +298,27 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
     print("Smearing plots saved in Figs/GC/smearing...")
     outdata['smearing'] = smear
     outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for %s, interpolated linearly from 2x2.5 to 0.25x0.3125 resolution'%mstr}
-    
+
     # TODO: Smearing Filter
     smearfilter = smear > Inversion.__Thresh_Smearing__#5000 # something like this
-    
-    
+
+
     # emissions using different columns as basis
     # Fully filtered
     out_shape=VCC_GC.shape
     E_gc        = np.zeros(out_shape) + np.NaN
     E_pp        = np.zeros(out_shape) + np.NaN
     E_omi       = np.zeros(out_shape) + np.NaN
-    
+
     # unfiltered:
     E_gc_u      = np.zeros(out_shape) + np.NaN
     E_pp_u      = np.zeros(out_shape) + np.NaN
     E_omi_u     = np.zeros(out_shape) + np.NaN
-    
+
     BG_VCC      = np.zeros(out_shape) + np.NaN
     BG_PP       = np.zeros(out_shape) + np.NaN
     BG_OMI      = np.zeros(out_shape) + np.NaN
-    
+
     # Need background values from remote pacific
     BG_VCCa, bglats, bglons = util.remote_pacific_background(OMHCHORP.VCC_GC,
                                                             OMHCHORP.lats, OMHCHORP.lons,
@@ -313,7 +329,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
     BG_OMIa, bglats, bglons = util.remote_pacific_background(OMHCHORP.VCC_OMI,
                                                             OMHCHORP.lats, OMHCHORP.lons,
                                                             average_lons=True,has_time_dim=True)
-    
+
     if True:
         vmin=1e13
         vmax=1e15
@@ -328,8 +344,8 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
         plt.ylabel('VCC [molec/cm2]')
         plt.savefig('temp_BG_check.png')
         plt.close()
-    
-    
+
+
     # cut the omhchorp backgrounds down to our latitudes
     BG_VCC = BG_VCCa[:,omilati]
     BG_PP = BG_PPa[:,omilati]
@@ -340,9 +356,9 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
     BG_OMI = np.repeat(BG_OMI[:,:,np.newaxis],len(omiloni),axis=2)
     # Also repeat Slope array along time axis to avoid looping
     GC_slope= np.repeat(GC_slope[np.newaxis,:,:], len(days),axis=0)
-    
-    
-    
+
+
+
     if True:
         print("Enew Calc Shapes")
         print(VCC_GC.shape,BG_VCC.shape,GC_slope.shape)
@@ -350,12 +366,12 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
         plt.plot(omilats,BG_OMI[0,:,0],'m', label='BG OMI')
         plt.legend()
         plt.title('Background over latitude')
-    
+
     # Run calculation with no filters applied:
     E_gc_u       = (VCC_GC - BG_VCC) / GC_slope
     E_pp_u       = (VCC_PP - BG_PP) / GC_slope
     E_omi_u      = (VCC_OMI - BG_OMI) / GC_slope
-    
+
     # run with filters
     # apply filters
     allmasks            = (firefilter + anthrofilter)>0 # + smearfilter
@@ -364,10 +380,10 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
     print(E_gc.shape)
     print(np.nansum(allmasks))
     print(np.nanmean(E_gc_u),np.nanmean(E_gc_u[allmasks]))
-    
-    
+
+
     assert not np.isnan(np.nansum(E_gc_u[allmasks])), 'Filtering nothing!?'
-    
+
     # Mask gridsquares using fire and anthro filters
     E_gc                = np.copy(E_gc_u)
     E_pp                = np.copy(E_pp_u)
@@ -384,7 +400,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
         # Plot E_new before and after filtering
         m,cs,cb=pp.createmap(E_gc_u[0],omilats,omilons, title='E_GC_u', region=[-40,130,-20,155],
                              vmin=vmin,vmax=vmax)
-    
+
         # plot dots where filter should be
         for yi,y in enumerate(omilats):
             for xi,x in enumerate(omilons):
@@ -397,12 +413,12 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
         plt.subplot(212)
         m,cs,cb=pp.createmap(E_gc[0],omilats,omilons, title='E_GC', region=[-40,130,-20,155],
                              vmin=vmin,vmax=vmax)
-    
+
         pname='temp_E_filtering_check.png'
         plt.savefig(pname)
         print('saved ',pname)
         plt.close()
-    
+
     if True:
         vmin=0
         vmax=1
@@ -421,7 +437,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
                      region=region,linear=True,title='mean anthrofilter')
         plt.savefig('temp_Filters.png')
         plt.close()
-    
+
     if True:
         vmin=1e10
         vmax=1e13
@@ -437,7 +453,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
         plt.suptitle('unfiltered')
         plt.savefig('temp_E_unfiltered_check.png')
         plt.close()
-    
+
         f=plt.figure(figsize=(14,14))
         plt.subplot(221)
         pp.createmap(E_gc[0], omilats,omilons, title='E_GC', region=region,vmin=vmin,vmax=vmax)
@@ -450,10 +466,10 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
         plt.suptitle('filtered')
         plt.savefig('temp_E_filtered_check.png')
         plt.close()
-    
+
     # Lets save both monthly averages and the daily amounts
     #
-    
+
     # Save the backgrounds, as well as units/descriptions
     outdata['BG_VCC']    = BG_VCC
     outdata['BG_PP']     = BG_PP
@@ -461,7 +477,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
     outattrs['BG_VCC']   = {'units':'molec/cm2','desc':'Background: VCC zonally averaged from remote pacific'}
     outattrs['BG_PP']    = {'units':'molec/cm2','desc':'Background: VCC_PP zonally averaged from remote pacific'}
     outattrs['BG_OMI']   = {'units':'molec/cm2','desc':'Background: VCC_OMI zonally averaged from remote pacific'}
-    
+
     # Save the Vertical columns, as well as units/descriptions
     outdata['VCC_GC']     = VCC_GC
     outdata['VCC_PP']     = VCC_PP
@@ -469,7 +485,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
     outattrs['VCC_GC']    = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, fire and anthro masked'}
     outattrs['VCC_PP']    = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code, fire and anthro masked'}
     outattrs['VCC_OMI']   = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column, fire and anthro masked'}
-    
+
     # Save the Emissions estimates, as well as units/descriptions
     outdata['E_VCC_GC']     = E_gc
     outdata['E_VCC_PP']     = E_pp
@@ -481,7 +497,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
         print("______EMISSIONS_____")
         print("Filtered  ,    Unfiltered")
         _blah = [print("%.5e  ,  %.5e "%(np.nanmean(E),np.nanmean(E_u))) for E,E_u in zip([E_omi,E_gc,E_pp],[E_omi_u,E_gc_u,E_pp_u])]
-    
+
     outattrs['E_VCC_GC']    = {'units':'molec OR atom C???/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope'}
     outattrs['E_VCC_PP']    = {'units':'molec OR atom C??/cm2/s',
@@ -494,7 +510,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
                                'desc':'Isoprene Emissions based on VCC_PP and GC_slope, unmasked by fire or anthro'}
     outattrs['E_VCC_OMI_u'] = {'units':'molec OR/cm2/s',
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope, unmasked by fire or anthro'}
-    
+
     # Extras like pixel counts etc..
     outdata['firefilter']   = firefilter.astype(np.int)
     outdata['anthrofilter'] = anthrofilter.astype(np.int)
@@ -514,7 +530,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
                                'desc':'OMI pixels used for gridsquare VC'}
     outattrs['pixels_PP']   = {'units':'n',
                                'desc':'OMI pixels after PP code used for gridsquare VC'}
-    
+
     # Adding time dimension (needs to be utf8 for h5 files)
     #dates = np.array([d.strftime("%Y%m%d").encode('utf8') for d in days])
     dates = np.array([int(d.strftime("%Y%m%d")) for d in days])
@@ -522,14 +538,14 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
     outattrs["time"]={"format":"%Y%m%d", "desc":"year month day as integer (YYYYMMDD)"}
     fattrs={'region':"SWNE: %s"%str(region)}
     fattrs['date range']="%s to %s"%(d0str,dnstr)
-    
+
     # Save lat,lon
     outdata['lats']=omilats
     outdata['lons']=omilons
     outdata['lats_e']=util.edges_from_mids(outdata['lats'])
     outdata['lons_e']=util.edges_from_mids(outdata['lons'])
-    
-    
+
+
     # Save file, with attributes
     print("NORMALLY WOULD SAVE NOW BUT THS IS TEST ENV")
     #fio.save_to_hdf5(fname,outdata,attrdicts=outattrs,fattrs=fattrs)

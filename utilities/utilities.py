@@ -537,7 +537,7 @@ def remote_pacific_background(data,lats,lons,
     bglats=subset['lats']
     bglons=subset['lons']
 
-    htd=[0,1][has_time_dim] # True to int
+    htd=[0,1][has_time_dim] # convert bool to int
     if average_lons:
         rp=np.nanmean(rp,axis=1+htd)
         bglons = np.nanmean(bglons)

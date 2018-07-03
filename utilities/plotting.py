@@ -17,6 +17,7 @@ from matplotlib import ticker
 from mpl_toolkits.basemap import Basemap, interp
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
+import warnings # To ignore warnings
 #import matplotlib.colors as mcolors #, colormapping
 from matplotlib.colors import LogNorm # for lognormal colour bar
 from datetime import timedelta
@@ -179,9 +180,10 @@ def add_regression(X,Y,label=None, addlabel=True, exponential=False, **pargs):
 
     # set up lable
     if addlabel and (label is None):
-        label='Y = %.2fX + %.2f ; r=%.2f'%(m,b,r)
+        n=len(X)
+        label='Y = %.2fX + %.2f ; r=%.2f, N=%d'%(m,b,r,n)
         if exponential:
-            label='Y = exp(%.2fX + %.2f) ; r=%.2f'%(m,b,r)
+            label='Y = exp(%.2fX + %.2f) ; r=%.2f, N=%d'%(m,b,r,n)
 
     plt.plot(Xspace,Yline,label=label, **pargs)
     return m,b,r,ci1,ci2
@@ -290,7 +292,10 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
     if not linear:
         if __VERBOSE__:
             print('removing %d negative datapoints in createmap'%np.nansum(data<0))
-        data[data<=0] = np.NaN
+        # ignore warnings of NaN comparison
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore",category =RuntimeWarning)
+            data[data<=0] = np.NaN
         pcmeshargs['norm']=LogNorm()
 
     # Set vmin and vmax if necessary

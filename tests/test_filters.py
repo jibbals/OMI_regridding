@@ -22,7 +22,8 @@ from utilities import fio
 from utilities import plotting as pp
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
-from classes.GC_class import GC_tavg
+from classes.omhchorp import omhchorp
+from classes.GC_class import GC_tavg, GC_sat
 from classes.E_new import E_new
 from utilities.plotting import __AUSREGION__
 
@@ -31,12 +32,14 @@ import numpy as np
 from numpy.ma import MaskedArray as ma
 from scipy import stats
 from copy import deepcopy as dcopy
+import random
 
 from datetime import datetime#, timedelta
 
 # Plotting libraries
 from mpl_toolkits.basemap import Basemap, maskoceans
 import matplotlib.pyplot as plt
+
 from matplotlib.colors import LogNorm # for lognormal colour bar
 #import matplotlib.patches as mpatches
 import seaborn # kdeplots
@@ -67,38 +70,273 @@ __colors__ = pp.__subzones_colours__
 ############# Functions #################
 #########################################
 
-def Filter_affects_on_outputs(d0=datetime(2005,1,1),dn=None,region=pp.__AUSREGION__):
+def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=datetime(2005,3,31), subset=2,
+                         detrend=False,
+                         regionplus = pp.__AUSREGION__):
     '''
-        Look at affects of filters to both VCC and E_new
+    Look at Modelled Temperature vs satellite HCHO, low tmp with high HCHO could suggest fire
+    Hopefully fire filter removes some of these points and improves regression
+
+    Plot comparison of temperature over region over time
+        Regression in subset of region, with and without fire filtered
+
     '''
-    if dn is None:
-        dn=util.last_day(d0)
+    # subregions:
+    region=pp.__AUSREGION__
+    NA     = util.NA
+    SWA    = util.SWA
+    SEA    = util.SEA
+    subs   = [SWA,NA,SEA]
+    labels = ['SWA','NA','SEA']
+    colours = ['chartreuse','magenta','aqua']
+    if subset is not None:
+        regionlabel=labels[subset]
+        region = subs[subset]
+
+    # region + view area
+    if regionplus is None:
+        regionplus=np.array(region)+np.array([-10,-15,10,15])
+
+    if d1 is None:
+        d1=util.last_day(d0)
+
+    # ymd string and plot name
+    ymd=d0.strftime('%Y%m%d') + '-' + d1.strftime('%Y%m%d')
+    pname='Figs/Filters/Fire_vs_HCHO_vs_temp_%s_%s.png'%(regionlabel,ymd)
+
+    # read modelled hcho, and temperature at midday
+    gc=GC_sat(d0,d1,keys=['IJ-AVG-$_CH2O','DAO-FLDS_TS'],run='tropchem')
+    n_times=gc.ntimes
+
+    # read satellite HCHO (VCC original) and fire counts, fire mask, and smoke mask
+    omi=omhchorp(d0,d1,keylist=['VCC_OMI','fires','firemask','smokemask','gridentries'])
+
+    # Regrid omi columns to lower GC resolution
+    omivcc=np.zeros([n_times,gc.nlats,gc.nlons])
+    omifires=np.zeros([n_times,gc.nlats,gc.nlons])
+    omifiremask=np.zeros([n_times,gc.nlats,gc.nlons])
+    omismokemask=np.zeros([n_times,gc.nlats,gc.nlons])
+    for ti in range(n_times):
+        omivcc[ti,:,:]=util.regrid(omi.VCC_OMI[ti,:,:],omi.lats,omi.lons,gc.lats,gc.lons)
+        omifires[ti,:,:]=util.regrid(omi.fires[ti,:,:],omi.lats,omi.lons,gc.lats,gc.lons)
+        omifiremask[ti,:,:]=util.regrid(omi.firemask[ti,:,:],omi.lats,omi.lons,gc.lats,gc.lons)
+        omismokemask[ti,:,:]=util.regrid(omi.smokemask[ti,:,:],omi.lats,omi.lons,gc.lats,gc.lons)
+
+    # Temperature avg:
+    temp=gc.surftemp[:,:,:,0] # surface temp in Kelvin
+    surfmeantemp=np.mean(temp,axis=0)
+
+    # Figure will be map and corellation in subregion, two rows
+    plt.figure(figsize=[16,12])
+
+    # First plot temp map of region
+    #
+    lati,loni=util.lat_lon_range(gc.lats,gc.lons,regionplus)
+    smt=surfmeantemp[lati,:]
+    smt=smt[:,loni]
+    tmin,tmax=np.min(smt),np.max(smt)
+    hmin,hmax=1e15, 2e16
+    ax0=plt.subplot(221)
+    m, cs, cb=pp.createmap(surfmeantemp, gc.lats, gc.lons,
+                         region=regionplus, cmapname='rainbow',
+                         cbarorient='bottom',
+                         vmin=tmin,vmax=tmax,
+                         GC_shift=True, linear=True,
+                         title='Temperature '+ymd, clabel='Kelvin')
+
+    # Add rectangle around where we are correlating
+    pp.add_rectangle(m,region,linewidth=2)
+
+    # Also plot average HCHO
+    plt.subplot(222)
+    pp.createmap(np.nanmean(omi.VCC_OMI,axis=0),omi.lats,omi.lons,
+                 region=regionplus, cmapname='rainbow',
+                 cbarorient='bottom',
+                 vmin=hmin,vmax=hmax,
+                 GC_shift=True, linear=False,
+                 title='VCC$_{OMI}$', clabel='molec/cm2')
+
+    # Get fire and hcho subsetted to region
+    subsets=util.lat_lon_subset(gc.lats,gc.lons,region,data=[temp,omivcc,omifires,omifiremask,omismokemask],has_time_dim=True)
+    lati,loni=subsets['lati'],subsets['loni']
+    lats,lons=subsets['lats'],subsets['lons']
+    temp,hcho,fires,firemask,smokemask = subsets['data']
+
+    # remove mean (detrend spatially before correlation)
+    if detrend:
+        for arr in [temp,hcho,fires,firemask]:
+            # Average over time dim, then repeat over time dim
+            arrmean=np.repeat(np.nanmean(arr,axis=0)[np.newaxis,:,:],n_times,axis=0)
+            arr[:,:,:] = arr-arrmean
+
+    # Get ocean and fire/smoke masks
+    oceanmask=util.oceanmask(lats,lons)
+    oceanmask= np.repeat(oceanmask[np.newaxis, :, :], n_times, axis=0) # repeat along time dimension
+    fullmask=oceanmask + (firemask>0) + (smokemask>0)
+
+    # Colour the scatter plot by fire count
+    norm = plt.Normalize(vmin=0., vmax=1.)
+    cmap = plt.cm.get_cmap('rainbow')
+    # colour by fire mask
+    colors = [ cmap(norm([0,1][value])) for value in fullmask[~oceanmask] ]
+
+    # Next will be scatter between hcho and temp, coloured by fire counts
+    #
+    ax=plt.subplot(223)
+    plt.scatter(temp[~oceanmask],hcho[~oceanmask], color=colors,)
+    plt.title('Scatter (coloured by firecounts)')
+    plt.ylabel('VCC$_{OMI}$ [molec/cm2]')
+    plt.xlabel('Kelvin')
+    pp.add_regression(temp[~oceanmask], hcho[~oceanmask], addlabel=True,
+                      exponential=True, color='k', linewidth=1)
+    pp.add_regression(temp[~fullmask], hcho[~fullmask], addlabel=True,
+                      exponential=True, color='r', linewidth=1)
+    plt.legend(loc='best')
+    # set fontsizes for plot
+    fs=10
+    for attr in ['ytick','xtick','axes']:
+        plt.rc(attr, labelsize=fs)
+    plt.rc('font',size=fs)
+
+    #cax, _ = matplotlib.colorbar.make_axes(ax)
+    #matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
+
+    # Final plot with regression on sample of gridsquares
+    landsample=list(np.argwhere(~oceanmask[0])) # list of indices lat,lon of land squares
+    jj=0
+    NP=3
+    for i,j in random.sample(landsample,NP):
+        jj=jj+1
+        lat=lats[i]; lon=lons[j]
+        X,Y = temp[:,i,j],hcho[:,i,j]
+        mx,my = m(lons[j], lats[i])
+
+        # Add dot to map
+        plt.sca(ax0)
+        m.plot(mx, my, 'd', markersize=8, color='white')
+
+        # Colour scatter by whether it's masked or not
+        M=fullmask[:,i,j]
+        if len(X[~M]) < 1:
+            print('all of ',lat,lon,'masked')
+            continue
+        #colors = [ cmap(norm([0,1][value])) for value in M ]
+        colors = [ ['k','m'][value] for value in M] # purple if masked
+
+        # Add scatter and regressions
+        plt.subplot(2,NP,NP+jj)
+        plt.scatter(X,Y, color=colors)
+        pp.add_regression(X, Y, addlabel=True,
+                          exponential=True, color='k',linewidth=1)
+        pp.add_regression(X[~M], Y[~M], addlabel=True,
+                          exponential=True, color='r',linewidth=1)
+
+        plt.title('lat,lon=%.1f,%.1f'%(lat,lon), fontsize=10)
+        plt.ylabel('VCC$_{OMI}$ [molec/cm2]')
+        plt.xlabel('Kelvin')
+        plt.legend(loc='best',fontsize=8)
+    plt.savefig(pname)
+    plt.close()
+    print('Saved ',pname)
+
+def test_mask_effects(month=datetime(2005,1,1)):
+    '''
+        Show and count how many pixels are removed by each filter per day/month
+        Show affect on HCHO columns over Aus from each filter per month
+
+        Four plots, one for each mask and one with all masks
+            output, output masked
+            Entries, Entries
+            table of differences for AUS land squares
+
+        Can decide output from VCCs or E_VCCs (remember to use _u for unfiltered ones)
+
+    '''
+    output = 'VCC_OMI' # This is the array we will test our filters on...
+    d0=datetime(month.year,month.month,1)
+    dn=util.last_day(d0)
     dstr="%s-%s"%(d0.strftime("%Y%m%d"),dn.strftime("%Y%m%d"))
-    suptitles="%%s with and without filtering over %s"%dstr
-    pnames="Figs/Emiss/filtered_%%s_%%s_%s.png"%dstr
+    suptitle="%s with and without filtering over %s"%(output,dstr)
+    pnames="Figs/Filters/filtered_%%s_%%s_%s.png"%dstr
     titles="%s"
     masktitles="masked by %s"
 
+    # Read E_new to get both masks and HCHO (and E_new if desired)
     Enew=E_new(d0,dn)
     dates=Enew.dates
     lats,lons=Enew.lats,Enew.lons
-    masks=[mask.astype(np.bool) for mask in [Enew.firefilter,Enew.anthrofilter,Enew.firefilter+Enew.anthrofilter]]
-    mask_names=['fire','anthro','fire+anthro']
-    arr_names=['VCC_GC','VCC_OMI','E_VCC_GC','E_VCC_OMI']
-    arr_vmins=[ 1e14   ,  1e14   ,  1e9     ,   1e9     ]
-    arr_vmaxs=[ 1e16   ,  1e16   ,  5e12    ,   5e12    ]
-    for arr_name,vmin,vmax in zip(arr_names,arr_vmins,arr_vmaxs):
-        arr = getattr(Enew,arr_name)
-        units= Enew.attributes[arr_name]['unit'] # TODO change to units when implemented
-        for mask,mask_name in zip(masks,mask_names):
-            title=titles%arr_name
-            suptitle=suptitles%arr_name
-            pname=pnames%(arr_name,mask_name)
-            masktitle=masktitles%mask_name
-            pp.subzones(arr,dates,lats,lons, mask=mask,
-                        vmin=vmin,vmax=vmax,
-                        title=title,suptitle=suptitle,masktitle=masktitle,
-                        pname=pname,clabel=units)
+
+    masks=[mask.astype(np.bool) for mask in [Enew.firefilter, Enew.anthrofilter]]
+    mask_names=['fire+smoke','anthro']
+
+    vmin = 1e14; vmax=4e16
+    arr = getattr(Enew,output)
+    units= Enew.attributes[output]['units']
+    if units is None:
+        units='???'
+    print(units)
+    for mask,mask_name in zip(masks,mask_names):
+        title=titles%output
+        pname=pnames%(output,mask_name)
+        masktitle=masktitles%mask_name
+
+        pp.subzones(arr,dates,lats,lons, mask=mask,
+                    vmin=vmin,vmax=vmax,
+                    title=title,suptitle=suptitle,masktitle=masktitle,
+                    clabel=units)
+        #TODO: Add axes and table of lost pixel counts...
+
+
+        plt.savefig(pname)
+        print('saved ',pname)
+        plt.close()
+
+def test_fires_removed(day=datetime(2005,1,25)):
+    '''
+    Check that fire affected pixels are actually removed
+    '''
+    # Read one or 8 day average:
+    #
+    omrp= omhchorp(day)
+    pre     = omrp.VCC
+    count   = omrp.gridentries
+    lats,lons=omrp.latitude,omrp.longitude
+    pre_n   = np.nansum(count)
+    ymdstr=day.strftime(" %Y%m%d")
+    # apply fire masks
+    #
+    fire8           = omrp.fire_mask_8 == 1
+    fire16          = omrp.fire_mask_16 == 1
+    post8           = dcopy(pre)
+    post8[fire8]    = np.NaN
+    post16          = dcopy(pre)
+    post16[fire16]  = np.NaN
+    post8_n         = np.nansum(count[~fire8])
+    post16_n        = np.nansum(count[~fire16])
+
+    # print the sums
+    print("%1e entries, %1e after 8day fire removal, %1e after 16 day fire removal"%(pre_n,post8_n,post16_n))
+
+    # compare and beware
+    #
+    f = plt.figure(num=0,figsize=(16,6))
+    # Plot pre, post8, post16
+    # Fires Counts?
+
+    vmin,vmax=1e14,1e17
+
+    titles= [ 'VCC'+s for s in ['',' - 8 days of fires', ' - 16 days of fires'] ]
+    for i,arr in enumerate([pre,post8,post16]):
+        plt.subplot(131+i)
+        m,cs = pp.ausmap(arr,lats,lons,vmin=vmin,vmax=vmax,colorbar=False)
+        plt.title(titles[i])
+    pname='Figs/fire_exclusion_%s.png'%['8d','1d'][oneday]
+    plt.suptitle("Effects of Fire masks"+ymdstr,fontsize=28)
+    plt.tight_layout()
+    #plt.subplots_adjust(top=0.92)
+    f.savefig(pname)
+    print("%s saved"%pname)
+    plt.close(f)
 
 
 def no2_map(data, lats, lons, vmin, vmax,

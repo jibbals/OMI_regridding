@@ -5,6 +5,9 @@ import numpy as np
 # Edges will be weird due to GMAO structuring...
 __LATRES__ = 0.25
 __LONRES__ = 0.3125
+# GEOS CHEM LATxLON resolution
+__LATRES_GC__ = 2.0 
+__LONRES_GC__ = 2.5 
 __TOA__    = 0.01 # hPa top pressure edge of GEOS-Chem outputs
 
 def GMAO_lats(dy=__LATRES__):

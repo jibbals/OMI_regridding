@@ -60,6 +60,8 @@ class omhchorp:
         for k in data.keys():
             setattr(self, k, np.squeeze(np.array(data[k])))
 
+        self.n_times = len(util.list_days(day0,dayn))
+
         self.oceanmask=util.oceanmask(self.lats,self.lons)
 
 

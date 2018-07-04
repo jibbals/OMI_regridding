@@ -82,18 +82,30 @@ lats_lr,lons_lr = lats_lr[lati_lr], lons_lr[loni_lr]
 
 VCC_OMI_lr=util.regrid_to_lower(VCC_OMI,omilats,omilons,lats_lr,lons_lr,pixels=pixels)
 pixels_lr=util.regrid_to_lower(pixels,omilats,omilons,lats_lr,lons_lr,func=np.nansum)
+VCC_OMI_lr_2=util.regrid_to_lower(VCC_OMI,omilats,omilons,lats_lr,lons_lr) # unwweighted means
 
 # Map showing before and after binning: also counts...
 plt.figure(figsize=(16,16))
-plt.subplot(221)
-pp.createmap(VCC_OMI,omilats,omilons,vmin=1e14,vmax=4e16,title='HighRes VCC OMI', region=region)
-plt.subplot(222)
-pp.createmap(VCC_OMI_lr,lats_lr,lons_lr,vmin=1e14,vmax=4e16,title='LowRes VCC OMI',region=region)
-plt.subplot(223)
-pp.createmap(pixels,omilats,omilons,vmin=0,vmax=20,title='HighRes pixels', linear=True, region=region)
-plt.subplot(224)
+plt.subplot(321)
+pp.createmap(VCC_OMI,omilats,omilons,vmin=1e14,vmax=4e16,
+             title='HighRes VCC OMI', region=region)
+plt.subplot(322)
+pp.createmap(VCC_OMI_lr,lats_lr,lons_lr,vmin=1e14,vmax=4e16,
+             title='LowRes VCC OMI',region=region)
+plt.subplot(323)
+pp.createmap(VCC_OMI_lr_2,lats_lr,lons_lr,vmin=1e14,vmax=4e16,
+             title='LowRes(unweighted) VCC OMI',region=region)
+plt.subplot(324)
+pp.createmap((VCC_OMI_lr - VCC_OMI_lr_2)/VCC_OMI_lr_2, lats_lr,lons_lr,
+             vmin=-0.5, vmax=.5, title='(LR-LR(unweighted)) / LR(unweighted)',
+             linear=True, region=region, cmapname='bwr')
+plt.subplot(325)
+pp.createmap(pixels,omilats,omilons,vmin=0,vmax=7,title='HighRes pixels',
+             linear=True, region=region)
+plt.subplot(326)
 pname='test_lower_resolution.png'
-pp.createmap(pixels_lr,lats_lr,lons_lr,vmin=0,vmax=200,title='LowRes pixels', linear=True, pname=pname, region=region)
+pp.createmap(pixels_lr,lats_lr,lons_lr,vmin=0,vmax=200,title='LowRes pixels',
+             linear=True, pname=pname, region=region)
 
 ###########
 ### Record and time STUJFFS

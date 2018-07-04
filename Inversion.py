@@ -292,39 +292,44 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     omilons=OMHsubsets['lons']
     omilati=OMHsubsets['lati']
     omiloni=OMHsubsets['loni']
-    
+
+    # Also will be doing calculation on low resolution
+    # get GMAO grid at GC resolution
+    lats_lr,lons_lr, lats_e_lr, lons_e_lr = util.lat_lon_grid(GMAO.__LATRES_GC__,GMAO.__LONRES_GC__)
+    # subset to our desired region
+    lati_lr,loni_lr = util.lat_lon_range(lats_lr,lons_lr,region)
+    lats_lr,lons_lr = lats_lr[lati_lr], lons_lr[loni_lr]
+
     # map subsetted arrays into another dictionary
     OMHsub = {s:OMHsubsets['data'][arrs_i[s]] for s in arrs_names}
 
     # Need Vertical colums, slope, and backgrounds all at same resolution to get emissions
-    VCC_GC                = OMHsub['VCC_GC']
-    VCC_PP                = OMHsub['VCC_PP']
-    VCC_OMI               = OMHsub['VCC_OMI']
-    pixels                = OMHsub['gridentries']
-    pixels_PP             = OMHsub['ppentries']
+    VCC_GC_u              = OMHsub['VCC_GC']
+    VCC_PP_u              = OMHsub['VCC_PP']
+    VCC_OMI_u             = OMHsub['VCC_OMI']
+    pixels_u              = OMHsub['gridentries']
+    pixels_PP_u           = OMHsub['ppentries']
     uncert                = OMHsub['col_uncertainty_OMI']
     firefilter            = OMHsub['firemask']+OMHsub['smokemask']
     anthrofilter          = OMHsub['anthromask']
-    
+
     # GC.model_slope gets slope and subsets the region
     # Then Map slope onto higher omhchorp resolution:
     slope_dict=GCB.model_slope(region=region)
-    GC_slope=slope_dict['slope']
+    GC_slope_lr=slope_dict['slope'] # it's at 2x2.5 resolution
     gclats,gclons = slope_dict['lats'],slope_dict['lons']
-    GC_slope = util.regrid_to_higher(GC_slope,gclats,gclons,omilats,omilons,interp='nearest')
+    assert np.all(gclats == lats_lr), "Regional lats from slope function don't match GMAO"
+    GC_slope = util.regrid_to_higher(GC_slope_lr,gclats,gclons,omilats,omilons,interp='nearest')
 
     # Also save smearing
-    smear, slats,slons = smearing(month,region=region)
-    pp.createmap(smear,slats,slons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
-                 linear=True, vmin=1000, vmax=10000,
-                 clabel='S', pname='Figs/GC/smearing_%s.png'%mstr, title='Smearing %s'%mstr)
+    smear, slats,slons = smearing(month,region=region,pname='Figs/GC/smearing_%s.png'%mstr)
     smear = util.regrid_to_higher(smear,slats,slons,omilats,omilons,interp='nearest')
     pp.createmap(smear,omilats,omilons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
                  linear=True, vmin=1000, vmax=10000,
                  clabel='S', pname='Figs/GC/smearing_%s_interp.png'%mstr, title='Smearing %s'%mstr)
     print("Smearing plots saved in Figs/GC/smearing...")
     outdata['smearing'] = smear
-    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for %s, interpolated linearly from 2x2.5 to 0.25x0.3125 resolution'%mstr}
+    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for %s, mapped from 2x2.5 to 0.25x0.3125 resolution'%mstr}
 
     # TODO: Smearing Filter
     smearfilter = smear > __Thresh_Smearing__#5000 # something like this
@@ -332,7 +337,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
 
     # emissions using different columns as basis
     # Fully filtered
-    out_shape=VCC_GC.shape
+    out_shape=VCC_GC_u.shape
     E_gc        = np.zeros(out_shape) + np.NaN
     E_pp        = np.zeros(out_shape) + np.NaN
     E_omi       = np.zeros(out_shape) + np.NaN
@@ -346,58 +351,106 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     BG_PP       = np.zeros(out_shape) + np.NaN
     BG_OMI      = np.zeros(out_shape) + np.NaN
 
-    
+
     time_emiss_calc=timeit.default_timer()
     # Need background values from remote pacific
     BG_VCCa, bglats, bglons = util.remote_pacific_background(OMHCHORP.VCC_GC,
                                                             OMHCHORP.lats, OMHCHORP.lons,
-                                                            average_lons=True,has_time_dim=True)
+                                                            average_lons=True,has_time_dim=True,
+                                                            pixels=OMHCHORP.gridentries)
     BG_PPa , bglats, bglons = util.remote_pacific_background(OMHCHORP.VCC_PP,
                                                             OMHCHORP.lats, OMHCHORP.lons,
-                                                            average_lons=True,has_time_dim=True)
+                                                            average_lons=True,has_time_dim=True,
+                                                            pixels=OMHCHORP.ppentries)
     BG_OMIa, bglats, bglons = util.remote_pacific_background(OMHCHORP.VCC_OMI,
                                                             OMHCHORP.lats, OMHCHORP.lons,
-                                                            average_lons=True,has_time_dim=True)
+                                                            average_lons=True,has_time_dim=True,
+                                                            pixels=OMHCHORP.gridentries)
 
-    
+
     # cut the omhchorp backgrounds down to our latitudes
-    BG_VCC = BG_VCCa[:,omilati]
-    BG_PP = BG_PPa[:,omilati]
-    BG_OMI = BG_OMIa[:,omilati]
+    BG_VCC      = BG_VCCa[:,omilati]
+    BG_PP       = BG_PPa[:,omilati]
+    BG_OMI      = BG_OMIa[:,omilati]
     # Repeat them along our longitudes so we don't need to loop
-    BG_VCC = np.repeat(BG_VCC[:,:,np.newaxis],len(omiloni),axis=2)
-    BG_PP = np.repeat(BG_PP[:,:,np.newaxis],len(omiloni),axis=2)
-    BG_OMI = np.repeat(BG_OMI[:,:,np.newaxis],len(omiloni),axis=2)
+    BG_VCC      = np.repeat(BG_VCC[:,:,np.newaxis],len(omiloni),axis=2)
+    BG_PP       = np.repeat(BG_PP[:,:,np.newaxis],len(omiloni),axis=2)
+    BG_OMI      = np.repeat(BG_OMI[:,:,np.newaxis],len(omiloni),axis=2)
     # Also repeat Slope array along time axis to avoid looping
-    GC_slope= np.repeat(GC_slope[np.newaxis,:,:], len(days),axis=0)
+    GC_slope    = np.repeat(GC_slope[np.newaxis,:,:], len(days),axis=0)
+    GC_slope_lr = np.repeat(GC_slope_lr[np.newaxis,:,:], len(days), axis=0)
 
-    print("Enew Calc Shapes")
-    print(VCC_GC.shape,BG_VCC.shape,GC_slope.shape)
-
-    # Run calculation with no filters applied:
-    E_gc_u       = (VCC_GC - BG_VCC) / GC_slope
-    E_pp_u       = (VCC_PP - BG_PP) / GC_slope
-    E_omi_u      = (VCC_OMI - BG_OMI) / GC_slope
+    # Need low resolution versions also...
+    BG_VCC_lr=np.zeros([len(days),len(lats_lr),len(lons_lr)]) + np.NaN
+    BG_PP_lr=np.zeros([len(days),len(lats_lr),len(lons_lr)]) + np.NaN
+    BG_OMI_lr=np.zeros([len(days),len(lats_lr),len(lons_lr)]) + np.NaN
+    for i in range(len(days)):
+        BG_VCC_lr[i] = util.regrid_to_lower(BG_VCC[i],omilats,omilons,lats_lr,lons_lr)
+        BG_PP_lr[i] = util.regrid_to_lower(BG_PP[i],omilats,omilons,lats_lr,lons_lr)
+        BG_OMI_lr[i] = util.regrid_to_lower(BG_OMI[i],omilats,omilons,lats_lr,lons_lr)
 
     # run with filters
     # apply filters
     allmasks            = (firefilter + anthrofilter)>0 # + smearfilter
+    # filter the VCC arrays
+    VCC_GC              = np.copy(VCC_GC_u)
+    VCC_PP              = np.copy(VCC_PP_u)
+    VCC_OMI             = np.copy(VCC_OMI_u)
+    VCC_GC[allmasks]    = np.NaN
+    VCC_PP[allmasks]    = np.NaN
+    VCC_OMI[allmasks]   = np.NaN
+    pixels              = np.copy(pixels_u)
+    pixels[allmasks]    = 0
+    pixels_PP           = np.copy(pixels_PP_u)
+    pixels_PP[allmasks] = 0
 
+    # For each array make the weighted average using pixel entries to the lower resolution:
+    VCC_GC_lr           = np.copy(BG_OMI_lr)
+    VCC_PP_lr           = np.copy(BG_OMI_lr)
+    VCC_OMI_lr          = np.copy(BG_OMI_lr)
+    pixels_lr           = np.copy(BG_OMI_lr)
+    pixels_PP_lr        = np.copy(BG_OMI_lr)
+    #print("VCC GC has ",np.sum(np.isnan(VCC_GC) * pixels>0), "nan columns where pixel count is non zero")
+    # 3093 nan columns with pixel count > 0
+    #print("VCC OMI has ",np.sum(np.isnan(VCC_OMI) * pixels>0), "nan columns where pixel count is non zero")
+    # 0!!
+    #print("VCC PP has ",np.sum(np.isnan(VCC_PP) * pixels_PP>0), "nan columns where pixel count is non zero")
+    # 3936 !! TODO: Why is this?
+
+    for i in range(len(days)):
+        VCC_GC_lr[i]    = util.regrid_to_lower(VCC_GC[i],omilats,omilons,lats_lr,lons_lr,pixels=pixels[i])
+        VCC_PP_lr[i]    = util.regrid_to_lower(VCC_PP[i],omilats,omilons,lats_lr,lons_lr,pixels=pixels_PP[i])
+        VCC_OMI_lr[i]   = util.regrid_to_lower(VCC_OMI[i],omilats,omilons,lats_lr,lons_lr,pixels=pixels[i])
+        # store pixel count in lower resolution also, using sum of pixels in each bin
+        pixels_lr[i]    = util.regrid_to_lower(pixels[i],omilats,omilons,lats_lr,lons_lr,func=np.nansum)
+        pixels_PP_lr[i] = util.regrid_to_lower(pixels_PP[i],omilats,omilons,lats_lr,lons_lr,func=np.nansum)
+
+    if __VERBOSE__:
+        print("Enew Calc Shapes:")
+        print(VCC_GC_u.shape,    BG_VCC.shape,    GC_slope.shape)
+        print("and low resolution versions:")
+        print(VCC_GC_lr.shape, BG_VCC_lr.shape, GC_slope_lr.shape)
 
     assert not np.isnan(np.nansum(E_gc_u[allmasks])), 'Filtering nothing!?'
-    
-    # Mask gridsquares using fire and anthro filters
-    E_gc                = np.copy(E_gc_u)
-    E_pp                = np.copy(E_pp_u)
-    E_omi               = np.copy(E_pp_u)
-    E_gc[allmasks]      = np.NaN
-    E_pp[allmasks]      = np.NaN
-    E_omi[allmasks]     = np.NaN
-    
-    # Now do the low resolution version:
-    lats_lr,lons_lr, lats_e_lr, lons_e_lr = util.lat_lon_grid(GMAO.__LATRES_GC__,GMAO.__LONRES_GC__)
-    
-    
+
+
+    # Run calculation with no filters applied:
+    E_gc_u       = (VCC_GC_u - BG_VCC) / GC_slope
+    E_pp_u       = (VCC_PP_u - BG_PP) / GC_slope
+    E_omi_u      = (VCC_OMI_u - BG_OMI) / GC_slope
+
+    # Run calculations with masked fires/anthro
+    E_gc            = (VCC_GC - BG_VCC) / GC_slope
+    E_pp            = (VCC_PP - BG_PP) / GC_slope
+    E_omi           = (VCC_OMI - BG_OMI) / GC_slope
+
+    # Now do the low resolution version
+    E_gc_lr         = (VCC_GC_lr - BG_VCC_lr) / GC_slope_lr
+    E_pp_lr         = (VCC_PP_lr - BG_PP_lr) / GC_slope_lr
+    E_omi_lr        = (VCC_OMI_lr - BG_OMI_lr) / GC_slope_lr
+
+
+
     elapsed = timeit.default_timer() - time_emiss_calc
     print ("TIMEIT: Took %6.2f seconds to calculate backgrounds and estimate emissions()"%elapsed)
     # should take < 1 second
@@ -414,12 +467,12 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outattrs['BG_OMI']   = {'units':'molec/cm2','desc':'Background: VCC_OMI zonally averaged from remote pacific'}
 
     # Save the Vertical columns, as well as units/descriptions
-    outdata['VCC_GC']     = VCC_GC
-    outdata['VCC_PP']     = VCC_PP
-    outdata['VCC_OMI']    = VCC_OMI
-    outattrs['VCC_GC']    = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, fire and anthro masked'}
-    outattrs['VCC_PP']    = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code, fire and anthro masked'}
-    outattrs['VCC_OMI']   = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column, fire and anthro masked'}
+    outdata['VCC_GC']     = VCC_GC_u
+    outdata['VCC_PP']     = VCC_PP_u
+    outdata['VCC_OMI']    = VCC_OMI_u
+    outattrs['VCC_GC']    = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, unmasked by fires/anthro'}
+    outattrs['VCC_PP']    = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code, unmasked by fires/anthro'}
+    outattrs['VCC_OMI']   = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column, unmasked by fires,anthro'}
 
     # Save the Emissions estimates, as well as units/descriptions
     outdata['E_VCC_GC']     = E_gc
@@ -456,8 +509,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['smearfilter']  = smearfilter.astype(np.int)
     outdata['pixels']       = pixels
     outdata['pixels_PP']    = pixels_PP
-    outdata['pixels_LR']    = pixels_LR
-    outdata['pixels_PP_LR'] = pixels_PP_LR
+    outdata['pixels_LR']    = pixels_lr
+    outdata['pixels_PP_LR'] = pixels_PP_lr
     outdata['uncert_OMI']   = uncert
     outattrs['firefilter']  = {'units':'N/A',
                                'desc':'Squares with more than one fire (over today or last two days, in any adjacent square) or AAOD greater than %.1f'%(fio.__Thresh_AAOD__)}
@@ -487,6 +540,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # Save lat,lon
     outdata['lats']=omilats
     outdata['lons']=omilons
+    outdata['lats_lr']=lats_lr
+    outdata['lons_lr']=lons_lr
     outdata['lats_e']=util.edges_from_mids(outdata['lats'])
     outdata['lons_e']=util.edges_from_mids(outdata['lons'])
 
@@ -529,7 +584,7 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     if __VERBOSE__:
         print("Inversion.store_emissions() now finished")
 
-def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
+def smearing(month, region=pp.__AUSREGION__, pname=None):
     '''
         Read full and half isop bpch output, calculate smearing
         S = d column_HCHO / d E_isop
@@ -573,14 +628,14 @@ def smearing(month, plot=False,region=pp.__AUSREGION__,thresh=0.0):
 
     #print("emissions from Full,Half:",np.sum(f_E_isop),np.sum(h_E_isop))
     #print("O_hcho from Full, Half:",np.sum(f_hcho),np.sum(h_hcho))
-    S[f_E_isop <= thresh] = np.NaN
+    # ignore squares when emissions are zero
+    S[f_E_isop <= 0] = np.NaN
 
     print("S shape:",S.shape)
     print("Average S:",np.nanmean(S))
-    if plot:
+    if pname is not None:
         pp.InitMatplotlib()
         mstr=month.strftime("%Y%m")
-        pname='Figs/GC/smearing_%s.png'%mstr
 
         #pp.createmap(f_hcho,lats,lons,latlon=True,edges=False,linear=True,pname=pname,title='f_hcho')
         # lie about edges...

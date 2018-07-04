@@ -24,7 +24,7 @@ from utilities import GMAO
 ###############
 ### GLOBALS ###
 ###############
-__VERBOSE__=False
+__VERBOSE__=True
 __grams_per_mole__={'isop':60.06+8.08, # C5H8
                     'hcho':30.02598,
                     'carbon':12.01}
@@ -128,7 +128,7 @@ def edges_from_mids(x,fix_max=179.99):
     '''
     if __VERBOSE__:
         print("VERBOSE: CHECK Edges_from_mids")
-        print("MIDS : ", x[0:5],x[-5:])
+        print("MIDS : ", x[0:4],'...',x[-4:])
 
     # new vector for array
     newx=np.zeros(len(x)+1)
@@ -141,7 +141,7 @@ def edges_from_mids(x,fix_max=179.99):
     newx[-1]    = x[-1] + (x[-1]-x[-2]) / 2.0
 
     if __VERBOSE__:
-        print("EDGES: ", newx[0:5],newx[-5:])
+        print("EDGES: ", newx[0:5],'...',newx[-5:])
 
     # Finally if the ends are outside 90N/S or 180E/W then bring them back
     if fix_max is not None:
@@ -481,21 +481,34 @@ def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean, pixels=
                 tmp=tmp[:,loni]
                 # potentially pixels weighting the same subset
                 if pixels is not None:
-                    print('pre_binning, subset mean:%.2e'%np.nanmean(tmp))
+                    prebin=np.nanmean(tmp)
                     sub_pixels = pixels[lati,:]
                     sub_pixels = sub_pixels[:,loni]
                     n_pixels   = float(np.nansum(sub_pixels))
-                    nanpix= np.nansum(sub_pixels[np.isnan(tmp)])
-                    pos=np.copy(tmp)
-                    pos[pos<0] = np.NaN
-                    pos2=np.copy(tmp)
-                    pos2[pos<0] = 0.
+
                     # check how many pixels are added in NaN squares...
-                    assert nanpix==0, 'nan pixels: %d, (Should be zero)'%nanpix
-                    tmp= (tmp * sub_pixels) / n_pixels
-                    print('post_binning, subset mean:%.2e'%np.nanmean(tmp))
-                    print('post_binning, positive subset mean: %.2e'%np.nanmean(pos))
-                    print('post_binning, positive2 subset mean: %.2e'%np.nanmean(pos2))
+                    nanpix= np.nansum(sub_pixels[np.isnan(tmp)]) # how many pixels when value is nan (should be 0)
+                    #assert nanpix==0, 'nan pixels: %d, (Should be zero)'%nanpix
+                    if nanpix > 0:
+                        print("WARNING:",nanpix,' pixels used to create np.NaN column...')
+
+
+                    # Pixel weighted average is sum of entries / how many entries within this subregion
+                    tmp= np.nansum( (tmp * sub_pixels) / n_pixels )
+
+                    # Testing
+                    if __VERBOSE__:
+                        if not np.isnan(prebin):
+                            if prebin/tmp < 0.5 or prebin/tmp > 2:
+                                print("Warning: weighted binning has more than halved or doubled the bin from %.2e (avg) to %.2e (weighted avg)"%(prebin,tmp))
+
+                    #print('post_binning, positive subset mean: %.2e'%(np.nansum(pos*sub_pixels)/n_pixels_pos))
+                    #print('post_binning, positive2 subset mean: %.2e'%(np.nansum(pos2*sub_pixels)/n_pixels))
+                    #if not np.isnan(np.nanmean(tmp)):
+                    #    print(lats[lati],lons[loni])
+                    #    print(tmp)
+                    #    print(pos)
+                    #    print(sub_pixels)
 
 
                 ret[i,j]=func(tmp)
@@ -540,10 +553,12 @@ def regrid(data,lats,lons,newlats,newlons, interp='nearest', groupfunc=np.nanmea
 
 def remote_pacific_background(data,lats,lons,
                               average_lons=False, average_lats=False,
-                              has_time_dim=False):
+                              has_time_dim=False,
+                              pixels=None):
     '''
         Get remote pacific ocean background from data array
         Can average the lats and lons if desired
+        can weight by pixel counts if provided.
 
         Returns: rp, bglats, bglons
             rp: remote pacific subset from data input
@@ -554,19 +569,32 @@ def remote_pacific_background(data,lats,lons,
     # First pull out region in the remote pacific
     # Use the lats from input data
     remote_bg_region=[lats[0],__REMOTEPACIFIC__[1],lats[-1],__REMOTEPACIFIC__[3]]
-    subset=lat_lon_subset(lats, lons, remote_bg_region, [data],has_time_dim=has_time_dim)
+    if pixels is not None:
+        subset=lat_lon_subset(lats, lons, remote_bg_region, [data,pixels],has_time_dim=has_time_dim)
+    else:
+        subset=lat_lon_subset(lats, lons, remote_bg_region, [data],has_time_dim=has_time_dim)
     rp=subset['data'][0]
     bglats=subset['lats']
     bglons=subset['lons']
 
     htd=[0,1][has_time_dim] # convert bool to int
-    if average_lons:
-        rp=np.nanmean(rp,axis=1+htd)
-        bglons = np.nanmean(bglons)
+    # If we're weighting the average by pixel counts
+    if pixels is not None:
+        subpix=subset['data'][1]
+        rp = rp*subpix
+        if average_lons:
+            rp=np.nansum(rp,axis=1+htd) / np.nansum(subpix,axis=1+htd)
+        if average_lats:
+            rp=np.nansum(rp,axis=0+htd) / np.nansum(subpix,axis=0+htd)
+    else:
+        if average_lons:
+            rp=np.nanmean(rp,axis=1+htd)
+        if average_lats:
+            rp=np.nanmean(rp,axis=0+htd)
 
-    if average_lats:
-        rp=np.nanmean(rp,axis=0+htd)
-        bglats = np.nanmean(bglats)
+
+    bglons = [bglons, np.nanmean(bglons)][average_lons]
+    bglats = [bglats, np.nanmean(bglats)][average_lats]
 
     return rp, bglats, bglons
 

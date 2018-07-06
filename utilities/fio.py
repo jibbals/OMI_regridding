@@ -46,7 +46,7 @@ geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
-__VERBOSE__=True
+__VERBOSE__=False
 
 __Thresh_NO2_d__ = 1e15 # daily threshhold for anthro filter
 __Thresh_NO2_y__ = 1.5e15 # yearly avg threshhold

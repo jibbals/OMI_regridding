@@ -104,6 +104,7 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     'DAO-FLDS_TS':'surftemp', # surface temperature, Kelvin
     }
 
+
 ################
 #####CLASS######
 ################
@@ -141,7 +142,15 @@ class GC_base:
             # Make sure array has dims: [[time,]lats,lons[,levs]]
             arr=data[key]
             if len(arr.shape) > 1:
-                arr = util.reshape_time_lat_lon_lev(arr,self.ntimes,self.nlats,self.nlons,self.nlevs)
+                print('TEST NOTES')
+                print(arr.shape)
+                print(key)
+                print('now reshaping')
+                if key in ['CHEM-L=$_OH']:
+                    keylevels=38
+                else:
+                    keylevels=self.nlevs
+                arr = util.reshape_time_lat_lon_lev(arr,self.ntimes,self.nlats,self.nlons,keylevels)
 
             # Fix air density units to molec/cm3, in case they are in molec/m3
             if (key == 'TIME-SER_AIRDEN') or (key == 'BXHGHT-$_N(AIR)'):
@@ -164,11 +173,11 @@ class GC_base:
                         print(key,' has no attributes!!, assuming molec/cm3 or molec/m3')
                     attrs[key]={'units':'molec/cm3'}
 
-                if surf_air > 1e23: # probably molec/cm3
+                if surf_air > 1e23: # probably molec/m3
                     arr=arr*1e-6
                     if __VERBOSE__:
                         print(key,' being changed from molec/m3 to molec/cm3')
-                        print(key, np.shape(arr), 'surface N_air:', arr)
+                        print(key,'shape:', np.shape(arr))#, 'surface N_air:', arr)
 
                 attrs[key]['units']='molec/cm3'
 

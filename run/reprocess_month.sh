@@ -6,8 +6,8 @@
 ##
 
 if [ $# -lt 2 ]; then
-    echo "EG usage: run/reprocess_oneday.sh 2005 7"
-    echo " To reprocess and get omhchorp_1 for july 2005"
+    echo "EG usage: run/reprocess_month.sh 2005 7"
+    echo " To reprocess and get omhchorp for july 2005"
     exit 0
 fi
 

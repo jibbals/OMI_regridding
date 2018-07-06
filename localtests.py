@@ -56,11 +56,27 @@ start1=timeit.default_timer()
 ##########
 
 # Testing whats up with inversion for 200506, 200508
-print('reading tropchem')
-GC_class.GC_tavg(datetime(2005,6,1),run='tropchem')
+print('reading omhchorp')
+om=omhchorp(d0)
 
-print('tropchem works ok')
-print('reading biogenic')
+print(om.VCC_OMI.shape)
+print('how many nan pixels with > 0 entries?')
+print('OMI:',np.sum(np.isnan(om.VCC_OMI) * om.gridentries != 0))
+print('GC:',np.sum(np.isnan(om.VCC_GC) * om.gridentries != 0))
+# both have zero, good
+
+print('PP:',np.sum(np.isnan(om.VCC_PP) * om.ppentries != 0)) # 1655!!!!!
+# why is this? lets create omhchorp for one day with some tests added in...
+print("Running create_omhchorp for ",d0)
+reprocess.create_omhchorp(d0)
+
+print('reading omhchorp again...')
+om=omhchorp(d0)
+print('how many nan pixels with > 0 entries?')
+print('OMI:',np.sum(np.isnan(om.VCC_OMI) * om.gridentries != 0))
+print('GC:',np.sum(np.isnan(om.VCC_GC) * om.gridentries != 0))
+# both have zero, good
+print('PP:',np.sum(np.isnan(om.VCC_PP) * om.ppentries != 0)) #??
 
 
 ###########

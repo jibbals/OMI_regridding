@@ -473,9 +473,10 @@ def create_omhchorp(date):
             # remove clouds
             #if remove_clouds:
             matches = matches & cloud_filter
+            ppmatches = matches & ~np.isnan(omi_VCC_pp)
             counts[i,j]= np.sum(matches)
             #Different count for PP entries
-            countspp[i,j]= np.sum(~np.isnan(omi_VCC_pp[matches]))
+            countspp[i,j]= np.sum(ppmatches)
 
             # Save the means of each good grid pixel
             if counts[i,j] > 0:
@@ -491,9 +492,12 @@ def create_omhchorp(date):
                 AMF_omi[i,j]    = np.mean(omi_AMF_omi[matches])
 
             if countspp[i,j] > 0:
-                VC_pp[i,j]      = np.mean(omi_VC_pp[matches])
-                VCC_pp[i,j]     = np.mean(omi_VCC_pp[matches]) # RSC Corrected VC_PP
-                AMF_pp[i,j]     = np.mean(omi_AMF_pp[matches])
+
+                VC_pp[i,j]      = np.mean(omi_VC_pp[ppmatches])
+                VCC_pp[i,j]     = np.mean(omi_VCC_pp[ppmatches]) # RSC Corrected VC_PP
+                AMF_pp[i,j]     = np.mean(omi_AMF_pp[ppmatches])
+                assert not np.isnan(VC_pp[i,j]), 'VC_PP created a nan from non-zero pixels!'
+                assert not np.isnan(VCC_pp[i,j]), 'VCC_PP created a nan from non-zero pixels!'
 
     outd=dict()
 

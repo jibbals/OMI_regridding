@@ -147,7 +147,8 @@ class GC_base:
                 print(key)
                 print('now reshaping')
                 if key in ['CHEM-L=$_OH']:
-                    keylevels=38
+                    levdim=len(arr.shape)-1
+                    keylevels=arr.shape[levdim] # sometimes 38 levels instead of 47...
                 else:
                     keylevels=self.nlevs
                 arr = util.reshape_time_lat_lon_lev(arr,self.ntimes,self.nlats,self.nlons,keylevels)

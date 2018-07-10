@@ -32,6 +32,13 @@ for month in `seq -w 1 12`; do
         ### FILTERS FROM SATELLITE PRODUCTS
         ###
         
+        ## OMHCHO
+        # OMI-Aura_L2-OMHCHO_2006m1231t2321-o13102_v003-2014m0622t003448.he5
+        if ! ls Data/omhcho/$year/OMI-Aura_L2-OMHCHO_${year}m${month}${day}* 1> /dev/null 2>&1; then
+            missing "OMHCHO!!!"
+        fi
+        
+        
         ## look for OMNO2d
         # file looks like: Data/OMNO2d/data/OMI-Aura_L3-OMNO2d_2008m1231_v003....he5
         # easy to use ls due to wildcard, pipe output to null, ls returns true if any results

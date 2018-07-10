@@ -55,6 +55,17 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+# MISSING 3 DAYS OF OMI DATA
+mday=datetime(2006,3,1)
+# WANT TO TEST OMHCHORP CREATION:
+# reprocess.create_omhchorp(mday)
+
+#goodpix=reprocess.get_good_pixel_list(mday)
+#print(len(goodpix))
+#for a in goodpix:
+#    print(a, goodpix[a])
+# omhcho=fio.read_omhcho_day(mday) # WORKS OK
+reprocess.create_omhchorp(mday)
 
 ###########
 ### Record and time STUJFFS

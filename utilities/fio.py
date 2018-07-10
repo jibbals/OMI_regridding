@@ -492,7 +492,9 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=60, verbose=False)
             'qualityflag':qf, 'xtrackflag':xqf,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
     '''
-
+    
+    
+    
     # Total column amounts are in molecules/cm2
     field_hcho  = datafields+'ColumnAmount'
     field_ref_c = datafields+'RadianceReferenceColumnAmount'
@@ -515,8 +517,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=60, verbose=False)
     field_colUnc    = datafields+'ColumnUncertainty' # also molec/cm2
     field_fitflag   = datafields+'FitConvergenceFlag'
     field_fitRMS    = datafields+'FittingRMS'
-
-
+    
     ## read in file:
     with h5py.File(path,'r') as in_f:
         ## get data arrays
@@ -612,9 +613,17 @@ def read_omhcho_day(day=datetime(2005,1,1),verbose=False):
     '''
     Read an entire day of omhcho swaths
     '''
-    fnames=determine_filepath(day)
+    fnames=determine_filepath(day,omhcho=True)
     if len(fnames)==0:
-        print("ERROR: OMHCHO missing for %s"%day.strftime("%Y%m%d"))
+        print("WARNING: OMHCHO missing for %s"%day.strftime("%Y%m%d"))
+        ret = { retkey:[np.NaN] for retkey in ['HCHO','lats','lons','AMF','AMFG',
+                'apriori','cloudfrac','rad_ref_col','VCC_OMI','ctp',
+                'qualityflag','xtrackflag','sza', 'vza','coluncertainty',
+                'convergenceflag','fittingRMS'] }
+        ret['omega']=[np.zeros([47])+np.NaN]
+        ret['plevels']=[np.zeros([47])+np.NaN]
+        return ret
+        
     data=read_omhcho(fnames[0],verbose=verbose) # read first swath
     swths=[]
     for fname in fnames[1:]: # read the rest of the swaths
@@ -877,7 +886,12 @@ def read_AMF_pp(date=datetime(2005,1,1),troprun=True):
     runstr=['ucxrunpathgoeshere','tropchem'][troprun]
     dstr=date.strftime('%Y%m%d')
     fname='Data/pp_amf/%s/amf_%s.csv'%(runstr,dstr)
-    assert os.path.isfile(fname), "ERROR: file missing: %s"%fname
+    if not isfile(fname):
+        print("WARNING: %s does not exist!!!!"%fname)
+        print("WARNING:     continuing with nans for %s"%date.strftime("%Y%m%d"))
+        return None, None
+    #assert os.path.isfile(fname), "ERROR: file missing: %s"%fname
+    
     inds=[]
     amfs=[]
     with open(fname,'r') as f:

@@ -239,6 +239,26 @@ def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=datetime(2005,3,31), subset=2,
     plt.close()
     print('Saved ',pname)
 
+def check_filters_work_with_missing_day():
+    '''
+    '''
+    mday=datetime(2005,2,7) # missing day from satellite data sets
+    priorday=datetime(2005,2,6)
+
+    fire,d,lat,lon = fio.make_fire_mask(mday, prior_days_masked=2)
+    fire2,d,lat,lon = fio.make_fire_mask(priorday, prior_days_masked=1)
+
+    assert np.all(fire==fire2), "fire mask should not be changed by missing day"
+
+
+    no2,d,lat,lon=fio.make_anthro_mask(mday) #Handles missing day OK
+    yaa,lat,lon=fio.yearly_anthro_avg(mday)
+    avgmask=yaa>fio.__Thresh_NO2_y__
+    assert np.sum(no2)==np.sum(avgmask), "should be no extra days filtered for anthro on missing day..."
+
+    smoke,d,lat,lon=fio.make_smoke_mask(mday)
+    assert np.sum(smoke) == 0, "should be no days filtered for smoke on missing day..."
+
 def test_mask_effects(month=datetime(2005,1,1)):
     '''
         Show and count how many pixels are removed by each filter per day/month

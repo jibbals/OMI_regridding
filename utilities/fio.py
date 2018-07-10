@@ -312,18 +312,26 @@ def read_AAOD(date):
     '''
         Read OMAERUVd 1x1 degree resolution for a particular date
     '''
-    fpath=glob('Data/OMAERUVd/'+date.strftime('OMI-Aura_L3-OMAERUVd_%Ym%m%d*.he5'))[0]
-
-    if __VERBOSE__:
-        print("Reading AAOD from ",fpath)
+    fname=date.strftime('OMI-Aura_L3-OMAERUVd_%Ym%m%d*.he5')
+    fpaths=glob('Data/OMAERUVd/'+fname)
 
     # Seems that the 1x1 grid orientation is as follows:
     lats=np.linspace(-89.5,89.5,180)
     lons=np.linspace(-179.5,179.5,360)
-
     # Field names of desired fields:
     # AAOD
     field_aaod500 = '/HDFEOS/GRIDS/Aerosol NearUV Grid/Data Fields/FinalAerosolAbsOpticalDepth500'
+
+    # handle missing days of data.
+    if len(fpaths)==0:
+        print("WARNING: %s does not exist!!!!"%fname)
+        print("WARNING:     continuing with nans for %s"%date.strftime("%Y%m%d"))
+        return np.zeros([len(lats),len(lons)])+np.NaN, lats,lons
+
+    fpath=fpaths[0]
+
+    if __VERBOSE__:
+        print("Reading AAOD from ",fpath)
 
     # read he5 file...
     with h5py.File(fpath,'r') as in_f:
@@ -368,10 +376,18 @@ def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
 
         Returns firepix/km2/day or firepix/day
     '''
+    # lats are from top to bottom when read using pandas
+    # lons are from left to right
+    lats=np.linspace(89.9,-89.9,1799)
+    lons=np.linspace(-180,179.9,3600)
 
     # file looks like:
     #'Data/MOD14A1_D_FIRE/2005/MOD14A1_D_FIRE_2005-01-02.CSV'
     fpath='Data/MOD14A1_D_FIRE/'+date.strftime('%Y/MOD14A1_D_FIRE_%Y-%m-%d.CSV')
+    if not isfile(fpath):
+        print("WARNING: %s does not exist!!!!"%fpath)
+        print("WARNING:     continuing with nans for %s"%date.strftime("%Y%m%d"))
+        return np.zeros([len(lats),len(lons)])+np.NaN, lats,lons
     if __VERBOSE__:
         print("Reading ",fpath)
 
@@ -382,8 +398,7 @@ def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
     fires[fires>9000] = 0. # np.NaN # ocean squares
     fires[fires==0.1] = 0. # land squares but no fire I think...
 
-    lats=np.linspace(89.9,-89.9,1799) # lats are from top to bottom when read using pandas
-    lons=np.linspace(-180,179.9,3600) # lons are from left to right
+
 
     if not per_km2:
         # area per gridbox in km2:
@@ -598,6 +613,8 @@ def read_omhcho_day(day=datetime(2005,1,1),verbose=False):
     Read an entire day of omhcho swaths
     '''
     fnames=determine_filepath(day)
+    if len(fnames)==0:
+        print("ERROR: OMHCHO missing for %s"%day.strftime("%Y%m%d"))
     data=read_omhcho(fnames[0],verbose=verbose) # read first swath
     swths=[]
     for fname in fnames[1:]: # read the rest of the swaths
@@ -768,18 +785,19 @@ def read_omno2d(day0,dayN=None,month=False):
         fname=ddir+'OMI*%s*.he5'%date.strftime('%Ym%m%d')
         fpaths=glob(fname)
         if len(fpaths)==0:
-            print("ERROR: fname does not exist!!!!")
-            print("ERROR: need to download ", fname)
-        fpath=fpaths[0]
-        if __VERBOSE__:
-            print('reading ',fpath)
-        with h5py.File(fpath,'r') as in_f:
-            #for name in in_f[tropname]:
-            #    print (name)
-            trop=in_f[tropname].value
-            trop[trop<-1e20] = np.NaN
+            print("WARNING: %s does not exist!!!!"%fname)
+            print("WARNING:     continuing with nans for %s"%date.strftime("%Y%m%d"))
+        else:
+            fpath=fpaths[0]
+            if __VERBOSE__:
+                print('reading ',fpath)
+            with h5py.File(fpath,'r') as in_f:
+                #for name in in_f[tropname]:
+                #    print (name)
+                trop=in_f[tropname].value
+                trop[trop<-1e20] = np.NaN
 
-            data[ii]=trop
+                data[ii]=trop
 
     data=np.squeeze(data)
 
@@ -975,7 +993,10 @@ def make_smoke_mask(d0, dN=None, aaod_thresh=__Thresh_AAOD__,
         smoke=subsets['data'][0]
         lats,lons=subsets['lats'],subsets['lons']
 
-    return smoke>aaod_thresh, dates,lats,lons
+    # ignore warning from comparing NaNs to number
+    with np.errstate(invalid='ignore'):
+        mask=smoke>aaod_thresh
+    return mask, dates,lats,lons
 
 def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires__,
                    adjacent=True, use_omhchorp=False,

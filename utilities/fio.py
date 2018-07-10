@@ -766,7 +766,11 @@ def read_omno2d(day0,dayN=None,month=False):
     # filenames:
     for ii, date in enumerate(dates):
         fname=ddir+'OMI*%s*.he5'%date.strftime('%Ym%m%d')
-        fpath=glob(fname)[0]
+        fpaths=glob(fname)
+        if len(fpaths)==0:
+            print("ERROR: fname does not exist!!!!")
+            print("ERROR: need to download ", fname)
+        fpath=fpaths[0]
         if __VERBOSE__:
             print('reading ',fpath)
         with h5py.File(fpath,'r') as in_f:

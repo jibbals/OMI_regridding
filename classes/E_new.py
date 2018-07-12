@@ -36,12 +36,15 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'BG_OMI',       #  {31, 152, 152}
                 'BG_PP',        #  {31, 152, 152}
                 'BG_VCC',       #  {31, 152, 152}
-                'E_VCC_GC',        #  {31, 152, 152}
-                'E_VCC_GC_u',      #  With unfiltered by fire/smoke/anthro
+                'E_VCC_GC',     #  {31, 152, 152}
+                'E_VCC_GC_u',   #  With unfiltered by fire/smoke/anthro
+                'E_VCC_GC_LR',  #  at low resolution
                 'E_VCC_OMI',    #  {31, 152, 152}
                 'E_VCC_OMI_u',  #  E_VCC_OMI without any filters applied
+                'E_VCC_OMI_LR', #  E_VCC_OMI at low resolution
                 'E_VCC_PP',     #  {31, 152, 152}
                 'E_VCC_PP_u',   #  without using filters
+                'E_VCC_PP_LR',  #  at low resolution
                 'firefilter',   # Fire filter used for e estimates [time,lat,lon]
                 'anthrofilter', # anthro filter
                 'smearfilter',  # smearing filter
@@ -50,14 +53,19 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'VCC_PP',       # {31, 152, 152}
                 'smearing',     # {152, 152} # linearly interped from 19x19 2x2.5 resolution to higher
                 'pixels',       # OMI pixel count
+                'pixels_LR',    # OMI pixel count at low resolution
                 'pixels_PP',    # OMI pixel count using PP code
+                'pixels_PP_LR', # OMI pixel count using PP code at low resolution
                 'uncert_OMI',   # OMI grid averaged pixel uncertainty
+                'time',         # time is a dimension but also data: datetime string stored in file
+                'dates',        # datetime objects created from time field
                 ]
 __E_new_dims__=['lats',         # {152}
                 'lats_e',       # {153}
                 'lons',         # {152}
                 'lons_e',       # {153}
-                'time',         # {31}
+                'lats_lr',      # {}
+                'lons_lr',
                 ]
 
 
@@ -89,7 +97,6 @@ class E_new:
             data,attrs=fio.read_E_new_month(month=month)
             E_new_list.append(data)
         self.attributes=attrs
-        dimensions=['lats','lons','lats_e','lons_e']
 
         # Combine the data
         for key in E_new_list[0].keys():
@@ -97,12 +104,12 @@ class E_new:
                 print("Reading ",key, np.shape(E_new_list[0][key]))
 
             # Read the dimensions
-            if key in dimensions:
+            if key in __E_new_dims__:
                 setattr(self,key,E_new_list[0][key])
 
             # Read the data and append to time dimensions if there's more than
             # one month file being read
-            elif (key in ['time',]) or (key in dkeys):
+            elif (key in ['time','dates']) or (key in dkeys):
 
                 # np array of the data [time, lats, lons]
                 data=np.array(E_new_list[0][key])
@@ -157,6 +164,8 @@ class E_new:
 
         # Mask oceans with NANs
         if maskocean:
+            #oceanmask3d=np.repeat(self.oceanmask[np.newaxis,:,:],axis=0)
+            # TODO faster way..
             for i in range(np.shape(data)[0]):
                 data[i,self.oceanmask]= np.NaN
         #TEST

@@ -55,26 +55,10 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-# MISSING 3 DAYS OF OMI DATA
-mday=datetime(2006,3,1)
-# WANT TO TEST OMHCHORP CREATION:
-# reprocess.create_omhchorp(mday)
-
-#goodpix=reprocess.get_good_pixel_list(mday)
-#print(len(goodpix['lat']))
-#for a in goodpix:
-#    print(a, goodpix[a])
-# omhcho=fio.read_omhcho_day(mday) # WORKS OK
-
-#gcrs=reprocess.GC_ref_sector(mday)
-# works fine and quickly
-
-#rsc,gcrs = reprocess.reference_sector_correction(mday)
-#print(rsc.shape,gcrs.shape)
-# works fast
-
-
-reprocess.create_omhchorp(mday)
+E=E_new(d0,d3)
+for k in ['dates','time','lats']:
+    print(k, np.shape(getattr(E,k)))
+    print(getattr(E,k))
 
 ###########
 ### Record and time STUJFFS

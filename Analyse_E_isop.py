@@ -79,7 +79,7 @@ def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,12,1),region=pp.__AUSREGI
 
 
 def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
-                      drawmap=True, pname='Figs/E_new_series.png'):
+                      drawmap=True, pname='Figs/Emiss/E_new_series.png'):
     '''
         Plot the time series of E_new, eventually compare against MEGAN, etc..
     '''
@@ -98,7 +98,7 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
         pp.displaymap(region=region, subregions=subs,
                       labels=labels, linewidths=linewidths, colors=colours)
 
-        regionname='Figs/regionmap.png'
+        regionname='Figs/Emiss/regionmap.png'
         plt.title("Regions for E_isop analysis")
         plt.savefig(regionname)
         print("Saved %s"%regionname)
@@ -108,16 +108,16 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
     f,ax=plt.subplots(1,3,figsize=(16,7),sharex=True,sharey=True,squeeze=True)
 
     # Read data
-    Enew=E_new(d0,dn,dkeys=['E_isop','GC_E_isop'])
+    Enew=E_new(d0,dn,dkeys=['E_VCC_OMI','E_VCC_GC'])
 
     for i,rc in enumerate(zip(subs,colours)):
         plt.sca(ax[i])  # ax.append(plt.subplot(131+i))
         region,colour=rc
         ptsargs={'dfmt':"%b",'color':'k'}
 
-        dates, E_isop=Enew.get_series('E_isop',region=region)
-        dates, GC_E_isop=Enew.get_series('GC_E_isop',region=region)
-        units=Enew.attributes['E_isop']['units']
+        dates, E_isop=Enew.get_series('E_VCC_OMI',region=region)
+        dates, GC_E_isop=Enew.get_series('E_VCC_GC',region=region)
+        units=Enew.attributes['E_VCC_OMI']['units']
 
         # Plot time series (dots with colour of region)
         pp.plot_time_series(dates,E_isop,
@@ -153,7 +153,7 @@ def E_new_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,1),
         # Plot E_isop average
         pp.plot_time_series(mdates,GC_E_monthly,linestyle=':',xticks=xticks,
                             markeredgewidth=3, marker='x', linewidth=2,
-                            label=[None,'monthly avg. (MEGAN)'][i==1],
+                            label=[None,'monlthly avg. (GC recalc)'][i==1],
                             **ptsargs)
 
         # zero line:
@@ -240,7 +240,7 @@ def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31),
 
     # based on OMI using GC calculated yield (slope)
     Enew=E_new(day0=d0, dayn=d1)
-    New_isop=Enew.E_isop # atom c/cm2/s
+    New_isop=Enew.E_VCC_OMI # atom c/cm2/s
     New_isop=np.nanmean(New_isop,axis=0) # average over time
     omilats=Enew.lats
     omilons=Enew.lons
@@ -351,16 +351,16 @@ def All_maps(month=datetime(2005,1,1),GC=None, OMI=None, ignorePP=True, region=p
     ##
     ## READ DATA
     if GC is None:
-        GC=GC_class.GC_tavg(date=month)
+        GC=GC_class.GC_tavg(day0, dayn)
     if OMI is None:
-        OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=ignorePP)
+        OMI=omhchorp(day0,dayn,ignorePP=ignorePP)
 
     ## Plot E_new
     ##
     clims=[2e11,2e12]
     cmapname='YlGnBu'
     for smoothed in [True,False]:
-        pname='Figs/GC/E_new_%s%s.png'%(dstr,['','_smoothed'][smoothed])
+        pname='Figs/Emiss/E_new_%s%s.png'%(dstr,['','_smoothed'][smoothed])
         map_E_new(month=month, GC=GC, OMI=OMI, clims=clims, cmapname=cmapname,
                   smoothed=smoothed,pname=pname)
 
@@ -608,12 +608,14 @@ if __name__=='__main__':
     SEAus=[-41,138.75,-25,156.25]
     regions=pp.__AUSREGION__, SEAus#, JennySEA_fixed
 
-    d0=datetime(2005,1,1); dn=datetime(2005,1,31)
-    E_gc_VS_E_new(d0,dn,lowres=False)
+    d0=datetime(2005,1,1); dn=datetime(2005,12,31)
+    #E_gc_VS_E_new(d0,dn,lowres=False)
+    #map_E_new(d0)
+    #All_maps()
     #megan_SEA_regression()
     #Compare_to_daily_cycle()
     #dn=datetime(2005,12,31)
-    #E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
+    E_new_time_series(d0,dn) # Takes a few minuts (use qsub)
     #map_E_gc(month=d0,GC=GC_tavg(d0))
     #check_E_new(dn=datetime(2005,2,1))
 

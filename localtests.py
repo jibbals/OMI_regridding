@@ -61,10 +61,19 @@ mday=datetime(2006,3,1)
 # reprocess.create_omhchorp(mday)
 
 #goodpix=reprocess.get_good_pixel_list(mday)
-#print(len(goodpix))
+#print(len(goodpix['lat']))
 #for a in goodpix:
 #    print(a, goodpix[a])
 # omhcho=fio.read_omhcho_day(mday) # WORKS OK
+
+#gcrs=reprocess.GC_ref_sector(mday)
+# works fine and quickly
+
+#rsc,gcrs = reprocess.reference_sector_correction(mday)
+#print(rsc.shape,gcrs.shape)
+# works fast
+
+
 reprocess.create_omhchorp(mday)
 
 ###########

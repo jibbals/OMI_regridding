@@ -31,7 +31,7 @@ from datetime import timedelta, datetime
 
 # GLOBALS
 __VERBOSE__=True # set to true for more print statements
-__DEBUG__=False # set to true for even more print statements
+__DEBUG__=True # set to true for even more print statements
 
 # interpolate linearly to 500 points
 __RSC_lat_bins__ = np.arange(-90,90,0.36)+0.18
@@ -398,22 +398,24 @@ def create_omhchorp(date):
     omi_VCC_pp=np.zeros(omi_VC_gc.shape)+np.NaN
     omi_VCC_omi_newrsc=np.zeros(omi_VC_gc.shape)+np.NaN
 
-    for track in range(60):
-        track_inds= omi_tracks==track
-        # for each track VCC = (SC - correction) / AMF_GC
-        # If track has one or less non-nan values then skip
-        if np.isnan(omi_lats[track_inds]).all():
-            continue
-        track_rscs=[rsc_function(omi_lats[track_inds],track,k) for k in range(3)]
-        #gc_track_rsc=rsc_function(omi_lats[track_inds],track,1)
-        #pp_track_rsc=rsc_function(omi_lats[track_inds],track,2)
-        track_sc=omi_SC[track_inds]
-        # original SC corrected by our new RSC
-        omi_VCC_omi_newrsc[track_inds] = (track_sc - track_rscs[0]) / omi_AMF_omi[track_inds]
-        # GC based VCC
-        omi_VCC[track_inds]     = (track_sc - track_rscs[1]) / omi_AMF_gc[track_inds]
-        # may be dividing by nans, ignore warnings
-        omi_VCC_pp[track_inds]  = (track_sc - track_rscs[2]) / omi_AMF_pp[track_inds]
+    # skip when no omhcho data available...
+    if len(omi_lats) > 0:
+        for track in range(60):
+            track_inds= omi_tracks==track
+            # for each track VCC = (SC - correction) / AMF_GC
+            # If track has one or less non-nan values then skip
+            if np.isnan(omi_lats[track_inds]).all():
+                continue
+            track_rscs=[rsc_function(omi_lats[track_inds],track,k) for k in range(3)]
+            #gc_track_rsc=rsc_function(omi_lats[track_inds],track,1)
+            #pp_track_rsc=rsc_function(omi_lats[track_inds],track,2)
+            track_sc=omi_SC[track_inds]
+            # original SC corrected by our new RSC
+            omi_VCC_omi_newrsc[track_inds] = (track_sc - track_rscs[0]) / omi_AMF_omi[track_inds]
+            # GC based VCC
+            omi_VCC[track_inds]     = (track_sc - track_rscs[1]) / omi_AMF_gc[track_inds]
+            # may be dividing by nans, ignore warnings
+            omi_VCC_pp[track_inds]  = (track_sc - track_rscs[2]) / omi_AMF_pp[track_inds]
 
     # that should cover all good pixels - except if we had a completely bad track some day
     #assert np.sum(np.isnan(omi_VCC))==0, "VCC not created at every pixel!"
@@ -464,40 +466,43 @@ def create_omhchorp(date):
     AMF_pp  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     counts  = np.zeros([ny,nx],dtype=np.int)
     countspp  = np.zeros([ny,nx],dtype=np.int)
-    for i in range(ny):
-        for j in range(nx):
+    
+    # Skip all this if there is no omhcho data on this day
+    if len(omi_lats) > 0:
+        for i in range(ny):
+            for j in range(nx):
 
-            # how many pixels within this grid box
-            matches=(omi_lats >= lat_bounds[i]) & (omi_lats < lat_bounds[i+1]) & (omi_lons >= lon_bounds[j]) & (omi_lons < lon_bounds[j+1])
+                # how many pixels within this grid box
+                matches=(omi_lats >= lat_bounds[i]) & (omi_lats < lat_bounds[i+1]) & (omi_lons >= lon_bounds[j]) & (omi_lons < lon_bounds[j+1])
 
-            # remove clouds
-            #if remove_clouds:
-            matches = matches & cloud_filter
-            ppmatches = matches & ~np.isnan(omi_VCC_pp)
-            counts[i,j]= np.sum(matches)
-            #Different count for PP entries
-            countspp[i,j]= np.sum(ppmatches)
+                # remove clouds
+                #if remove_clouds:
+                matches = matches & cloud_filter
+                ppmatches = matches & ~np.isnan(omi_VCC_pp)
+                counts[i,j]= np.sum(matches)
+                #Different count for PP entries
+                countspp[i,j]= np.sum(ppmatches)
 
-            # Save the means of each good grid pixel
-            if counts[i,j] > 0:
-                SC[i,j]         = np.mean(omi_SC[matches])
-                VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
-                VC_omi[i,j]     = np.mean(omi_VC_omi[matches])
-                VCC_GC[i,j]     = np.mean(omi_VCC[matches]) # RSC Corrected VC_GC
-                VCC_OMI[i,j]    = np.mean(omi_VCC_OMI[matches])  # RSC corrected VC_omi
-                VCC_OMI_newrsc[i,j] = np.mean(omi_VCC_omi_newrsc[matches])  # RSC corrected VC_omi
-                cunc_omi[i,j]   = np.mean(omi_cunc[matches])
-                AMF_gc[i,j]     = np.mean(omi_AMF_gc[matches])
-                AMF_gcz[i,j]    = np.mean(omi_AMF_gcz[matches])
-                AMF_omi[i,j]    = np.mean(omi_AMF_omi[matches])
+                # Save the means of each good grid pixel
+                if counts[i,j] > 0:
+                    SC[i,j]         = np.mean(omi_SC[matches])
+                    VC_gc[i,j]      = np.mean(omi_VC_gc[matches])
+                    VC_omi[i,j]     = np.mean(omi_VC_omi[matches])
+                    VCC_GC[i,j]     = np.mean(omi_VCC[matches]) # RSC Corrected VC_GC
+                    VCC_OMI[i,j]    = np.mean(omi_VCC_OMI[matches])  # RSC corrected VC_omi
+                    VCC_OMI_newrsc[i,j] = np.mean(omi_VCC_omi_newrsc[matches])  # RSC corrected VC_omi
+                    cunc_omi[i,j]   = np.mean(omi_cunc[matches])
+                    AMF_gc[i,j]     = np.mean(omi_AMF_gc[matches])
+                    AMF_gcz[i,j]    = np.mean(omi_AMF_gcz[matches])
+                    AMF_omi[i,j]    = np.mean(omi_AMF_omi[matches])
 
-            if countspp[i,j] > 0:
+                if countspp[i,j] > 0:
 
-                VC_pp[i,j]      = np.mean(omi_VC_pp[ppmatches])
-                VCC_pp[i,j]     = np.mean(omi_VCC_pp[ppmatches]) # RSC Corrected VC_PP
-                AMF_pp[i,j]     = np.mean(omi_AMF_pp[ppmatches])
-                assert not np.isnan(VC_pp[i,j]), 'VC_PP created a nan from non-zero pixels!'
-                assert not np.isnan(VCC_pp[i,j]), 'VCC_PP created a nan from non-zero pixels!'
+                    VC_pp[i,j]      = np.mean(omi_VC_pp[ppmatches])
+                    VCC_pp[i,j]     = np.mean(omi_VCC_pp[ppmatches]) # RSC Corrected VC_PP
+                    AMF_pp[i,j]     = np.mean(omi_AMF_pp[ppmatches])
+                    assert not np.isnan(VC_pp[i,j]), 'VC_PP created a nan from non-zero pixels!'
+                    assert not np.isnan(VCC_pp[i,j]), 'VCC_PP created a nan from non-zero pixels!'
 
     outd=dict()
 

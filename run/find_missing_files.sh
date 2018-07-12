@@ -28,6 +28,17 @@ for month in `seq -w 1 12`; do
         ###
         
         ### CHECK FOR PP OUTPUTS
+        ###
+        
+        ## PP_AMF csvs created from omhcho
+        # amf_20060501.csv
+        if [[ ! -f Data/pp_amf/tropchem/amf_${year}${month}${day}.csv ]]; then
+            missing "pp_amf (pp_amfs output by pp_code read by get_good_pixels)"
+            # 2007-02-28_for_AMF.csv
+            if [[ ! -f Data/omhcho_csv/${year}-${month}-${day}_for_AMF.csv ]]; then
+                missing "omhcho_csv (pixels output by amf_calculation.py to be read by pp_code)"
+            fi
+        fi
         
         ### FILTERS FROM SATELLITE PRODUCTS
         ###

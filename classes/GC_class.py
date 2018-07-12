@@ -142,10 +142,6 @@ class GC_base:
             # Make sure array has dims: [[time,]lats,lons[,levs]]
             arr=data[key]
             if len(arr.shape) > 1:
-                print('TEST NOTES')
-                print(arr.shape)
-                print(key)
-                print('now reshaping')
                 if key in ['CHEM-L=$_OH']:
                     levdim=len(arr.shape)-1
                     keylevels=arr.shape[levdim] # sometimes 38 levels instead of 47...

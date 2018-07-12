@@ -2,12 +2,12 @@
 #PBS -P m19
 #PBS -q normal
 #PBS -N pp_trop_amf
-#PBS -l walltime=6:00:00
+#PBS -l walltime=9:00:00
 #PBS -l mem=2000MB
-#PBS -l cput=6:00:00
+#PBS -l cput=18:00:00
 #PBS -l jobfs=10MB
 #PBS -l wd
-#PBS -l ncpus=1
+#PBS -l ncpus=4
 #PBS -j oe
 
 # -P is project group to charge resource time to

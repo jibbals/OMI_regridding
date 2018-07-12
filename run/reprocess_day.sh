@@ -2,11 +2,11 @@
 #PBS -P m19
 #PBS -q normal
 #PBS -N RP_Day
-#PBS -l walltime=01:40:00
-#PBS -l mem=6000MB
-#PBS -l cput=01:40:00
+#PBS -l walltime=02:00:00
+#PBS -l mem=20000MB
+#PBS -l cput=02:40:00
 #PBS -l wd
-#PBS -l ncpus=1
+#PBS -l ncpus=2
 #PBS -j oe
 
 ##

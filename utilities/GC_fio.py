@@ -173,7 +173,18 @@ def read_Hemco_diags(d0,d1=None,month=False):
     if '0000.nc' in files[0]:
         del files[0]
 
-
+    #    # Handle if we have too many files
+    #    # split into lists of length 30, to each be read and combined afterwards
+    #    sfiles=util.list_to_lists(files,30)
+    #    datalist=[]
+    #    attrslist=[]
+    #
+    #    for i,filelist in enumerate(sfiles):
+    #        with xarray.open_mfdataset(filelist) as ds:
+    #            datai,attrsi=dataset_to_dicts(ds,['ISOP_BIOG'])
+    #            datalist.append(datai)
+    #            attrslist.append(attrsi)
+    #    # now combine the lists extending the time dimension
     with xarray.open_mfdataset(files) as ds:
         data,attrs=dataset_to_dicts(ds,['ISOP_BIOG'])
 

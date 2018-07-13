@@ -731,10 +731,41 @@ class Hemco_diag(GC_base):
             print('Reading Hemco_diag files:')
 
         # read data/attrs and initialise class:
-        data,attrs=GC_fio.read_Hemco_diags(day0,dayn,month=month)
+        #data,attrs=GC_fio.read_Hemco_diags(day0,dayn,month=month)
+        # For each month read the data
+        data_list=[]
+        months=util.list_months(day0,dayn)
+        for month in months:
+            data,attrs=GC_fio.read_Hemco_diags(month,util.last_day(month))
+            data_list.append(data)
+        datadict={}
+
+        # Combine the data
+        for key in data_list[0].keys():
+            if __VERBOSE__:
+                print("Reading ",key, np.shape(data_list[0][key]))
+
+            # Read the dimensions
+            if key in ['lat','lon']:
+                datadict[key] = data_list[0][key]
+            elif (key in ['time','ISOP_BIOG']):
+
+                # np array of the data [time, lats, lons]
+                data=np.array(data_list[0][key])
+
+                # for each extra month, append onto time dim:
+                for i in range(1,len(months)):
+                    data=np.append(data,np.array(data_list[i][key]),axis=0)
+
+                datadict[key]=data
+
+            elif __VERBOSE__:
+                print("KEY %s not being read from E_new dataset"%key )
+
         attrs['init_date']=day0
-        attrs['n_dims']=len(np.shape(data['ISOP_BIOG']))
-        super(Hemco_diag,self).__init__(data,attrs)
+        attrs['n_dims']=len(np.shape(datadict['ISOP_BIOG']))
+
+        super(Hemco_diag,self).__init__(datadict,attrs)
 
         self.n_dates=len(self.dates)
         self.n_days=len(util.list_days(self.dates[0],self.dates[-1]))
@@ -755,8 +786,8 @@ class Hemco_diag(GC_base):
         self.attrs['E_isop_bio']['units']='atomC/cm2/s'
 
         if __VERBOSE__:
-            for k in data:
-                print('  %10s %10s %s'%(k, data[k].shape, attrs[k]))
+            for k in datadict:
+                print('  %10s %10s %s'%(k, np.shape(datadict[k]), attrs[k]))
 
     def daily_LT_averaged(self,hour=13):
         '''

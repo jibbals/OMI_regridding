@@ -311,6 +311,12 @@ def list_months(day0,dayn):
     months=[d for d in days if d.day==1]
     return months
 
+def list_to_lists(mylist,chunksize=30):
+    '''
+        split long list into lists of length 30
+    '''
+    return [ mylist[start:start+chunksize] for start in range(0, len(mylist), chunksize) ]
+
 def local_time_offsets(lons,n_lats=0, astimedeltas=False):
     '''
         GMT is 12PM, AEST is + 10 hours, etc...

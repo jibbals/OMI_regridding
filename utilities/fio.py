@@ -48,7 +48,7 @@ geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
 __VERBOSE__=False
 
-__Thresh_NO2_d__ = 1e15 # daily threshhold for anthro filter
+__Thresh_NO2_d__ = 2e15 # daily threshhold for anthro filter
 __Thresh_NO2_y__ = 1.5e15 # yearly avg threshhold
 __Thresh_AAOD__  = 0.03 # AAOD smoke threshhold
 __Thresh_fires__ = 1 # active fire pixel count threshhold
@@ -492,9 +492,9 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=60, verbose=False)
             'qualityflag':qf, 'xtrackflag':xqf,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
     '''
-    
-    
-    
+
+
+
     # Total column amounts are in molecules/cm2
     field_hcho  = datafields+'ColumnAmount'
     field_ref_c = datafields+'RadianceReferenceColumnAmount'
@@ -517,7 +517,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=60, verbose=False)
     field_colUnc    = datafields+'ColumnUncertainty' # also molec/cm2
     field_fitflag   = datafields+'FitConvergenceFlag'
     field_fitRMS    = datafields+'FittingRMS'
-    
+
     ## read in file:
     with h5py.File(path,'r') as in_f:
         ## get data arrays
@@ -623,7 +623,7 @@ def read_omhcho_day(day=datetime(2005,1,1),verbose=False):
         ret['omega']=[np.zeros([47])+np.NaN]
         ret['plevels']=[np.zeros([47])+np.NaN]
         return ret
-        
+
     data=read_omhcho(fnames[0],verbose=verbose) # read first swath
     swths=[]
     for fname in fnames[1:]: # read the rest of the swaths
@@ -891,7 +891,7 @@ def read_AMF_pp(date=datetime(2005,1,1),troprun=True):
         print("WARNING:     continuing with nans for %s"%date.strftime("%Y%m%d"))
         return None, None
     #assert os.path.isfile(fname), "ERROR: file missing: %s"%fname
-    
+
     inds=[]
     amfs=[]
     with open(fname,'r') as f:

@@ -275,6 +275,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
         OMHCHORP=omhchorp(day0=day0,dayn=dayn, ignorePP=False)
     if GCB is None:
         GCB=GC_class.GC_biogenic(day0,) # data like [time,lat,lon,lev]
+    # Also use megan subset for ease of analysis later on...
+    MEGAN=GCB.hemco
 
     # subset our lats/lons
     # Arrays to be subset
@@ -455,7 +457,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     print ("TIMEIT: Took %6.2f seconds to calculate backgrounds and estimate emissions()"%elapsed)
     # should take < 1 second
 
-    # Lets save both monthly averages and the daily amounts
+    # Lets save the daily amounts
     #
 
     # Save the backgrounds, as well as units/descriptions
@@ -545,6 +547,13 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['lats_e']=util.edges_from_mids(outdata['lats'])
     outdata['lons_e']=util.edges_from_mids(outdata['lons'])
 
+    # For convenience let's save MEGAN emissions too
+    dates_megan, E_MEGAN = MEGAN.daily_LT_averaged(hour=13) # MEGAN EMISSIONS at 1300
+    E_MEGAN = E_MEGAN[:,lati_lr,:]
+    E_MEGAN = E_MEGAN[:,:,loni_lr]
+    outdata['E_MEGAN']=E_MEGAN
+    outattrs['E_MEGAN']= MEGAN.attrs['E_isop_bio']
+    outattrs['E_MEGAN']['note'] = 'Read from HEMCO diagnostic output, with 1300 saved here'
 
     # Save file, with attributes
     fio.save_to_hdf5(fname,outdata,attrdicts=outattrs,fattrs=fattrs)

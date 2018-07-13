@@ -41,6 +41,7 @@ region=pp.__AUSREGION__
 #####
 
 d0=datetime(2005,1,1)
+d1=datetime(2005,1,31)
 dstr=d0.strftime('%Y%m%d')
 mstr=d0.strftime('%Y%m')
 latres=0.25
@@ -54,6 +55,7 @@ start1=timeit.default_timer()
 ##########
 ### DO STUFFS
 ##########
+
 
 E=E_new(d0,d3)
 for k in ['dates','time','lats']:

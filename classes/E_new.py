@@ -128,8 +128,9 @@ class E_new:
 
         # True over ocean squares
         mlons,mlats=np.meshgrid(self.lons,self.lats)
+        mlons_lr,mlats_lr=np.meshgrid(self.lons_lr,self.lats_lr)
         self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=False).mask
-
+        self.oceanmask_lr=maskoceans(mlons_lr,mlats_lr,mlons_lr,inlands=False).mask
 
     def get_season(self,key,region,maskocean=True):
         '''
@@ -153,21 +154,21 @@ class E_new:
             arr[di]=arr[di]-mavg[i]
         return mavg, arr
 
-    def get_series(self, key, region, maskocean=True, testplot=False):
+    def get_series(self, key, region,lowres=False, maskocean=True, testplot=False):
         '''
             Average over region[SWNE]
             Return dates, data[key]
         '''
         data=np.copy(getattr(self,key)) # copy so we don't overwrite anything
-        lats=self.lats
-        lons=self.lons
-
+        lats=[self.lats, self.lats_lr][lowres]
+        lons=[self.lons, self.lons_lr][lowres]
+        n_times=np.shape(data)[0] # time dim
+        
         # Mask oceans with NANs
         if maskocean:
-            #oceanmask3d=np.repeat(self.oceanmask[np.newaxis,:,:],axis=0)
-            # TODO faster way..
-            for i in range(np.shape(data)[0]):
-                data[i,self.oceanmask]= np.NaN
+            oceanmask=[self.oceanmask,self.oceanmask_lr][lowres]
+            oceanmask3d=np.repeat(self.oceanmask[np.newaxis,:,:],n_times,axis=0)
+            data[oceanmask3d]= np.NaN
         #TEST
         if testplot:
             pp.createmap(data[0], lats, lons, region=region,

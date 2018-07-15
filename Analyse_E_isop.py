@@ -206,13 +206,13 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
 
         # For now just pp vs mine
         #dates, E_omi = Enew.get_series(ekeys[0],region=region)
-        dates, E_gc  = Enew.get_series(ekeys[1],region=region)
-        dates, E_pp  = Enew.get_series(ekeys[2],region=region)
+        dates, E_gc  = Enew.get_series(ekeys[1],region=region,lowres=lowres)
+        dates, E_pp  = Enew.get_series(ekeys[2],region=region,lowres=lowres)
 
         units=Enew.attributes[ekeys[0]]['units']
 
         # Plot time series (dots with colour of region)
-        pp.plot_time_series(dates,E_gc,
+        pp.plot_time_series(dates,E_gc, lowres=lowres,
                             linestyle='None', marker='.',
                             label=[None,'daily estimate'][i==1],
                             color=colour)

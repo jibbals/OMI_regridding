@@ -77,35 +77,25 @@ def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,1,31),region=pp.__AUSREGI
                           pname="Figs/Checks/swath_%s.png"%highstr,
                           **pargs)
 
-def E_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
+def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
                   lat=pp.__cities__['Syd'][0],lon=pp.__cities__['Syd'][1]-0.5,
                   locname='Sydney',
-                  MEGANHOUR=13):
+                  monthly=False, monthly_func='median'):
     '''
         Plot the time series of E_new, eventually compare against MEGAN, etc..
         Look at E_VCC_OMI, E_VCC_GC, and E_VCC_PP
 
     '''
 
-    # Read in MEGAN emission
-    Meg   = GC_class.Hemco_diag(d0,dn)
-    # Only want 1pm averaged emissions
-    if MEGANHOUR is not None:
-        dates_Meg, E_meg = Meg.daily_LT_averaged(hour=MEGANHOUR)
-    else:
-        dates_Meg   = Meg.dates
-        E_meg       = Meg.E_isop_bio
-
-    # just want index for our location
-    meglati,megloni=util.lat_lon_index(lat,lon,Meg.lats,Meg.lons)
-    E_meg=E_meg[:,meglati,:]
-    E_meg=E_meg[:,megloni]
-
     # Read in E_VCC_...
-    allkeys=['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP','E_VCC_OMI_LR','E_VCC_GC_LR','E_VCC_PP_LR']
+    allkeys=['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP','E_VCC_OMI_LR','E_VCC_GC_LR','E_VCC_PP_LR', 'E_MEGAN']
     Enew  = E_new(d0,dn,allkeys)
+    E_meg = Enew.E_MEGAN
 
     pp.InitMatplotlib() # set up plotting defaults
+    # Time series plots, how displaying each line
+    linewidths  = [2,1,1,1]
+    colours     = ['k','m','orange','red']
 
     for lowres in [False,True]:
         # Low res or not changes plotname and other stuff
@@ -113,11 +103,7 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
         pname='Figs/Emiss/E_new_series_%s%s.png'%(locname,lrstr)
         # key names for reading E_new
         ekeys = [ek+lrstr for ek in ['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP']]
-
-        # Time series plots, how displaying each line
         labels      = ['MEGAN',ekeys[0],ekeys[1],ekeys[2] ]
-        linewidths  = [2,2,2,2]
-        colours     = ['k','m','orange','red']
 
         # Plot four time series
 
@@ -126,17 +112,21 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
         E_omi, E_gc, E_pp = [getattr(Enew,ekeys[i]) for i in range(3)]
         lats,lons = [ getattr(Enew,s+str.lower(lrstr)) for s in ['lats','lons'] ]
         enewlati,enewloni = util.lat_lon_index(lat,lon,lats,lons)
+        meglati, megloni  = util.lat_lon_index(lat,lon,Enew.lats_lr,Enew.lons_lr)
 
         for i,arr in enumerate([E_meg,E_omi,E_gc,E_pp]):
-            dates=[dates_Meg,Enew.dates][i>0]
-            if i > 0:
-                arr = arr[:,enewlati,:]
-                arr = arr[:,enewloni]
-            print(arr)
-            pp.plot_time_series(dates,arr, linewidth=linewidths[i],
+            dates=Enew.dates
+            lati = [enewlati,meglati][i==0]
+            loni = [enewloni,megloni][i==0]
+            arr = arr[:,lati,:]
+            arr = arr[:,loni]
+
+            pp.plot_time_series(dates,arr,
+                                monthly=monthly,monthly_func=monthly_func,
+                                linewidth=linewidths[i],
                                 color=colours[i],label=labels[i])
 
-        plt.title(locname)
+        plt.title(locname+ ' [%.2f$^{\circ}$N, %.2f$^{\circ}$E]'%(lat,lon))
         plt.ylabel(Enew.attributes[ekeys[0]]['units'])
         plt.xlabel('time')
         plt.legend(loc='best')
@@ -148,118 +138,55 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
 
 
 def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
-                      drawmap=True, lowres=True):
+                           etype='gc', lowres=True,
+                           force_monthly=False, force_monthly_func='median'):
     '''
         Plot the time series of E_new, compare against MEGAN, etc..
         Look at E_VCC_OMI, E_VCC_GC, and E_VCC_PP
         Averaged within some regions
 
+        currently can't compare high-res E_new to low res E_MEGAN
     '''
     # Low res or not changes plotname and other stuff
     lrstr=['','_LR'][lowres]
-    pname='Figs/Emiss/E_%%s_zones%s.png'%(lrstr)
+    etype=str.upper(etype)
+    ekey= 'E_VCC_'+etype+lrstr
+    pname='Figs/Emiss/E_%s_zones%s.png'%(etype,lrstr)
 
-    # key names for reading E_new
-    ekeys = [ek+lrstr for ek in ['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP']]
-
-    # Time series plots, how displaying each line
-    labels      = ['MEGAN',ekeys[0],ekeys[1],ekeys[2] ]
-    linewidths  = [2,2,2,2]
-    colours     = ['k','m','orange','red']
 
     # Read in MEGAN emission
-    Meg   = GC_class.Hemco_diag(d0,dn)
+    #Meg   = GC_class.Hemco_diag(d0,dn)
     # Only want 1pm averaged emissions
-    dates_Meg, E_meg = Meg.daily_LT_averaged(hour=13)
+    #dates_Meg, E_meg = Meg.daily_LT_averaged(hour=13)
+    # Only want australia...
+    #subs=util.lat_lon_subset(Meg.lats,Meg.lons,region=pp.__AUSREGION__,data=[E_meg],has_time_dim=True)
+    #E_meg=subs['data'][0]
+    #meglats=subs['lats']
+    #meglons=subs['lons']
 
     # Read in E_VCC_...
-    Enew  = E_new(d0,dn,ekeys)
-    E_omi, E_gc, E_pp = [getattr(Enew,ekeys[i]) for i in range(3)]
+    Enew  = E_new(d0,dn,[ekey,'E_MEGAN'])
+    E = getattr(Enew,ekey)
+    Emeg= Enew.E_MEGAN
     lats,lons = [ getattr(Enew,s+str.lower(lrstr)) for s in ['lats','lons'] ]
+    dates=Enew.dates
 
-    # Read in MEGAN emission
-    GC_class.Hemco_diag(d0,dn)
+    plt.figure(figsize=[16,12])
+    # Plots map, and time series of E over some subzones
+    # just want Austalia and sydney area
+    subzones=pp.__subzones_AUS__[0:2]
+    colors=pp.__subzones_colours__[0:2]
+    pp.subzones(E,dates,lats,lons, comparison=Emeg, linear=True,
+                vmin=-.5e12, vmax=8e12, maskoceans=True,
+                subzones=subzones,colors=colors,
+                force_monthly=force_monthly, force_monthly_func=force_monthly_func,
+                title=ekey, comparisontitle='MEGAN')
 
-    linewidths=[2,2,2]
-
-    # Draw them if you want
-    if drawmap:
-        plt.figure()
-        region=pp.__AUSREGION__
-
-        pp.displaymap(region=region, subregions=subs,
-                      labels=labels, linewidths=linewidths, colors=colours)
-
-        regionname='Figs/Emiss/regionmap.png'
-        plt.title("Regions for E_isop analysis")
-        plt.savefig(regionname)
-        print("Saved %s"%regionname)
-        plt.close()
-
-    pp.InitMatplotlib() # set up plotting defaults
-    f,ax=plt.subplots(1,3,figsize=(16,7),sharex=True,sharey=True,squeeze=True)
-
-    for i,rc in enumerate(zip(subs,colours)):
-        plt.sca(ax[i])  # ax.append(plt.subplot(131+i))
-        region,colour=rc
-        ptsargs={'dfmt':"%b",'color':'k'}
-
-        # For now just pp vs mine
-        #dates, E_omi = Enew.get_series(ekeys[0],region=region)
-        dates, E_gc  = Enew.get_series(ekeys[1],region=region,lowres=lowres)
-        dates, E_pp  = Enew.get_series(ekeys[2],region=region,lowres=lowres)
-
-        units=Enew.attributes[ekeys[0]]['units']
-
-        # Plot time series (dots with colour of region)
-        pp.plot_time_series(dates,E_gc, lowres=lowres,
-                            linestyle='None', marker='.',
-                            label=[None,'daily estimate'][i==1],
-                            color=colour)
-
-        # Add monthly average line
-        monthly_gc=util.monthly_averaged(dates,E_gc)
-        monthly_pp=util.monthly_averaged(dates,E_pp)
-        #GC_mstd=GC_monthly['std']
-        mdates = monthly_gc['middates']
-        mgc    = monthly_gc['data']
-        mpp    = monthly_pp['data']
-        xticks=mdates[0::2]
-        mstd=monthly_gc['std'];
-
-        # Plot monthly average and std:
-        pp.plot_time_series(mdates, mgc, linewidth=2.0,
-                            label=[None,'monthly avg.'][i==1],
-                            **ptsargs)
-
-        # add +- 1 std.
-        pp.plot_time_series(mdates,mgc+mstd, linestyle='--',
-                            label=[None,'1 std.'][i==1],
-                            **ptsargs)
-        pp.plot_time_series(mdates,mgc-mstd, linestyle='--',
-                            xticks=xticks,
-                            **ptsargs)
-
-        # Plot E_isop average
-        #pp.plot_time_series(mdates,mpp,linestyle=':',xticks=xticks,
-        #                    markeredgewidth=3, marker='x', linewidth=2,
-        #                    label=[None,'monlthly avg. (GC recalc)'][i==1],
-        #                    **ptsargs)
-
-        # zero line:
-        plt.plot([mdates[0],mdates[-1]],[0.0,0.0],linestyle='--',linewidth=1)
-        # ylims
-        plt.ylim([-0.5e12, 8e12])
-        # labels
-        plt.title(labels[i])
-        if i==1: plt.legend(loc='best',prop={'size': 10})
-
-    ax[0].set_ylabel("E_isop [%s]"%units)
-    plt.suptitle("Emissions over 2005")
 
     # save figure
     plt.savefig(pname)
     print("Saved %s"%pname)
+    plt.close()
 
 def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
               smoothed=False, linear=True,
@@ -272,21 +199,24 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     dstr=month.strftime("%Y %b") # YYYY Mon
     dayn=util.last_day(day0)
     em=E_new(day0, dayn)
-    hemco=GC_class.Hemco_diag(day0,dayn)
-    _mdates, megan = hemco.daily_LT_averaged(hour=13) # 1pm local time data
+    #hemco=GC_class.Hemco_diag(day0,dayn)
+    #_mdates, megan = hemco.daily_LT_averaged(hour=13) # 1pm local time data
+    megan=em.E_MEGAN
     megan=np.nanmean(megan,axis=0) # avg over time
+    meglats=em.lats_lr
+    meglons=em.lons_lr
 
 
     titles=['OMI','OMI_u','OMI_LR','GC','GC_u','GC_LR','PP','PP_u','PP_LR']
     plt.figure(figsize=(12,24))
     plt.subplot(4,1,1)
-    pp.createmap(megan,hemco.lats,hemco.lons,title='MEGAN',
+    pp.createmap(megan,meglats,meglons,title='MEGAN',
                  vmin=clims[0], vmax=clims[1]*2, linear=linear, aus=True,
                  clabel=r'Atoms C cm$^{-2}$ s$^{-1}$', cmapname=cmapname)
 
     for i,arr in enumerate([em.E_VCC_OMI, em.E_VCC_OMI_u , em.E_VCC_OMI_LR,
                             em.E_VCC_GC, em.E_VCC_GC_u, em.E_VCC_GC_LR,
-                            em.E_VCC_PP, em.E_VCC_GC_u, em.E_VCC_PP_LR]):
+                            em.E_VCC_PP, em.E_VCC_PP_u, em.E_VCC_PP_LR]):
         plt.subplot(4,3,i+4)
         lats=[em.lats, em.lats_lr][(i%3) == 2]
         lons=[em.lons, em.lons_lr][(i%3) == 2]
@@ -702,17 +632,36 @@ if __name__=='__main__':
     SEAus=[-41,138.75,-25,156.25]
     regions=pp.__AUSREGION__, SEAus#, JennySEA_fixed
 
-    d0=datetime(2005,1,1); dn=datetime(2005,12,31)
+    d0=datetime(2005,1,1)
+    dn=datetime(2005,12,31)
+    de=datetime(2006,12,31)
     #E_gc_VS_E_new(d0,dn,lowres=False)
+
+    ## Plot showing comparison of different top-down estimates
+    ## In Isop chapter results
+    ## Ran 16/7/18
     #map_E_new(d0)
+    ## Plot showing time series within Australia, and Sydney area
+    ## In isop chapter results
+    ## Ran 16/7/18
+    #E_regional_time_series(etype='gc')
+                           #force_monthly=True, force_monthly_func='median')
+    ## Time series at a particular location
+    ## Takes a few minuts (use qsub), In isop chapter results
+    ## Ran 16/7/18
+    E_time_series(d0,de,
+                  lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
+                  locname='Wollongong',
+                  monthly=True, monthly_func='median')
+
+
     #All_maps()
     #megan_SEA_regression()
     #Compare_to_daily_cycle()
     #dn=datetime(2005,12,31)
-    map_E_new()
+    #map_E_new()
     #check_E_new()
-    E_regional_time_series()
-    E_time_series(d0,dn) # Takes a few minuts (use qsub)
+
     #map_E_gc(month=d0,GC=GC_tavg(d0))
 
 

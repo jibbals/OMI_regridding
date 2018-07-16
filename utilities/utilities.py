@@ -386,7 +386,7 @@ def match_bottom_levels(p1i, p2i, arr1i, arr2i):
 
     return p1,p2,arr1,arr2
 
-def monthly_averaged(dates,data):
+def monthly_averaged(dates,data,keep_spatial=False):
     '''
         return monthly averaged version of inputs
     '''
@@ -397,18 +397,28 @@ def monthly_averaged(dates,data):
 
     # Things that get returned
     mdates=[]
-    mdata=[]
+    mmean=[]
+    mmedian=[]
     mstd=[]
     mcount=[]
     for m in months:
         inds=(allyears==m.year) * (allmonths==m.month)
         mdates.append(m)
-        mdata.append(np.nanmean(data[inds]))
-        mstd.append(np.nanstd(data[inds]))
-        mcount.append(np.nansum(inds))
-    mdata=np.array(mdata); mstd=np.array(mstd); mcount=np.array(mcount);
+        if keep_spatial:
+            mmedian.append(np.nanmedian(data[inds],axis=0))
+            mmean.append(np.nanmean(data[inds],axis=0))
+            mstd.append(np.nanstd(data[inds],axis=0))
+            mcount.append(np.nansum(inds,axis=0))
+        else:
+            mmedian.append(np.nanmedian(data[inds]))
+            mmean.append(np.nanmean(data[inds]))
+            mstd.append(np.nanstd(data[inds]))
+            mcount.append(np.nansum(inds))
+    mmean=np.array(mmean); mstd=np.array(mstd); mcount=np.array(mcount);
+    mmedian=np.array(mmedian)
     mid_dates=[d+timedelta(days=15) for d in mdates]
-    return {'dates':mdates, 'data':mdata, 'std':mstd,'count':mcount, 'middates':mid_dates}
+    return {'dates':mdates, 'mean':mmean, 'median':mmedian,
+            'std':mstd,'count':mcount, 'middates':mid_dates}
 
 def oceanmask(lats,lons,inlands=False):
     '''

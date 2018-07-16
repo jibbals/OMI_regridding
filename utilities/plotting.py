@@ -49,6 +49,7 @@ __cities__ = {'Syd':[-33.87,151.21], # Sydney
               'Can':[-35.28,149.13], # Canberra
               'Mel':[-37.81,144.96], # Melbourne
               'Ade':[-34.93,138.60], # Adelaide
+              'Wol':[-34.43,150.89], # Wollongong
              }
 
 # Want to look at timeseires and densities in these subregions:
@@ -613,11 +614,20 @@ def plot_regression(X,Y, limsx=None, limsy=None, logscale=True,
     if diag:
         plt.plot(limsx0,limsx0,'--',color='k',label='1-1') # plot the 1-1 line for comparison
 
-def plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', xticks=None, **pltargs):
+def plot_time_series(datetimes,values,
+                     ylabel=None,xlabel=None, pname=None, legend=False, title=None,
+                     monthly=False, monthly_func='mean',
+                     xtickrot=30, dfmt='%Y%m', xticks=None, **pltargs):
     ''' plot values over datetimes '''
+
+    if monthly:
+        mdata=util.monthly_averaged(datetimes,values)
+        datetimes=mdata['middates']
+        values=mdata[monthly_func] # 'median', or 'mean'
+
     dates = mdates.date2num(datetimes)
     #plt.plot_date(dates, values, **pltargs)
-    plt.plot(dates,values,**pltargs)
+    plt.plot(dates, values, **pltargs)
 
     #Handle ticks:
     #plt.gcf().autofmt_xdate()
@@ -672,7 +682,7 @@ def subzones_map(data, lats, lons, cmapname='plasma',
 
 def subzones_TS(data, dates, lats, lons,
                 subzones=__subzones_AUS__,colors=__subzones_colours__,
-                maskoceans=True, logy=False,
+                logy=False,
                 ylims=None):
     '''
         time series for each subzone in data[time,lats,lons]
@@ -687,12 +697,6 @@ def subzones_TS(data, dates, lats, lons,
         lati,loni=util.lat_lon_range(lats,lons,subzone)
         datz = datz[:,lati,:]
         datz = datz[:,:,loni]
-
-        # Mask ocean
-        if maskoceans:
-            oceanmask=util.get_mask(datz[0],lats[lati],lons[loni],masknan=False,maskocean=True)
-            print("Removing %d ocean squares"%(365*np.sum(oceanmask)))
-            datz[:,oceanmask] = np.NaN
 
         # Also remove negatives
         #negmask=datz < 0
@@ -734,10 +738,11 @@ def subzones_TS(data, dates, lats, lons,
         #plt.ylabel(ylabel)
         plt.xlabel('Day of year')
 
-def subzones(data, dates, lats, lons, mask=None, subzones=__subzones_AUS__,
-             pname=None,title=None,suptitle=None, masktitle=None,
+def subzones(data, dates, lats, lons, comparison=None, subzones=__subzones_AUS__,
+             pname=None,title=None,suptitle=None, comparisontitle=None,
              clabel=None, vmin=None, vmax=None, linear=False,
              maskoceans=True,
+             force_monthly=False, force_monthly_func='mean',
              colors=__subzones_colours__):
     '''
         Look at map of data[time,lats,lons], draw subzones, show time series over map and subzones
@@ -746,13 +751,22 @@ def subzones(data, dates, lats, lons, mask=None, subzones=__subzones_AUS__,
         If a mask is applied then also show map and time series after applying mask
     '''
     #region=subzones[0]
-    j=int(mask is not None)
+    j=int(comparison is not None)
 
-    data_mean = np.nanmean(data,axis=0)
-
-    plt.subplot(2,j+1,1)
+    axs=[]
+    axs.append(plt.subplot(2,j+1,1))
     createmapargs={'vmin':vmin, 'vmax':vmax, 'clabel':clabel,
                  'title':title, 'suptitle':suptitle, 'linear':linear}
+
+    # Mask ocean
+    if maskoceans:
+        oceanmask=util.oceanmask(lats,lons)
+        print("Removing %d ocean squares"%(np.sum(oceanmask)))
+        data[:,oceanmask] = np.NaN
+        if comparison is not None:
+            comparison[:,oceanmask] = np.NaN
+    data_mean = np.nanmean(data,axis=0)
+
     subzones_map(data_mean,lats,lons,subzones=subzones,colors=colors,
                  **createmapargs)
 
@@ -761,24 +775,34 @@ def subzones(data, dates, lats, lons, mask=None, subzones=__subzones_AUS__,
     #          clabel=clabel, vmin=vmin,vmax=vmax,linear=linear)
 
     # For each subset here, plot the timeseries
-    plt.subplot(2,j+1,2+j)
+    if force_monthly:
+        print(np.shape(data))
+        monthly_data=util.monthly_averaged(dates,data,keep_spatial=True)
+        data=monthly_data[force_monthly_func]
+        print(np.shape(data))
+        dates=monthly_data['dates']
+        print(len(dates))
+        print(dates)
+        if comparison is not None:
+            monthly_comparison=util.monthly_averaged(dates,comparison,keep_spatial=True)
+            comparison=monthly_comparison[force_monthly_func]
+
+    axs.append(plt.subplot(2,j+1,2+j))
     subzones_TS(data, dates, lats, lons, subzones=subzones,colors=colors,
                 ylims=[vmin,vmax])
 
-    if mask is not None:
-        data_masked=np.copy(data)
-        data_masked[mask]=np.NaN
-        data_masked_mean=np.nanmean(data_masked,axis=0)
+    if comparison is not None:
+        comparison_mean=np.nanmean(comparison,axis=0)
 
-        plt.subplot(2,2,2)
-        createmapargs['title']=masktitle
+        axs.append(plt.subplot(2,2,2))
+        createmapargs['title']=comparisontitle
         createmapargs['suptitle']=None
-        subzones_map(data_masked_mean, lats, lons,
+        subzones_map(comparison_mean, lats, lons,
                      subzones=subzones,colors=colors,
                      **createmapargs)
 
-        plt.subplot(2,2,4)
-        subzones_TS(data_masked,dates,lats,lons,
+        axs.append(plt.subplot(2,2,4))
+        subzones_TS(comparison, dates, lats, lons,
                     subzones=subzones, colors=colors,
                     ylims=[vmin,vmax])
 
@@ -788,6 +812,7 @@ def subzones(data, dates, lats, lons, mask=None, subzones=__subzones_AUS__,
         print("saved ",pname)
         plt.close()
 
+    return axs
 
 
 

@@ -36,6 +36,7 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'BG_OMI',       #  {31, 152, 152}
                 'BG_PP',        #  {31, 152, 152}
                 'BG_VCC',       #  {31, 152, 152}
+                'E_MEGAN',      #  {31, 18, 19}
                 'E_VCC_GC',     #  {31, 152, 152}
                 'E_VCC_GC_u',   #  With unfiltered by fire/smoke/anthro
                 'E_VCC_GC_LR',  #  at low resolution
@@ -163,11 +164,11 @@ class E_new:
         lats=[self.lats, self.lats_lr][lowres]
         lons=[self.lons, self.lons_lr][lowres]
         n_times=np.shape(data)[0] # time dim
-        
+
         # Mask oceans with NANs
         if maskocean:
             oceanmask=[self.oceanmask,self.oceanmask_lr][lowres]
-            oceanmask3d=np.repeat(self.oceanmask[np.newaxis,:,:],n_times,axis=0)
+            oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],n_times,axis=0)
             data[oceanmask3d]= np.NaN
         #TEST
         if testplot:

@@ -56,11 +56,23 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+# Read isop file
+isop_df=fio.read_mumba_var('ISOP')
+# dates
+#timestamps = list(isop_df.index)
+dates=[ts.to_pydatetime() for ts in isop_df.index]
+isop_df.keys()
+#Index(['Height [m]', 'HCHO [ppbv]', 'CH4O [ppbv]', 'Acetonitrile [ppbv]',
+#       'Acetaldehyde [ppbv]', 'Acetone [ppbv]', 'C5H8 [ppbv]',
+#       'Methacrolein + methyl vinyl ketone [ppbv]', 'C6H6 [ppbv]',
+#       'C6H5CH3 [ppbv]', 'C8H10 [ppbv]', 'C9H12 [ppbv]',
+#       'Monoterpenes [ppbv]'],
+#      dtype='object')
 
-E=E_new(d0,d3)
-for k in ['dates','time','lats']:
-    print(k, np.shape(getattr(E,k)))
-    print(getattr(E,k))
+hcho_df=fio.read_mumba_var('CH2O')
+o3_df  =fio.read_mumba_var('O3')
+
+
 
 ###########
 ### Record and time STUJFFS

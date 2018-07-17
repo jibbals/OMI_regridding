@@ -1079,3 +1079,61 @@ def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires_
         lons=subsets['lons']
 
     return retmask, daylist, lats,lons
+
+#########################
+###  READ MUMBA FROM JENNY
+########################
+def read_mumba_var(varname):
+    # MUMBA directory
+    mumba_dir = 'Data/campaigns/MUMBA/'
+
+    def mumba_hdr(fname):
+        # Return header lines for file
+        switcher = {
+            "MUMBA_PTRMS_2012-12-21_2013-02-15.tab"   : 25,
+            "MUMBA_NOx_UOW_2012-11-21_2013-02-15.tab" : 18,
+            "MUMBA_O3_2012-12-21_2013-02-15.tab"      : 20,
+            "MUMBA_MET_2012-12-21_2013-01-25.tab"     : 18,
+        }
+        return switcher.get(fname,"error")
+
+    def get_mumba_fname(varname):
+        """Uses a GEOS-Chem species name to pick MUMBA filename"""
+        # Default return original name if not found (may be special case)
+        switcher = {
+            "CH2O"    : "MUMBA_PTRMS_2012-12-21_2013-02-15.tab",
+            "MOH"     : "MUMBA_PTRMS_2012-12-21_2013-02-15.tab",
+            "ALD2"    : "MUMBA_PTRMS_2012-12-21_2013-02-15.tab",
+            "ACET"    : "MUMBA_PTRMS_2012-12-21_2013-02-15.tab",
+            "ISOP"    : "MUMBA_PTRMS_2012-12-21_2013-02-15.tab",
+            "MVK_MACR": "MUMBA_PTRMS_2012-12-21_2013-02-15.tab",
+            "BENZ"    : "MUMBA_PTRMS_2012-12-21_2013-02-15.tab",
+            "TOLU"    : "MUMBA_PTRMS_2012-12-21_2013-02-15.tab",
+            "MONOT"   : "MUMBA_PTRMS_2012-12-21_2013-02-15.tab",
+            "NO"      : "MUMBA_NOx_UOW_2012-11-21_2013-02-15.tab",
+            "NO2"     : "MUMBA_NOx_UOW_2012-11-21_2013-02-15.tab",
+            "NOX"     : "MUMBA_NOx_UOW_2012-11-21_2013-02-15.tab",
+            "O3"      : "MUMBA_O3_2012-12-21_2013-02-15.tab",
+            "TMPU"    : "MUMBA_MET_2012-12-21_2013-01-25.tab",
+        }
+        return switcher.get(varname.upper(), "error")
+
+    # Get filename
+    fname = get_mumba_fname(varname)
+
+    # Error if this is not a MUMBA species
+    if fname == "error":
+       raise KeyError()
+
+    # Use filename to get header info
+    n_hdr = mumba_hdr(fname)
+
+    # Read using pandas
+    df = pd.read_csv(mumba_dir+fname,sep='\t',header=n_hdr,
+                     index_col=[0],parse_dates=True)
+
+    # Replace missing value with NaN
+    df = df.resample('60min').mean()
+
+    return df
+

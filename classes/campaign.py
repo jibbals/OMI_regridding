@@ -31,18 +31,17 @@ class campaign:
 
     '''
     def __init__(self):
-        self.dates=[]
+        self.dates      = []
         # site lat and lon
-        self.lat=0.0
-        self.lon=0.0
-        self.hcho=np.NaN # numpy array of measured hcho []
-        self.isop=np.NaN # '' isoprene []
-        #self.attrs={'hcho':{'units':'ppb','DL':np.NaN},
-        #            'isop':{'units':'ppb','DL':np.NaN},}
-        self.hcho_units='ppb'
-        self.isop_units='ppb'
-        self.hcho_detection_limit=np.NaN
-        self.isop_detection_limit=np.NaN
+        self.lat        = 0.0
+        self.lon        = 0.0
+        self.hcho       = np.NaN  # numpy array of measured hcho []
+        self.isop       = np.NaN  # '' isoprene []
+        self.ozone      = np.NaN #
+        self.attrs      = { 'hcho':{'units':'ppb','DL':np.NaN},
+                            'isop':{'units':'ppb','DL':np.NaN},
+                            'ozone':{'units':'ppb','DL':np.NaN},
+                           }
 
     def read_SPS(self, number=1):
         '''
@@ -92,6 +91,16 @@ class campaign:
         #self.dates=[datetime.strptime('%d/%m/%Y %H',d) for d in dates]
 
         #print(data)
+    def read_mumba(self,):
+        '''
+            Reads MUMBA campaign data isoprene, ozone, and hcho
+            Code taken from Jenny's READ_MUMBA method
+        '''
+        # Read isop file
+        isop_df=fio.read_mumba_var('ISOP')
+        hcho_df=fio.read_mumba_var('H2CO')
+        o3_df  =fio.read_mumba_var('O3')
+
     def plot_series(self,title=None,pname=None):
 
         dates=self.dates
@@ -115,8 +124,9 @@ class campaign:
             plt.close()
 
 if __name__=='__main__':
-    sps=campaign()
-    sps.read_SPS(1)
-    sps.plot_series('SPS1: 2011','sps1.png')
-    sps.read_SPS(2)
-    sps.plot_series('SPS2: 2012','sps2.png')
+    print('fun')
+    #sps=campaign()
+    #sps.read_SPS(1)
+    #sps.plot_series('SPS1: 2011','sps1.png')
+    #sps.read_SPS(2)
+    #sps.plot_series('SPS2: 2012','sps2.png')

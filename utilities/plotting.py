@@ -820,11 +820,21 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
                  clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
                  rmin=-200.0, rmax=200., amin=None, amax=None,
                  axeslist=[None,None,None,None],
-                 lower_resolution=False,
-                 linear=False, alinear=True, rlinear=True, **pltargs):
+                 maskocean=False,
+                 lower_resolution=False, normalise=False,
+                 linear=False, alinear=True, rlinear=True):
     '''
         Plot two maps and their relative and absolute differences
         axeslist can be used to redirect panels... just don't set pname
+        options:
+            maskocean: mask ocean squares to np.NaN before plotting
+            normalise: normalised by subtracting mean of whole map from each
+            lower_resolution: if different resolutions for the maps, use lower one for both
+                otherwise higher one is used for both
+            linear: bmap scale
+            alinear: absolute diff scale
+            rlinear: relative diff scale
+            axeslist = axes on which to send the plotting done in this function [11,12,21,22]
     '''
     A=datas[0]
     B=datas[1]
@@ -832,14 +842,6 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     Alons=lons[0]
     Blats=lats[1]
     Blons=lons[1]
-    if vmax is None:
-        vmax = np.nanmax(np.array(np.nanmax(A),np.nanmax(B)))
-    if vmin is None:
-        vmin = np.nanmin(np.array(np.nanmin(A),np.nanmin(B)))
-    if amax is None:
-        amax = vmax
-    if amin is None:
-        amin = -vmax
 
 
     # regrid the lower resolution data to upper unless flag set
@@ -861,6 +863,24 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
             Alats,Alons=Blats,Blons
     lats=Alats
     lons=Alons
+
+    if maskocean:
+        oceanmask=util.oceanmask(lats,lons)
+        A[oceanmask]=np.NaN
+        B[oceanmask]=np.NaN
+    if normalise:
+        A = A-np.nanmean(A)
+        B = B-np.nanmean(B)
+        linear=True # hard to use log scale centred around 0
+
+    if vmax is None:
+        vmax = np.nanmax(np.array(np.nanmax(A),np.nanmax(B)))
+    if vmin is None:
+        vmin = np.nanmin(np.array(np.nanmin(A),np.nanmin(B)))
+    if amax is None:
+        amax = vmax
+    if amin is None:
+        amin = -vmax
 
     # set up plot
     f,axes=plt.subplots(2,2,figsize=(16,14))

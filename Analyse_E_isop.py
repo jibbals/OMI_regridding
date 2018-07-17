@@ -237,9 +237,8 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     print('SAVED ', pname)
 
 
-def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31),
-                  lowres=True,
-                  smoothed=False,
+def MEGAN_vs_E_new(d0=datetime(2006,1,1), d1=datetime(2006,1,31),
+                  key='E_VCC_GC_LR',
                   region=pp.__AUSREGION__):
     '''
         Plot E_gc, E_new, diff, ratio
@@ -251,92 +250,105 @@ def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31),
         print("running Analyse_E_isop.E_gc_VS_E_new from %s to %s"%(d0, d1))
 
     ## READ DATA
-    GC=GC_class.Hemco_diag(day0=d0,dayn=d1,month=False)
-    gcdays, Megan_isop=GC.daily_LT_averaged(hour=13) # atomC/cm2/s
-    # subset to region
-    lati,loni=util.lat_lon_range(GC.lats,GC.lons,region=region)
-    latsgc=GC.lats[lati]
-    lonsgc=GC.lons[loni]
-    Megan_isop=Megan_isop[:,lati,:]
-    Megan_isop=Megan_isop[:,:,loni]
-    Megan_isop=np.mean(Megan_isop,axis=0) # average over time
-    Megan_isop_compare=Megan_isop
+    #    GC=GC_class.Hemco_diag(day0=d0,dayn=d1,month=False)
+    #    gcdays, Megan_isop=GC.daily_LT_averaged(hour=13) # atomC/cm2/s
+    #    # subset to region
+    #    lati,loni=util.lat_lon_range(GC.lats,GC.lons,region=region)
+    #    latsgc=GC.lats[lati]
+    #    lonsgc=GC.lons[loni]
+    #    Megan_isop=Megan_isop[:,lati,:]
+    #    Megan_isop=Megan_isop[:,:,loni]
+    #    Megan_isop=np.mean(Megan_isop,axis=0) # average over time
+    #    Megan_isop_compare=Megan_isop
 
     # based on OMI using GC calculated yield (slope)
-    Enew=E_new(day0=d0, dayn=d1)
-    New_isop=Enew.E_VCC_OMI # atom c/cm2/s
+    d0s=d0.strftime("%Y%m%d")
+    d1s=d1.strftime("%Y%m%d")
+    Enew=E_new(day0=d0, dayn=d1,dkeys=[key,'E_MEGAN'])
+    New_isop=getattr(Enew,key) # atom c/cm2/s
     New_isop=np.nanmean(New_isop,axis=0) # average over time
-    omilats=Enew.lats
-    omilons=Enew.lons
-    New_isop_compare=New_isop
+    lats,lons = Enew.lats, Enew.lons
+    lowres=False
+    if '_LR' in key:
+        lats=Enew.lats_lr
+        lons=Enew.lons_lr
+        lowres=True
+    MEGAN = np.nanmean(Enew.E_MEGAN,axis=0)
+    meglats,meglons=Enew.lats_lr,Enew.lons_lr
 
 
-    if lowres:
-        # map higher res to lower res
-        New_isop_compare = util.regrid_to_lower(New_isop,omilats,omilons,GC.lats_e,GC.lons_e)
-        New_isop_compare=New_isop_compare[lati,:]
-        New_isop_compare=New_isop_compare[:,loni]
-        lats,lons=latsgc,lonsgc
-    else:
-        # map the lower resolution data onto the higher resolution data:
-        #Egc_up=Megan_isop
-        #if len(omilats) > len(latsgc):
-        Megan_isop_compare = util.regrid(Megan_isop,latsgc,lonsgc,omilats,omilons)
-        lats,lons=omilats,omilons
-
-
-
-    ## First plot maps of emissions:
-    ##
-    plt.figure(figsize=(16,12))
-    vlinear=False # linear flag for plot functions
-    clims=[1e12,2e14] # map min and max
-    amin,amax=-1e12, 3.5e12 # absolute diff min and max
-    rmin,rmax=0, 10 # ratio min and max
-    cmapname='PuRd'
-
-    # start with E_GC:
-    plt.subplot(221)
-    pp.createmap(Megan_isop,latsgc,lonsgc,vmin=clims[0],vmax=clims[1],GC_shift=True,
-                 linear=vlinear,region=region,smoothed=smoothed,
-                 cmapname=cmapname)
-
-    # then E_new
-    plt.subplot(222)
-    pp.createmap(New_isop,omilats,omilons,vmin=clims[0],vmax=clims[1],
-                 linear=vlinear,region=region,smoothed=smoothed,
-                 cmapname=cmapname)
-
-    ## Difference and ratio:
-    ##
-    cmapname='jet'
-    ## Diff map:
-    plt.subplot(223)
-    title=r'E$_{MEGAN} - $E$_{new}$ '
-    args={'region':region, 'clabel':r'atoms C cm$^{-2}$ s$^{-1}$',
-          'linear':True, 'lats':lats, 'lons':lons,
-          'smoothed':smoothed, 'title':title, 'cmapname':cmapname,
-          'vmin':amin, 'vmax':amax}
-    pp.createmap(Megan_isop_compare - New_isop_compare, **args)
-
-    ## Ratio map:
-    plt.subplot(224)
-    args['title']=r"$E_{MEGAN} / E_{OMI}$"
-    args['vmin']=rmin; args['vmax']=rmax
-    args['clabel']="ratio"
-    pp.createmap(Megan_isop_compare / New_isop_compare, **args)
-
-
-    # SAVE THE FIGURE:
+    # Compare megan and E_new
+    pname='Figs/Emiss/MEGAN_vs_%s_%s-%s.png'%(key,d0s,d1s)
+    pp.compare_maps([MEGAN, New_isop],[lats,meglats],[lons,meglons], pname=pname,
+                    titles=['MEGAN',key], suptitle='Emissions Averaged from %s to %s'%(d0s,d1s),
+                    clabel=Enew.attributes['E_MEGAN']['units'],
+                    lower_resolution=lowres, linear=True,
+                    maskocean=True, normalise=False)
+    # Compare megan and E_new after normalising
+    pname='Figs/Emiss/MEGAN_vs_%s_%s-%s_normalised.png'%(key,d0s,d1s)
+    pp.compare_maps([MEGAN, New_isop],[lats,meglats],[lons,meglons], pname=pname,
+                    titles=['MEGAN',key], suptitle='Emissions Averaged from %s to %s, normalised by means'%(d0s,d1s),
+                    clabel=Enew.attributes['E_MEGAN']['units'],
+                    lower_resolution=lowres, linear=True,
+                    maskocean=True, normalise=True)
+    #    compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
+    #                 clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
+    #                 rmin=-200.0, rmax=200., amin=None, amax=None,
+    #                 axeslist=[None,None,None,None],
+    #                 maskocean=False,
+    #                 lower_resolution=False, normalise=False,
+    #                 linear=False, alinear=True, rlinear=True):
+    #    ## First plot maps of emissions:
+    #    ##
+    #    plt.figure(figsize=(16,12))
+    #    vlinear=False # linear flag for plot functions
+    #    clims=[1e12,2e14] # map min and max
+    #    amin,amax=-1e12, 3.5e12 # absolute diff min and max
+    #    rmin,rmax=0, 10 # ratio min and max
+    #    cmapname='PuRd'
     #
-    suptitle='GEOS-Chem (gc) vs OMI for %s'%yyyymon
-    plt.suptitle(suptitle)
-    fname='Figs/GC/E_Comparison_%s%s%s.png'%(dstr,
-                                             ['','_smoothed'][smoothed],
-                                             ['','_lowres'][lowres])
-    plt.savefig(fname)
-    print("SAVED FIGURE: %s"%fname)
-    plt.close()
+    #    # start with E_GC:
+    #    plt.subplot(221)
+    #    pp.createmap(Megan_isop,latsgc,lonsgc,vmin=clims[0],vmax=clims[1],GC_shift=True,
+    #                 linear=vlinear,region=region,smoothed=smoothed,
+    #                 cmapname=cmapname)
+    #
+    #    # then E_new
+    #    plt.subplot(222)
+    #    pp.createmap(New_isop,omilats,omilons,vmin=clims[0],vmax=clims[1],
+    #                 linear=vlinear,region=region,smoothed=smoothed,
+    #                 cmapname=cmapname)
+    #
+    #    ## Difference and ratio:
+    #    ##
+    #    cmapname='jet'
+    #    ## Diff map:
+    #    plt.subplot(223)
+    #    title=r'E$_{MEGAN} - $E$_{new}$ '
+    #    args={'region':region, 'clabel':r'atoms C cm$^{-2}$ s$^{-1}$',
+    #          'linear':True, 'lats':lats, 'lons':lons,
+    #          'smoothed':smoothed, 'title':title, 'cmapname':cmapname,
+    #          'vmin':amin, 'vmax':amax}
+    #    pp.createmap(Megan_isop_compare - New_isop_compare, **args)
+    #
+    #    ## Ratio map:
+    #    plt.subplot(224)
+    #    args['title']=r"$E_{MEGAN} / E_{OMI}$"
+    #    args['vmin']=rmin; args['vmax']=rmax
+    #    args['clabel']="ratio"
+    #    pp.createmap(Megan_isop_compare / New_isop_compare, **args)
+    #
+    #
+    #    # SAVE THE FIGURE:
+    #    #
+    #    suptitle='GEOS-Chem (gc) vs OMI for %s'%yyyymon
+    #    plt.suptitle(suptitle)
+    #    fname='Figs/GC/E_Comparison_%s%s%s.png'%(dstr,
+    #                                             ['','_smoothed'][smoothed],
+    #                                             ['','_lowres'][lowres])
+    #    plt.savefig(fname)
+    #    print("SAVED FIGURE: %s"%fname)
+    #    plt.close()
 
     ## PRINT EXTRA INFO
     #
@@ -348,11 +360,11 @@ def E_gc_VS_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31),
         #for k,v in Enew.items():
         #    print ("    %s, %s, mean=%.3e"%(k, str(v.shape), np.nanmean(v)))
 
-    # Print some diagnostics here.
-    for l,e in zip(['Enew','E_gc'],[New_isop_compare,Megan_isop_compare]):
-        print("%s: %s    (%s)"%(l,str(e.shape),dstr))
-        print("    Has %d nans"%np.sum(np.isnan(e)))
-        print("    Has %d negatives"%np.sum(e<0))
+    #    # Print some diagnostics here.
+    #    for l,e in zip(['Enew','E_gc'],[New_isop_compare,Megan_isop_compare]):
+    #        print("%s: %s    (%s)"%(l,str(e.shape),dstr))
+    #        print("    Has %d nans"%np.sum(np.isnan(e)))
+    #        print("    Has %d negatives"%np.sum(e<0))
 
 
     # corellation
@@ -635,12 +647,17 @@ if __name__=='__main__':
     d0=datetime(2005,1,1)
     dn=datetime(2005,12,31)
     de=datetime(2006,12,31)
-    #E_gc_VS_E_new(d0,dn,lowres=False)
+
+    ## Plot MEGAN vs E_new (key)
+    ## compare megan to a top down estimate, both spatially and temporally
+    ## Ran 17/7/18 for Jenny jan06 check
+    MEGAN_vs_E_new(datetime(2006,1,1),datetime(2006,1,31))
 
     ## Plot showing comparison of different top-down estimates
     ## In Isop chapter results
-    ## Ran 16/7/18
-    #map_E_new(d0)
+    ## Ran 17/7/18 for jan06 check for Jenny
+    #map_E_new(datetime(2006,1,1))
+
     ## Plot showing time series within Australia, and Sydney area
     ## In isop chapter results
     ## Ran 16/7/18
@@ -649,10 +666,10 @@ if __name__=='__main__':
     ## Time series at a particular location
     ## Takes a few minuts (use qsub), In isop chapter results
     ## Ran 16/7/18
-    E_time_series(d0,de,
-                  lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
-                  locname='Wollongong',
-                  monthly=True, monthly_func='median')
+    #E_time_series(d0,de,
+    #              lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
+    #              locname='Wollongong',
+    #              monthly=True, monthly_func='median')
 
 
     #All_maps()

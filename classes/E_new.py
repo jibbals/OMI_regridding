@@ -18,6 +18,7 @@ from mpl_toolkits.basemap import maskoceans #Basemap, maskoceans
 
 import numpy as np
 from datetime import datetime#, timedelta
+from scipy.constants import N_A as N_avegadro
 
 # Local libraries
 # my file reading library
@@ -39,13 +40,13 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'E_MEGAN',      #  {31, 18, 19}
                 'E_VCC_GC',     #  {31, 152, 152}
                 'E_VCC_GC_u',   #  With unfiltered by fire/smoke/anthro
-                'E_VCC_GC_LR',  #  at low resolution
+                'E_VCC_GC_lr',  #  at low resolution
                 'E_VCC_OMI',    #  {31, 152, 152}
                 'E_VCC_OMI_u',  #  E_VCC_OMI without any filters applied
-                'E_VCC_OMI_LR', #  E_VCC_OMI at low resolution
+                'E_VCC_OMI_lr', #  E_VCC_OMI at low resolution
                 'E_VCC_PP',     #  {31, 152, 152}
                 'E_VCC_PP_u',   #  without using filters
-                'E_VCC_PP_LR',  #  at low resolution
+                'E_VCC_PP_lr',  #  at low resolution
                 'firefilter',   # Fire filter used for e estimates [time,lat,lon]
                 'anthrofilter', # anthro filter
                 'smearfilter',  # smearing filter
@@ -54,19 +55,21 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'VCC_PP',       # {31, 152, 152}
                 'smearing',     # {152, 152} # linearly interped from 19x19 2x2.5 resolution to higher
                 'pixels',       # OMI pixel count
-                'pixels_LR',    # OMI pixel count at low resolution
+                'pixels_lr',    # OMI pixel count at low resolution
                 'pixels_PP',    # OMI pixel count using PP code
-                'pixels_PP_LR', # OMI pixel count using PP code at low resolution
+                'pixels_PP_lr', # OMI pixel count using PP code at low resolution
                 'uncert_OMI',   # OMI grid averaged pixel uncertainty
                 'time',         # time is a dimension but also data: datetime string stored in file
                 'dates',        # datetime objects created from time field
                 ]
-__E_new_dims__=['lats',         # {152}
-                'lats_e',       # {153}
-                'lons',         # {152}
-                'lons_e',       # {153}
-                'lats_lr',      # {}
-                'lons_lr',
+__E_new_dims__=['lats',         # 0.25x0.3125 resolution
+                'lats_e',       # edges
+                'lons',         #
+                'lons_e',       #
+                'lats_lr',      # 2x2.5 resolution
+                'lons_lr',      # 2x2.5 resolution
+                'SA',           # Surface area [lats,lons] km2
+                'SA_lr',        # low res
                 ]
 
 
@@ -132,6 +135,20 @@ class E_new:
         mlons_lr,mlats_lr=np.meshgrid(self.lons_lr,self.lats_lr)
         self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=False).mask
         self.oceanmask_lr=maskoceans(mlons_lr,mlats_lr,mlons_lr,inlands=False).mask
+
+        if not hasattr(self,'SA'):
+            self.SA = util.area_grid(self.lats,self.lons)
+            self.SA_lr = util.area_grid(self.lats_lr,self.lons_lr)
+        ## conversions to kg/s
+        # [atom C / cm2 / s ] * 1/5 * cm2/km2 * km2 * kg/atom_isop
+        # = isoprene kg/s
+        # kg/atom_isop = grams/mole * mole/molec * kg/gram
+        kg_per_atom = util.__grams_per_mole__['isop'] * 1.0/N_avegadro * 1e-3
+        conversion= 1./5.0 * 1e10 * self.SA * kg_per_atom
+        conversion_lr = 1./5.0 * 1e10 * self.SA_lr * kg_per_atom
+        self.conversion_to_kg    = np.repeat(conversion[np.newaxis,:,:],len(self.dates),axis=0)
+        self.conversion_to_kg_lr = np.repeat(conversion_lr[np.newaxis,:,:],len(self.dates),axis=0)
+
 
     def get_season(self,key,region,maskocean=True):
         '''

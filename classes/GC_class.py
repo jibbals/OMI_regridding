@@ -894,8 +894,9 @@ class GC_biogenic:
             Notes:
                 Slope = Yield_isop / k_hcho
                 HCHO: molec/cm2
-                E_isop: kgC/cm2/s
-                    Converted to atom C/cm2/s in script.
+                E_isop: atomC/cm2/s
+                b: molec/cm2
+                S: s*molec/atomC
 
             Return {'lats','lons','r':regression, 'b':bg, 'slope':slope}
 

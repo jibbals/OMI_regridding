@@ -80,7 +80,7 @@ def Yield(H, k_H, I, k_I):
     #Return the yields
     return Y
 
-def Emissions(day, GC_biog, OMI, region=pp.__AUSREGION__):
+def OLD_Emissions(day, GC_biog, OMI, region=pp.__AUSREGION__):
     '''
         Return one day of emissions estimates
             Uses one month of GEOS-Chem (GC) estimated 'slope' for Y_hcho
@@ -204,43 +204,6 @@ def Emissions(day, GC_biog, OMI, region=pp.__AUSREGION__):
         minmeanmax=(np.nanmin(GC_slope),np.nanmean(GC_slope),np.nanmax(GC_slope))
         print("min/mean/max GC_slope: %1.1e/%1.1e/%1.1e"%minmeanmax)
 
-    # Determine background using region latitude bounds
-    omi_background = OMI.get_background_array(lats=omi_lats,lons=omi_lons)
-    attrs["background"]={"units":"molec HCHO/cm2",
-        "desc":"background from recalculated OMI HCHO swathes"}
-
-    ## Calculate Emissions from these
-    ##
-
-    # \Omega_{HCHO} = S \times E_{isop} + B
-    # E_isop = (Column_hcho - B) / S
-    E_new = (omi_hcho - omi_background) / GC_slope
-    attrs["E_isop"]={"units":"atom C/cm2/s",
-                     "desc" :"Emissions estimated using OMI_HCHO=S_GC * E_isop + OMI_BG"}
-
-    # store GC_background for comparison
-    GC_background=S_model['b']
-
-    ## Calculate in kg/s for each grid box:
-    # [atom C / cm2 / s ] * 1/5 * cm2/km2 * km2 * kg/atom_isop
-    # = isoprene kg/s
-    # kg/atom_isop = grams/mole * mole/molec * kg/gram
-    kg_per_atom = util.__grams_per_mole__['isop'] * 1.0/N_avegadro * 1e-3
-    conversion= 1./5.0 * 1e10 * omi_SA * kg_per_atom
-    E_isop_kgs=E_new*conversion
-    GC_E_isop_kgs=GC_E_isop*conversion
-    attrs["E_isop_kg"]={"units":"kg/s",
-        "desc":"emissions/cm2 multiplied by area"}
-    attrs["GC_E_isop_kg"]={"units":"kg/s",
-        "desc":"emissions/cm2 multiplied by area"}
-
-    return {'E_isop':E_new, 'E_isop_kg':E_isop_kgs,
-            'GC_E_isop':GC_E_isop, 'GC_E_isop_kg':GC_E_isop_kgs,
-            'lats':omi_lats, 'lons':omi_lons, 'background':omi_background,
-            'GC_background':GC_background, 'GC_slope':GC_slope,
-            'lati':omi_lati,'loni':omi_loni,'gridentries':gridentries,
-            'attributes':attrs}
-
 
 def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                           region=pp.__AUSREGION__):
@@ -294,6 +257,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     omilons=OMHsubsets['lons']
     omilati=OMHsubsets['lati']
     omiloni=OMHsubsets['loni']
+
 
     # Also will be doing calculation on low resolution
     # get GMAO grid at GC resolution
@@ -349,6 +313,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     E_pp_u      = np.zeros(out_shape) + np.NaN
     E_omi_u     = np.zeros(out_shape) + np.NaN
 
+    # backgrounds based on amf
     BG_VCC      = np.zeros(out_shape) + np.NaN
     BG_PP       = np.zeros(out_shape) + np.NaN
     BG_OMI      = np.zeros(out_shape) + np.NaN
@@ -483,26 +448,26 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['E_VCC_GC_u']   = E_gc_u
     outdata['E_VCC_PP_u']   = E_pp_u
     outdata['E_VCC_OMI_u']  = E_omi_u
-    outdata['E_VCC_GC_LR']  = E_gc_lr
-    outdata['E_VCC_PP_LR']  = E_pp_lr
-    outdata['E_VCC_OMI_LR'] = E_omi_lr
-    outattrs['E_VCC_GC']    = {'units':'molec OR atom C???/cm2/s',
+    outdata['E_VCC_GC_lr']  = E_gc_lr
+    outdata['E_VCC_PP_lr']  = E_pp_lr
+    outdata['E_VCC_OMI_lr'] = E_omi_lr
+    outattrs['E_VCC_GC']    = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope'}
-    outattrs['E_VCC_PP']    = {'units':'molec OR atom C??/cm2/s',
+    outattrs['E_VCC_PP']    = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC_PP and GC_slope'}
-    outattrs['E_VCC_OMI']   = {'units':'molec OR/cm2/s',
+    outattrs['E_VCC_OMI']   = {'units':'atomC/cm2/s',
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope'}
-    outattrs['E_VCC_GC_u']  = {'units':'molec OR atom C???/cm2/s',
+    outattrs['E_VCC_GC_u']  = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope, unmasked by fire or anthro'}
-    outattrs['E_VCC_PP_u']  = {'units':'molec OR atom C??/cm2/s',
+    outattrs['E_VCC_PP_u']  = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC_PP and GC_slope, unmasked by fire or anthro'}
-    outattrs['E_VCC_OMI_u'] = {'units':'molec/cm2/s',
+    outattrs['E_VCC_OMI_u'] = {'units':'atomC/cm2/s',
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope, unmasked by fire or anthro'}
-    outattrs['E_VCC_GC_LR'] = {'units':'molec OR atom C???/cm2/s',
+    outattrs['E_VCC_GC_lr'] = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope, binned after filtering'}
-    outattrs['E_VCC_PP_LR'] = {'units':'molec OR atom C??/cm2/s',
+    outattrs['E_VCC_PP_lr'] = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC_PP and GC_slope, binned after filtering'}
-    outattrs['E_VCC_OMI_LR']= {'units':'molec/cm2/s',
+    outattrs['E_VCC_OMI_lr']= {'units':'atomC/cm2/s',
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope, binned after filtering'}
 
     # Extras like pixel counts etc..
@@ -510,9 +475,11 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['anthrofilter'] = anthrofilter.astype(np.int)
     outdata['smearfilter']  = smearfilter.astype(np.int)
     outdata['pixels']       = pixels
+    outdata['pixels_u']     = pixels_u
     outdata['pixels_PP']    = pixels_PP
-    outdata['pixels_LR']    = pixels_lr
-    outdata['pixels_PP_LR'] = pixels_PP_lr
+    outdata['pixels_PP_u']  = pixels_PP_u
+    outdata['pixels_lr']    = pixels_lr
+    outdata['pixels_PP_lr'] = pixels_PP_lr
     outdata['uncert_OMI']   = uncert
     outattrs['firefilter']  = {'units':'N/A',
                                'desc':'Squares with more than one fire (over today or last two days, in any adjacent square) or AAOD greater than %.1f'%(fio.__Thresh_AAOD__)}
@@ -520,15 +487,19 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                                'desc':'Squares with tropNO2 from OMI greater than %.1e or yearly averaged tropNO2 greater than %.1e'%(fio.__Thresh_NO2_d__,fio.__Thresh_NO2_y__)}
     outattrs['smearfilter'] = {'units':'N/A',
                                'desc':'Squares where smearing greater than %.1f'%(__Thresh_Smearing__)}
-    outattrs['uncert_OMI']  = {'units':'?? molec/cm2 ??',
+    outattrs['uncert_OMI']  = {'units':'molec/cm2',
                                'desc':'OMI pixel uncertainty averaged for each gridsquare'}
     outattrs['pixels']      = {'units':'n',
                                'desc':'OMI pixels used for gridsquare VC'}
+    outattrs['pixels_u']    = {'units':'n',
+                               'desc':'OMI pixels used for gridsquares, before applying filters'}
     outattrs['pixels_PP']   = {'units':'n',
                                'desc':'OMI pixels after PP code used for gridsquare VC'}
-    outattrs['pixels_LR']   = {'units':'n',
+    outattrs['pixels_PP_u'] = {'units':'n',
+                               'desc':'OMI pixels after PP code used for gridsquares, before applying filters'}
+    outattrs['pixels_lr']   = {'units':'n',
                                'desc':'OMI pixels used for gridsquare VC after filtering and at low resolution'}
-    outattrs['pixels_PP_LR']= {'units':'n',
+    outattrs['pixels_PP_lr']= {'units':'n',
                                'desc':'OMI pixels after PP code used for gridsquare VC after filtering and at low resolution'}
 
     # Adding time dimension (needs to be utf8 for h5 files)
@@ -546,6 +517,15 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['lons_lr']=lons_lr
     outdata['lats_e']=util.edges_from_mids(outdata['lats'])
     outdata['lons_e']=util.edges_from_mids(outdata['lons'])
+    SA = util.area_grid(omilats,omilons) # km2
+    SA_lr = util.area_grid(lats_lr,lons_lr)
+    outdata['SA']=SA
+    outdata['SA_lr']=SA_lr
+    outattrs['SA']={'units':'km2','desc':'surface area (if earth was a sphere)'}
+    outattrs['lats']={'units':'degrees north','desc':'grid cell midpoints'}
+    outattrs['lons']={'units':'degrees east','desc':'grid cell midpoints'}
+    outattrs['lats_e']={'units':'degrees north','desc':'grid cell edges'}
+    outattrs['lons_e']={'units':'degrees east','desc':'grid cell edges'}
 
     # For convenience let's save MEGAN emissions too
     dates_megan, E_MEGAN = MEGAN.daily_LT_averaged(hour=13) # MEGAN EMISSIONS at 1300
@@ -564,6 +544,7 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
                     region=pp.__AUSREGION__, ignorePP=False):
     '''
         Store many months of new emissions estimates into he5 files
+        Just a wrapper for store_emissions_month which handles 1 to many months
     '''
 
     # If just a day is input, then save a month

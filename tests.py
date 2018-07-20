@@ -103,7 +103,7 @@ def check_HEMCO_restarts():
             trp_mean=np.nanmean(trp[name])
             print(name, 'trop', trp[name].shape ,trp_mean)
             print(['NOT EQUAL','EQUAL'][np.isclose(trp_mean,ucx_mean)])
-        #createmap(ucx[
+
     return None
 
 
@@ -1663,14 +1663,14 @@ if __name__ == '__main__':
     #####################
 
     # Plot E_new and stdev of E_new (all 3 types)
-    test_E_new.Summary_E_new() # Last run
-    
+    #test_E_new.Summary_E_new() # Last run
+
     # check VCC output
-    test_E_new.VCC_check()
-    
+    #test_E_new.VCC_check()
+
     #compare difference between VCCs
-    test_E_new.VCC_comparison()
-    
+    #test_E_new.VCC_comparison()
+
     #####################
     ### Files tests
     #####################
@@ -1703,8 +1703,10 @@ if __name__ == '__main__':
     #[test_filters.HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=datetime(2005,2,28),subset=v) for v in [0,1,2]] # Run over three subsets
 
     # Test how many pixels are lost to filtering...
-    # Also show affect on regions
-    test_filters.test_mask_effects()                # Run 2/7/18 (TODO: Update to add table of data)
+    # Also show affect on regions            # Run 19/7/18 (TODO: Update to add table of data)
+    #test_filters.test_mask_effects()
+    # How mnay pixels are filtered out?     # run 19/7/18
+    test_filters.show_mask_filtering(datetime(2005,1,1),datetime(2006,1,1))
 
     ######
     ### Tests to be sorted into files

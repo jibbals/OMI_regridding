@@ -254,7 +254,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
               vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
               clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
-              cbarorient='bottom', set_bad=None,
+              cbarorient='bottom', set_bad=None, set_under=None, set_over=None,
               pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None):
     '''
@@ -359,15 +359,16 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         cmapname = matplotlib.rcParams['image.cmap']
 
     cmap=plt.cm.cmap_d[cmapname]
-
     cmap.set_under(cmap(0.0))
     cmap.set_over(cmap(1.0))
+
 
     if set_bad is not None:
         cmap.set_bad(set_bad,alpha=0.0)
 
     pcmeshargs.update({'vmin':vmin, 'vmax':vmax, 'clim':(vmin, vmax),
-                'latlon':latlon, 'cmap':cmap})
+                'latlon':latlon, 'cmap':cmap, })
+
 
     #force nan into any pixel with nan results, so color is not plotted there...
     mdata=np.ma.masked_invalid(data) # mask non-finite elements
@@ -381,6 +382,10 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
     #    print(np.shape(arr))
     cs=m.pcolormesh(mlons_e, mlats_e, mdata, **pcmeshargs)
     # colour limits for contour mesh
+    if set_over is not None:
+        cs.cmap.set_over(set_over)
+    if set_under is not None:
+        cs.cmap.set_under(set_under)
     cs.set_clim(vmin,vmax)
 
 
@@ -398,6 +403,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         cbargs={'format':cbarfmt,
                 'size':'5%', 'pad':'1%', 'extend':'both'}
         cb=m.colorbar(cs, cbarorient, **cbargs)
+
 
         if clabel is not None:
             cb.set_label(clabel)

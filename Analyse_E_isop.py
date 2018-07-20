@@ -79,16 +79,19 @@ def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,1,31),region=pp.__AUSREGI
 
 def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
                   lat=pp.__cities__['Syd'][0],lon=pp.__cities__['Syd'][1]-0.5,
-                  locname='Sydney',
+                  locname='Sydney',count=False,
                   monthly=False, monthly_func='median'):
     '''
         Plot the time series of E_new, eventually compare against MEGAN, etc..
         Look at E_VCC_OMI, E_VCC_GC, and E_VCC_PP
 
+        Add vertical lines for monthly uncertainty(stdev,)
+
     '''
 
     # Read in E_VCC_...
-    allkeys=['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP','E_VCC_OMI_LR','E_VCC_GC_LR','E_VCC_PP_LR', 'E_MEGAN']
+    allkeys=['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP','E_VCC_OMI_lr','E_VCC_GC_lr','E_VCC_PP_lr',
+             'E_MEGAN', 'pixels','pixels_PP','pixels_lr','pixels_PP_lr']
     Enew  = E_new(d0,dn,allkeys)
     E_meg = Enew.E_MEGAN
 
@@ -97,17 +100,22 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
     linewidths  = [2,1,1,1]
     colours     = ['k','m','orange','red']
 
-    for lowres in [False,True]:
+    for lowres in [True,False]:
         # Low res or not changes plotname and other stuff
-        lrstr=['','_LR'][lowres]
+        lrstr=['','_lr'][lowres]
         pname='Figs/Emiss/E_new_series_%s%s.png'%(locname,lrstr)
         # key names for reading E_new
         ekeys = [ek+lrstr for ek in ['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP']]
         labels      = ['MEGAN',ekeys[0],ekeys[1],ekeys[2] ]
+        pixels = getattr(Enew, 'pixels'+lrstr)
+        pixelspp = getattr(Enew, 'pixels_PP'+lrstr)
 
         # Plot four time series
 
-        f=plt.figure(figsize=(16,7))
+        f,axs = plt.subplots(1+count,1,figsize=(16,8), sharex=True)
+        ax0=axs
+        if count:
+            ax0=axs[0]
         # Grab desired E_new data
         E_omi, E_gc, E_pp = [getattr(Enew,ekeys[i]) for i in range(3)]
         lats,lons = [ getattr(Enew,s+str.lower(lrstr)) for s in ['lats','lons'] ]
@@ -118,20 +126,46 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
             dates=Enew.dates
             lati = [enewlati,meglati][i==0]
             loni = [enewloni,megloni][i==0]
-            arr = arr[:,lati,:]
-            arr = arr[:,loni]
-
-            pp.plot_time_series(dates,arr,
-                                monthly=monthly,monthly_func=monthly_func,
+            arr = arr[:,lati,loni]
+            pix = [pixels, pixelspp][i==3]
+            pix=pix[:,lati,loni]
+            # plot time series
+            plt.sca(ax0)
+            monthly_data    = util.monthly_averaged(dates,arr)
+            monthly_pix     = util.monthly_averaged(dates,pix)
+            mpix            = monthly_pix['sum']
+            marr            = monthly_data[monthly_func]
+            std             = monthly_data['std']
+            mdates          = monthly_data['middates']
+            pp.plot_time_series(mdates,marr,
                                 linewidth=linewidths[i],
                                 color=colours[i],label=labels[i])
+            # error points
+            if i>0:
+                pp.plot_time_series(mdates,marr+std,
+                                    color=colours[i],marker='^',linestyle='None',
+                                    markerfacecolor='None',markersize=4, markeredgecolor=colours[i])
+                pp.plot_time_series(mdates,marr-std,
+                                    color=colours[i],marker='v',linestyle='None',
+                                    markerfacecolor='None',markersize=4, markeredgecolor=colours[i])
 
+                # plot pixel counts
+                if count:
+                    plt.sca(axs[1])
+                    pp.plot_time_series(mdates,mpix,color=colours[i])
+                    #df_m['pix'].plot(color=colours[i])
+                    #plt.plot(pix, color=colours[i])
+
+        plt.sca(ax0)
         plt.title(locname+ ' [%.2f$^{\circ}$N, %.2f$^{\circ}$E]'%(lat,lon))
         plt.ylabel(Enew.attributes[ekeys[0]]['units'])
-        plt.xlabel('time')
         plt.legend(loc='best')
+        if count:
+            plt.sca(axs[1])
+            plt.ylabel('pixels (sum)')
+        plt.xlabel('time')
         plt.savefig(pname)
-        plt.close(f)
+        plt.close()
         print("SAVED ",pname)
 
 
@@ -645,13 +679,14 @@ if __name__=='__main__':
     regions=pp.__AUSREGION__, SEAus#, JennySEA_fixed
 
     d0=datetime(2005,1,1)
+    d1=datetime(2005,1,31)
     dn=datetime(2005,12,31)
     de=datetime(2006,12,31)
 
     ## Plot MEGAN vs E_new (key)
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
-    MEGAN_vs_E_new(datetime(2006,1,1),datetime(2006,1,31))
+    #MEGAN_vs_E_new(datetime(2006,1,1),datetime(2006,1,31))
 
     ## Plot showing comparison of different top-down estimates
     ## In Isop chapter results
@@ -665,8 +700,8 @@ if __name__=='__main__':
                            #force_monthly=True, force_monthly_func='median')
     ## Time series at a particular location
     ## Takes a few minuts (use qsub), In isop chapter results
-    ## Ran 16/7/18
-    #E_time_series(d0,de,
+    ## Ran 18/7/18 - updating for pixel counts and errorbars
+    E_time_series(d0,de,lon=pp.__cities__['Wol'][1]-2.5, locname='Inland',count=False)
     #              lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
     #              locname='Wollongong',
     #              monthly=True, monthly_func='median')

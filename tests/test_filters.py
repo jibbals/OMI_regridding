@@ -70,6 +70,70 @@ __colors__ = pp.__subzones_colours__
 ############# Functions #################
 #########################################
 
+def show_mask_filtering(d0=datetime(2006,1,1), dn=datetime(2006,1,31)):
+    '''
+        masked squares count for fire, masked squares count for anthro
+            time series of pixel counts with and without filtering
+    '''
+
+    Enew = E_new(d0,dn,dkeys=['pixels_u','pixels','firefilter','anthrofilter',])
+    lats = Enew.lats;  lons=Enew.lons
+    firesum = np.nansum(Enew.firefilter,axis=0).astype(np.float)
+    anthsum = np.nansum(Enew.anthrofilter,axis=0).astype(np.float)
+    pixsum  = np.nansum(Enew.pixels_u,axis=0).astype(np.float)
+    pix  = Enew.pixels_u # unfiltered pixel counts
+    pix[Enew.oceanmask3d]=0
+    pixa=np.copy(pix)
+    pixb=np.copy(pix)
+    pixc=np.copy(pix)
+    pixa[Enew.firefilter]=0
+    pixb[Enew.anthrofilter]=0
+    pixc[Enew.firefilter]=0
+    pixc[Enew.anthrofilter]=0
+
+
+    plt.figure(figsize=[16,16])
+    plt.subplot(2,2,1)
+    pp.createmap(firesum,lats,lons,title='days filtered (fire)',
+                 aus=True,linear=True, set_under='grey',vmin=1)
+    plt.subplot(2,2,2)
+    pp.createmap(anthsum,lats,lons,title='days filtered (anth)',
+                 aus=True,linear=True, set_under='grey',vmin=1)
+    plt.subplot(2,1,2)
+    # time series for pixel counts
+    for arr,colour,label in zip([pix,pixa,pixb,pixc],['k','m','c','r'],['unfiltered','fire','anth','both']):
+        pp.plot_time_series(Enew.dates,np.nansum(arr,axis=(1,2)),color=colour,label=label)
+    plt.xlabel('day')
+    plt.ylabel('pixel count')
+    plt.legend(loc='best')
+    timestr='%s-%s'%(d0.strftime('%Y%m%d'),dn.strftime('%Y%m%d'))
+    plt.suptitle('Anthro and Fire filters applied on %s'%timestr,fontsize=30)
+    pname='Figs/Filters/PixelsFiltered_%s.png'%timestr
+    plt.savefig(pname)
+    print('Saved ',pname)
+
+    ####
+    ## Also create a plot looking at each of fire/anthro filters and portion of data removed
+    for arr,title,pixf in zip([firesum,anthsum],['Pyrogenic','Anthropogenic'],[pixa,pixb]):
+        pname='Figs/Filters/%s_%s.png'%(title,timestr)
+        plt.figure(figsize=[10,16])
+        plt.subplot(2,1,1)
+        pp.createmap(100*arr/pixsum,lats,lons,title=title,
+                     linear=True, vmin=1,vmax=100,
+                     aus=True, set_under='grey')
+        plt.subplot(2,1,2)
+        pixot=np.nanmean(100*(1-pixf/pix),axis=(1,2))
+        pp.plot_time_series(Enew.dates, pixot,title='Portion removed')
+        plt.xlabel('time')
+        plt.ylabel('%')
+        plt.suptitle('%s filter: %s'%(title,timestr),fontsize=30)
+
+        plt.savefig(pname)
+        print('Saved ',pname)
+
+
+
+
 def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=datetime(2005,3,31), subset=2,
                          detrend=False,
                          regionplus = pp.__AUSREGION__):
@@ -259,7 +323,8 @@ def check_filters_work_with_missing_day():
     smoke,d,lat,lon=fio.make_smoke_mask(mday)
     assert np.sum(smoke) == 0, "should be no days filtered for smoke on missing day..."
 
-def test_mask_effects(month=datetime(2005,1,1)):
+def test_mask_effects(d0=datetime(2006,1,1),dn=datetime(2006,1,31),
+                      outputs=['VCC_OMI','VCC_GC','VCC_PP']):
     '''
         Show and count how many pixels are removed by each filter per day/month
         Show affect on HCHO columns over Aus from each filter per month
@@ -272,44 +337,48 @@ def test_mask_effects(month=datetime(2005,1,1)):
         Can decide output from VCCs or E_VCCs (remember to use _u for unfiltered ones)
 
     '''
-    output = 'VCC_OMI' # This is the array we will test our filters on...
-    d0=datetime(month.year,month.month,1)
-    dn=util.last_day(d0)
-    dstr="%s-%s"%(d0.strftime("%Y%m%d"),dn.strftime("%Y%m%d"))
-    suptitle="%s with and without filtering over %s"%(output,dstr)
-    pnames="Figs/Filters/filtered_%%s_%%s_%s.png"%dstr
-    titles="%s"
-    masktitles="masked by %s"
+    #output = 'VCC_OMI' # This is the array we will test our filters on...
+    for output in outputs:
 
-    # Read E_new to get both masks and HCHO (and E_new if desired)
-    Enew=E_new(d0,dn)
-    dates=Enew.dates
-    lats,lons=Enew.lats,Enew.lons
+        #d0=datetime(month.year,month.month,1)
+        #dn=util.last_day(d0)
+        dstr="%s-%s"%(d0.strftime("%Y%m%d"),dn.strftime("%Y%m%d"))
+        suptitle="%s with and without filtering over %s"%(output,dstr)
+        pnames="Figs/Filters/filtered_%%s_%%s_%s.png"%dstr
+        titles="%s"
+        masktitles="masked by %s"
 
-    masks=[mask.astype(np.bool) for mask in [Enew.firefilter, Enew.anthrofilter]]
-    mask_names=['fire+smoke','anthro']
+        # Read E_new to get both masks and HCHO (and E_new if desired)
+        Enew=E_new(d0,dn)
+        dates=Enew.dates
+        lats,lons=Enew.lats,Enew.lons
 
-    vmin = 1e14; vmax=4e16
-    arr = getattr(Enew,output)
-    units= Enew.attributes[output]['units']
-    if units is None:
-        units='???'
-    print(units)
-    for mask,mask_name in zip(masks,mask_names):
-        title=titles%output
-        pname=pnames%(output,mask_name)
-        masktitle=masktitles%mask_name
+        masks=[mask.astype(np.bool) for mask in [Enew.firefilter, Enew.anthrofilter]]
+        mask_names=['fire','anthro']
 
-        pp.subzones(arr,dates,lats,lons, mask=mask,
-                    vmin=vmin,vmax=vmax,
-                    title=title,suptitle=suptitle,masktitle=masktitle,
-                    clabel=units)
-        #TODO: Add axes and table of lost pixel counts...
+        vmin = 1e14; vmax=4e16
+        arr = getattr(Enew,output)
+        units= Enew.attributes[output]['units']
+        if units is None:
+            units='???'
+        print(units)
+        for mask,mask_name in zip(masks,mask_names):
+            title=titles%output
+            pname=pnames%(output,mask_name)
+            masktitle=masktitles%mask_name
+            masked = np.copy(arr)
+            masked[mask]=np.NaN
+
+            pp.subzones(arr,dates,lats,lons, comparison=masked,
+                        vmin=vmin,vmax=vmax,
+                        title=title,suptitle=suptitle,comparisontitle=masktitle,
+                        clabel=units)
+            #TODO: Add axes and table of lost pixel counts...
 
 
-        plt.savefig(pname)
-        print('saved ',pname)
-        plt.close()
+            plt.savefig(pname)
+            print('saved ',pname)
+            plt.close()
 
 def test_fires_removed(day=datetime(2005,1,25)):
     '''

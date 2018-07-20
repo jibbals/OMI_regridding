@@ -55,8 +55,10 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'VCC_PP',       # {31, 152, 152}
                 'smearing',     # {152, 152} # linearly interped from 19x19 2x2.5 resolution to higher
                 'pixels',       # OMI pixel count
+                'pixels_u',     # before filtering pixel count
                 'pixels_lr',    # OMI pixel count at low resolution
                 'pixels_PP',    # OMI pixel count using PP code
+                'pixels_PP_u',  # before filtering
                 'pixels_PP_lr', # OMI pixel count using PP code at low resolution
                 'uncert_OMI',   # OMI grid averaged pixel uncertainty
                 'time',         # time is a dimension but also data: datetime string stored in file
@@ -105,12 +107,12 @@ class E_new:
         # Combine the data
         for key in E_new_list[0].keys():
             if __VERBOSE__:
-                print("Reading ",key, np.shape(E_new_list[0][key]))
+                print("Found ",key, np.shape(E_new_list[0][key]))
 
             # Read the dimensions
             if key in __E_new_dims__:
                 setattr(self,key,E_new_list[0][key])
-
+                print("Reading %s"%key )
             # Read the data and append to time dimensions if there's more than
             # one month file being read
             elif (key in ['time','dates']) or (key in dkeys):
@@ -123,9 +125,12 @@ class E_new:
                     data=np.append(data,np.array(E_new_list[i][key]),axis=0)
 
                 setattr(self, key, data)
-
-            elif __VERBOSE__:
-                print("KEY %s not being read from E_new dataset"%key )
+                # convert filters to boolean
+                if 'filter' in key:
+                    setattr(self,key,data.astype(np.bool))
+                print("Reading %s"%key )
+            #elif __VERBOSE__:
+                #print("KEY %s not being read from E_new dataset"%key )
 
 
         self.dates=[datetime.strptime(str(t),"%Y%m%d") for t in self.time]
@@ -135,6 +140,7 @@ class E_new:
         mlons_lr,mlats_lr=np.meshgrid(self.lons_lr,self.lats_lr)
         self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=False).mask
         self.oceanmask_lr=maskoceans(mlons_lr,mlats_lr,mlons_lr,inlands=False).mask
+        self.oceanmask3d=np.repeat(self.oceanmask[np.newaxis,:,:],len(self.dates),axis=0)
 
         if not hasattr(self,'SA'):
             self.SA = util.area_grid(self.lats,self.lons)

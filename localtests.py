@@ -56,21 +56,47 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-# Read isop file
-isop_df=fio.read_mumba_var('ISOP')
-# dates
-#timestamps = list(isop_df.index)
-dates=[ts.to_pydatetime() for ts in isop_df.index]
-isop_df.keys()
-#Index(['Height [m]', 'HCHO [ppbv]', 'CH4O [ppbv]', 'Acetonitrile [ppbv]',
-#       'Acetaldehyde [ppbv]', 'Acetone [ppbv]', 'C5H8 [ppbv]',
-#       'Methacrolein + methyl vinyl ketone [ppbv]', 'C6H6 [ppbv]',
-#       'C6H5CH3 [ppbv]', 'C8H10 [ppbv]', 'C9H12 [ppbv]',
-#       'Monoterpenes [ppbv]'],
-#      dtype='object')
+z=np.zeros([5,6])
+z[0,4]=1
+z[2,2]=1
+z[4,5]=1
+za = util.set_adjacent_to_true(z).astype(int)
+print(z)
+print(za)
 
-hcho_df=fio.read_mumba_var('CH2O')
-o3_df  =fio.read_mumba_var('O3')
+assert za[0,3]+za[0,4]+za[0,5]+za[1,3]+za[1,4]+za[1,5] == 6, "top edge doesn't work as expected"
+assert za[1,1]+za[1,2]+za[1,3]+za[2,1]+za[2,3]+za[2,3]+za[3,1]+za[3,2]+za[3,3] == 9, "middle doesn't work as expected"
+assert za[3,4]+za[3,5]+za[4,4]+za[4,5] == 4, "bottom corner doesn't work as expected"
+assert np.sum(za) == 19-1, "Should be 18 filtered squares" # one overlaps
+
+
+
+
+d0=datetime(2006,1,1)
+dn=datetime(2006,1,31)
+'''
+    masked squares count for fire, masked squares count for anthro
+        time series of pixel counts with and without filtering
+'''
+
+
+
+## Read isop file
+#isop_df=fio.read_mumba_var('ISOP')
+## dates
+##timestamps = list(isop_df.index)
+#dates=[ts.to_pydatetime() for ts in isop_df.index]
+#isop_df.keys()
+#isop_df['C5H8 [ppbv]'].plot()
+##Index(['Height [m]', 'HCHO [ppbv]', 'CH4O [ppbv]', 'Acetonitrile [ppbv]',
+##       'Acetaldehyde [ppbv]', 'Acetone [ppbv]', 'C5H8 [ppbv]',
+##       'Methacrolein + methyl vinyl ketone [ppbv]', 'C6H6 [ppbv]',
+##       'C6H5CH3 [ppbv]', 'C8H10 [ppbv]', 'C9H12 [ppbv]',
+##       'Monoterpenes [ppbv]'],
+##      dtype='object')
+#
+#hcho_df=fio.read_mumba_var('CH2O')
+#o3_df  =fio.read_mumba_var('O3')
 
 
 

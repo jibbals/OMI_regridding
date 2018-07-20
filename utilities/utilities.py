@@ -401,6 +401,7 @@ def monthly_averaged(dates,data,keep_spatial=False):
     mmedian=[]
     mstd=[]
     mcount=[]
+    msum=[]
     for m in months:
         inds=(allyears==m.year) * (allmonths==m.month)
         mdates.append(m)
@@ -409,15 +410,17 @@ def monthly_averaged(dates,data,keep_spatial=False):
             mmean.append(np.nanmean(data[inds],axis=0))
             mstd.append(np.nanstd(data[inds],axis=0))
             mcount.append(np.nansum(inds,axis=0))
+            msum.append(np.nansum(data[inds],axis=0))
         else:
             mmedian.append(np.nanmedian(data[inds]))
             mmean.append(np.nanmean(data[inds]))
             mstd.append(np.nanstd(data[inds]))
             mcount.append(np.nansum(inds))
+            msum.append(np.nansum(data[inds]))
     mmean=np.array(mmean); mstd=np.array(mstd); mcount=np.array(mcount);
-    mmedian=np.array(mmedian)
+    mmedian=np.array(mmedian); msum=np.array(msum)
     mid_dates=[d+timedelta(days=15) for d in mdates]
-    return {'dates':mdates, 'mean':mmean, 'median':mmedian,
+    return {'dates':mdates, 'mean':mmean, 'median':mmedian, 'sum':msum,
             'std':mstd,'count':mcount, 'middates':mid_dates}
 
 def oceanmask(lats,lons,inlands=False):
@@ -670,14 +673,38 @@ def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
     return arr
 
 def set_adjacent_to_true(mask):
-    mask_copy = np.zeros(mask.shape).astype(bool)
-    ny,nx=mask.shape
-    for x in range(nx):
-        for y in np.arange(1,ny-1): # don't worry about top and bottom row
-            mask_copy[y,x] = np.sum(mask[[y-1,y,y+1],[x-1,x,(x+1)%nx]]) > 0
-        # top and bottom row doesn't work?
-        #mask_copy[0,x] = np.sum(mask[[0,1],[x-1,x,(x+1)%nx]]) > 0
-        #mask_copy[-1,x] = np.sum(mask[[-2,-1],[x-1,x,(x+1)%nx]]) > 0
+    nx,ny=mask.shape
+    mask=mask.astype(bool) # zero is false, nonzero is true
+    mask_copy = np.zeros([nx,ny]).astype(bool)
+
+
+    for y in range(ny):
+        print('%d/%d'%(y,ny-1))
+        # copy row shifted both left and right
+        mask_copy[:,y]   += mask[:,y]
+        mask_copy[:-1,y] += mask[1:,y] # shifted right
+        mask_copy[1:,y]  += mask[:-1,y] # shifted left
+        # left and right edges
+        mask_copy[0,y]   += mask[1,y] + mask[0,y]
+        mask_copy[-1,y]  += mask[-2,y]+ mask[-1,y]
+
+        # also copy row above and below in the same way
+        if y>0:
+            mask_copy[:,y] += mask[:,y-1]
+            mask_copy[:-1,y] += mask[1:,y-1] # shifted right
+            mask_copy[1:,y] += mask[:-1,y-1] # shifted left
+            mask_copy[0,y]   += mask[1,y-1]  + mask[0,y-1]
+            mask_copy[-1,y]  += mask[-2,y-1] + mask[-1,y-1]
+        if y<ny-1:
+            mask_copy[:,y] += mask[:,y+1]
+            mask_copy[:-1,y] += mask[1:,y+1] # shifted right
+            mask_copy[1:,y] += mask[:-1,y+1] # shifted left
+            mask_copy[0,y]   += mask[1,y+1] + mask[0,y+1]
+            mask_copy[-1,y]  += mask[-2,y+1]+ mask[-1,y+1]
+
+        print(mask[:,y])
+        print(mask_copy[:,y])
+
     return mask_copy
 
 def utc_to_local(utc_dt):

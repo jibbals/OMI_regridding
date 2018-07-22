@@ -134,7 +134,7 @@ def show_mask_filtering(d0=datetime(2006,1,1), dn=datetime(2006,1,31)):
 
 
 
-def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=datetime(2005,3,31), subset=2,
+def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=datetime(2005,1,31), subset=2,
                          detrend=False,
                          regionplus = pp.__AUSREGION__):
     '''

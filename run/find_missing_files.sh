@@ -27,6 +27,11 @@ for month in `seq -w 1 12`; do
         ### Check for my outputs
         ###
         
+        ## OMHCHORP datasets
+        # Data/omhchorp/omhchorp_0.25x0.31_20050124.he5
+        if [[ ! -f Data/omhchorp/omhchorp_0.25x0.31_${year}${month}${day}.he5 ]]; then
+            missing "omhchorp"
+        fi
         ### CHECK FOR PP OUTPUTS
         ###
         

@@ -182,7 +182,7 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
         currently can't compare high-res E_new to low res E_MEGAN
     '''
     # Low res or not changes plotname and other stuff
-    lrstr=['','_LR'][lowres]
+    lrstr=['','_lr'][lowres]
     etype=str.upper(etype)
     ekey= 'E_VCC_'+etype+lrstr
     pname='Figs/Emiss/E_%s_zones%s.png'%(etype,lrstr)
@@ -241,16 +241,16 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     meglons=em.lons_lr
 
 
-    titles=['OMI','OMI_u','OMI_LR','GC','GC_u','GC_LR','PP','PP_u','PP_LR']
+    titles=['OMI','OMI_u','OMI_lr','GC','GC_u','GC_lr','PP','PP_u','PP_lr']
     plt.figure(figsize=(12,24))
     plt.subplot(4,1,1)
     pp.createmap(megan,meglats,meglons,title='MEGAN',
                  vmin=clims[0], vmax=clims[1]*2, linear=linear, aus=True,
                  clabel=r'Atoms C cm$^{-2}$ s$^{-1}$', cmapname=cmapname)
 
-    for i,arr in enumerate([em.E_VCC_OMI, em.E_VCC_OMI_u , em.E_VCC_OMI_LR,
-                            em.E_VCC_GC, em.E_VCC_GC_u, em.E_VCC_GC_LR,
-                            em.E_VCC_PP, em.E_VCC_PP_u, em.E_VCC_PP_LR]):
+    for i,arr in enumerate([em.E_VCC_OMI, em.E_VCC_OMI_u , em.E_VCC_OMI_lr,
+                            em.E_VCC_GC, em.E_VCC_GC_u, em.E_VCC_GC_lr,
+                            em.E_VCC_PP, em.E_VCC_PP_u, em.E_VCC_PP_lr]):
         plt.subplot(4,3,i+4)
         lats=[em.lats, em.lats_lr][(i%3) == 2]
         lons=[em.lons, em.lons_lr][(i%3) == 2]
@@ -272,7 +272,7 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
 
 
 def MEGAN_vs_E_new(d0=datetime(2006,1,1), d1=datetime(2006,1,31),
-                  key='E_VCC_GC_LR',
+                  key='E_VCC_GC_lr',
                   region=pp.__AUSREGION__):
     '''
         Plot E_gc, E_new, diff, ratio
@@ -303,7 +303,7 @@ def MEGAN_vs_E_new(d0=datetime(2006,1,1), d1=datetime(2006,1,31),
     New_isop=np.nanmean(New_isop,axis=0) # average over time
     lats,lons = Enew.lats, Enew.lons
     lowres=False
-    if '_LR' in key:
+    if '_lr' in key:
         lats=Enew.lats_lr
         lons=Enew.lons_lr
         lowres=True
@@ -681,12 +681,12 @@ if __name__=='__main__':
     d0=datetime(2005,1,1)
     d1=datetime(2005,1,31)
     dn=datetime(2005,12,31)
-    de=datetime(2006,12,31)
+    de=datetime(2007,12,31)
 
     ## Plot MEGAN vs E_new (key)
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
-    #MEGAN_vs_E_new(datetime(2006,1,1),datetime(2006,1,31))
+    MEGAN_vs_E_new(d0,de)
 
     ## Plot showing comparison of different top-down estimates
     ## In Isop chapter results
@@ -701,10 +701,10 @@ if __name__=='__main__':
     ## Time series at a particular location
     ## Takes a few minuts (use qsub), In isop chapter results
     ## Ran 18/7/18 - updating for pixel counts and errorbars
-    E_time_series(d0,de,lon=pp.__cities__['Wol'][1]-2.5, locname='Inland',count=False)
-    #              lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
-    #              locname='Wollongong',
-    #              monthly=True, monthly_func='median')
+    E_time_series(d0,de,#lon=pp.__cities__['Wol'][1]-2.5, locname='Inland',count=False)
+                  lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
+                  locname='Wollongong',
+                  monthly=True, monthly_func='median')
 
 
     #All_maps()

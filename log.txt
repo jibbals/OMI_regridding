@@ -1,0 +1,9 @@
+Running tests.py
+Traceback (most recent call last):
+  File "tests.py", line 1709, in <module>
+    test_filters.show_mask_filtering(datetime(2005,1,4),datetime(2005,1,31))
+  File "/short/m19/jwg574/OMI_regridding/tests/test_filters.py", line 79, in show_mask_filtering
+    Enew = E_new(d0,dn,dkeys=['pixels_u','pixels','firefilter','anthrofilter',])
+  File "/short/m19/jwg574/OMI_regridding/classes/E_new.py", line 105, in __init__
+    self.attributes=attrs
+UnboundLocalError: local variable 'attrs' referenced before assignment

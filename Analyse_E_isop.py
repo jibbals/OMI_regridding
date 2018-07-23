@@ -686,7 +686,7 @@ if __name__=='__main__':
     ## Plot MEGAN vs E_new (key)
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
-    MEGAN_vs_E_new(d0,de)
+    #MEGAN_vs_E_new(d0,de)
 
     ## Plot showing comparison of different top-down estimates
     ## In Isop chapter results
@@ -696,15 +696,15 @@ if __name__=='__main__':
     ## Plot showing time series within Australia, and Sydney area
     ## In isop chapter results
     ## Ran 16/7/18
-    #E_regional_time_series(etype='gc')
+    E_regional_time_series(d0,de,etype='gc')
                            #force_monthly=True, force_monthly_func='median')
     ## Time series at a particular location
     ## Takes a few minuts (use qsub), In isop chapter results
     ## Ran 18/7/18 - updating for pixel counts and errorbars
-    E_time_series(d0,de,#lon=pp.__cities__['Wol'][1]-2.5, locname='Inland',count=False)
-                  lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
-                  locname='Wollongong',
-                  monthly=True, monthly_func='median')
+    #E_time_series(d0,de,#lon=pp.__cities__['Wol'][1]-2.5, locname='Inland',count=False)
+    #              lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
+    #              locname='Wollongong',
+    #              monthly=True, monthly_func='median')
 
 
     #All_maps()

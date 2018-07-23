@@ -676,8 +676,8 @@ def subzones_map(data, lats, lons, cmapname='plasma',
                            cmapname=cmapname, **createmapargs)
     # Add cities to map
     for city,latlon in cities.items():
-        add_point(bmap,latlon[0],latlon[1],markersize=12,
-                  color='floralwhite', label=city, fontsize=12,
+        add_point(bmap,latlon[0],latlon[1],markersize=6, marker='o',
+                  color='k', label=city, fontsize=12,
                   xlabeloffset=-50000,ylabeloffset=30000)
 
     # Add squares to map:
@@ -689,12 +689,16 @@ def subzones_map(data, lats, lons, cmapname='plasma',
 def subzones_TS(data, dates, lats, lons,
                 subzones=__subzones_AUS__,colors=__subzones_colours__,
                 logy=False,
-                ylims=None):
+                ylims=None):#, use_doys=True):
     '''
         time series for each subzone in data[time,lats,lons]
     '''
 
-    doys=[d.timetuple().tm_yday for d in dates]
+    #if use_doys:
+    #    doys = [ d.timetuple().tm_yday for d in dates ]
+    #else: # use days from start of input
+    d0=dates[0]
+    doys = [ (d-d0).days for d in dates ]
 
     # loop over subzones
     for i,subzone in enumerate(subzones):
@@ -742,7 +746,7 @@ def subzones_TS(data, dates, lats, lons,
             #plt.yticks(yticks,ytickstr)
 
         #plt.ylabel(ylabel)
-        plt.xlabel('Day of year')
+        plt.xlabel('Days since %s'%d0.strftime("%Y%m%d"))
 
 def subzones(data, dates, lats, lons, comparison=None, subzones=__subzones_AUS__,
              pname=None,title=None,suptitle=None, comparisontitle=None,

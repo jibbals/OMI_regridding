@@ -70,7 +70,7 @@ __colors__ = pp.__subzones_colours__
 ############# Functions #################
 #########################################
 
-def show_mask_filtering(d0=datetime(2006,1,1), dn=datetime(2006,1,31)):
+def show_mask_filtering(d0=datetime(2005,1,1), dn=datetime(2006,1,1)):
     '''
         masked squares count for fire, masked squares count for anthro
             time series of pixel counts with and without filtering

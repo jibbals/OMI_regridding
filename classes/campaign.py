@@ -42,6 +42,8 @@ class campaign:
                             'isop':{'units':'ppb','DL':np.NaN},
                             'ozone':{'units':'ppb','DL':np.NaN},
                            }
+        self.height    = 0# measurement height from ground level (m)
+        self.elevation = 0# ground level above sea level (m)
 
     def read_SPS(self, number=1):
         '''
@@ -96,23 +98,51 @@ class campaign:
             Reads MUMBA campaign data isoprene, ozone, and hcho
             Code taken from Jenny's READ_MUMBA method
         '''
-        # Read isop file
+
+        # Read files with desired data, resampled to 60 minute means
         isop_df=fio.read_mumba_var('ISOP')
-        hcho_df=fio.read_mumba_var('H2CO')
+        hcho_df=fio.read_mumba_var('CH2O')
         o3_df  =fio.read_mumba_var('O3')
 
-    def plot_series(self,title=None,pname=None):
+        # LATITUDE: -34.397200 * LONGITUDE: 150.899600
+        self.lat        = -34.3972
+        self.lon        = 150.8996
+        self.height     = 10 # Metres off ground
+        self.elevation  = 30 # Metres
+
+        # dates
+        dates_isop=[ts.to_pydatetime() for ts in isop_df.index]
+
+        self.dates=dates_isop # UTC+10
+
+        self.isop                   = np.array(isop_df['C5H8 [ppbv]'])
+        self.attrs['isop']['units'] = 'ppbv'
+
+
+        self.hcho                   = np.array(hcho_df['HCHO [ppbv]'])
+        self.attrs['hcho']['units'] = 'ppbv'
+
+        # ignore last 16 o3 measurements as they occur without matching hcho and isop measurements.
+        self.ozone                  = np.array(o3_df['O3 [ppbv] (mean of hourly O3 concentration)'])[0:-16]
+        self.attrs['ozone']['units']= 'ppbv'
+        self.attrs['ozone']['DL']   = 0.5
+
+
+    def plot_series(self,title=None,pname=None,dfmt='%d %b'):
 
         dates=self.dates
 
         for key,c in zip(['hcho','isop'],['orange','green']):
             data=getattr(self,key)
-            dlim=getattr(self,key+'_detection_limit')
+            dlim=self.attrs[key]['DL']
             #plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', **pltargs)
-            pp.plot_time_series(dates, data, dfmt='%d %b', label=key,color=c)
-            plt.plot([dates[0],dates[-1]], [dlim,dlim], color=c, linestyle='--')
+            # Plot time series
+            pp.plot_time_series(dates, data, dfmt=dfmt, label=key, color=c)
+            # add detection limit
+            if not np.isnan(dlim):
+                plt.plot([dates[0],dates[-1]], [dlim,dlim], color=c, linestyle='--')
 
-        plt.ylabel('[%s]'%self.hcho_units)
+        plt.ylabel('[%s]'%self.attrs['hcho']['units'])
         plt.title(title)
         # 3 xticks:
         plt.gca().xaxis.set_ticks([dates[0],dates[len(dates)//2],dates[-1]])

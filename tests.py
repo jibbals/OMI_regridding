@@ -1708,7 +1708,7 @@ if __name__ == '__main__':
     ## Also show affect on regions            # Run 23/7/18 (TODO: Update to add table of data)
     #test_filters.test_mask_effects(datetime(2005,1,1),datetime(2006,1,1))
     ## How mnay pixels are filtered out?     # run 23/7/18
-    test_filters.show_mask_filtering(d0,de)
+    test_filters.show_mask_filtering()
     ## look at hcho vs fire
     #test_filters.HCHO_vs_temp_vs_fire()
 

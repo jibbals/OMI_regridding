@@ -1,9 +1,32 @@
+import numpy as np
+from classes import omhchorp
+from utilities import utilities as util
+from utilities import plotting as pp
+from utilities import GMAO
+import matplotlib.pyplot as plt
 
 
-def check_resolution_binning():
+def test_adjacent_masking():
+    z=np.zeros([5,6])
+    z[0,4]=1
+    z[2,2]=1
+    z[4,5]=1
+    za = util.set_adjacent_to_true(z).astype(int)
+    print(z)
+    print(za)
+
+    assert za[0,3]+za[0,4]+za[0,5]+za[1,3]+za[1,4]+za[1,5] == 6, "top edge doesn't work as expected"
+    assert za[1,1]+za[1,2]+za[1,3]+za[2,1]+za[2,3]+za[2,3]+za[3,1]+za[3,2]+za[3,3] == 9, "middle doesn't work as expected"
+    assert za[3,4]+za[3,5]+za[4,4]+za[4,5] == 4, "bottom corner doesn't work as expected"
+    assert np.sum(za) == 19-1, "Should be 18 filtered squares" # one overlaps
+
+
+def check_resolution_binning(d0=datetime(2005,1,1),):
     '''
         See what happens when regridding to lower resolution using pixel counts
     '''
+    region=pp.__AUSREGION__
+
     OMHCHORP=omhchorp(day0=d0, ignorePP=False)
     arr_names=['VCC_OMI','gridentries','ppentries','col_uncertainty_OMI','firemask','smokemask','anthromask']
     arrs= [getattr(OMHCHORP,s) for s in arr_names]

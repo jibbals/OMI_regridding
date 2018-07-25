@@ -85,6 +85,39 @@ def check_array(array, nonzero=False):
 ######################       TESTS                  #########################
 #############################################################################
 
+def compare_campaigns():
+    mumba=campaign()
+    mumba.read_mumba()
+    sps1=campaign()
+    sps1.read_sps(1)
+    sps2=campaign()
+    sps2.read_sps(2)
+
+    plt.figure()
+    plt.subplot(2,3,1)
+    mumba.plot_series(title='MUMBA')
+    plt.subplot(2,3,2)
+    sps1.plot_series(title='SPS1')
+    plt.subplot(2,3,3)
+    sps2.plot_series(title='SPS2')
+
+
+    plt.subplot(2,1,2)
+    dates,isop=mumba.get_daily_hour(key='isop')
+    d1,i1=sps1.get_daily_hour(key='isop')
+    d2,i2=sps2.get_daily_hour(key='isop')
+
+    pp.plot_yearly_cycle(isop,dates,color='m',label='MUMBA',linewidth=2)
+    pp.plot_yearly_cycle(i1,d1,color='pink',label='SPS1',linewidth=2)
+    pp.plot_yearly_cycle(i2,d2,color='orange',label='SPS2',linewidth=2)
+
+    plt.legend()
+    plt.title('isoprene yearly cycle')
+    plt.tight_layout()
+    pname='Figs/campaigns_compared.png'
+    plt.savefig(pname)
+    plt.close()
+    print('SAVED ',pname)
 
 def check_HEMCO_restarts():
     '''

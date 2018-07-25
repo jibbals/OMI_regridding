@@ -57,11 +57,6 @@ start1=timeit.default_timer()
 ##########
 
 
-mumba=campaign()
-mumba.read_mumba()
-mumba.plot_series(title='MUMBA',dfmt='%Y%b%d')
-plt.legend()
-
 ###########
 ### Record and time STUJFFS
 ###########

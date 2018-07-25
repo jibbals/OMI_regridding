@@ -178,9 +178,12 @@ class E_new:
             arr[di]=arr[di]-mavg[i]
         return mavg, arr
 
-    def get_series(self, key, region,lowres=False, maskocean=True, testplot=False):
+    def get_series(self, key, region,lowres=False, maskocean=True,
+                   lat=None,lon=None,
+                   testplot=False,):
         '''
-            Average over region[SWNE]
+            Grab time series of given key (time,lats,lons)
+            optionally can pull out series at single lat,lon
             Return dates, data[key]
         '''
         data=np.copy(getattr(self,key)) # copy so we don't overwrite anything

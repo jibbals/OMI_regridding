@@ -311,6 +311,22 @@ def list_months(day0,dayn):
     months=[d for d in days if d.day==1]
     return months
 
+def list_years(day0,dayn,dates=None):
+    '''
+        list years from day0 -> dayn
+        if dates is supplied, return list of lists: one list for each year
+    '''
+    days=list_days(day0,dayn)
+    yearset=set( d.year for d in days )
+    years = [datetime(year,1,1) for year in yearset]
+
+    if dates is not None:
+        years=[]
+        for year in yearset:
+            yeardates = [d for d in dates if d.year==year]
+            years.append(yeardates)
+    return years
+
 def list_to_lists(mylist,chunksize=30):
     '''
         split long list into lists of length 30

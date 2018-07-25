@@ -1033,6 +1033,24 @@ def plot_daily_cycle(dates, data, houroffset=0, color='k', overplot=False):
     #plt.savefig(pname)
     #print("SAVED FIGURE:",pname)
 
+def plot_yearly_cycle(data,dates, **plotargs):
+    '''
+        Plot a time series wrapped over a year
+    '''
+    # split data into years
+    ydates=util.list_years(dates[0],dates[-1],dates=dates) # split by years
+    for year in ydates:
+        inds = np.array([ (d >= year[0]) * (d <= year[-1]) for d in dates ], dtype=np.bool)
+        doys = [d.timetuple().tm_yday for d in year]
+        plt.plot(doys, np.array(data)[inds], **plotargs)
+        # only want to label this guy once
+        if 'label' in plotargs:
+            _label=plotargs.pop('label')
+    # looking at year
+    plt.xlim([-5,370])
+    plt.xlabel('DOY')
+
+
 def add_dots_to_map(bmap, lats, lons, region, cmapname='rainbow', add_rectangle=True, landonly=True):
     '''
         Add dots (optionally coloured) to the bmap

@@ -43,6 +43,45 @@ colours = ['chartreuse','magenta','aqua']
 ###############
 ### Methods ###
 ###############
+def yearly_cycle_vs_campaigns(d0=datetime(2005,1,1),dn=datetime(2007,12,31)):
+    '''
+    '''
+    mumba=campaign()
+    mumba.read_mumba()
+    sps1=campaign()
+    sps1.read_sps(1)
+    sps2=campaign()
+    sps2.read_sps(2)
+    colors=['m','pink','orange']
+
+    Enew=E_new(d0,dn)
+    lats,lons=Enew.lats_lr,Enew.lons_lr
+
+
+    plt.figure(figsize=(14,16))
+    # create map, with gridsquare of comparison, and dots for campaigns
+    plt.subplot(2,1,1)
+    m=pp.displaymap(region=[-45,130,-14,155])
+    pp.add_grid_to_map(m,)
+    # Add dot to map
+    for i,[y,x] in enumerate([[mumba.lat,mumba.lon],[sps1.lat,sps1.lon],[sps2.lat,sps2.lon]]):
+        mx,my = m(x, y)
+        m.plot(mx, my, 'o', markersize=3, color=colors[i])
+
+    plt.subplot(2,1,2)
+    dates,isop=mumba.get_daily_hour(key='isop')
+    d1,i1=sps1.get_daily_hour(key='isop')
+    d2,i2=sps2.get_daily_hour(key='isop')
+    Enew.get_series('isop',)
+
+    pp.plot_yearly_cycle(isop,dates,color='m',label='MUMBA',linewidth=2)
+    pp.plot_yearly_cycle(i1,d1,color='pink',label='SPS1',linewidth=2)
+    pp.plot_yearly_cycle(i2,d2,color='orange',label='SPS2',linewidth=2)
+
+    plt.legend()
+    plt.title('isoprene yearly cycle')
+    plt.tight_layout()
+
 def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,1,31),region=pp.__AUSREGION__, plotswaths=False):
     '''
         Print out averages and anomalies in time series
@@ -79,8 +118,9 @@ def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,1,31),region=pp.__AUSREGI
 
 def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
                   lat=pp.__cities__['Syd'][0],lon=pp.__cities__['Syd'][1]-0.5,
-                  locname='Sydney',count=False,
-                  monthly=False, monthly_func='median'):
+                  locname='Sydney',count=False, plot_error=False,
+                  monthly=False, monthly_func='median',
+                  ylims=None):
     '''
         Plot the time series of E_new, eventually compare against MEGAN, etc..
         Look at E_VCC_OMI, E_VCC_GC, and E_VCC_PP
@@ -111,7 +151,6 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
         pixelspp = getattr(Enew, 'pixels_PP'+lrstr)
 
         # Plot four time series
-
         f,axs = plt.subplots(1+count,1,figsize=(16,8), sharex=True)
         ax0=axs
         if count:
@@ -140,15 +179,17 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
             pp.plot_time_series(mdates,marr,
                                 linewidth=linewidths[i],
                                 color=colours[i],label=labels[i])
-            # error points
-            if i>0:
-                pp.plot_time_series(mdates,marr+std,
-                                    color=colours[i],marker='^',linestyle='None',
-                                    markerfacecolor='None',markersize=4, markeredgecolor=colours[i])
-                pp.plot_time_series(mdates,marr-std,
-                                    color=colours[i],marker='v',linestyle='None',
-                                    markerfacecolor='None',markersize=4, markeredgecolor=colours[i])
 
+            if i>0:
+                # error points
+                if plot_error:
+
+                    pp.plot_time_series(mdates,marr+std,
+                                        color=colours[i],marker='^',linestyle='None',
+                                        markerfacecolor='None',markersize=4, markeredgecolor=colours[i])
+                    pp.plot_time_series(mdates,marr-std,
+                                        color=colours[i],marker='v',linestyle='None',
+                                        markerfacecolor='None',markersize=4, markeredgecolor=colours[i])
                 # plot pixel counts
                 if count:
                     plt.sca(axs[1])
@@ -157,6 +198,8 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
                     #plt.plot(pix, color=colours[i])
 
         plt.sca(ax0)
+        if ylims is not None:
+            plt.ylim(ylims)
         plt.title(locname+ ' [%.2f$^{\circ}$N, %.2f$^{\circ}$E]'%(lat,lon))
         plt.ylabel(Enew.attributes[ekeys[0]]['units'])
         plt.legend(loc='best')
@@ -696,15 +739,15 @@ if __name__=='__main__':
     ## Plot showing time series within Australia, and Sydney area
     ## In isop chapter results
     ## Ran 16/7/18
-    E_regional_time_series(d0,de,etype='gc')
+    #E_regional_time_series(d0,de,etype='gc')
                            #force_monthly=True, force_monthly_func='median')
     ## Time series at a particular location
     ## Takes a few minuts (use qsub), In isop chapter results
-    ## Ran 18/7/18 - updating for pixel counts and errorbars
-    #E_time_series(d0,de,#lon=pp.__cities__['Wol'][1]-2.5, locname='Inland',count=False)
-    #              lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
-    #              locname='Wollongong',
-    #              monthly=True, monthly_func='median')
+    ## Ran 25/7/18 - updating for pixel counts and errorbars
+    E_time_series(d0,de,#lon=pp.__cities__['Wol'][1]-2.5, locname='Inland',count=False)
+                  lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
+                  locname='Wollongong', ylims=[-0.2e13,2.5e13],
+                  monthly=True, monthly_func='median')
 
 
     #All_maps()

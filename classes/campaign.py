@@ -45,7 +45,19 @@ class campaign:
         self.height    = 0# measurement height from ground level (m)
         self.elevation = 0# ground level above sea level (m)
 
-    def read_SPS(self, number=1):
+
+    def get_daily_hour(self, hour=13,key='hcho'):
+        '''
+            Return one value per day matching the hour (argument)
+            returns dates, data
+        '''
+
+        inds = np.array([d.hour == hour for d in self.dates])
+        dates=np.array(self.dates)[inds]
+        data=getattr(self,key)[inds]
+        return dates,data
+
+    def read_sps(self, number=1):
         '''
             Read the sps1 or sps2 dataset
             # Measurements are reported in local time (UTC+10)
@@ -63,8 +75,8 @@ class campaign:
         self.lat,self.lon=-33.8688, 151.2093 # sydney lat/lon
 
         # First row is detection limits
-        self.hcho_detection_limit=float(data[h_key][0])
-        self.isop_detection_limit=float(data[i_key][0])
+        self.attrs['hcho']['DL']=float(data[h_key][0])
+        self.attrs['isop']['DL']=float(data[i_key][0])
 
 
         # second row is empty in sps1
@@ -74,10 +86,15 @@ class campaign:
         isop=np.array(data[i_key][start:-1])
 
         # convert from strings to floats
-        hcho[hcho=='<mdl'] = 'NaN'
+        hcho_low = hcho=='<mdl'
+        hcho[hcho_low] = 'NaN'
         self.hcho = hcho.astype(np.float)
-        isop[isop=='<mdl'] = 'NaN'
+        self.hcho[hcho_low] = self.attrs['hcho']['DL'] / 2.0 # set to half of detection limit
+
+        isop_low = isop=='<mdl'
+        isop[isop_low] = 'NaN'
         self.isop = isop.astype(np.float)
+        self.isop[isop_low] = self.attrs['isop']['DL'] / 2.0 # set to half of detection limit
 
         self.dates=[]
         # Convert strings to dates:
@@ -117,18 +134,38 @@ class campaign:
 
         self.isop                   = np.array(isop_df['C5H8 [ppbv]'])
         self.attrs['isop']['units'] = 'ppbv'
-
+        self.attrs['isop']['DL']    = 0.003
+        self.attrs['isop']['DL_full']    = '20121221-20121229: .003, 20122912-20130118: .005, 20130119-20130215: .003'
+        #range1=dates_isop <
 
         self.hcho                   = np.array(hcho_df['HCHO [ppbv]'])
         self.attrs['hcho']['units'] = 'ppbv'
+        self.attrs['hcho']['DL']    = 0.105
+        self.attrs['hcho']['DL_full']    = '20121221-20121229: .205, 20122912-20130118: .105, 20130119-20130215: .186'
 
         # ignore last 16 o3 measurements as they occur without matching hcho and isop measurements.
         self.ozone                  = np.array(o3_df['O3 [ppbv] (mean of hourly O3 concentration)'])[0:-16]
         self.attrs['ozone']['units']= 'ppbv'
         self.attrs['ozone']['DL']   = 0.5
 
+        # Any measurements below detection limits are set to half the DL
+        range1= np.array([ d < datetime(2012,12,30) for d in self.dates ])
+        range3= np.array([ d > datetime(2013,1,18) for d in self.dates ])
+        range2= np.array(~range1 * ~range3)
 
-    def plot_series(self,title=None,pname=None,dfmt='%d %b'):
+        # check sub detection limit occurences
+        #isop_dl1 = isop[range1 * (isop<0.003)] # occurs just once
+        self.isop[range1 * (self.isop<0.003)] = 0.003/2.0
+        #isop_dl2 = isop[range2 * (isop<0.005)] # none
+        #isop_dl3 = isop[range3 * (isop<0.003)] # none
+
+        #hcho_dl1 = hcho[range1 * (hcho<0.205)] # 9 times
+        self.hcho[range1 * (self.hcho<0.205)] = 0.205/2.0
+        #hcho_dl2 = hcho[range2 * (hcho<0.105)] # none
+        #hcho_dl3 = hcho[range3 * (hcho<0.186)] # 13 times
+        self.hcho[range1 * (self.hcho<0.186)] = 0.186/2.0
+
+    def plot_series(self,title=None,pname=None,dfmt='%Y%m%d'): #'%d %b'):
 
         dates=self.dates
 

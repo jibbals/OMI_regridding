@@ -35,6 +35,7 @@ from copy import deepcopy as dcopy
 import random
 
 from datetime import datetime#, timedelta
+from os.path import isfile
 
 # Plotting libraries
 from mpl_toolkits.basemap import Basemap, maskoceans
@@ -69,6 +70,39 @@ __colors__ = pp.__subzones_colours__
 #########################################
 ############# Functions #################
 #########################################
+
+def summary_pixels_filtered():
+    '''
+        List by year how many usable pixels are filtered, also show yearly cycle of available and filtered
+    '''
+    d0=datetime(2005,1,1)
+
+    pixx=[]
+    for year in util.list_years(d0,datetime(2013,1,1)):
+        if not isfile('Data/Isop/E_new/emissions_%s.h5'%year.strftime("%Y%m")):
+            break
+        Enew=E_new(datetime(year.year,1,1),datetime(year.year,12,31),dkeys=['pixels_u','firefilter','anthrofilter'])
+
+        pix  = Enew.pixels_u # unfiltered pixel counts
+        pix[Enew.oceanmask3d]=0
+        pixa=np.copy(pix)
+        pixb=np.copy(pix)
+        pixc=np.copy(pix)
+        pixa[Enew.firefilter]=0
+        pixb[Enew.anthrofilter]=0
+        pixc[Enew.firefilter]=0
+        pixc[Enew.anthrofilter]=0
+        tot=np.sum(pix)
+        tota=np.sum(pixa)
+        totb=np.sum(pixb)
+        totc=np.sum(pixc)
+        pixx.append((year.year, tot, tot-tota, 100*(tot-tota)/tot, tot-totb, 100*(tot-totb)/tot , tot-totc, 100*(tot-totc)/tot))
+
+
+    print("Pixels removed by filtering:")
+    print("year   ,   pixels    ,  fire               ,    anthro            ,    both "  )
+    for pixs in pixx:
+        print("%4d   &  %5.1e    &  %5.1e(%4.1f\\%%)     &    %5.1e(%4.1f\\%%)    &    %5.1e(%4.1f\\%%) \\\\"%pixs )
 
 def show_mask_filtering(d0=datetime(2005,1,1), dn=datetime(2006,1,1)):
     '''

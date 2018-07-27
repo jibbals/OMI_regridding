@@ -1744,7 +1744,8 @@ if __name__ == '__main__':
     #test_filters.summary_pixels_filtered()   # run 26/7/18 # tabulate pixel removals
     #test_filters.show_mask_filtering()
     ## look at hcho vs fire
-    test_filters.HCHO_vs_temp_vs_fire()
+    test_filters.HCHO_vs_temp_locational()
+    #test_filters.HCHO_vs_temp_vs_fire()
 
     ######
     ### Tests to be sorted into files

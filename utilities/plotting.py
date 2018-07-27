@@ -169,7 +169,8 @@ def add_regression(X,Y,label=None, addlabel=True, exponential=False, **pargs):
     '''
     Y2=np.copy(Y)
     if exponential:
-        Y2=np.log(Y)
+        Y2[Y2<=0] = np.NaN
+        Y2=np.log(Y2)
 
     # find regression
     m,b,r,ci1,ci2 = RMA(np.array(X), np.array(Y2))
@@ -184,6 +185,7 @@ def add_regression(X,Y,label=None, addlabel=True, exponential=False, **pargs):
         n=len(X)
         label='Y = %.2fX + %.2f ; r=%.2f, N=%d'%(m,b,r,n)
         if exponential:
+            n=np.sum(~np.isnan(Y2))
             label='Y = exp(%.2fX + %.2f) ; r=%.2f, N=%d'%(m,b,r,n)
 
     plt.plot(Xspace,Yline,label=label, **pargs)

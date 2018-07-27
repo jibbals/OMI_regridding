@@ -524,8 +524,9 @@ def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean, pixels=
                     # check how many pixels are added in NaN squares...
                     nanpix= np.nansum(sub_pixels[np.isnan(tmp)]) # how many pixels when value is nan (should be 0)
                     #assert nanpix==0, 'nan pixels: %d, (Should be zero)'%nanpix
-                    if nanpix > 0:
-                        print("WARNING:",nanpix,' pixels used to create np.NaN column...')
+                    if __VERBOSE__:
+                        if nanpix > 0:
+                            print("WARNING:",nanpix,' pixels used to create np.NaN column...')
 
 
                     # Pixel weighted average is sum of entries / how many entries within this subregion

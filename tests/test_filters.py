@@ -166,7 +166,125 @@ def show_mask_filtering(d0=datetime(2005,1,1), dn=datetime(2006,1,1)):
         print('Saved ',pname)
 
 
+def HCHO_vs_temp_locational(d0=datetime(2005,1,1),d1=datetime(2005,2,28),
+                            locations=None,suffix=''):
+    '''
+    Look at Modelled Temperature vs satellite HCHO, low tmp with high HCHO could suggest fire
+    Hopefully fire filter removes some of these points and improves regression
 
+    Plot comparison of temperature over region over time
+        Regression in subset of region, with and without fire filtered
+
+    '''
+    if locations is None:
+        locations = {'Syd':[-33.87,151.21], # Sydney
+                     'Can':[-35.28,149.13], # Canberra
+                     'W1': [-33.87+2,151.21-2.5], # Sydney left and up one square
+                     'W2': [-33.87,151.21-2.5], # Sydney left one square
+                     'W3': [-33.87-2,151.21-2.5], # Sydney left and down one square
+                     }
+    nlocs=len(locations)
+
+    # read fire filter, VCC_GC, and VCC_GC_lr
+    Enew=E_new(d0,d1,dkeys=['firefilter','VCC_GC','pixels_u','pixels'])
+    ntimes=len(Enew.dates)
+    # read modelled hcho, and temperature at midday
+    gc=GC_sat(d0,d1,keys=['IJ-AVG-$_CH2O','DAO-FLDS_TS'],run='tropchem')
+
+
+    ymd=d0.strftime('%Y%m%d') + '-' + d1.strftime('%Y%m%d')
+    pname='Figs/Filters/HCHO_vs_temp_%s%s.png'%(ymd,suffix)
+
+    # fire filter to lower resolution
+    firefilter = Enew.firefilter
+
+    VCC_GC_u = np.copy(Enew.VCC_GC)
+    VCC_GC   = np.copy(Enew.VCC_GC)
+    VCC_GC[firefilter] = np.NaN
+
+    firefilter_lr = np.zeros([ntimes,len(Enew.lats_lr),len(Enew.lons_lr)],dtype=np.bool)
+    VCC_GC_lr_u = np.zeros([ntimes,len(Enew.lats_lr),len(Enew.lons_lr)])
+    VCC_GC_lr   = np.zeros([ntimes,len(Enew.lats_lr),len(Enew.lons_lr)])
+    for ti in range(ntimes):
+        firefilter_lr[ti,:,:] = util.regrid(Enew.firefilter[ti,:,:],
+                                            Enew.lats,Enew.lons,
+                                            Enew.lats_lr,Enew.lons_lr,
+                                            groupfunc=np.sum) > 0
+        VCC_GC_lr_u[ti,:,:]   = util.regrid_to_lower(VCC_GC_u[ti,:,:],
+                                                     Enew.lats,Enew.lons,
+                                                     Enew.lats_lr,Enew.lons_lr,
+                                                     pixels=Enew.pixels_u[ti,:,:])
+        VCC_GC_lr[ti,:,:]     = util.regrid_to_lower(VCC_GC[ti,:,:],
+                                                     Enew.lats,Enew.lons,
+                                                     Enew.lats_lr,Enew.lons_lr,
+                                                     pixels=Enew.pixels[ti,:,:])
+    # Temperature avg:
+    surftemps=gc.surftemp[:,:,:,0] # surface temp in Kelvin
+
+    # Figure will be small map? and corellations in following subplots
+    fig, ax = plt.subplots(nlocs, 2, figsize=(20,18), sharex='all', sharey='all')
+
+    for i, (name,[lat,lon]) in enumerate(locations.items()):
+
+        # Grab HCHO and temperature at lat,lon
+        #
+        elati,eloni = util.lat_lon_index(lat,lon,Enew.lats_lr,Enew.lons_lr)
+        hcho_u = VCC_GC_lr_u[:,elati,eloni]
+        hcho = VCC_GC_lr[:,elati,eloni]
+        # Mark which parts will be affected by fire filter
+        fires= np.array(firefilter_lr[:,elati,eloni],dtype=np.bool)
+        glati,gloni = util.lat_lon_index(lat,lon,gc.lats,gc.lons)
+        temp = surftemps[:,glati,gloni]
+
+        # scatter between hcho and temp
+        #
+        plt.sca(ax[i,0])
+        plt.scatter(temp, hcho_u, color='k')
+        # add x over fire filtered ones
+        plt.scatter(temp[fires],hcho_u[fires], marker='x', color='r')
+        # add regression (exponential)
+        pp.add_regression(temp, hcho_u, addlabel=True,
+                          exponential=True, color='k', linewidth=1)
+        plt.legend(loc='best')
+        # add regression after filter?
+        #pp.add_regression(temp[~fullmask], hcho[~fullmask], addlabel=True,
+        #                  exponential=True, color='r', linewidth=1)
+        plt.title('%s (%.1f,%.1f)'%(name,lat,lon))
+        if i==nlocs//2:
+            plt.ylabel('VCC$_{GC}$ [molec/cm2]')
+
+        # scatter between hcho and temp with fires removed
+        #
+        plt.sca(ax[i,1])
+        plt.scatter(temp, hcho, color='k')
+        # add x over fire filtered ones
+        plt.scatter(temp[fires],hcho[fires], marker='x', color='teal')
+        # add regression (exponential)
+        pp.add_regression(temp, hcho, addlabel=True,
+                          exponential=True, color='k', linewidth=1)
+        plt.legend(loc='best')
+        # add regression after filter?
+        #pp.add_regression(temp[~fullmask], hcho[~fullmask], addlabel=True,
+        #                  exponential=True, color='r', linewidth=1)
+        plt.title('%s (fires masked)'%(name))
+
+    plt.suptitle('Scatter and regressions %s'%ymd,fontsize=36)
+    for ax in [ax[i,0],ax[i,1]]:
+        plt.sca(ax)
+        plt.xlabel('Kelvin')
+    #plt.legend(loc='best')
+    # set fontsizes for plot
+    fs=10
+    for attr in ['ytick','xtick','axes']:
+        plt.rc(attr, labelsize=fs)
+    plt.rc('font',size=fs)
+
+    #cax, _ = matplotlib.colorbar.make_axes(ax)
+    #matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
+
+    plt.savefig(pname)
+    plt.close()
+    print('Saved ',pname)
 
 def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=datetime(2005,1,31), subset=2,
                          detrend=False,
@@ -460,6 +578,14 @@ def test_fires_removed(day=datetime(2005,1,25)):
     f.savefig(pname)
     print("%s saved"%pname)
     plt.close(f)
+
+def test_filters_consistent():
+    Enew=E_new(datetime(2005,1,1),datetime(2005,1,31))
+    pix_u=Enew.pixels_u
+    pix=np.copy(pix_u)
+    pix[Enew.firefilter]=0
+    pix[Enew.anthrofilter]=0
+    assert np.all(pix == Enew.pixels) , 'filters not consistent!!!'
 
 
 def no2_map(data, lats, lons, vmin, vmax,

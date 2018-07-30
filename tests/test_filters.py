@@ -286,6 +286,82 @@ def HCHO_vs_temp_locational(d0=datetime(2005,1,1),d1=datetime(2005,2,28),
     plt.close()
     print('Saved ',pname)
 
+    # Extra figure using CPC temperatures
+    pname='Figs/Filters/HCHO_vs_CPCtemp_%s%s.png'%(ymd,suffix)
+
+    # Read the CPC temperatures
+    tmax, _d, lats_cpc, lons_cpc = fio.read_CPC_temp(d0,d1,regrid=True)
+    tmax=tmax+273.15 # to kelvin
+
+    # Figure will be small map? and corellations in following subplots
+    fig, ax = plt.subplots(nlocs, 2, figsize=(20,18), sharex='all', sharey='all')
+
+    # same as before but not using lowres
+    for i, (name,[lat,lon]) in enumerate(locations.items()):
+
+        # Grab HCHO and temperature at lat,lon
+        #
+        elati,eloni = util.lat_lon_index(lat,lon,Enew.lats,Enew.lons)
+        hcho_u = VCC_GC_u[:,elati,eloni]
+        hcho = VCC_GC[:,elati,eloni]
+        # Mark which parts will be affected by fire filter
+        fires= np.array(firefilter[:,elati,eloni],dtype=np.bool)
+        clati,cloni = util.lat_lon_index(lat,lon,lats_cpc,lons_cpc)
+        temp = tmax[:,glati,gloni]
+
+        # scatter between hcho and temp
+        #
+        plt.sca(ax[i,0])
+        plt.scatter(temp, hcho_u, color='k')
+        # add x over fire filtered ones
+        plt.scatter(temp[fires],hcho_u[fires], marker='x', color='r')
+        # add regression (exponential)
+        pp.add_regression(temp, hcho_u, addlabel=True,
+                          exponential=True, color='k', linewidth=1)
+        plt.legend(loc='best')
+        # add regression after filter?
+        #pp.add_regression(temp[~fullmask], hcho[~fullmask], addlabel=True,
+        #                  exponential=True, color='r', linewidth=1)
+        plt.title('%s (%.1f,%.1f)'%(name,lat,lon))
+        if i==nlocs//2:
+            plt.ylabel('VCC$_{GC}$ [molec/cm2]')
+
+        # scatter between hcho and temp with fires removed
+        #
+        plt.sca(ax[i,1])
+        plt.scatter(temp, hcho, color='k')
+        # add x over fire filtered ones
+        plt.scatter(temp[fires],hcho[fires], marker='x', color='teal')
+        # add regression (exponential)
+        pp.add_regression(temp, hcho, addlabel=True,
+                          exponential=True, color='k', linewidth=1)
+        plt.legend(loc='best')
+        # add regression after filter?
+        #pp.add_regression(temp[~fullmask], hcho[~fullmask], addlabel=True,
+        #                  exponential=True, color='r', linewidth=1)
+        plt.title('%s (fires masked)'%(name))
+
+    plt.suptitle('Scatter and regressions (CPC temperature) %s'%ymd,fontsize=36)
+    for ax in [ax[i,0],ax[i,1]]:
+        plt.sca(ax)
+        plt.xlabel('Kelvin')
+    #plt.legend(loc='best')
+    # set fontsizes for plot
+    fs=10
+    for attr in ['ytick','xtick','axes']:
+        plt.rc(attr, labelsize=fs)
+    plt.rc('font',size=fs)
+
+    #cax, _ = matplotlib.colorbar.make_axes(ax)
+    #matplotlib.colorbar.ColorbarBase(cax, cmap=cmap, norm=norm)
+
+    plt.savefig(pname)
+    plt.close()
+    print('Saved ',pname)
+
+
+
+
 def HCHO_vs_temp_vs_fire(d0=datetime(2005,1,1),d1=datetime(2005,1,31), subset=2,
                          detrend=False,
                          regionplus = pp.__AUSREGION__):

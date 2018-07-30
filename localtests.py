@@ -58,94 +58,25 @@ start1=timeit.default_timer()
 
 d0=datetime(2005,1,1)
 d1=datetime(2005,2,28)
-suffix=''
 
 
-locations = {'Syd':[-33.87,151.21], # Sydney
-             'Can':[-35.28,149.13], # Canberra
-             #'W1': [-33.87+2,151.21-2.5], # Sydney left and up one square
-             #'W2': [-33.87,151.21-2.5], # Sydney left one square
-             #'W3': [-33.87-2,151.21-2.5], # Sydney left and down one square
-             }
-nlocs=len(locations)
-
-# read fire filter, VCC_GC, and VCC_GC_lr
-Enew=E_new(d0,d1,dkeys=['firefilter','VCC_GC','pixels_u'])
-ntimes=len(Enew.dates)
-# read modelled hcho, and temperature at midday
-gc=GC_class.GC_sat(d0,d1,keys=['IJ-AVG-$_CH2O','DAO-FLDS_TS'],run='tropchem')
+#data,attrs = fio.read_netcdf(fname)
+tmax0, dat0, lat0,lon0 = fio.read_CPC_temp(d0,regrid=False)
+tmax1, dat1, lat1,lon1 = fio.read_CPC_temp(d0,regrid=True)
+print (np.shape(tmax0))
+print (np.shape(tmax1))
 
 
-ymd=d0.strftime('%Y%m%d') + '-' + d1.strftime('%Y%m%d')
-pname='Figs/Filters/HCHO_vs_temp_%s%s.png'%(ymd,suffix)
 
-# fire filter to lower resolution
-firefilter_lr = np.zeros([ntimes,len(Enew.lats_lr),len(Enew.lons_lr)],dtype=np.bool)
-VCC_GC_lr = np.zeros([ntimes,len(Enew.lats_lr),len(Enew.lons_lr)])
-for ti in range(ntimes):
-    firefilter_lr[ti,:,:] = util.regrid(Enew.firefilter[ti,:,:],
-                                        Enew.lats,Enew.lons,
-                                        Enew.lats_lr,Enew.lons_lr,
-                                        groupfunc=np.sum) > 0
-    VCC_GC_lr[ti,:,:]     = util.regrid_to_lower(Enew.VCC_GC[ti,:,:],
-                                                Enew.lats,Enew.lons,
-                                                Enew.lats_lr,Enew.lons_lr,
-                                                pixels=Enew.pixels_u[ti,:,:])
-# Temperature avg:
-surftemps=gc.surftemp[:,:,:,0] # surface temp in Kelvin
+f,axs=plt.subplots(1,2)
+plt.sca(axs[0])
+pp.createmap(tmax0, lat0, lon0, linear=True,
+             )#region=pp.__AUSREGION__, )
+plt.sca(axs[1])
+pp.createmap(tmax1, lat1, lon1, linear=True,
+             )#region=pp.__AUSREGION__)
+plt.show()
 
-# Figure will be small map? and corellations in following subplots
-fig, ax = plt.subplots(nlocs, 1, figsize=(12,18), sharex='all', sharey='all')
-
-#    ax0=plt.subplot(221)
-#    m, cs, cb=pp.createmap(surfmeantemp, gc.lats, gc.lons,
-#                         region=regionplus, cmapname='rainbow',
-#                         cbarorient='bottom',
-#                         vmin=tmin,vmax=tmax,
-#                         GC_shift=True, linear=True,
-#                         title='Temperature '+ymd, clabel='Kelvin')
-
-# Add rectangle around where we are correlating
-#pp.add_rectangle(m,region,linewidth=2)
-
-# Also plot average HCHO
-#    plt.subplot(222)
-#    pp.createmap(np.nanmean(omi.VCC_OMI,axis=0),omi.lats,omi.lons,
-#                 region=regionplus, cmapname='rainbow',
-#                 cbarorient='bottom',
-#                 vmin=hmin,vmax=hmax,
-#                 GC_shift=True, linear=False,
-#                 title='VCC$_{OMI}$', clabel='molec/cm2')
-
-for i, (name,[lat,lon]) in enumerate(locations.items()):
-
-    # Grab HCHO and temperature at lat,lon
-    #
-    elati,eloni = util.lat_lon_index(lat,lon,Enew.lats_lr,Enew.lons_lr)
-    hcho = VCC_GC_lr[:,elati,eloni]
-    fires= np.array(firefilter_lr[:,elati,eloni],dtype=np.bool)
-    glati,gloni = util.lat_lon_index(lat,lon,gc.lats,gc.lons)
-    temp = surftemps[:,glati,gloni]
-
-    print('hcho',hcho)
-    print('temp',temp)
-    print('fires',fires)
-    # scatter between hcho and temp
-    #
-    plt.sca(ax[i])
-    plt.scatter(temp, hcho, color='k')
-    # add x over fire filtered ones
-    plt.scatter(temp[fires],hcho[fires], marker='x', color='r')
-    # add regression (exponential)
-    pp.add_regression(temp, hcho, addlabel=True,
-                      exponential=True, color='k', linewidth=1)
-    # add regression after filter?
-    #pp.add_regression(temp[~fullmask], hcho[~fullmask], addlabel=True,
-    #                  exponential=True, color='r', linewidth=1)
-    plt.title('%s (%.1f,%.1f)'%(name,lat,lon))
-    plt.ylabel('VCC$_{GC}$ [molec/cm2]')
-plt.suptitle('Scatter and regressions %s'%ymd)
-plt.xlabel('Kelvin')
 
 
 ###########

@@ -105,13 +105,19 @@ def date_from_gregorian(greg):
         return([d0+timedelta(seconds=int(greg*3600)),])
     return([d0+timedelta(seconds=int(hr*3600)) for hr in greg])
 
-def date_index(date,dates):
+def date_index(date,dates, dn=None):
 
     whr=np.where(np.array(dates) == date) # returns (matches_array,something)
     if len(whr[0])==0:
         print (date, 'not in', dates)
+    if dn is None:
+        return whr[0][0] # We just want the match
+    else:
+        whrn=np.where(np.array(dates) == dn) # returns last date match
+        if len(whrn[0])==0: # last date not in dataset
+            print (dn, 'not in', dates)
+        return np.arange(whr[0][0],whrn[0][0])
 
-    return whr[0][0] # We just want the match
 
 def datetimes_from_np_datetime64(times, reverse=False):
     # '2005-01-01T00:00:00.000000000'

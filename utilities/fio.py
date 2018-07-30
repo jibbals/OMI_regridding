@@ -238,17 +238,25 @@ def read_netcdf(filename):
         read all of some netcdf file...
     '''
     print("Trying to read netcdf file: %s"%filename)
-    from netCDF4 import Dataset
+    data,attrs={},{}
 
-    out={}
-    with Dataset(filename,'r') as nc_f: # read netcdf datafile
-        nc_attrs=nc_f.ncattrs()
-        nc_dims= [dim for dim in nc_f.dimensions]
-        nc_vars= [var for var in nc_f.variables]
-        for var in nc_vars:
-            #print( var, nc_fid.variables[var].size )
-            out[var]=nc_f.variables[var][:]
-    return out
+    with xarray.open_dataset(filename) as ds: # read netcdf datafile
+
+        # First read coordinates:
+        for key in ds.coords.keys():
+            data[key]=np.array(ds.coords[key]) # could also keep xarray or dask array
+            attrs[key]=ds[key].attrs
+
+        # then read variables
+        for key in ds.variables.keys():
+            data[key]=np.array(ds[key])
+            attrs[key]=ds[key].attrs
+            if 'scale' in attrs[key].keys():
+                data[key] = data[key]*float(attrs[key]['scale'])
+                if __VERBOSE__:
+                    print("%s scaled by %.2e"%(key,float(attrs[key]['scale'])))
+
+    return data,attrs
 
 def read_hdf5(filename):
     '''
@@ -307,6 +315,50 @@ def determine_filepath(date, latres=__LATRES__,lonres=__LONRES__, omhcho=False, 
        fpath="Data/omhchorg/omhcho_1g%s.he5"%res_date
 
     return(fpath)
+
+def read_CPC_temp(d0, dn=None, regrid=True):
+    '''
+        Read CPC temperature, pull out date (or date range) and interpolate to GMAO grid
+        Returns Data[dates,lats,lons], dates, lats, lons
+    '''
+    fname = d0.strftime('Data/CPC_Temperatures/tmax.%Y.nc')
+    data,attrs=read_netcdf(fname)
+
+    # strings to datetimes
+    dates = util.datetimes_from_np_datetime64(data['time'])
+    # the dates which we want
+    dinds = util.date_index(d0, dates, dn=dn)
+
+    # lats top to bottom (360 of them)
+    # 89.75, 89.25, ... -89.75
+    lats=data['lat']
+    # lons 0 to 360 (720 of them)
+    # 0.25, 0.75, ..., 359.75
+    lons=data['lon']
+    # tmax is in variable 'tmax'
+    tmax = data['tmax'][dinds,:,:]
+
+    # For any basemap application this works better with -180 to 180 grid
+    lons[lons>180] = lons[lons>180] - 360
+    #lons=np.roll(lons,360)
+    #if len(dinds) < 2:
+        #tmax=np.roll(tmax,360,axis=0)
+    #else:
+        #tmax=np.roll(tmax,360,axis=1)
+
+    out=np.copy(tmax)
+
+    # Regrid onto gmao higher resolution
+    if regrid:
+        newlats,newlons, _late,_lone=util.lat_lon_grid()
+        if dn is None:
+            out = util.regrid_to_higher(tmax,lats,lons, newlats,newlons)
+        else:
+            for i in range(len(dinds)):
+                out[i] = util.regrid_to_higher(tmax[i],lats,lons, newlats,newlons)
+        lats=newlats
+        lons=newlons
+    return out, dates, lats, lons
 
 def read_AAOD(date):
     '''

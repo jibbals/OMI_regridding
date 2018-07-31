@@ -307,7 +307,7 @@ def HCHO_vs_temp_locational(d0=datetime(2005,1,1),d1=datetime(2005,2,28),
         # Mark which parts will be affected by fire filter
         fires= np.array(firefilter[:,elati,eloni],dtype=np.bool)
         clati,cloni = util.lat_lon_index(lat,lon,lats_cpc,lons_cpc)
-        temp = tmax[:,glati,gloni]
+        temp = tmax[:,clati,cloni]
 
         # scatter between hcho and temp
         #

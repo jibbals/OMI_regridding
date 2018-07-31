@@ -116,7 +116,7 @@ def date_index(date,dates, dn=None):
         whrn=np.where(np.array(dates) == dn) # returns last date match
         if len(whrn[0])==0: # last date not in dataset
             print (dn, 'not in', dates)
-        return np.arange(whr[0][0],whrn[0][0])
+        return np.arange(whr[0][0],whrn[0][0]+1)
 
 
 def datetimes_from_np_datetime64(times, reverse=False):

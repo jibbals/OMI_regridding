@@ -1744,7 +1744,10 @@ if __name__ == '__main__':
     #test_filters.summary_pixels_filtered()   # run 26/7/18 # tabulate pixel removals
     #test_filters.show_mask_filtering()
     ## look at hcho vs fire
-    test_filters.HCHO_vs_temp_locational()
+    #test_filters.HCHO_vs_temp_locational() # sydney and nearby correlations
+    locs = {'CYP1':[-15,144], 'CYP2':[-14,142], 'CYP3':[-15,142],'CYP4':[-16,142]}
+    test_filters.HCHO_vs_temp_locational(datetime(2005,1,1),datetime(2005,2,28),
+                                         locations=locs, suffix='QLD')
     #test_filters.HCHO_vs_temp_vs_fire()
 
     ######

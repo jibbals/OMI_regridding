@@ -337,6 +337,7 @@ def read_CPC_temp(d0, dn=None, regrid=True):
     lons=data['lon']
     # tmax is in variable 'tmax'
     tmax = data['tmax'][dinds,:,:]
+    dates= np.array(dates)[dinds]
 
     # For any basemap application this works better with -180 to 180 grid
     lons[lons>180] = lons[lons>180] - 360
@@ -351,6 +352,7 @@ def read_CPC_temp(d0, dn=None, regrid=True):
     # Regrid onto gmao higher resolution
     if regrid:
         newlats,newlons, _late,_lone=util.lat_lon_grid()
+        out=np.zeros([len(dinds),len(newlats),len(newlons)])+np.NaN
         if dn is None:
             out = util.regrid_to_higher(tmax,lats,lons, newlats,newlons)
         else:

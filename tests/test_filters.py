@@ -26,6 +26,7 @@ from classes.omhchorp import omhchorp
 from classes.GC_class import GC_tavg, GC_sat
 from classes.E_new import E_new
 from utilities.plotting import __AUSREGION__
+from Inversion import smearing # smearing filter creation
 
 # General stuff
 import numpy as np
@@ -1118,14 +1119,13 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=__AUSREGIO
     print("Saved figure ",pname)
 
 
-def smearing_calculation(date=datetime(2005,1,1)):
+def smearing_regridding(date=datetime(2005,1,1)):
     '''
         S=change in HCHO column / change in E_isop
     '''
-    region=__AUSREGION__
-    # READ normal and halfisop run outputs:
-    full=GC_tavg(date)
-    half=None
+    smear,slats,slons=smearing(date)
+
+    # what happens when we interpolate?!?!
 
 
 def check_no2_filter(year):

@@ -289,13 +289,14 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
 
     # Also save smearing
     smear, slats,slons = smearing(month,region=region,pname='Figs/GC/smearing_%s.png'%mstr)
-    smear = util.regrid_to_higher(smear,slats,slons,omilats,omilons,interp='nearest')
-    pp.createmap(smear,omilats,omilons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
-                 linear=True, vmin=1000, vmax=10000,
-                 clabel='S', pname='Figs/GC/smearing_%s_interp.png'%mstr, title='Smearing %s'%mstr)
+    # Not regridding to higher resolution any more, low res is fine
+    #smear = util.regrid_to_higher(smear,slats,slons,omilats,omilons,interp='nearest')
+    #pp.createmap(smear,omilats,omilons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
+    #             linear=True, vmin=1000, vmax=10000,
+    #             clabel='S', pname='Figs/GC/smearing_%s_interp.png'%mstr, title='Smearing %s'%mstr)
     print("Smearing plots saved in Figs/GC/smearing...")
     outdata['smearing'] = smear
-    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for %s, mapped from 2x2.5 to 0.25x0.3125 resolution'%mstr}
+    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for %s at 2x2.5 resolution'%mstr}
 
     # TODO: Smearing Filter
     smearfilter = smear > __Thresh_Smearing__#5000 # something like this

@@ -115,6 +115,24 @@ class E_new:
                 print("Reading %s"%key )
             # Read the data and append to time dimensions if there's more than
             # one month file being read
+            elif (key in ['smearing','smearfilter']) and key in dkeys:
+
+                # np array of the data [lats, lons]
+                data0=np.array(E_new_list[0][key])
+
+                data=np.zeros([n_months, data0.shape[0], data0.shape[1]])
+
+
+                # for each extra month, append onto time dim:
+                for i in range(1,n_months):
+                    data[i]=np.array(E_new_list[i][key])
+
+                setattr(self, key, data)
+                # convert filters to boolean
+                if 'filter' in key:
+                    setattr(self,key,data.astype(np.bool))
+                print("Reading %s"%key )
+
             elif (key in ['time','dates']) or (key in dkeys):
 
                 # np array of the data [time, lats, lons]

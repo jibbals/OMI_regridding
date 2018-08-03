@@ -59,44 +59,15 @@ start1=timeit.default_timer()
 d0=datetime(2005,1,1)
 d1=datetime(2005,2,28)
 
-smear,slats,slons=Inversion.smearing(d0)
-omilats,omilons, omilate,omilone = util.lat_lon_grid()
-smear2 = util.regrid_to_higher(smear,slats,slons,omilats,omilons,interp='nearest')
+#def smearing_threshold(d0=datetime(2005,1,1),dn=datetime(2005,12,31)):
+#    '''
+#    '''
 
-f,axs=plt.subplots(2,2,figsize=(20,22))
-
-
-plt.sca(axs[0,0])
-m,cs,cb=pp.createmap(smear, slats, slons, linear=True,
-             vmin=1000, vmax=10000,
-             region=pp.__AUSREGION__,
-             colorbar=False,
-             title='smearing')
-plt.sca(axs[0,1])
-m2,cs,cb=pp.createmap(smear2,omilats,omilons, linear=True,
-             vmin=1000, vmax=10000,
-             region=pp.__AUSREGION__,
-             colorbar=False,
-             title='Smearing interpolated')
-plt.sca(axs[1,0])
-m,cs,cb=pp.createmap(smear, slats, slons, linear=True,
-             vmin=1000, vmax=10000,
-             region=pp.__AUSREGION__,
-             cbarfmt='%.0e',
-             clabel='S',title='smearing')
-pp.add_grid_to_map(m)
-plt.sca(axs[1,1])
-m2,cs,cb=pp.createmap(smear2,omilats,omilons, linear=True,
-             vmin=1000, vmax=10000,
-             region=pp.__AUSREGION__,
-             cbarfmt='%.0e',
-             clabel='S', title='Smearing interpolated')
-pp.add_grid_to_map(m2)
-
-plt.suptitle('smearing 200501', fontsize=35)
-plt.tight_layout()
-plt.savefig('Figs/smearing_test.png')
-plt.close()
+# Read smearing from E_new
+enew=E_new(d0,d1,dkeys=['smearing','smearfilter'])
+smear=enew.smearing
+smear.shape
+enew.smearfilter.shape
 
 
 ###########

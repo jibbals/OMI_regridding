@@ -1745,9 +1745,12 @@ if __name__ == '__main__':
     #test_filters.show_mask_filtering()
     ## look at hcho vs fire
     #test_filters.HCHO_vs_temp_locational() # sydney and nearby correlations
-    locs = {'CYP1':[-15,144], 'CYP2':[-14,142], 'CYP3':[-15,142],'CYP4':[-16,142]}
-    test_filters.HCHO_vs_temp_locational(datetime(2005,1,1),datetime(2005,2,28),
-                                         locations=locs, suffix='QLD')
+    #locs = {'CYP1':[-15,144], 'CYP2':[-14,142], 'CYP3':[-15,142],'CYP4':[-16,142]}
+    #test_filters.HCHO_vs_temp_locational(datetime(2005,1,1),datetime(2005,2,28),
+    #                                     locations=locs, suffix='QLD')
+    # run 2/8/18
+    #test_filters.check_smoke_filtering() # check that smoke filter also working (whole year)
+    #test_filters.check_smoke_filtering(datetime(2005,6,1),datetime(2005,10,1))
     #test_filters.HCHO_vs_temp_vs_fire()
 
     ######

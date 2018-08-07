@@ -58,17 +58,30 @@ start1=timeit.default_timer()
 
 d0=datetime(2005,1,1)
 d1=datetime(2005,2,28)
-
+dn=datetime(2005,12,31)
 #def smearing_threshold(d0=datetime(2005,1,1),dn=datetime(2005,12,31)):
 #    '''
 #    '''
 
 # Read smearing from E_new
-enew=E_new(d0,d1,dkeys=['smearing','smearfilter'])
+enew=E_new(d0,dn,dkeys=['smearing','smearfilter'])
+lats=enew.lats
+lons=enew.lons
+print(len(lats),len(lons))
 smear=enew.smearing
 smear.shape
 enew.smearfilter.shape
 
+
+plt.figure(figsize=(15,15))
+for i in range(12):
+    plt.subplot(4,3,i+1)
+    #plt.subplot(1,2,i+1)
+    pp.distplot(smear[i],enew.lats,enew.lons,region=pp.__AUSREGION__,bins=np.arange(1000,10000,500))
+    plt.xlim([500,10500])
+    plt.ylim([0,0.0004])
+plt.show()
+plt.close()
 
 ###########
 ### Record and time STUJFFS

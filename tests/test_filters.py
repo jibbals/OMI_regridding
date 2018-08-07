@@ -1191,6 +1191,7 @@ def smearing_threshold(d0=datetime(2005,1,1),dn=datetime(2005,12,31)):
     # Read smearing from E_new
     enew=E_new(d0,dn,dkeys=['smearing'])
 
+
 def smearing_regridding(date=datetime(2005,1,1)):
     '''
         S=change in HCHO column / change in E_isop

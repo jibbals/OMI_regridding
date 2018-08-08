@@ -26,6 +26,7 @@ from classes.omhchorp import omhchorp
 from classes.GC_class import GC_tavg, GC_sat
 from classes.E_new import E_new
 from utilities.plotting import __AUSREGION__
+from Inversion import smearing # smearing filter creation
 
 # General stuff
 import numpy as np
@@ -104,6 +105,70 @@ def summary_pixels_filtered():
     for pixs in pixx:
         print("%4d   &  %5.1e    &  %5.1e(%4.1f\\%%)     &    %5.1e(%4.1f\\%%)    &    %5.1e(%4.1f\\%%) \\\\"%pixs )
 
+def check_smoke_filtering(d0=datetime(2005,1,1), dn=datetime(2005,12,31)):
+    '''
+    '''
+    Enew = E_new(d0,dn,dkeys=['pixels_u','pixels','firefilter','anthrofilter',])
+    lats = Enew.lats;  lons=Enew.lons
+    firesum = np.nansum(Enew.firefilter,axis=0).astype(np.float)
+    anthsum = np.nansum(Enew.anthrofilter,axis=0).astype(np.float)
+    pixsum  = np.nansum(Enew.pixels_u,axis=0).astype(np.float)
+    pix  = Enew.pixels_u # unfiltered pixel counts
+    pix[Enew.oceanmask3d]=0
+    pixa=np.copy(pix)
+    pixb=np.copy(pix)
+    pixc=np.copy(pix)
+    pixa[Enew.firefilter]=0
+    pixb[Enew.anthrofilter]=0
+    pixc[Enew.firefilter]=0
+    pixc[Enew.anthrofilter]=0
+
+    # make smoke mask over same time period
+    smoke,sdates,slats,slons = fio.make_smoke_mask(d0,dn,region=pp.__AUSREGION__)
+    smokesum = np.nansum(smoke,axis=0).astype(np.float)
+    pixd=np.copy(pix)
+    pixd[smoke] = 0
+    assert np.all(slats == lats)
+
+    plt.figure(figsize=[16,16])
+    plt.subplot(2,2,1)
+    pp.createmap(smokesum,lats,lons,title='days filtered (smoke)',
+                 aus=True,linear=True, set_under='grey',vmin=1)
+    plt.subplot(2,2,2)
+    pp.createmap(firesum,lats,lons,title='days filtered (fire)',
+                 aus=True,linear=True, set_under='grey',vmin=1)
+    plt.subplot(2,1,2)
+    # time series for pixel counts
+    for arr,colour,label in zip([pix,pixa,pixd],['k','m','c'],['unfiltered','fire','smoke']):
+        pp.plot_time_series(Enew.dates,np.nansum(arr,axis=(1,2)),color=colour,label=label)
+    plt.xlabel('day')
+    plt.ylabel('pixel count')
+    plt.legend(loc='best')
+    timestr='%s-%s'%(d0.strftime('%Y%m%d'),dn.strftime('%Y%m%d'))
+    plt.suptitle('Fire and smoke filters applied on %s'%timestr,fontsize=30)
+    pname='Figs/Filters/SmokeFilter_%s.png'%timestr
+    plt.savefig(pname)
+    print('Saved ',pname)
+
+    ####
+    ## Also create a plot looking at each of fire/anthro filters and portion of data removed
+    for arr,title,pixf in zip([firesum,smokesum],['Pyrogenic','Smoke'],[pixa,pixb]):
+        pname='Figs/Filters/%s_%s.png'%(title,timestr)
+        plt.figure(figsize=[10,16])
+        plt.subplot(2,1,1)
+        pp.createmap(100*arr/pixsum,lats,lons,title=title,
+                     linear=True, vmin=1,vmax=100,
+                     aus=True, set_under='grey')
+        plt.subplot(2,1,2)
+        pixot=np.nanmean(100*(1-pixf/pix),axis=(1,2))
+        pp.plot_time_series(Enew.dates, pixot,title='Portion removed')
+        plt.xlabel('time')
+        plt.ylabel('%')
+        plt.suptitle('%s filter: %s'%(title,timestr),fontsize=30)
+
+        plt.savefig(pname)
+        print('Saved ',pname)
+
 def show_mask_filtering(d0=datetime(2005,1,1), dn=datetime(2006,1,1)):
     '''
         masked squares count for fire, masked squares count for anthro
@@ -164,6 +229,8 @@ def show_mask_filtering(d0=datetime(2005,1,1), dn=datetime(2006,1,1)):
 
         plt.savefig(pname)
         print('Saved ',pname)
+
+
 
 
 def HCHO_vs_temp_locational(d0=datetime(2005,1,1),d1=datetime(2005,2,28),
@@ -1117,15 +1184,88 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=__AUSREGIO
     plt.savefig(pname)
     print("Saved figure ",pname)
 
+def smearing_threshold(year=datetime(2005,1,1)):
+    '''
+    '''
 
-def smearing_calculation(date=datetime(2005,1,1)):
+    # Read smearing from E_new
+    d0=datetime(year.year,1,1)
+    dn=datetime(year.year,12,31)
+    enew=E_new(d0,dn,dkeys=['smearing','smearfilter'])
+    smear=enew.smearing
+    if smear.shape[1] == len(enew.lats):
+        lats=enew.lats
+        lons=enew.lons
+    else:
+        lats=enew.lats_lr
+        lons=enew.lons_lr
+
+
+
+    # Plot distribution of smearing for each month...
+    plt.figure(figsize=(15,15))
+    mstr=[d.strftime('%b') for d in util.list_months(d0,dn)]
+    for i in range(12):
+        plt.subplot(4,3,i+1)
+        #plt.subplot(1,2,i+1)
+        smeari=smear[i]
+        smeari[smeari>10000] = np.NaN#10000
+        pp.distplot(smeari,lats,lons,region=pp.__AUSREGION__,bins=np.arange(1000,10600,500))
+        plt.title(mstr[i])
+        plt.xlim([500,10500])
+        # format yaxis
+        plt.gca().yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter('{0:.0e}'.format))
+        #plt.ylim([0,4e-4])
+    plt.suptitle('Smearing distribution by month')
+    plt.tight_layout()
+    pname='Figs/Filters/smearing_distr_2005.png'
+    plt.savefig(pname)
+    plt.close()
+    print("SAVED FIGURE ", pname)
+
+
+def smearing_regridding(date=datetime(2005,1,1)):
     '''
         S=change in HCHO column / change in E_isop
+        What's going on when we interpolate smearing to high resolution??
     '''
-    region=__AUSREGION__
-    # READ normal and halfisop run outputs:
-    full=GC_tavg(date)
-    half=None
+    smear,slats,slons=Inversion.smearing(date)
+    omilats,omilons, omilate,omilone = util.lat_lon_grid()
+    smear2 = util.regrid_to_higher(smear,slats,slons,omilats,omilons,interp='nearest')
+
+    f,axs=plt.subplots(2,2,figsize=(20,22))
+
+    plt.sca(axs[0,0])
+    m,cs,cb=pp.createmap(smear, slats, slons, linear=True,
+                 vmin=1000, vmax=10000,
+                 region=pp.__AUSREGION__,
+                 colorbar=False,
+                 title='smearing')
+    plt.sca(axs[0,1])
+    m2,cs,cb=pp.createmap(smear2,omilats,omilons, linear=True,
+                 vmin=1000, vmax=10000,
+                 region=pp.__AUSREGION__,
+                 colorbar=False,
+                 title='Smearing interpolated')
+    plt.sca(axs[1,0])
+    m,cs,cb=pp.createmap(smear, slats, slons, linear=True,
+                 vmin=1000, vmax=10000,
+                 region=pp.__AUSREGION__,
+                 cbarfmt='%.0e',
+                 clabel='S',title='smearing')
+    pp.add_grid_to_map(m)
+    plt.sca(axs[1,1])
+    m2,cs,cb=pp.createmap(smear2,omilats,omilons, linear=True,
+                 vmin=1000, vmax=10000,
+                 region=pp.__AUSREGION__,
+                 cbarfmt='%.0e',
+                 clabel='S', title='Smearing interpolated')
+    pp.add_grid_to_map(m2)
+
+    plt.suptitle('smearing 200501', fontsize=35)
+    plt.tight_layout()
+    plt.savefig('Figs/Filters/smearing_test.png')
+    plt.close()
 
 
 def check_no2_filter(year):

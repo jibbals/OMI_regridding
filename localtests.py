@@ -58,26 +58,10 @@ start1=timeit.default_timer()
 
 d0=datetime(2005,1,1)
 d1=datetime(2005,2,28)
-
-
-#data,attrs = fio.read_netcdf(fname)
-tmax0, dat0, lat0,lon0 = fio.read_CPC_temp(d0,regrid=False)
-tmax1, dat1, lat1,lon1 = fio.read_CPC_temp(d0,regrid=True)
-print (np.shape(tmax0))
-print (np.shape(tmax1))
-
-
-
-f,axs=plt.subplots(1,2)
-plt.sca(axs[0])
-pp.createmap(tmax0, lat0, lon0, linear=True,
-             )#region=pp.__AUSREGION__, )
-plt.sca(axs[1])
-pp.createmap(tmax1, lat1, lon1, linear=True,
-             )#region=pp.__AUSREGION__)
-plt.show()
-
-
+dn=datetime(2005,12,31)
+enew=E_new(d0,dkeys=['smearing'])
+smear=enew.smearing
+pp.createmap(smear[0],enew.lats,enew.lons,linear=True,aus=True, vmin=1e3, vmax=1e4)
 
 ###########
 ### Record and time STUJFFS

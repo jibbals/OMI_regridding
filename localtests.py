@@ -59,9 +59,12 @@ start1=timeit.default_timer()
 d0=datetime(2005,1,1)
 d1=datetime(2005,2,28)
 dn=datetime(2005,12,31)
+
 enew=E_new(d0,dkeys=['smearing'])
 smear=enew.smearing
 pp.createmap(smear[0],enew.lats,enew.lons,linear=True,aus=True, vmin=1e3, vmax=1e4)
+
+
 
 ###########
 ### Record and time STUJFFS

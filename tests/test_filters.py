@@ -1184,10 +1184,10 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=__AUSREGIO
     plt.savefig(pname)
     print("Saved figure ",pname)
 
+
 def smearing_threshold(year=datetime(2005,1,1)):
     '''
     '''
-
     # Read smearing from E_new
     d0=datetime(year.year,1,1)
     dn=datetime(year.year,12,31)
@@ -1222,7 +1222,6 @@ def smearing_threshold(year=datetime(2005,1,1)):
     plt.savefig(pname)
     plt.close()
     print("SAVED FIGURE ", pname)
-
 
 def smearing_regridding(date=datetime(2005,1,1)):
     '''

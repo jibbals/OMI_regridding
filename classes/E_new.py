@@ -121,7 +121,7 @@ class E_new:
                 data0=np.array(E_new_list[0][key])
 
                 data=np.zeros([n_months, data0.shape[0], data0.shape[1]])
-
+                data[0] = data0
 
                 # for each extra month, append onto time dim:
                 for i in range(1,n_months):

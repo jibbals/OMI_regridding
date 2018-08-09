@@ -1052,7 +1052,6 @@ def plot_yearly_cycle(data,dates, **plotargs):
     plt.xlim([-5,370])
     plt.xlabel('DOY')
 
-
 def add_dots_to_map(bmap, lats, lons, region, cmapname='rainbow', add_rectangle=True, landonly=True):
     '''
         Add dots (optionally coloured) to the bmap
@@ -1085,3 +1084,24 @@ def add_dots_to_map(bmap, lats, lons, region, cmapname='rainbow', add_rectangle=
             mx,my = bmap(lons[x], lats[y])
             bmap.plot(mx, my, 'o', markersize=5, color=colors[ii])
     return colors
+
+def add_marker_to_map(bmap, mask, lats, lons, marker='o', landonly=False, **bmapargs):
+    '''
+        Add marker (optionally coloured) to the bmap
+        lats, lons will be subset to subregion
+        bmapargs can include (EG)
+            markersize=5, color='r',
+    '''
+
+    oceanmask=util.oceanmask(lats,lons, inlands=False)
+
+    for y in range(len(lats)):
+        for x in range(len(lons)):
+            # Don't do oceanic squares
+            if landonly and oceanmask[y,x]:
+                continue
+
+            # Add mark to map (if true in mask array)
+            if mask[y,x]:
+                mx,my = bmap(lons[x], lats[y])
+                bmap.plot(mx, my, marker=marker, **bmapargs)

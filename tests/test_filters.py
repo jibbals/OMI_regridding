@@ -1185,7 +1185,7 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=__AUSREGIO
     print("Saved figure ",pname)
 
 
-def smearing_threshold(year=datetime(2005,1,1)):
+def smearing_threshold(year=datetime(2005,1,1), strict=4000, loose=6000):
     '''
     '''
     # Read smearing from E_new
@@ -1199,12 +1199,36 @@ def smearing_threshold(year=datetime(2005,1,1)):
     else:
         lats=enew.lats_lr
         lons=enew.lons_lr
+    mstr=[d.strftime('%b') for d in util.list_months(d0,dn)]
 
 
+    # Plot map of smearing for each month.
+    plt.figure(figsize=(15,15))
+    for i in range(12):
+        plt.subplot(4,3,i+1)
+        smeari=smear[i]
+        bmap,cs,cb=pp.createmap(smeari,lats,lons,region=pp.__AUSREGION__,
+                                linear=True,vmin=1000,vmax=10000)
+
+        plt.title(mstr[i])
+
+        # Add diamond over strict threshold
+        pp.add_marker_to_map(bmap, smeari>strict, lats, lons, marker='d',
+                             landonly=False, markersize=10, color='r')
+
+        # Add dot over loose threshold
+        pp.add_marker_to_map(bmap, smeari>loose, lats, lons, marker='o',
+                             landonly=False, markersize=8, color='k')
+
+    plt.tight_layout()
+    plt.suptitle('Smearing by month')
+    pname='Figs/Filters/smearing_maps_2005.png'
+    plt.savefig(pname)
+    plt.close()
+    print("SAVED FIGURE ", pname)
 
     # Plot distribution of smearing for each month...
     plt.figure(figsize=(15,15))
-    mstr=[d.strftime('%b') for d in util.list_months(d0,dn)]
     for i in range(12):
         plt.subplot(4,3,i+1)
         #plt.subplot(1,2,i+1)
@@ -1216,12 +1240,16 @@ def smearing_threshold(year=datetime(2005,1,1)):
         # format yaxis
         plt.gca().yaxis.set_major_formatter(matplotlib.ticker.FuncFormatter('{0:.0e}'.format))
         #plt.ylim([0,4e-4])
-    plt.suptitle('Smearing distribution by month')
     plt.tight_layout()
+    plt.suptitle('Smearing distribution by month')
     pname='Figs/Filters/smearing_distr_2005.png'
     plt.savefig(pname)
     plt.close()
     print("SAVED FIGURE ", pname)
+
+
+
+
 
 def smearing_regridding(date=datetime(2005,1,1)):
     '''

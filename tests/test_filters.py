@@ -1184,6 +1184,64 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=__AUSREGIO
     plt.savefig(pname)
     print("Saved figure ",pname)
 
+def smearing_creation(month=datetime(2005,1,1)):
+    '''
+        test smearing creation process.
+    '''
+    #def smearing(month, region=pp.__AUSREGION__, pname=None):
+    #'''
+    #    Read full and half isop bpch output, calculate smearing
+    #    S = d column_HCHO / d E_isop
+    #    For now uses tavg instead of overpass times
+    #'''
+    #if __VERBOSE__:
+    #    print('calculating smearing over ',region,' in month ',month)
+
+    ## First get subset of tracer average files
+    ##
+    # ready tracer average files for the month
+    full=GC_class.GC_tavg(month, run='tropchem')
+    half=GC_class.GC_tavg(month, run='halfisop') # month avg right now
+    # make sure monthly averaged for both (only have monthly avg for isop_bio)
+    full_month=full.month_average(keys=['O_hcho','E_isop_bio'])
+    half_month=half.month_average(keys=['O_hcho','E_isop_bio'])
+    f_hcho=full_month['O_hcho'] # molec/cm2
+    h_hcho=half_month['O_hcho'] # molec/cm2
+    f_E_isop=full_month['E_isop_bio'] # molec/cm2/s
+    h_E_isop=half_month['E_isop_bio'] # molec/cm2/s
+
+    dlist=[f_hcho,h_hcho,f_E_isop,h_E_isop]
+    sub=util.lat_lon_subset(lats,lons,region,dlist)
+    lats=sub['lats']
+    lons=sub['lons']
+    f_hcho=sub['data'][0]
+    h_hcho=sub['data'][1]
+    f_E_isop=sub['data'][2]
+    h_E_isop=sub['data'][3]
+
+    # now also get subset of daily satellite outputs
+    full2=GC_class.GC_sat
+
+    # where emissions are zero, smearing is infinite, ignore warning:
+    with np.errstate(divide='ignore'):
+        S = (f_hcho - h_hcho) / (f_E_isop - h_E_isop) # s
+
+    # ignore squares when emissions are zero
+    S[f_E_isop <= 0] = np.NaN
+
+    print("S shape:",S.shape)
+    print("Average S:",np.nanmean(S))
+    if pname is not None:
+        pp.InitMatplotlib()
+        mstr=month.strftime("%Y%m")
+
+        #pp.createmap(f_hcho,lats,lons,latlon=True,edges=False,linear=True,pname=pname,title='f_hcho')
+        # lie about edges...
+        pp.createmap(S,lats,lons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
+                     linear=True, vmin=1000, vmax=10000,
+                     clabel='S', pname=pname, title='Smearing %s'%mstr)
+
+    return S, lats,lons
 
 def smearing_threshold(year=datetime(2005,1,1), strict=4000, loose=6000):
     '''
@@ -1249,6 +1307,22 @@ def smearing_threshold(year=datetime(2005,1,1), strict=4000, loose=6000):
 
 
 
+def smearing_vs_slope(month=datetime(2005,1,1)):
+    '''
+        compare map of smearing to map of model slope
+    '''
+    d0=datetime(month.year,1,1)
+    dn=util.last_day(month)
+    enew=E_new(d0,dn,dkeys=['smearing','smearfilter','ModelSlope'])
+    smear=enew.smearing[0]
+    slope=enew.ModelSlope[0]
+    lats=enew.lats_lr
+    lons=enew.lons_lr
+    pp.compare_maps([smear,slope],[lats,lats],[lons,lons],
+                    vmin=1000, vmax=10000,
+                    titles=['Smearing','Slope'],
+                    linear=True,
+                    pname=d0.strftime("Figs/Filters/smear_vs_slope_%Y%m.png"))
 
 
 def smearing_regridding(date=datetime(2005,1,1)):

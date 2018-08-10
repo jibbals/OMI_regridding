@@ -469,18 +469,20 @@ class GC_sat(GC_base):
         if hasattr(self, 'E_isop_bio'):
             E=self.E_isop_bio
             Eshape=np.shape(E)
-            print('Eshape:',Eshape,np.nanmax(E))
+            #print('Eshape:',Eshape,np.nanmax(E))
+            if np.nanmax(E) == 0.0:
+                self.E_isop_bio=None
+            else:
+                if Eshape[-1] == self.nlevs:
+                    if __VERBOSE__:
+                        print('fixing E_isop_bio shape to [[t,]lat,lon] from ',Eshape)
+                    if len(Eshape)==3:
+                        self.E_isop_bio = E[:,:,0]
+                    elif len(Eshape)==4:
+                        self.E_isop_bio = E[:,:,:,0]
 
-            if Eshape[-1] == self.nlevs:
-                if __VERBOSE__:
-                    print('fixing E_isop_bio shape to [[t,]lat,lon] from ',Eshape)
-                if len(Eshape)==3:
-                    self.E_isop_bio = E[:,:,0]
-                elif len(Eshape)==4:
-                    self.E_isop_bio = E[:,:,:,0]
-
-            # also calculate emissions in kg/s
-            self._set_E_isop_bio_kgs()
+                # also calculate emissions in kg/s
+                self._set_E_isop_bio_kgs()
 
         # Calculate shape factors for faster AMF calculation later
         # Only if we have all the stuff and no time dimension:
@@ -840,6 +842,48 @@ class Hemco_diag(GC_base):
                                      'hour':hour,
                                      'units':self.attrs['E_isop_bio']['units']}
         return days, np.squeeze(out)
+
+    def daily_averaged(self):
+        '''
+            return days, E_isop_bio (average of each day )
+            RIGHT NOW JUST 24 HOURS FROM START...
+        '''
+
+        # need to subtract an hour from each of our datetimes, putting 24 hour into each 'day'
+        # this makes 0500 represent 0500-0600 instead of 0400-0500 as it is in output files
+        dates=np.array(self.dates) - timedelta(seconds=3600)
+        # this undoes the problem of our 24th hour being stored in
+        # the following day's 00th hour
+
+        # Need to get a daily output time dimension
+        days=util.list_days(dates[0],dates[-1])
+        di=0
+        prior_day=days[0]
+
+        # if this has already been calculated then return that.
+        if hasattr(self, 'E_isop_bio_daily'):
+            return days, self.E_isop_bio_daily
+
+        isop=self.E_isop_bio # atomC/cm2/s
+        out=np.zeros([len(days),len(self.lats),len(self.lons)])+np.NaN
+
+        for i, in np.arange(0,len(dates),24):
+
+            # local time is gmt+offset (24 hour time)
+            #LT=(GMT+LTO + 24) % 24 # 91,144 (lats by lons)
+
+            #print(date.strftime('%m%dT%H'),'   lon matches:',np.sum(LT[0,:]==hour))
+
+            out[di] = np.nanmean(isop[i:i+24],axis=0)
+            # need to split into 15 degree portions to do it properly?
+
+            di = di+1
+
+        self.E_isop_bio_LT=np.squeeze(out)
+        self.attrs['E_isop_bio_daily']={'desc':'24 hour averaged E_isop_bio',
+                                        'units':self.attrs['E_isop_bio']['units']}
+        return days, np.squeeze(out)
+
 
     def plot_daily_emissions_cycle(self,lat=-31,lon=150,pname=None,color='r'):
         ''' take a month and plot the emissions over the day'''

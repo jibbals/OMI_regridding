@@ -49,160 +49,37 @@ __Thresh_Smearing__=5000
 ### METHODS ###
 ###############
 
-def Yield(H, k_H, I, k_I):
-    '''
-        H=HCHO, k_H=loss, I=Isoprene, k_I=loss
-        The returned yield will match the first two dimensions.
-
-        Y_hcho is the RMA regression between $k_{HCHO}*\Omega_{HCHO}$, and $k_{isop}*\Omega_{isop}$
-        As is shown in fig. 7 Millet 2006
-
-        As a test Yield can be calculated from Emissions as in Palmer2003
-        Y_hcho = S E_isop
-
-        I think this should be run on each 8 days of gridded model output to get the Yield for that 8 days
-
-    '''
-    # first handle the lats and lons:
-    n0=np.shape(H)[0]
-    n1=np.shape(H)[1]
-
-    #Isoprene Yield, spatially varying, not temporally varying:
-    #
-    Y=np.zeros([n0,n1])
-    A=k_H*H
-    B=k_I*I
-    for i in range(n0):
-        for j in range(n1):
-            m,b,r,ci1,ci2=RMA(A[i,j,:], B[i,j,:])
-            Y[i,j] = m
-
-    #Return the yields
-    return Y
-
-def OLD_Emissions(day, GC_biog, OMI, region=pp.__AUSREGION__):
-    '''
-        Return one day of emissions estimates
-            Uses one month of GEOS-Chem (GC) estimated 'slope' for Y_hcho
-            uses one day of OMI HCHO
-            Use biogenic run for GC_biog
-    '''
-
-    # Check that GC_biog dates are the whole month - for slope calculation
-    assert GC_biog.hemco.dates[0] == util.first_day(day), 'First day doesn\'t match in Emissions GC_biog parameter'
-    assert GC_biog.hemco.dates[-1] == util.last_day(day), 'Last day doesn\'t match in Emissions GC_biog parameter'
-
-    dstr=day.strftime("%Y%m%d")
-    attrs={} # attributes dict for meta data
-    GC=GC_biog.sat_out # Satellite output from biogenic run
-
-    if __VERBOSE__:
-        # Check the dims of our stuff
-        print()
-        print("Calculating emissions for %s"%dstr)
-        print("GC data %s "%str(GC.hcho.shape)) # [t,lat,lon,lev]
-        print("nanmean:",np.nanmean(GC.hcho),GC.attrs['hcho']['units']) # should be molecs/cm2
-        print("OMI data %s"%str(OMI.VCC.shape)) # [t, lat, lon]
-        print("nanmean:",np.nanmean(OMI.VCC),'molecs/cm2')# should be molecs/cm2
-
-    omilats0, omilons0 = OMI.lats, OMI.lons
-    omi_lats, omi_lons= omilats0.copy(), omilons0.copy()
-    omi_SA=OMI.surface_areas # in km^2
-
-    if __DEBUG__:
-        GC_E_isop=GC_biog.hemco.E_isop_bio
-        print("GC_E_isop%s [%s] before LT averaging:"%(str(np.shape(GC_E_isop)),GC_biog.hemco.attrs['E_isop_bio']['units']),np.nanmean(GC_E_isop))
-        print("    non zero only:",np.nanmean(GC_E_isop[GC_E_isop > 0]))
-    # Get GC_isoprene for this day also
-    GC_days, GC_E_isop = GC_biog.hemco.daily_LT_averaged(hour=13)
-
-    #GC_E_isop=GC.get_field(keys=['E_isop_bio',],region=region)['E_isop_bio']
-    if __DEBUG__:
-        print("GC_E_isop%s after LT averaging:"%str(np.shape(GC_E_isop)),np.nanmean(GC_E_isop))
-        print("    non zero only:",np.nanmean(GC_E_isop[GC_E_isop > 0]))
-
-        print("GC_E_isop.shape before and after dateindex")
-        print(GC_E_isop.shape)
-    GC_E_isop=GC_E_isop[util.date_index(day,GC_days)] # only want one day of E_isop_GC
-    if __DEBUG__:
-        print(GC_E_isop.shape)
-    attrs['GC_E_isop'] = GC_biog.hemco.attrs['E_isop_bio']
-    attrs['GC_E_isop']['desc']='biogenic isoprene emissions from MEGAN/GEOS-Chem'
-
-    # subset to region
-    if __DEBUG__:
-        print('shape and mean before and after subsetting GC_E_isop:')
-        print(np.shape(GC_E_isop), np.nanmean(GC_E_isop))
-    GC_E_isop = util.lat_lon_subset(GC.lats,GC.lons,region=region,data=[GC_E_isop])['data'][0]
-
-    if __DEBUG__:
-        print(np.shape(GC_E_isop), np.nanmean(GC_E_isop))
-
-    # model slope between HCHO and E_isop:
-    # This also returns the lats and lons for just this region.
-    S_model=GC_biog.model_slope(region=region) # in seconds I think
-    GC_slope=S_model['slope']
-    GC_lats, GC_lons=S_model['lats'], S_model['lons']
-
-    if __VERBOSE__:
-        print("%d lats, %d lons for GC(region)"%(len(GC_lats),len(GC_lons)))
-        print("%d lats, %d lons for OMI(global)"%(len(omi_lats),len(omi_lons)))
-
-    # OMI corrected vertical columns for matching day
-    omi_day=OMI.time_averaged(day0=day,month=False,keys=['VCC','VCC_PP'])
-    vcc=omi_day['VCC']
-    vcc_pp=omi_day['VCC_PP']
-    gridentries=omi_day['gridentries']
-    ppentries=omi_day['ppentries']
-    attrs['gridentries']={'desc':'OMI satellite pixels used in each gridbox'}
-    attrs['ppentries']={'desc':'OMI satellite pixels used in each gridbox, recalculated using PP code'}
-    # subset omi to region
-    #
-    omi_lati,omi_loni = util.lat_lon_range(omi_lats,omi_lons,region)
-    omi_lats,omi_lons = omi_lats[omi_lati], omi_lons[omi_loni]
-    attrs["lats"]={"units":"degrees",
-        "desc":"gridbox midpoint"}
-    attrs["lons"]={"units":"degrees",
-        "desc":"gridbox midpoint"}
-
-    omi_SA=omi_SA[omi_lati,:]
-    omi_SA=omi_SA[:,omi_loni]
-    omi_hcho=omi_hcho[omi_lati,:]
-    omi_hcho=omi_hcho[:,omi_loni]
-    if __DEBUG__:
-        print('%d lats, %d lons in region'%(len(omi_lats),len(omi_lons)))
-        print('HCHO shape: %s'%str(omi_hcho.shape))
-
-    ## map GC stuff onto same lats/lons as OMI
-    slope_before=np.nanmean(GC_slope)
-    GC_slope0=np.copy(GC_slope)
-    GC_slope=util.regrid(GC_slope, GC_lats, GC_lons,omi_lats,omi_lons)
-    GC_E_isop=util.regrid(GC_E_isop, GC_lats,GC_lons,omi_lats,omi_lons)
-    slope_after=np.nanmean(GC_slope)
-    attrs["GC_slope"]={"units":"s",
-        "desc":"\"VC_H=S*E_i+B\" slope (S) between HCHO_GC (molec/cm2) and E_Isop_GC (atom c/cm2/s)"}
-
-    with np.errstate(divide='ignore', invalid='ignore'):
-        check=100.0*np.abs((slope_after-slope_before)/slope_before)
-
-    # If the grids are compatible then slope shouldn't change from regridding
-    if check > 1:
-        print("Regridded slope changes by %.2f%%, from %.2f to %.2f"%(check,slope_before,slope_after))
-        vmin,vmax=1000,300000
-        regionB=np.array(region) + np.array([-10,-10,10,10])
-        pp.createmap(GC_slope0, GC_lats, GC_lons, title="GC_slope0",
-                     vmin=vmin, vmax=vmax, region=regionB,
-                     pname="Figs/Checks/SlopeBefore_%s_%s.png"%(str(region),dstr))
-
-        pp.createmap(GC_slope, omi_lats, omi_lons, title="GC_Slope",
-                     vmin=vmin, vmax=vmax, region=regionB,
-                     pname="Figs/Checks/SlopeAfter_%s_%s.png"%(str(region),dstr))
-        print("CHECK THE SLOPE BEFORE AND AFTER REGRID IMAGES")
-        #assert False, "Slope change too high"
-
-    if __VERBOSE__:
-        minmeanmax=(np.nanmin(GC_slope),np.nanmean(GC_slope),np.nanmax(GC_slope))
-        print("min/mean/max GC_slope: %1.1e/%1.1e/%1.1e"%minmeanmax)
+# This is perfomed in MODEL_SLOPE in GC_class
+#def Yield(H, k_H, I, k_I):
+#    '''
+#        H=HCHO, k_H=loss, I=Isoprene, k_I=loss
+#        The returned yield will match the first two dimensions.
+#
+#        Y_hcho is the RMA regression between $k_{HCHO}*\Omega_{HCHO}$, and $k_{isop}*\Omega_{isop}$
+#        As is shown in fig. 7 Millet 2006
+#
+#        As a test Yield can be calculated from Emissions as in Palmer2003
+#        Y_hcho = S E_isop
+#
+#        I think this should be run on each 8 days of gridded model output to get the Yield for that 8 days
+#
+#    '''
+#    # first handle the lats and lons:
+#    n0=np.shape(H)[0]
+#    n1=np.shape(H)[1]
+#
+#    #Isoprene Yield, spatially varying, not temporally varying:
+#    #
+#    Y=np.zeros([n0,n1])
+#    A=k_H*H
+#    B=k_I*I
+#    for i in range(n0):
+#        for j in range(n1):
+#            m,b,r,ci1,ci2=RMA(A[i,j,:], B[i,j,:])
+#            Y[i,j] = m
+#
+#    #Return the yields
+#    return Y
 
 
 def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
@@ -294,9 +171,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     #pp.createmap(smear,omilats,omilons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
     #             linear=True, vmin=1000, vmax=10000,
     #             clabel='S', pname='Figs/GC/smearing_%s_interp.png'%mstr, title='Smearing %s'%mstr)
-    print("Smearing plots saved in Figs/GC/smearing...")
-    outdata['smearing'] = smear
-    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for %s at 2x2.5 resolution'%mstr}
+    #print("Smearing plots saved in Figs/GC/smearing...")
 
     # TODO: Smearing Filter
     smearfilter = smear > __Thresh_Smearing__#5000 # something like this
@@ -452,6 +327,11 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['E_VCC_GC_lr']  = E_gc_lr
     outdata['E_VCC_PP_lr']  = E_pp_lr
     outdata['E_VCC_OMI_lr'] = E_omi_lr
+    outdata['ModelSlope']   = GC_slope_lr[0] # just one value per month
+    outattrs['ModelSlope']  = {'units':'molec_HCHO s/atomC',
+                               'desc':'Yield calculated from RMA regression of MEGAN midday emissions vs GEOS-Chem midday HCHO columns' }
+    outdata['smearing'] = smear
+    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for %s at 2x2.5 resolution'%mstr}
     outattrs['E_VCC_GC']    = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope'}
     outattrs['E_VCC_PP']    = {'units':'atomC/cm2/s',

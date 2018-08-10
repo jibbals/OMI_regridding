@@ -53,7 +53,8 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'VCC_GC',       # {31, 152, 152}
                 'VCC_OMI',      # {31, 152, 152}
                 'VCC_PP',       # {31, 152, 152}
-                'smearing',     # {152, 152} # linearly interped from 19x19 2x2.5 resolution to higher
+                'smearing',     # model resolution monthly smearing
+                'ModelSlope',   # model resolution monthly slope
                 'pixels',       # OMI pixel count
                 'pixels_u',     # before filtering pixel count
                 'pixels_lr',    # OMI pixel count at low resolution
@@ -115,7 +116,7 @@ class E_new:
                 print("Reading %s"%key )
             # Read the data and append to time dimensions if there's more than
             # one month file being read
-            elif (key in ['smearing','smearfilter']) and key in dkeys:
+            elif (key in ['smearing','smearfilter','ModelSlope']) and key in dkeys:
 
                 # np array of the data [lats, lons]
                 data0=np.array(E_new_list[0][key])

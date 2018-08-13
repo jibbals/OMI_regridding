@@ -455,14 +455,45 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     if __VERBOSE__:
         print("Inversion.store_emissions() now finished")
 
-def smearing(month, region=pp.__AUSREGION__, pname=None, midday=False):
+def smearing(month, region=pp.__AUSREGION__, pname=None, midday=True):
+    '''
+        Read full and half isop satellite overpass output
+        divide by half HEMCO isoprene emissions
+        S = d column_HCHO / d E_isop
+        optionally can use full daily averaged E_isoprene (instead of 1300-1400)
+    '''
+    d0 = datetime(month.year, month.month, 1)
+    d1 = util.last_day(d0)
+
+    # smearing using satellite daily overpass data and hemco diag halved
+    satfull         = GC_class.GC_sat(d0, d1)
+    sathalf         = GC_class.GC_sat(d0, d1, run='halfisop')
+    hcho_full_sat   = satfull.O_hcho
+    hcho_half_sat   = sathalf.O_hcho # molec/cm2
+    lats,lons       = satfull.lats,satfull.lons
+    emiss           = GC_class.Hemco_diag(d0,d1)
+    if midday:
+        days,eisop_full=emiss.daily_LT_averaged()
+    else:
+        days,eisop_full=emiss.daily_averaged()
+    #eisop_units=emiss.attrs['E_isop_bio']['units'] # AtomC/cm2/s
+
+    # smearing from satellite data
+    smear = (hcho_full_sat-hcho_half_sat)/(eisop_full/2.0)
+    #smear_units='molec$_{HCHO}$*s/atom$_C$'
+
+    # subset to region
+    sub=util.lat_lon_subset(lats,lons,region,[smear],has_time_dim=True)
+
+    return sub['data'][0], days, sub['lats'], sub['lons']
+
+def OLD_smearing(month, region=pp.__AUSREGION__, pname=None):
     '''
         Read full and half isop bpch output, calculate smearing
         S = d column_HCHO / d E_isop
         TODO:
             can use tavg for monthly avg smearing or satellite overpass output
             for midday daily smearing
-        outputs: S, dates,lats,lons
     '''
     if __VERBOSE__:
         print('calculating smearing over ',region,' in month ',month)

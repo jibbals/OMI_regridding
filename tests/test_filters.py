@@ -1184,65 +1184,61 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=__AUSREGIO
     plt.savefig(pname)
     print("Saved figure ",pname)
 
-def smearing_definition(month=datetime(2005,1,1)):
+def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
     '''
         test smearing creation process.
     '''
-    d0=datetime(month.year,month.month,1)
-    d1=util.last_day(d0)
+    summer= util.list_months(datetime(year.year,1,1), util.last_day(datetime(year.year,2,1)))
+    if year.year > 2005:
+        summer = util.list_months(datetime(year.year-1,12,1), util.last_day(datetime(year.year,2,1)))
+    winter= util.list_months(datetime(year.year,6,1), util.last_day(datetime(year.year,8,1)))
 
-    # smearing using satellite daily overpass data and hemco diag halved
-    satfull=GC_sat(d0,d1)
-    sathalf=GC_sat(d0,d1,run='halfisop')
-    hcho_full_sat=satfull.O_hcho
-    hcho_half_sat=sathalf.O_hcho
-    lats,lons=satfull.lats,satfull.lons
-    # hemco emissions daily and midday avgs.
-    emiss=Hemco_diag(d0,d1)
-    days,eisop_full_midday=emiss.daily_LT_averaged()
-    days1,eisop_full_daily=emiss.daily_averaged()
-    eisop_units=emiss.attrs['E_isop_bio']['units']
-    assert np.all(days==days1)
+    summer_smear_midday, days,lats,lons=smearing(summer[0],midday=True)
+    summer_smear_dayavg, days,lats,lons=smearing(summer[0],midday=False)
+    winter_smear_midday, days,lats,lons=smearing(winter[0],midday=True)
+    winter_smear_dayavg, days,lats,lons=smearing(winter[0],midday=True)
+    for month in summer[1:]:
+        # dayavg smearing
+        dayavg, days,lats,lons = smearing(month,midday=False)
+        summer_smear_dayavg = np.append(summer_smear_dayavg,np.array(dayavg),axis=0)
+        # midday smearing
+        midday, days,lats,lons = smearing(month,midday=True)
+        summer_smear_midday = np.append(summer_smear_midday,np.array(midday),axis=0)
+        # old version
+        #todo
+    for month in winter[1:]:
+        # dayavg smearing
+        dayavg, days,lats,lons = smearing(month,midday=False)
+        winter_smear_dayavg = np.append(winter_smear_dayavg,np.array(dayavg),axis=0)
+        # midday smearing
+        midday, days,lats,lons = smearing(month,midday=True)
+        winter_smear_midday = np.append(winter_smear_midday,np.array(midday),axis=0)
+        # old version
+        #todo
 
-    tavgfull=GC_tavg(d0,d1, run='tropchem')
-    tavghalf=GC_tavg(d0,d1, run='halfisop')
-    full_tavg=tavgfull.month_average(keys=['O_hcho','E_isop_bio'])
-    half_tavg=tavghalf.month_average(keys=['O_hcho','E_isop_bio'])
-    hcho_full_tavg=full_tavg['E_isop_bio']
-    hcho_half_tavg=half_tavg['E_isop_bio']
-    hcho_units=tavgfull.attrs['O_hcho']['units']
-
-    print('monthly avg hcho, avg of daily satellite hcho [molec/cm2]')
-    print(np.nanmean(hcho_half_tavg[:,:]), np.nanmean(hcho_half_sat, axis=0))
-    print(np.nanmean(hcho_full_tavg[:,:]), np.nanmean(hcho_full_sat, axis=0))
-
-    # smearing done from monthly averages
-    smear,slats,slons = Inversion.smearing(d0)
-    # smearing from satellite data
-    smear2 = (hcho_full_sat-hcho_half_sat)/(eisop_full_midday/2.0)
-    smear3 = (hcho_full_sat-hcho_half_sat)/(eisop_full_daily/2.0)
     smear_units='molec$_{HCHO}$*s/atom$_C$'
-    meansmear2=np.nanmean(smear2,axis=0)
-    meansmear3=np.nanmean(smear3,axis=0)
 
-    plt.figure(figsize=(13,13))
+    nx=2+2*old
+    plt.figure(figsize=(13+4*old,13))
+
     # monthly avg of smearing calcs:
-    plt.subplot(2,2,1) # Smearing using the monthly avg tracer output from full and half isoprene runs
-    ticks=np.arange(1000,10001,3000) # custom ticks for plots
-    pp.createmap(smear,slats,slons,aus=True, title='monthly avg. smearing',
-                 linear=True,vmin=1e3,vmax=1e4,ticks=ticks, clabel=smear_units)
-    plt.subplot(2,2,2) # using satellite output from full and half isop runs, and hemco diagnostic matching midday hours (halved)
-    pp.createmap(meansmear2,lats,lons,aus=True, title='avg of $\Delta$GC_sat / (0.5*Hemco midday isop)',
-                 linear=True,vmin=1e3,vmax=1e4,ticks=ticks, clabel=smear_units)
-    plt.subplot(2,2,3) # using satellite output and daily averaged hemco diagnostic halved
-    pp.createmap(meansmear3,lats,lons,aus=True, title='avg of $\Delta$GC_sat / (0.5*Hemco daily avg isop)',
-                 linear=True,vmin=1e3,vmax=1e4,ticks=ticks, clabel=smear_units)
-    plt.subplot(2,2,4)
-    pp.createmap(np.nanmean(eisop_full_midday,axis=0), lats, lons, aus=True, title='HEMCO midday isop',
-                 linear=False,vmin=1e11,vmax=1e13, clabel=eisop_units)
+    plt.subplot(nx,2,1) # Smearing using the monthly avg tracer output from full and half isoprene runs
+    ticks1=np.arange(1000, 10001, 3000)  # custom ticks for daily smearing
+    ticks2=np.arange(1000, 5001,  1000)  # custom ticks for midday smearing
+    pp.createmap(np.nanmean(summer_smear_dayavg,axis=0), lats, lons, aus=True, title='dayavg smearing (summer)',
+                 linear=True, vmin=ticks1[0], vmax=ticks1[-1], ticks=ticks, clabel=smear_units)
+    plt.subplot(nx,2,2) # using satellite output from full and half isop runs, and hemco diagnostic matching midday hours (halved)
+    pp.createmap(np.nanmean(summer_smear_midday,axis=0), lats, lons, aus=True, title='midday smearing (summer)',
+                 linear=True,vmin=ticks2[0], vmax=ticks2[-1],ticks=ticks2, clabel=smear_units)
+    plt.subplot(nx,2,3) # using satellite output and daily averaged hemco diagnostic halved
+    pp.createmap(np.nanmean(winter_smear_dayavg,axis=0),lats,lons,aus=True, title='dayavg smearing (winter)',
+                 linear=True,vmin=ticks1[0], vmax=ticks1[-1],ticks=ticks1, clabel=smear_units)
+    plt.subplot(nx,2,4)
+    pp.createmap(np.nanmean(winter_smear_midday,axis=0),lats,lons,aus=True, title='midday smearing (winter)',
+                 linear=True,vmin=ticks2[0], vmax=ticks2[-1],ticks=ticks2, clabel=smear_units)
     plt.suptitle("smearing definition comparisons",fontsize=27)
 
-    pname=d0.strftime('Figs/Filters/smearing_definitions_%Y%m.png')
+    pname=year.strftime('Figs/Filters/smearing_definitions_%Y.png')
     plt.savefig(pname)
     print('SAVED ',pname)
     plt.close()

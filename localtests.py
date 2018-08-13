@@ -56,57 +56,6 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-d0=datetime(2005,1,1)
-d1=datetime(2005,1,31)
-dn=datetime(2005,12,31)
-
-# smearing using satellite daily overpass data and hemco diag halved
-satfull=GC_class.GC_sat(d0,d1)
-sathalf=GC_class.GC_sat(d0,d1,run='halfisop')
-hcho_full_sat=satfull.O_hcho
-hcho_half_sat=sathalf.O_hcho
-lats,lons=satfull.lats,satfull.lons
-# hemco emissions daily and midday avgs.
-emiss=GC_class.Hemco_diag(d0,d1)
-days,eisop_full_midday=emiss.daily_LT_averaged()
-days1,eisop_full_daily=emiss.daily_averaged()
-assert np.all(days==days1)
-
-tavgfull=GC_class.GC_tavg(d0,d1, run='tropchem')
-tavghalf=GC_class.GC_tavg(d0,d1, run='halfisop')
-full_tavg=tavgfull.month_average(keys=['O_hcho','E_isop_bio'])
-half_tavg=tavghalf.month_average(keys=['O_hcho','E_isop_bio'])
-hcho_full_tavg=full_tavg['E_isop_bio']
-hcho_half_tavg=half_tavg['E_isop_bio']
-
-print('monthly avg hcho, avg of daily satellite hcho [molec/cm2]')
-print(np.nanmean(hcho_half_tavg[:,:]), np.nanmean(hcho_half_sat, axis=0))
-print(np.nanmean(hcho_full_tavg[:,:]), np.nanmean(hcho_full_sat, axis=0))
-
-# smearing done from monthly averages
-smear,slats,slons = Inversion.smearing(d0)
-# smearing from satellite data
-smear2 = (hcho_full_sat-hcho_half_sat)/(eisop_full_midday/2.0)
-smear3 = (hcho_full_sat-hcho_half_sat)/(eisop_full_daily/2.0)
-
-meansmear2=np.nanmean(smear2,axis=0)
-meansmear3=np.nanmean(smear3,axis=0)
-
-# monthly avg of smearing calcs:
-plt.subplot(2,2,1) # Smearing using the monthly avg tracer output from full and half isoprene runs
-pp.createmap(smear,slats,slons,aus=True, title='monthly avg. smearing',
-             linear=True,vmin=1e3,vmax=1e4)
-plt.subplot(2,2,2) # using satellite output from full and half isop runs, and hemco diagnostic matching midday hours (halved)
-pp.createmap(meansmear2,lats,lons,aus=True, title='avg of overpass column differences / (0.5*Hemco midday isop)',
-             linear=True,vmin=1e3,vmax=1e4)
-plt.subplot(2,2,3) # using satellite output and daily averaged hemco diagnostic halved
-pp.createmap(meansmear3,lats,lons,aus=True, title='avg of overpass column differences / (0.5 Hemco daily avg isop)',
-             linear=True,vmin=1e3,vmax=1e4)
-plt.subplot(2,2,4)
-pp.createmap(hcho_full_sat, lats, lons, aus=True, title='mean overpass $\Omega_{HCHO}$',
-             linear=True,vmin=1e14,vmax=2e15)
-plt.suptitle("smearing definition comparisons" )
-
 
 ###########
 ### Record and time STUJFFS
@@ -115,8 +64,6 @@ plt.suptitle("smearing definition comparisons" )
 end=timeit.default_timer()
 print("TIME: %6.2f minutes for stuff"%((end-start1)/60.0))
 
-#plt.savefig('Figs/GC/interp.png')
-#plt.close()
 
 
 def emisssions_vs_firefilter(d0=datetime(2005,1,1)):

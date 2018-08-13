@@ -256,7 +256,8 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
               vmin=None, vmax=None, latlon=True,
               region=__GLOBALREGION__, aus=False, linear=False,
               clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
-              cbarorient='bottom', set_bad=None, set_under=None, set_over=None,
+              ticks=None, cbarorient='bottom',
+              set_bad=None, set_under=None, set_over=None,
               pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None):
     '''
@@ -402,7 +403,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         plt.suptitle(suptitle)
     cb=None
     if colorbar:
-        cbargs={'format':cbarfmt,
+        cbargs={'format':cbarfmt, 'ticks':ticks,
                 'size':'5%', 'pad':'1%', 'extend':'both'}
         cb=m.colorbar(cs, cbarorient, **cbargs)
 

@@ -455,11 +455,14 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     if __VERBOSE__:
         print("Inversion.store_emissions() now finished")
 
-def smearing(month, region=pp.__AUSREGION__, pname=None):
+def smearing(month, region=pp.__AUSREGION__, pname=None, midday=False):
     '''
         Read full and half isop bpch output, calculate smearing
         S = d column_HCHO / d E_isop
-        For now uses tavg instead of overpass times
+        TODO:
+            can use tavg for monthly avg smearing or satellite overpass output
+            for midday daily smearing
+        outputs: S, dates,lats,lons
     '''
     if __VERBOSE__:
         print('calculating smearing over ',region,' in month ',month)
@@ -485,7 +488,6 @@ def smearing(month, region=pp.__AUSREGION__, pname=None):
     sub=util.lat_lon_subset(lats,lons,region,dlist)
     lats=sub['lats']
     lons=sub['lons']
-    lats_e=sub['lats_e']; lons_e=sub['lons_e']
     f_hcho=sub['data'][0]
     h_hcho=sub['data'][1]
     f_E_isop=sub['data'][2]

@@ -23,7 +23,7 @@ from utilities import plotting as pp
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
 from classes.omhchorp import omhchorp
-from classes.GC_class import GC_tavg, GC_sat
+from classes.GC_class import GC_tavg, GC_sat, Hemco_diag
 from classes.E_new import E_new
 from utilities.plotting import __AUSREGION__
 from Inversion import smearing # smearing filter creation
@@ -1184,64 +1184,68 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=__AUSREGIO
     plt.savefig(pname)
     print("Saved figure ",pname)
 
-def smearing_creation(month=datetime(2005,1,1)):
+def smearing_definition(month=datetime(2005,1,1)):
     '''
         test smearing creation process.
     '''
-    #def smearing(month, region=pp.__AUSREGION__, pname=None):
-    #'''
-    #    Read full and half isop bpch output, calculate smearing
-    #    S = d column_HCHO / d E_isop
-    #    For now uses tavg instead of overpass times
-    #'''
-    #if __VERBOSE__:
-    #    print('calculating smearing over ',region,' in month ',month)
+    d0=datetime(month.year,month.month,1)
+    d1=util.last_day(d0)
 
-    ## First get subset of tracer average files
-    ##
-    # ready tracer average files for the month
-    full=GC_class.GC_tavg(month, run='tropchem')
-    half=GC_class.GC_tavg(month, run='halfisop') # month avg right now
-    # make sure monthly averaged for both (only have monthly avg for isop_bio)
-    full_month=full.month_average(keys=['O_hcho','E_isop_bio'])
-    half_month=half.month_average(keys=['O_hcho','E_isop_bio'])
-    f_hcho=full_month['O_hcho'] # molec/cm2
-    h_hcho=half_month['O_hcho'] # molec/cm2
-    f_E_isop=full_month['E_isop_bio'] # molec/cm2/s
-    h_E_isop=half_month['E_isop_bio'] # molec/cm2/s
+    # smearing using satellite daily overpass data and hemco diag halved
+    satfull=GC_sat(d0,d1)
+    sathalf=GC_sat(d0,d1,run='halfisop')
+    hcho_full_sat=satfull.O_hcho
+    hcho_half_sat=sathalf.O_hcho
+    lats,lons=satfull.lats,satfull.lons
+    # hemco emissions daily and midday avgs.
+    emiss=Hemco_diag(d0,d1)
+    days,eisop_full_midday=emiss.daily_LT_averaged()
+    days1,eisop_full_daily=emiss.daily_averaged()
+    eisop_units=emiss.attrs['E_isop_bio']['units']
+    assert np.all(days==days1)
 
-    dlist=[f_hcho,h_hcho,f_E_isop,h_E_isop]
-    sub=util.lat_lon_subset(lats,lons,region,dlist)
-    lats=sub['lats']
-    lons=sub['lons']
-    f_hcho=sub['data'][0]
-    h_hcho=sub['data'][1]
-    f_E_isop=sub['data'][2]
-    h_E_isop=sub['data'][3]
+    tavgfull=GC_tavg(d0,d1, run='tropchem')
+    tavghalf=GC_tavg(d0,d1, run='halfisop')
+    full_tavg=tavgfull.month_average(keys=['O_hcho','E_isop_bio'])
+    half_tavg=tavghalf.month_average(keys=['O_hcho','E_isop_bio'])
+    hcho_full_tavg=full_tavg['E_isop_bio']
+    hcho_half_tavg=half_tavg['E_isop_bio']
+    hcho_units=tavgfull.attrs['O_hcho']['units']
 
-    # now also get subset of daily satellite outputs
-    full2=GC_class.GC_sat
+    print('monthly avg hcho, avg of daily satellite hcho [molec/cm2]')
+    print(np.nanmean(hcho_half_tavg[:,:]), np.nanmean(hcho_half_sat, axis=0))
+    print(np.nanmean(hcho_full_tavg[:,:]), np.nanmean(hcho_full_sat, axis=0))
 
-    # where emissions are zero, smearing is infinite, ignore warning:
-    with np.errstate(divide='ignore'):
-        S = (f_hcho - h_hcho) / (f_E_isop - h_E_isop) # s
+    # smearing done from monthly averages
+    smear,slats,slons = Inversion.smearing(d0)
+    # smearing from satellite data
+    smear2 = (hcho_full_sat-hcho_half_sat)/(eisop_full_midday/2.0)
+    smear3 = (hcho_full_sat-hcho_half_sat)/(eisop_full_daily/2.0)
+    smear_units='molec$_{HCHO}$*s/atom$_C$'
+    meansmear2=np.nanmean(smear2,axis=0)
+    meansmear3=np.nanmean(smear3,axis=0)
 
-    # ignore squares when emissions are zero
-    S[f_E_isop <= 0] = np.NaN
+    plt.figure(figsize=(13,13))
+    # monthly avg of smearing calcs:
+    plt.subplot(2,2,1) # Smearing using the monthly avg tracer output from full and half isoprene runs
+    ticks=np.arange(1000,10001,3000) # custom ticks for plots
+    pp.createmap(smear,slats,slons,aus=True, title='monthly avg. smearing',
+                 linear=True,vmin=1e3,vmax=1e4,ticks=ticks, clabel=smear_units)
+    plt.subplot(2,2,2) # using satellite output from full and half isop runs, and hemco diagnostic matching midday hours (halved)
+    pp.createmap(meansmear2,lats,lons,aus=True, title='avg of $\Delta$GC_sat / (0.5*Hemco midday isop)',
+                 linear=True,vmin=1e3,vmax=1e4,ticks=ticks, clabel=smear_units)
+    plt.subplot(2,2,3) # using satellite output and daily averaged hemco diagnostic halved
+    pp.createmap(meansmear3,lats,lons,aus=True, title='avg of $\Delta$GC_sat / (0.5*Hemco daily avg isop)',
+                 linear=True,vmin=1e3,vmax=1e4,ticks=ticks, clabel=smear_units)
+    plt.subplot(2,2,4)
+    pp.createmap(np.nanmean(eisop_full_midday,axis=0), lats, lons, aus=True, title='HEMCO midday isop',
+                 linear=False,vmin=1e11,vmax=1e13, clabel=eisop_units)
+    plt.suptitle("smearing definition comparisons",fontsize=27)
 
-    print("S shape:",S.shape)
-    print("Average S:",np.nanmean(S))
-    if pname is not None:
-        pp.InitMatplotlib()
-        mstr=month.strftime("%Y%m")
-
-        #pp.createmap(f_hcho,lats,lons,latlon=True,edges=False,linear=True,pname=pname,title='f_hcho')
-        # lie about edges...
-        pp.createmap(S,lats,lons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
-                     linear=True, vmin=1000, vmax=10000,
-                     clabel='S', pname=pname, title='Smearing %s'%mstr)
-
-    return S, lats,lons
+    pname=d0.strftime('Figs/Filters/smearing_definitions_%Y%m.png')
+    plt.savefig(pname)
+    print('SAVED ',pname)
+    plt.close()
 
 def smearing_threshold(year=datetime(2005,1,1), strict=4000, loose=6000):
     '''

@@ -867,7 +867,7 @@ class Hemco_diag(GC_base):
         isop=self.E_isop_bio # atomC/cm2/s
         out=np.zeros([len(days),len(self.lats),len(self.lons)])+np.NaN
 
-        for i, in np.arange(0,len(dates),24):
+        for i in np.arange(0,len(dates),24):
 
             # local time is gmt+offset (24 hour time)
             #LT=(GMT+LTO + 24) % 24 # 91,144 (lats by lons)

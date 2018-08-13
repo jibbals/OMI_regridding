@@ -1226,7 +1226,7 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
     ticks1=np.arange(1000, 10001, 3000)  # custom ticks for daily smearing
     ticks2=np.arange(1000, 5001,  1000)  # custom ticks for midday smearing
     pp.createmap(np.nanmean(summer_smear_dayavg,axis=0), lats, lons, aus=True, title='dayavg smearing (summer)',
-                 linear=True, vmin=ticks1[0], vmax=ticks1[-1], ticks=ticks, clabel=smear_units)
+                 linear=True, vmin=ticks1[0], vmax=ticks1[-1], ticks=ticks1, clabel=smear_units)
     plt.subplot(nx,2,2) # using satellite output from full and half isop runs, and hemco diagnostic matching midday hours (halved)
     pp.createmap(np.nanmean(summer_smear_midday,axis=0), lats, lons, aus=True, title='midday smearing (summer)',
                  linear=True,vmin=ticks2[0], vmax=ticks2[-1],ticks=ticks2, clabel=smear_units)

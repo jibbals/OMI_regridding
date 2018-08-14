@@ -116,7 +116,7 @@ class E_new:
                 print("Reading %s"%key )
             # Read the data and append to time dimensions if there's more than
             # one month file being read
-            elif (key in ['smearing','smearfilter','ModelSlope']) and key in dkeys:
+            elif (key in ['ModelSlope']) and key in dkeys:
 
                 # np array of the data [lats, lons]
                 data0=np.array(E_new_list[0][key])

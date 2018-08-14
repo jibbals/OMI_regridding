@@ -43,7 +43,7 @@ import timeit
 __VERBOSE__=True
 __DEBUG__=True
 
-__Thresh_Smearing__=5000
+__Thresh_Smearing__=4000 # taken from Marais africa paper
 
 ###############
 ### METHODS ###
@@ -165,7 +165,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     GC_slope = util.regrid_to_higher(GC_slope_lr,gclats,gclons,omilats,omilons,interp='nearest')
 
     # Also save smearing
-    smear, slats,slons = smearing(month,region=region,)#pname='Figs/GC/smearing_%s.png'%mstr)
+    smear, sdates, slats, slons = smearing(month, region=region,)#pname='Figs/GC/smearing_%s.png'%mstr)
     # Not regridding to higher resolution any more, low res is fine
     #smear = util.regrid_to_higher(smear,slats,slons,omilats,omilons,interp='nearest')
     #pp.createmap(smear,omilats,omilons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,

@@ -26,7 +26,7 @@ from classes.omhchorp import omhchorp
 from classes.GC_class import GC_tavg, GC_sat, Hemco_diag
 from classes.E_new import E_new
 from utilities.plotting import __AUSREGION__
-from Inversion import smearing # smearing filter creation
+from Inversion import smearing, __Thresh_Smearing__ # smearing filter creation
 
 # General stuff
 import numpy as np
@@ -1218,26 +1218,38 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
 
     smear_units='molec$_{HCHO}$*s/atom$_C$'
 
-    nx=2+2*old
-    plt.figure(figsize=(13+4*old,13))
+    plt.figure(figsize=(13,13))
 
-    # monthly avg of smearing calcs:
-    plt.subplot(nx,2,1) # Smearing using the monthly avg tracer output from full and half isoprene runs
     ticks1=np.arange(1000, 10001, 3000)  # custom ticks for daily smearing
     ticks2=np.arange(1000, 5001,  1000)  # custom ticks for midday smearing
-    pp.createmap(np.nanmean(summer_smear_dayavg,axis=0), lats, lons, aus=True, title='dayavg smearing (summer)',
-                 linear=True, vmin=ticks1[0], vmax=ticks1[-1], ticks=ticks1, clabel=smear_units)
-    plt.subplot(nx,2,2) # using satellite output from full and half isop runs, and hemco diagnostic matching midday hours (halved)
-    pp.createmap(np.nanmean(summer_smear_midday,axis=0), lats, lons, aus=True, title='midday smearing (summer)',
-                 linear=True,vmin=ticks2[0], vmax=ticks2[-1],ticks=ticks2, clabel=smear_units)
-    plt.subplot(nx,2,3) # using satellite output and daily averaged hemco diagnostic halved
-    pp.createmap(np.nanmean(winter_smear_dayavg,axis=0),lats,lons,aus=True, title='dayavg smearing (winter)',
-                 linear=True,vmin=ticks1[0], vmax=ticks1[-1],ticks=ticks1, clabel=smear_units)
-    plt.subplot(nx,2,4)
-    pp.createmap(np.nanmean(winter_smear_midday,axis=0),lats,lons,aus=True, title='midday smearing (winter)',
-                 linear=True,vmin=ticks2[0], vmax=ticks2[-1],ticks=ticks2, clabel=smear_units)
-    plt.suptitle("smearing definition comparisons",fontsize=27)
+    ii=0
+    for arr, title, ticks in zip([summer_smear_dayavg,summer_smear_midday,winter_smear_dayavg,winter_smear_midday],
+                                     ['dayavg smearing (summer)','midday smearing (summer)','dayavg smearing (winter)','midday smearing (winter)'],
+                                     [ticks1,ticks2,ticks1,ticks2]):
+        ii=ii+1
+        plt.subplot(2,2,ii)
+        ## dayavg smearing in summer
+        flatarr = np.nanmean(arr,axis=0)
+        bmap,cs,cb = pp.createmap(flatarr, lats, lons, aus=True, title=title,
+                                  linear=True, vmin=ticks[0], vmax=ticks[-1],
+                                  ticks=ticks, clabel=smear_units)
 
+        if threshmask:
+            # Add diamond over strict threshold
+            # pink where at least one gridday filtered
+            maxarr=np.nanmax(arr,axis=0)
+            pp.add_marker_to_map(bmap, maxarr>__Thresh_Smearing__,
+                                 lats, lons, marker='d',
+                                 landonly=False, markersize=6, color='pink')
+            # red where always over threshhold
+            minarr=np.nanmin(arr,axis=0)
+            pp.add_marker_to_map(bmap, minarr>__Thresh_Smearing__,
+                                 lats, lons, marker='x',
+                                 landonly=False, markersize=8, color='darkred')
+
+
+    # title and save figure
+    plt.suptitle("smearing definition comparisons",fontsize=27)
     pname=year.strftime('Figs/Filters/smearing_definitions_%Y.png')
     plt.savefig(pname)
     print('SAVED ',pname)

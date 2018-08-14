@@ -1753,8 +1753,8 @@ if __name__ == '__main__':
     #test_filters.check_smoke_filtering(datetime(2005,6,1),datetime(2005,10,1))
     #test_filters.HCHO_vs_temp_vs_fire()
     ## Test smearing at midday vs average smearing...
-    # run/13/8/18
-    test_filters.smearing_definition()
+    # run/14/8/18
+    test_filters.smearing_definition(threshmask=True)
     ## check smearing distributions and filtering
     # run 8/8/18 TODO: add version using midday smearing..
     #test_filters.smearing_threshold()

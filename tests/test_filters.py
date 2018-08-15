@@ -1197,6 +1197,7 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
     summer_smear_dayavg, days,lats,lons=smearing(summer[0],midday=False)
     winter_smear_midday, days,lats,lons=smearing(winter[0],midday=True)
     winter_smear_dayavg, days,lats,lons=smearing(winter[0],midday=True)
+
     for month in summer[1:]:
         # dayavg smearing
         dayavg, days,lats,lons = smearing(month,midday=False)
@@ -1217,6 +1218,9 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
         #todo
 
     smear_units='molec$_{HCHO}$*s/atom$_C$'
+    # fix infinity problem (basemap plots may be shitty)
+    for arr in [summer_smear_dayavg,summer_smear_midday,winter_smear_dayavg,winter_smear_midday]:
+        arr[np.isinf(arr)]=np.NaN
 
     plt.figure(figsize=(13,13))
 

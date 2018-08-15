@@ -1053,13 +1053,14 @@ def plot_yearly_cycle(data,dates, **plotargs):
     plt.xlim([-5,370])
     plt.xlabel('DOY')
 
-def add_dots_to_map(bmap, lats, lons, region, cmapname='rainbow', add_rectangle=True, landonly=True):
+# TODO: Rename to add_region_of_dots in other scripts
+def add_dots_to_map(bmap, lats, lons, region, cmapname='rainbow',
+                    add_rectangle=True, landonly=True,
+                    marker='o',markersize=5):
     '''
         Add dots (optionally coloured) to the bmap
         lats, lons will be subset to subregion
     '''
-
-    # Read omhcho (reprocessed)
 
 
     lati,loni=util.lat_lon_range(lats,lons,region)
@@ -1077,14 +1078,30 @@ def add_dots_to_map(bmap, lats, lons, region, cmapname='rainbow', add_rectangle=
     for y in lati:
         for x in loni:
             # Don't correlate oceanic squares
-            if oceanmask[y,x]:
+            if landonly and oceanmask[y,x]:
                 ii=ii+1
                 continue
 
             # Add dot to map
             mx,my = bmap(lons[x], lats[y])
-            bmap.plot(mx, my, 'o', markersize=5, color=colors[ii])
+            bmap.plot(mx, my, marker, markersize=markersize, color=colors[ii])
     return colors
+
+def add_dots_to_map(bmap, lats, lons,
+                    marker='o', markersize=5,
+                    **bmapargs):
+    '''
+        Add dots (optionally coloured) to the bmap
+        lats, lons will be subset to subregion
+    '''
+
+    for y,x in zip(lats,lons):
+
+        # Add dot to map
+        mx,my = bmap(x, y)
+
+        bmap.plot(mx, my, marker, markersize=markersize,
+                  **bmapargs)
 
 def add_marker_to_map(bmap, mask, lats, lons, marker='o', landonly=False, **bmapargs):
     '''

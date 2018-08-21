@@ -1259,6 +1259,43 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
     print('SAVED ',pname)
     plt.close()
 
+def smearing_at_edges(d0=datetime(2005,1,1),dn=datetime(2005,2,28)):
+    '''
+    '''
+    enew=E_new(d0,dn)
+    smeard=enew.smearing
+    smeard[np.isinf(smeard)]=np.NaN
+    smear=np.nanmean(enew.smearing,axis=0)
+    # look at time series over sometimes missing spot:
+    lats=[-16,-30,-34]
+    lons=[144.75, 115,149.75]
+    colors=['darkred','cyan','k']
+    plt.figure(figsize=[12,12])
+    plt.subplot(2,1,1)
+    bmap,cs,cb=pp.createmap(smear,enew.lats_lr,enew.lons_lr,linear=True,vmin=500,vmax=5000,aus=True)
+    for lat,lon,color in zip(lats,lons,colors):
+        pp.add_dots_to_map(bmap,[lat,],[lon,],marker='d',color=color,markersize=12)
+    pp.add_grid_to_map(bmap)
+
+    ax1=plt.subplot(2,1,2)
+    ax2=ax1.twinx()
+
+    for lat,lon,color in zip(lats,lons,colors):
+
+        plt.sca(ax1)
+        enew.plot_series(key='smearing',lat=lat,lon=lon,dfmt="%b, %d", color=color)
+        plt.ylabel('smearing')
+        plt.ylim([500,5000])
+        plt.sca(ax2)
+        enew.plot_series(key='E_MEGAN',lat=lat,lon=lon,dfmt="%b, %d", color=color,linestyle='--')
+        plt.ylim([0,2e13])
+        plt.ylabel('E_MEGAN [dashed]')
+
+    pname='Figs/Filters/smearing_at_points.png'
+    print('saving ', pname)
+    plt.savefig(pname)
+    plt.close()
+
 def smearing_threshold(year=datetime(2005,1,1), strict=4000, loose=6000):
     '''
     '''

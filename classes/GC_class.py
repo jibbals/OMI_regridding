@@ -39,7 +39,7 @@ __VERBOSE__=True # For file-wide print statements
 rdir='Data/GC_Output/'
 sat_path  = {'tropchem':rdir+'geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s.bpch',
              'halfisop':rdir+'geos5_2x25_tropchem_halfisoprene/satellite_output/ts_satellite.%s.bpch',
-             'UCX':rdir+'UCX_geos5_2x25/satellite_output/ts_satellite.%s.bpch',
+             'UCX':rdir+'UCX_geos5_2x25/satellite_output/ts_satellite.%s',
              'biogenic':rdir+'geos5_2x25_tropchem_biogenic/satellite_output/sat_biogenic.%s.bpch',}
 tavg_path = {'tropchem':rdir+'geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'halfisop':rdir+'geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
@@ -51,6 +51,7 @@ __coords__ = ['lev','lon','lat','time']
 __ijavg__  = ['IJ-AVG-$_ISOP',
               'IJ-AVG-$_CH2O',
               'IJ-AVG-$_NO2',       # NO2 in ppbv
+              'IJ-AVG-$_O3',        # O3 in ppbv
               'TIME-SER_AIRDEN',    # Named differently in satellite output
               'CHEM-L=$_OH',]       # OH concentrations?
 __emiss__  = ['BIOGSRCE_ISOP',      # biogenic source of isoprene () []
@@ -135,6 +136,10 @@ class GC_base:
         #self.E_isop_bio = 0 #"atoms C/cm2/s" # ONLY tropchem
         self.attrs={}       # Attributes from bpch file
 
+        if hasattr(self,'area'):
+            if len(self.area.shape) > 2:
+                self.area = self.area[0] # remove time dimension
+
         # Data could have any shape, we fix to time,lat,lon,lev
         # for each key in thefile
         for key in data.keys():
@@ -147,6 +152,8 @@ class GC_base:
                     keylevels=arr.shape[levdim] # sometimes 38 levels instead of 47...
                 else:
                     keylevels=self.nlevs
+                print (np.shape(arr),self.ntimes,self.nlats,self.nlons,keylevels)
+                print( key)
                 arr = util.reshape_time_lat_lon_lev(arr,self.ntimes,self.nlats,self.nlons,keylevels)
 
             # Fix air density units to molec/cm3, in case they are in molec/m3
@@ -207,7 +214,7 @@ class GC_base:
         if all([hasattr(self,attr) for attr in ['hcho','N_air','boxH']]):
             n_dims=len(np.shape(self.hcho))
             print("CHECK:hcho %s, mean = %.2e %s"%(str(np.shape(self.hcho)),np.mean(self.hcho),self.attrs['hcho']['units']))
-            self.O_hcho = np.sum(self.ppbv_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
+            self.O_hcho = np.sum(self.units_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
             self.attrs['O_hcho']={'units':'molec/cm2','desc':'Total column HCHO'}
             print("CHECK:O_hcho %s, mean=%.2e %s"%(str(self.O_hcho.shape),np.mean(self.O_hcho),self.attrs['O_hcho']['units']))
 
@@ -235,35 +242,67 @@ class GC_base:
         '''  return lati, loni '''
         return util.lat_lon_index(lat,lon,self.lats,self.lons)
 
-    def ppbv_to_molec_cm2(self,keys=['hcho']):
-        ''' return dictionary with data in format molecules/cm2'''
+    def units_to_molec_cm2(self, keys=[]):
+        ''' convert units to molec/cm2    '''
         out={}
-        N_air=self.N_air # molec/cm3
-        assert self.attrs['N_air']['units']=='molec/cm3', 'N_air units are NOT molec/cm3, they are %s'%self.attrs['N_air']['units']
+        for key in keys:
+            data=getattr(self,key)
+            boxh=self.boxH # maybe in metres
+            if str.strip(self.attrs['boxH']['units']) == 'm':
+                boxh=boxh*100 # change to centimetres
 
-        for k in keys:
-            ppbv=getattr(self,k)
-            if k=='isop':
-                ppbv=ppbv/5.0 # ppb carbon to ppb isoprene
+            units=str.strip(self.attrs[key]['units'])
+            # MOLEC/CM3 TO MOLEC/CM2
+            if  units == 'molec/cm3':
+                out[key] = data*self.boxH
+            # PPBV TO MOLEC/CM2
+            elif units == 'ppbv' or units == 'ppbC':
+                N_air=self.N_air # molec/cm3
+                assert self.attrs['N_air']['units']=='molec/cm3', 'N_air units are NOT molec/cm3, they are %s'%self.attrs['N_air']['units']
+                if units=='ppbC':
+                    if key=='isop':
+                        data=data/5.0 # ppb carbon to ppb isoprene
+                    else:
+                        assert False, '%s(%s) unsure how to convert to molec/cm3'%(key,units)
 
-            # ppb * 1e-9 * molec_air/cm3 * boxH(m) * cm/m
-            # scale=0.0
-            out[k] = ppbv * 1e-9 * N_air * self.boxH * 100 # molec/cm2 over 3dims
+                # ppb * 1e-9 * molec_air/cm3 * boxH(cm)
+                # scale=0.0
+                out[key] = data * 1e-9 * N_air * boxh # molec/cm2
+            else:
+                assert False, "Haven't made conversion for %s(%s) to molec/cm2"%(key,units)
+
         return out
 
-    def get_trop_columns(self, keys=['hcho']):
+    def ppbv_to_molec_cm2(self, keys=['hcho']):
+        ''' return dictionary with data in format molecules/cm2'''
+        return self.units_to_molec_cm2(keys)
+
+    def get_total_columns(self, keys=['hcho']):
+        return self.get_trop_columns(keys, total_column=True)
+
+    def get_trop_columns(self, keys=['hcho'], total_column=False):
         '''
             Return tropospheric column amounts in molec/cm2
         '''
         if __VERBOSE__:
-            print('retrieving trop column for ',keys)
+            print('retrieving %s column for '%['trop','total'][total_column],keys)
+            for key in keys:
+                print(key, self.attrs[key]['units'])
         data={}
 
         # where is tropopause and how much of next box we want
-        trop=np.floor(self.tplev).astype(int)
-        extra=self.tplev - trop
+        if total_column:
+            trop=np.zeros([self.ntimes,self.nlats,self.nlons],dtype=np.int)
+            trop[:,:,:]=self.nlevs - 1
+            trop=np.squeeze(trop)
+            extra = np.copy(trop)
+            extra[:]=1
+            # all but top level + 1* top level
+        else:
+            trop=np.floor(self.tplev).astype(int)
+            extra=self.tplev - trop
 
-        Xdata=self.ppbv_to_molec_cm2(keys=keys)
+        Xdata=self.units_to_molec_cm2(keys=keys)
         # for each key, work out trop columns
         for key in keys:
             X=Xdata[key]
@@ -273,16 +312,17 @@ class GC_base:
             # Which index is time,lat,lon,lev?
             timei=0;lati=1;loni=2
             out=np.zeros(dims[[timei,lati,loni]])
-            #if dims[0] > 40: # no time dimension
-            hastime= len(dims)==3
-            if hastime: # no time dim
+
+            hastime= len(dims) > 3 # [[time],lat,lon,lev]
+
+            if not hastime: # no time dim
                 lati=0; loni=1
                 out=np.zeros(dims[[lati, loni]])
 
             for lat in range(dims[lati]): # loop over lats
                 for lon in range(dims[loni]): # loop over lons
                     try:
-                        if hastime:
+                        if not hastime:
                             tropi=trop[lat,lon]
                             out[lat,lon]=np.sum(X[lat,lon,0:tropi])+extra[lat,lon] * X[lat,lon,tropi]
                         else:
@@ -381,10 +421,16 @@ class GC_base:
         E=self.E_isop_bio * 0.2 # atom C -> atom isop
         gpm=util.__grams_per_mole__['isop']
         SA=self.area * 1e-6  # m2 -> km2
+
         # kg/atom_isop = grams/mole * mole/molec * kg/gram
         kg_per_atom = gpm * 1.0/N_Avogadro * 1e-3
         # cm2/km2 * km2 * kg/isop
         conversion= 1e10 * SA * kg_per_atom
+
+        print(E.shape,conversion.shape, self.area.shape)
+        if len(conversion.shape) > 2:
+            conversion=conversion[0]
+        print(E.shape,conversion.shape)
 
         if self._has_time_dim:
             self.E_isop_bio_kgs = np.zeros(np.shape(E))
@@ -409,7 +455,7 @@ class GC_tavg(GC_base):
         self.E_isop_bio= "atoms C/cm2/s" # ONLY tropchem
 
     '''
-    def __init__(self,day0,dayN=None,keys=__gc_allkeys__,run='tropchem',nlevs=47):
+    def __init__(self,day0,dayN=None,keys=__gc_allkeys__,run='tropchem',nlevs=None):
         # Call GC_base initialiser with tavg_mainkeys and tropchem by default
 
         # Determine path of files:
@@ -419,6 +465,20 @@ class GC_tavg(GC_base):
 
         # read data/attrs and initialise class:
         data,attrs = GC_fio.read_bpch(paths,keys=keys)
+
+        if nlevs is None:
+            nlevs =47 # assume 47
+
+        if run == 'UCX':
+            nlevs = 72
+            # reading monthly averages does not create a datetime array
+            if not hasattr(data,'time'):
+                data['dates']=np.array(dates)
+                attrs['dates']={'units':'datetimes'}
+                data['time']= np.array(util.datetimes_from_np_datetime64(dates,reverse=True))
+                attrs['time']={'units':'datetime64','desc':'month starts for monthly averaged data'}
+
+
 
         attrs['init_date']=day0
 
@@ -433,7 +493,13 @@ class GC_sat(GC_base):
     '''
         Class for reading and manipulating satellite overpass output!
     '''
-    def __init__(self,day0, dayN=None, keys=__gc_allkeys__, run='tropchem',nlevs=47):
+    def __init__(self,day0, dayN=None, keys=__gc_allkeys__, run='tropchem',nlevs=None):
+
+        if nlevs is None:
+            if run=='UCX':
+                nlevs=72
+            else:
+                nlevs=47
 
         # Determine path of files:
         dates=util.list_days(day0,dayN)

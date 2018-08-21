@@ -903,21 +903,21 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     if axeslist[0] is not None:
         plt.sca(axeslist[0])
     args={'region':region, 'clabel':clabel, 'linear':linear,
-          'lats':lats, 'lons':lons, 'title':titles[0], 'cmapname':'rainbow',
+          'lats':lats, 'lons':lons, 'title':titles[0] + "(A)", 'cmapname':'rainbow',
          'vmin':vmin, 'vmax':vmax}
     createmap(A, **args)
 
     plt.sca(axes[0,1])
     if axeslist[1] is not None:
         plt.sca(axeslist[1])
-    args['title']=titles[1]
+    args['title']=titles[1] + "(B)"
     createmap(B, **args)
 
     # Next plot abs/rel differences
     plt.sca(axes[1,0])
     if axeslist[2] is not None:
         plt.sca(axeslist[2])
-    args['title']="%s - %s"%(titles[0],titles[1])
+    args['title']="%s - %s"%("A","B")
     args['vmin']=amin; args['vmax']=amax
     args['linear']=alinear
     args['cmapname']='bwr'
@@ -926,11 +926,17 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     plt.sca(axes[1,1])
     if axeslist[3] is not None:
         plt.sca(axeslist[3])
-    args['title']="100*(%s-%s)/%s"%(titles[0], titles[1], titles[1])
+    args['title']="100*(%s-%s)/%s"%("A", "B", "B")
     args['vmin']=rmin; args['vmax']=rmax
     args['linear']=rlinear
     args['clabel']="%"
-    createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
+    createmap((A-B)*100.0/B, suptitle=suptitle, **args)
+
+    if pname is not None:
+        plt.tight_layout()
+        plt.savefig(pname)
+        print("SAVED FIGURE ",pname)
+
 
     if np.sum([a is not None for a in axeslist]) > 0 :
         plt.close(f)

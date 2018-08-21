@@ -9,6 +9,7 @@ Run from main project directory or else imports will not work
 #import matplotlib
 #matplotlib.use('Agg') # don't actually display any plots, just create them
 from matplotlib import gridspec
+import matplotlib
 
 # module for hdf eos 5
 #import h5py
@@ -857,7 +858,146 @@ def check_tropchem_monthly():
 
     # Also compare against UCX month average?
 
-def compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
+def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
+    '''
+        Check UCX vs Tropchem
+        Plot surface and tropospheric HCHO, ISOP, O3, OH from satellite output files
+    '''
+    dstr=d0.strftime('%Y%m%d-')+dn.strftime('%Y%m%d')
+    region=pp.__GLOBALREGION__
+
+    ## Read the GEOS-Chem UCX files..
+    satu=GC_class.GC_sat(d0,dn,run='UCX') # [days, lats, lons,72]
+    # 'hcho', 'psurf', OH'
+    tracu=GC_class.GC_tavg(d0,dn,run='UCX') # [lats,lons,72]
+    # 'isop', 'hcho', 'psurf'
+
+    ## read tropchem outputs
+    satt=GC_class.GC_sat(d0,dn,run='tropchem') # [days, lats, lons, 47]
+    #'isop', 'E_isop_bio', 'temp', 'surftemp', 'NO2', 'hcho', 'OH'
+    tract=GC_class.GC_tavg(d0,dn,run='tropchem') # [days,lats,lons,47]
+    # 'isop', 'NO2', 'hcho', 'psurf'
+    lats=satu.lats
+    lons=satu.lons
+
+    satkeys=['hcho','isop','OH','O3']
+    trackeys=['hcho','isop','OH', 'O3'] # for some reason O3 isn't removed by check in 12 lines
+    # check we have the keys
+    print(satt.attrs.keys())
+    print(satu.attrs.keys())
+    print(tract.attrs.keys())
+    print(tracu.attrs.keys())
+    for key in satkeys:
+        if not ( hasattr(satt,key) and hasattr(satu,key) ):
+            satkeys.remove(key)
+            print('removing ucxkey',key)
+
+    for key in trackeys:
+        if not ( hasattr(tract,key) and hasattr(tracu,key) ):
+            trackeys.remove(key)
+            print('removing trackey',key)
+
+    keys=[]
+    keys.extend(satkeys)
+    keys.extend(trackeys)
+
+
+    # setup stuff for plotting: limits, units, etc.
+    units={ 'hcho'      :r'molec cm$^{-3}$',
+            'OH'        :r'molec cm$^{-3}$',
+            'isop'      :r'molec cm$^{-3}$',
+            'O3'        :r'molec cm$^{-3}$',}
+    rlims={'hcho'       :(-20,20),
+           'OH'         :(-50,50),
+           'isop'       :(-70,70),
+           'O3'         :(-30,30), }
+    dlims={'hcho'       :(-1e14,1e14),
+           'OH'         :(-1e12,1e12),
+           'isop'       :(-1e15,1e15),
+           'O3'         :(-1e15,1e15), }
+    vlims={'hcho'       :(1e13,1e16),
+           'OH'         :(1e10,1e13),
+           'isop'       :(1e13,1e16),
+           'O3'         :(1e15,1e18), }
+
+    # satellite outputs to compare
+    tot_satu=satu.get_total_columns(satkeys)
+    tot_satt=satt.get_total_columns(satkeys)
+    tot_tracu=tracu.get_total_columns(trackeys)
+    tot_tract=tract.get_total_columns(trackeys)
+
+    surf_satu=satu.units_to_molec_cm2(satkeys)
+    surf_satt=satt.units_to_molec_cm2(satkeys)
+    surf_tracu=tracu.units_to_molec_cm2(trackeys)
+    surf_tract=tract.units_to_molec_cm2(trackeys)
+
+    matplotlib.rcParams["text.usetex"]      = False     #
+    matplotlib.rcParams["legend.numpoints"] = 1         # one point for marker legends
+    matplotlib.rcParams["figure.figsize"]   = (16, 16)  #
+    matplotlib.rcParams["font.size"]        = 22        # font sizes:
+    matplotlib.rcParams["axes.titlesize"]   = 30        # title font size
+    matplotlib.rcParams["axes.labelsize"]   = 20        #
+    matplotlib.rcParams["xtick.labelsize"]  = 20        #
+    matplotlib.rcParams["ytick.labelsize"]  = 20        #
+
+    for key in satkeys:
+        print(key)
+        # compare surface and troposphere
+        # First do total column
+
+        dats   =  [np.nanmean(tot_satu[key],axis=0), np.nanmean(tot_satt[key],axis=0)] # average over time
+        pname  = 'Figs/GC/UCX_vs_trp_middaytotcol_%s_%s.png'%(dstr,key)
+        titles = ['UCX', 'tropchem']
+        pp.compare_maps(dats,[lats,lats],[lons,lons],pname=pname,titles=titles,
+                        vmin=vlims[key][0], vmax=vlims[key][1],
+                        rmin=rlims[key][0], rmax=rlims[key][1],
+                        amin=dlims[key][0], amax=dlims[key][1],
+                        linear=False, region=region,
+                        suptitle='%s total column (middays %s) [%s]'%(key,dstr,'molec cm$^{-2}$'))
+
+        # then do surface molec/cm2
+        dats   = [np.nanmean(surf_satu[key][:,:,:,0],axis=0), np.nanmean(surf_satt[key][:,:,:,0],axis=0)]
+        pname  = 'Figs/GC/UCX_vs_trp_middaysurf_%s_%s.png'%(dstr,key)
+        titles = ['UCX', 'tropchem']
+        pp.compare_maps(dats, [lats, lats], [lons, lons], pname=pname, titles=titles,
+                        vmin=vlims[key][0], vmax=vlims[key][1],
+                        rmin=rlims[key][0], rmax=rlims[key][1],
+                        amin=dlims[key][0], amax=dlims[key][1],
+                        linear=False, region=region,
+                        suptitle='%s surface (middays %s) [%s]'%(key,dstr,units[key]))
+
+    for key in trackeys:
+        print(key)
+        # compare surface and troposphere
+        # First do total column
+        d1 = tot_tracu[key]
+        if len(d1.shape) > 2:
+            d1=np.nanmean(d1,axis=0) # tracu may or may not have days
+        dats   = [d1, np.nanmean(tot_tract[key],axis=0)] # average over time
+        pname  = 'Figs/GC/UCX_vs_trp_avgtotcol_%s_%s.png'%(dstr,key)
+        titles = ['UCX', 'tropchem']
+        pp.compare_maps(dats,[lats,lats],[lons,lons],pname=pname,titles=titles,
+                        vmin=vlims[key][0], vmax=vlims[key][1],
+                        rmin=rlims[key][0], rmax=rlims[key][1],
+                        amin=dlims[key][0], amax=dlims[key][1],
+                        linear=False, region=region,
+                        suptitle='%s Total column (full day avgs %s) [%s]'%(key,dstr,'molec cm$^{-2}$'))
+
+        # then do surface molec/cm2
+        d2 = surf_tracu[key]
+        if len(d2.shape) > 3:
+            d2=np.nanmean(d2,axis=0)
+        dats   = [d2[:,:,0], np.nanmean(surf_tract[key][:,:,:,0],axis=0)]
+        pname  = 'Figs/GC/UCX_vs_trp_avgsurf_%s_%s.png'%(dstr,key)
+        titles = ['UCX', 'tropchem']
+        pp.compare_maps(dats, [lats, lats], [lons, lons], pname=pname, titles=titles,
+                        vmin=vlims[key][0], vmax=vlims[key][1],
+                        rmin=rlims[key][0], rmax=rlims[key][1],
+                        amin=dlims[key][0], amax=dlims[key][1],
+                        linear=False, region=region,
+                        suptitle='%s surface amounts (full day avgs %s) [%s]'%(key,dstr,units[key]))
+
+def OLD_compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
     '''
         Check UCX vs Tropchem
         set Extra to true to look at E_isop_biog and OH (uses specific output file 20050101
@@ -1141,10 +1281,14 @@ if __name__=='__main__':
     region=pp.__AUSREGION__
     label='AUS'
 
+    ## tropchem vs UCX plots
+    # Look at 2007 summer since I have OH for daily avg files from then.
+    compare_tc_ucx(datetime(2007,1,1),util.last_day(datetime(2007,2,1)))
+
     # Checking units:
 
-    Examine_Model_Slope() # unfinished 30/5/18
-    check_rsc_interp()   # last run 29/5/18
+    #Examine_Model_Slope() # unfinished 30/5/18
+    #check_rsc_interp()   # last run 29/5/18
 
     #HCHO_vs_temp(d0=d0,d1=d1,
     #             region=SEA,regionlabel='SEA',
@@ -1191,8 +1335,7 @@ if __name__=='__main__':
     #               fnames=['trac_avg_200501_month.nc','trac_avg_UCX_200501.nc'],
     #               suffix='_rerun')
 
-    #compare_surface_tc_ucx()
-    #compare_tc_ucx()
+
 
     # scripts mapping stuff
     date=datetime(2005,1,1)

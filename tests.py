@@ -1752,6 +1752,10 @@ if __name__ == '__main__':
     #test_filters.check_smoke_filtering() # check that smoke filter also working (whole year)
     #test_filters.check_smoke_filtering(datetime(2005,6,1),datetime(2005,10,1))
     #test_filters.HCHO_vs_temp_vs_fire()
+
+    ## Look at what's going on at smearing edgepoints
+    # TODO update and dig deeper
+    test_filters.smearing_at_edges()
     ## Test smearing at midday vs average smearing...
     # run/14/8/18
     test_filters.smearing_definition(threshmask=True)

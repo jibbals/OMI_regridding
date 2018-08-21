@@ -687,7 +687,6 @@ def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
         elif len(ti)==1 and len(levi)==0:
             newshape=(ti[0,0],lati,loni)
 
-
         arr=np.transpose(data,axes=newshape)
 
     if __VERBOSE__:

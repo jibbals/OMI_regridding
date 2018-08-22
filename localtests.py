@@ -57,15 +57,24 @@ start1=timeit.default_timer()
 ##########
 
 gct=GC_class.GC_tavg(datetime(2007,1,1))
-gcts=GC_class.GC_sat(datetime(2007,1,1))
-gcu=GC_class.GC_tavg(datetime(2007,1,1),run='UCX')
-gcus=GC_class.GC_sat(datetime(2007,1,1),run='UCX')
+#gcts=GC_class.GC_sat(datetime(2007,1,1))
+#gcu=GC_class.GC_tavg(datetime(2007,1,1),run='UCX')
+#gcus=GC_class.GC_sat(datetime(2007,1,1),run='UCX')
 
-hasattr(gct,'attrs')
-#print('tavg trop',gct.attrs.keys())
-#print('tavg ucx', gcu.attrs.keys())
-#print('sat trop',gcts.attrs.keys())
-#print('sat ucx',gcus.attrs.keys())
+for key in ['OH','O3']:
+    print ("KEY: ",key)
+    print ('     shape       :', getattr(gct,key).shape)
+    molec = gct.units_to_molec_cm2(keys=[key])[key]
+    print ('     mean surface:', np.nanmean(molec[0,:,:,0]))
+    print ('     max surface :', np.nanmax(molec[0,:,:,0]))
+    tc    = gct.get_total_columns(keys=[key])[key]
+    tc.shape
+    print ('     totcol mean :', np.nanmean(tc[0,:,:]))
+    print ('     totcol max  :', np.nanmax(tc[0,:,:]))
+#print('tavg trop', gct.attrs.keys())
+#print('tavg ucx',  gcu.attrs.keys())
+#print('sat trop',  gcts.attrs.keys())
+#print('sat ucx',   gcus.attrs.keys())
 
 ###########
 ### Record and time STUJFFS

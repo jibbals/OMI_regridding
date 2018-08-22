@@ -911,14 +911,20 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
            'OH'         :(-50,50),
            'isop'       :(-70,70),
            'O3'         :(-30,30), }
-    dlims={'hcho'       :(-1e14,1e14),
+
+    dlims={'hcho'       :(-1e13,1e13),
            'OH'         :(-1e12,1e12),
            'isop'       :(-1e15,1e15),
-           'O3'         :(-1e15,1e15), }
-    vlims={'hcho'       :(1e13,1e16),
+           'O3'         :(-1e15,1e15),}
+
+    vlims={'hcho'       :(1e13,1e15), # surface
+           'hcho_tc'    :(1e14,1e16), # total column
            'OH'         :(1e10,1e13),
+           'OH_tc'      :(1e11,1e14),
            'isop'       :(1e13,1e16),
-           'O3'         :(1e15,1e18), }
+           'isop_tc'    :(1e14,1e17),
+           'O3'         :(1e15,1e17),
+           'O3_tc'      :(1e16,1e19), }
 
     # satellite outputs to compare
     tot_satu=satu.get_total_columns(satkeys)
@@ -949,9 +955,9 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
         pname  = 'Figs/GC/UCX_vs_trp_middaytotcol_%s_%s.png'%(dstr,key)
         titles = ['UCX', 'tropchem']
         pp.compare_maps(dats,[lats,lats],[lons,lons],pname=pname,titles=titles,
-                        vmin=vlims[key][0], vmax=vlims[key][1],
+                        vmin=vlims[key+'_tc'][0], vmax=vlims[key+'_tc'][1], # total column has own scale
                         rmin=rlims[key][0], rmax=rlims[key][1],
-                        amin=dlims[key][0], amax=dlims[key][1],
+                        amin=dlims[key][0]*10, amax=dlims[key][1]*10, # total column diffs are 10 times higher (summed over vert)
                         linear=False, region=region,
                         suptitle='%s total column (middays %s) [%s]'%(key,dstr,'molec cm$^{-2}$'))
 
@@ -977,9 +983,9 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
         pname  = 'Figs/GC/UCX_vs_trp_avgtotcol_%s_%s.png'%(dstr,key)
         titles = ['UCX', 'tropchem']
         pp.compare_maps(dats,[lats,lats],[lons,lons],pname=pname,titles=titles,
-                        vmin=vlims[key][0], vmax=vlims[key][1],
+                        vmin=vlims[key+'_tc'][0], vmax=vlims[key+'_tc'][1],
                         rmin=rlims[key][0], rmax=rlims[key][1],
-                        amin=dlims[key][0], amax=dlims[key][1],
+                        amin=dlims[key][0]*10, amax=dlims[key][1]*10,
                         linear=False, region=region,
                         suptitle='%s Total column (full day avgs %s) [%s]'%(key,dstr,'molec cm$^{-2}$'))
 

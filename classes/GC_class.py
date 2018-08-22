@@ -101,6 +101,7 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     'TR-PAUSE_TP-PRESS':'tpP', # trop Pressure: mb
     # Many more in trac_avg_yyyymm.nc, not read here yet...
     'CHEM-L=$_OH':'OH', # OH molec/cm3: (time, alt059, lat, lon) : 'chemically produced OH'
+                        # alt059 is 38 levels for no reason
     'DAO-3D-$_TMPU':'temp', # temperature
     'DAO-FLDS_TS':'surftemp', # surface temperature, Kelvin
     }
@@ -247,14 +248,21 @@ class GC_base:
         out={}
         for key in keys:
             data=getattr(self,key)
+            data_levels=data.shape[-1] # some arrays have 38 levels..?
             boxh=self.boxH # maybe in metres
             if str.strip(self.attrs['boxH']['units']) == 'm':
                 boxh=boxh*100 # change to centimetres
 
+            # subset of levels
+            if len(data.shape) == 3:
+                boxh=boxh[:,:,0:data_levels]
+            elif len(data.shape) == 4:
+                boxh=boxh[:,:,:,0:data_levels]
+
             units=str.strip(self.attrs[key]['units'])
             # MOLEC/CM3 TO MOLEC/CM2
             if  units == 'molec/cm3':
-                out[key] = data*self.boxH
+                out[key] = data*boxh
             # PPBV TO MOLEC/CM2
             elif units == 'ppbv' or units == 'ppbC':
                 N_air=self.N_air # molec/cm3

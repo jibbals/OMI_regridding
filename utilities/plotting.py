@@ -903,7 +903,7 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     if axeslist[0] is not None:
         plt.sca(axeslist[0])
     args={'region':region, 'clabel':clabel, 'linear':linear,
-          'lats':lats, 'lons':lons, 'title':titles[0] + "(A)", 'cmapname':'rainbow',
+          'lats':lats, 'lons':lons, 'title':titles[0] + "(A)", 'cmapname':'viridis',
          'vmin':vmin, 'vmax':vmax}
     createmap(A, **args)
 

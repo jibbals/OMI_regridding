@@ -913,18 +913,18 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
            'O3'         :(-30,30), }
 
     dlims={'hcho'       :(-1e13,1e13),
-           'OH'         :(-1e12,1e12),
+           'OH'         :(-1e11,1e11),
            'isop'       :(-1e15,1e15),
            'O3'         :(-1e15,1e15),}
 
     vlims={'hcho'       :(1e13,1e15), # surface
-           'hcho_tc'    :(1e14,1e16), # total column
-           'OH'         :(1e10,1e13),
+           'hcho_tc'    :(5e14,1e17), # total column
+           'OH'         :(1e9,1e11),
            'OH_tc'      :(1e11,1e14),
            'isop'       :(1e13,1e16),
            'isop_tc'    :(1e14,1e17),
-           'O3'         :(1e15,1e17),
-           'O3_tc'      :(1e16,1e19), }
+           'O3'         :(1e15,1e16),
+           'O3_tc'      :(1e18,1e19), }
 
     # satellite outputs to compare
     tot_satu=satu.get_total_columns(satkeys)

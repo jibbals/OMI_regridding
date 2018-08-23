@@ -332,10 +332,14 @@ class GC_base:
                     try:
                         if not hastime:
                             tropi=trop[lat,lon]
+                            if tropi > dims[2]:
+                                tropi = dims[2]-1
                             out[lat,lon]=np.sum(X[lat,lon,0:tropi])+extra[lat,lon] * X[lat,lon,tropi]
                         else:
                             for t in range(dims[timei]):
                                 tropi=trop[t,lat,lon]
+                                if tropi > dims[3]:
+                                    tropi = dims[3]-1
                                 out[t,lat,lon] = np.sum(X[t,lat,lon,0:tropi]) + \
                                     extra[t,lat,lon] * X[t,lat,lon,tropi]
                     except IndexError as ie:

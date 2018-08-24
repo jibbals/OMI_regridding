@@ -2,11 +2,11 @@
 #PBS -P m19
 #PBS -q normal
 #PBS -N makeAMFcsv
-#PBS -l walltime=01:00:00
+#PBS -l walltime=00:30:00
 #PBS -l mem=3000MB
-#PBS -l cput=00:15:00
+#PBS -l cput=00:30:00
 #PBS -l wd
-#PBS -l ncpus=4
+#PBS -l ncpus=1
 #PBS -j oe
 
 

@@ -17,6 +17,7 @@ import utilities.plotting as pp
 from utilities import GMAO,GC_fio,fio
 import Inversion
 import tests
+from tests import utilities_tests
 import reprocess
 
 from classes.E_new import E_new # E_new class
@@ -55,6 +56,12 @@ start1=timeit.default_timer()
 ##########
 ### DO STUFFS
 ##########
+
+#anth=fio.make_anthro_mask(datetime(2008,1,1),datetime(2008,1,31))
+#for thing in anth:
+#    print(thing.shape)
+
+fire,dat,lat,lon = fio.make_fire_mask(datetime(2008,1,1),datetime(2008,1,3))
 
 gct=GC_class.GC_tavg(datetime(2007,1,1))
 #gcts=GC_class.GC_sat(datetime(2007,1,1))

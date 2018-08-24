@@ -701,7 +701,6 @@ def set_adjacent_to_true(mask):
 
 
     for y in range(ny):
-        print('%d/%d'%(y,ny-1))
         # copy row shifted both left and right
         mask_copy[:,y]   += mask[:,y]
         mask_copy[:-1,y] += mask[1:,y] # shifted right
@@ -723,9 +722,6 @@ def set_adjacent_to_true(mask):
             mask_copy[1:,y] += mask[:-1,y+1] # shifted left
             mask_copy[0,y]   += mask[1,y+1] + mask[0,y+1]
             mask_copy[-1,y]  += mask[-2,y+1]+ mask[-1,y+1]
-
-        print(mask[:,y])
-        print(mask_copy[:,y])
 
     return mask_copy
 

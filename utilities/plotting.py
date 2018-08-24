@@ -833,7 +833,7 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
                  clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
                  rmin=-200.0, rmax=200., amin=None, amax=None,
                  axeslist=[None,None,None,None],
-                 maskocean=False,
+                 maskocean=False, ticks=None,
                  lower_resolution=False, normalise=False,
                  linear=False, alinear=True, rlinear=True):
     '''
@@ -902,7 +902,7 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     plt.sca(axes[0,0])
     if axeslist[0] is not None:
         plt.sca(axeslist[0])
-    args={'region':region, 'clabel':clabel, 'linear':linear,
+    args={'region':region, 'clabel':clabel, 'linear':linear, 'ticks':ticks,
           'lats':lats, 'lons':lons, 'title':titles[0] + "(A)", 'cmapname':'viridis',
          'vmin':vmin, 'vmax':vmax}
     createmap(A, **args)
@@ -918,6 +918,7 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     if axeslist[2] is not None:
         plt.sca(axeslist[2])
     args['title']="%s - %s"%("A","B")
+    args['ticks']=None # don't make ticks for difference maps
     args['vmin']=amin; args['vmax']=amax
     args['linear']=alinear
     args['cmapname']='bwr'
@@ -938,7 +939,7 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
         print("SAVED FIGURE ",pname)
 
 
-    if np.sum([a is not None for a in axeslist]) > 0 :
+    if np.sum([a is not None for a in axeslist]) < 1 :
         plt.close(f)
 
     return (A,B)

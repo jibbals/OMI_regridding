@@ -833,7 +833,7 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
                  clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
                  rmin=-200.0, rmax=200., amin=None, amax=None,
                  axeslist=[None,None,None,None],
-                 maskocean=False,
+                 maskocean=False, ticks=None,
                  lower_resolution=False, normalise=False,
                  linear=False, alinear=True, rlinear=True):
     '''
@@ -902,22 +902,23 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     plt.sca(axes[0,0])
     if axeslist[0] is not None:
         plt.sca(axeslist[0])
-    args={'region':region, 'clabel':clabel, 'linear':linear,
-          'lats':lats, 'lons':lons, 'title':titles[0], 'cmapname':'rainbow',
+    args={'region':region, 'clabel':clabel, 'linear':linear, 'ticks':ticks,
+          'lats':lats, 'lons':lons, 'title':titles[0] + "(A)", 'cmapname':'viridis',
          'vmin':vmin, 'vmax':vmax}
     createmap(A, **args)
 
     plt.sca(axes[0,1])
     if axeslist[1] is not None:
         plt.sca(axeslist[1])
-    args['title']=titles[1]
+    args['title']=titles[1] + "(B)"
     createmap(B, **args)
 
     # Next plot abs/rel differences
     plt.sca(axes[1,0])
     if axeslist[2] is not None:
         plt.sca(axeslist[2])
-    args['title']="%s - %s"%(titles[0],titles[1])
+    args['title']="%s - %s"%("A","B")
+    args['ticks']=None # don't make ticks for difference maps
     args['vmin']=amin; args['vmax']=amax
     args['linear']=alinear
     args['cmapname']='bwr'
@@ -926,13 +927,19 @@ def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     plt.sca(axes[1,1])
     if axeslist[3] is not None:
         plt.sca(axeslist[3])
-    args['title']="100*(%s-%s)/%s"%(titles[0], titles[1], titles[1])
+    args['title']="100*(%s-%s)/%s"%("A", "B", "B")
     args['vmin']=rmin; args['vmax']=rmax
     args['linear']=rlinear
     args['clabel']="%"
-    createmap((A-B)*100.0/B, suptitle=suptitle, pname=pname, **args)
+    createmap((A-B)*100.0/B, suptitle=suptitle, **args)
 
-    if np.sum([a is not None for a in axeslist]) > 0 :
+    if pname is not None:
+        plt.tight_layout()
+        plt.savefig(pname)
+        print("SAVED FIGURE ",pname)
+
+
+    if np.sum([a is not None for a in axeslist]) < 1 :
         plt.close(f)
 
     return (A,B)
@@ -1053,13 +1060,14 @@ def plot_yearly_cycle(data,dates, **plotargs):
     plt.xlim([-5,370])
     plt.xlabel('DOY')
 
-def add_dots_to_map(bmap, lats, lons, region, cmapname='rainbow', add_rectangle=True, landonly=True):
+# TODO: Rename to add_region_of_dots in other scripts
+def add_dots_to_map(bmap, lats, lons, region, cmapname='rainbow',
+                    add_rectangle=True, landonly=True,
+                    marker='o',markersize=5):
     '''
         Add dots (optionally coloured) to the bmap
         lats, lons will be subset to subregion
     '''
-
-    # Read omhcho (reprocessed)
 
 
     lati,loni=util.lat_lon_range(lats,lons,region)
@@ -1077,14 +1085,30 @@ def add_dots_to_map(bmap, lats, lons, region, cmapname='rainbow', add_rectangle=
     for y in lati:
         for x in loni:
             # Don't correlate oceanic squares
-            if oceanmask[y,x]:
+            if landonly and oceanmask[y,x]:
                 ii=ii+1
                 continue
 
             # Add dot to map
             mx,my = bmap(lons[x], lats[y])
-            bmap.plot(mx, my, 'o', markersize=5, color=colors[ii])
+            bmap.plot(mx, my, marker, markersize=markersize, color=colors[ii])
     return colors
+
+def add_dots_to_map(bmap, lats, lons,
+                    marker='o', markersize=5,
+                    **bmapargs):
+    '''
+        Add dots (optionally coloured) to the bmap
+        lats, lons will be subset to subregion
+    '''
+
+    for y,x in zip(lats,lons):
+
+        # Add dot to map
+        mx,my = bmap(x, y)
+
+        bmap.plot(mx, my, marker, markersize=markersize,
+                  **bmapargs)
 
 def add_marker_to_map(bmap, mask, lats, lons, marker='o', landonly=False, **bmapargs):
     '''

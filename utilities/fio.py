@@ -46,7 +46,7 @@ geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
-__VERBOSE__=False
+__VERBOSE__=True
 
 __Thresh_NO2_d__ = 2e15 # daily threshhold for anthro filter
 __Thresh_NO2_y__ = 1.5e15 # yearly avg threshhold
@@ -472,6 +472,10 @@ def read_MOD14A1_interpolated(date=datetime(2005,1,1), latres=__LATRES__,lonres=
     '''
     newlats,newlons,_nlate,_nlone= util.lat_lon_grid(latres=latres,lonres=lonres,regular=False)
     fires,lats,lons=read_MOD14A1(date,per_km2=False)
+
+    # can skip regridding if file is missing...
+    if np.all(np.isnan(fires)):
+        return np.zeros([len(newlats),len(newlons)])+np.NaN, newlats, newlons
 
     newfires=util.regrid_to_lower(fires,lats,lons,newlats,newlons,np.nansum)
     return newfires, newlats, newlons
@@ -1017,10 +1021,12 @@ def make_anthro_mask(d0,dN=None,
     no2i= np.zeros(ret.shape)+np.NaN
 
     # Daily filter
-    for i,day in enumerate(dates):
-        no2day=[no2,no2[i]][len(dates)>1]
-        no2i[i] = util.regrid_to_lower(no2day,lats,lons,newlats,newlons,func=np.nanmean)
-        ret[i] = no2i[i] > threshd
+    # ignore warning from comparing NaNs to number
+    with np.errstate(invalid='ignore'):
+        for i,day in enumerate(dates):
+            no2day=[no2,no2[i]][len(dates)>1]
+            no2i[i] = util.regrid_to_lower(no2day,lats,lons,newlats,newlons,func=np.nanmean)
+            ret[i] = no2i[i] > threshd
 
     no2mean,_lats,_lons=yearly_anthro_avg(d0,latres=latres,lonres=lonres,region=region)
     #assert newlats==_lats, 'yearmask lats are fishy'

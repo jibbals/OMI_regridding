@@ -65,6 +65,17 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'time',         # time is a dimension but also data: datetime string stored in file
                 'dates',        # datetime objects created from time field
                 ]
+__E_new_keys_lr__ = [
+                     'E_MEGAN',      #  {31, 18, 19}
+                     'E_VCC_GC_lr',  #  at low resolution
+                     'E_VCC_OMI_lr', #  E_VCC_OMI at low resolution
+                     'E_VCC_PP_lr',  #  at low resolution
+                     'smearfilter',  # smearing filter
+                     'smearing',     # model resolution monthly smearing
+                     'ModelSlope',   # model resolution monthly slope
+                     'pixels_lr',    # OMI pixel count at low resolution
+                     'pixels_PP_lr', # OMI pixel count using PP code at low resolution
+                    ]
 __E_new_dims__=['lats',         # 0.25x0.3125 resolution
                 'lats_e',       # edges
                 'lons',         #
@@ -116,7 +127,7 @@ class E_new:
                 print("Reading %s"%key )
             # Read the data and append to time dimensions if there's more than
             # one month file being read
-            elif (key in ['smearing','smearfilter','ModelSlope']) and key in dkeys:
+            elif (key in ['ModelSlope']) and key in dkeys:
 
                 # np array of the data [lats, lons]
                 data0=np.array(E_new_list[0][key])
@@ -228,6 +239,28 @@ class E_new:
 
 
         return dates,np.nanmean(data,axis=(1,2))
+
+    def plot_series(self, key='VCC_OMI',
+                    lat=pp.__cities__['Syd'][0], lon=pp.__cities__['Syd'][1],
+                    *ptsargs, **pltargs):
+        '''
+            plot a particular key over time in a single lat,lon
+            *ptsargs are taken to pp.plot_time_series,
+            **pltargs are taken to plt.plot
+        '''
+
+        # index of lat,lon
+        lats,lons=self.lats,self.lons
+        if key in __E_new_keys_lr__:
+            lats,lons=self.lats_lr,self.lons_lr
+
+        lati,loni=util.lat_lon_index(lat,lon,lats,lons)
+
+        data=getattr(self,key)[:,lati,loni] # pull out slice over time
+
+        print(data)
+        pp.plot_time_series(self.dates,data,*ptsargs,**pltargs)
+
 
     def date_indices(self,datelist):
         ''' return indexes of listed dates '''

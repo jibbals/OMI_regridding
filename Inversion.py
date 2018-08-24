@@ -43,7 +43,7 @@ import timeit
 __VERBOSE__=True
 __DEBUG__=True
 
-__Thresh_Smearing__=5000
+__Thresh_Smearing__=4000 # taken from Marais africa paper
 
 ###############
 ### METHODS ###
@@ -165,7 +165,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     GC_slope = util.regrid_to_higher(GC_slope_lr,gclats,gclons,omilats,omilons,interp='nearest')
 
     # Also save smearing
-    smear, slats,slons = smearing(month,region=region,)#pname='Figs/GC/smearing_%s.png'%mstr)
+    smear, sdates, slats, slons = smearing(month, region=region,)#pname='Figs/GC/smearing_%s.png'%mstr)
     # Not regridding to higher resolution any more, low res is fine
     #smear = util.regrid_to_higher(smear,slats,slons,omilats,omilons,interp='nearest')
     #pp.createmap(smear,omilats,omilons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
@@ -174,7 +174,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     #print("Smearing plots saved in Figs/GC/smearing...")
 
     # TODO: Smearing Filter
-    smearfilter = smear > __Thresh_Smearing__#5000 # something like this
+    smearfilter = smear > __Thresh_Smearing__#4000 molec_hcho s / atom_C from marais et al
 
 
     # emissions using different columns as basis
@@ -331,7 +331,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outattrs['ModelSlope']  = {'units':'molec_HCHO s/atomC',
                                'desc':'Yield calculated from RMA regression of MEGAN midday emissions vs GEOS-Chem midday HCHO columns' }
     outdata['smearing'] = smear
-    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for %s at 2x2.5 resolution'%mstr}
+    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for at 2x2.5 resolution'}
     outattrs['E_VCC_GC']    = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope'}
     outattrs['E_VCC_PP']    = {'units':'atomC/cm2/s',
@@ -480,8 +480,9 @@ def smearing(month, region=pp.__AUSREGION__, pname=None, midday=True):
 
     # smearing from satellite data
     smear = (hcho_full_sat-hcho_half_sat)/(eisop_full/2.0)
-    #smear_units='molec$_{HCHO}$*s/atom$_C$'
+    smear[np.isinf(smear)] = np.NaN # don't use infinity
 
+    #smear_units='molec$_{HCHO}$*s/atom$_C$'
     # subset to region
     sub=util.lat_lon_subset(lats,lons,region,[smear],has_time_dim=True)
 
@@ -553,7 +554,8 @@ if __name__=='__main__':
     print('Inversion has been called...')
 
     t0=timeit.default_timer()
-    day0=datetime(2005,1,1)
+    day0=datetime(2005,2,1)
+    day1=datetime(2005,2,28)
     dayn=datetime(2005,12,31)
     store_emissions(day0=day0,dayn=dayn)
     t1=timeit.default_timer()

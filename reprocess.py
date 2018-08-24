@@ -324,7 +324,6 @@ def create_omhchorp(date):
     3) calculate VCs, VCC(ref corrected), Anything else
     4) place lists neatly into gridded latlon arrays
     5) save as hdf5 with nice enough attributes
-
         Takes about 50 minutes to run a day (lots of reading and regridding)
     '''
 
@@ -333,13 +332,14 @@ def create_omhchorp(date):
     ymdstr=date.strftime("%Y%m%d")
 
     if __VERBOSE__:
-        print("create_omhchorp_1 called for %s"%ymdstr)
+        print("create_omhchorp called for %s"%ymdstr)
     ## set stdout to parent process
-    if __DEBUG__:
-        sys.stdout = open("logs/create_omhchorp.%s"%ymdstr, "w")
-        print("This file was created by reprocess.create_omhchorp_1(%s) "%str(date))
-        print("Turn off verbose and __DEBUG__ to stop creating these files")
-        print("Process thread: %s"%str(os.getpid()))
+    #if __DEBUG__:
+        # No longer running python threads
+        #sys.stdout = open("logs/create_omhchorp.%s"%ymdstr, "w")
+        #print("This file was created by reprocess.create_omhchorp(%s) "%str(date))
+        #print("Turn off verbose and __DEBUG__ to stop creating these files")
+        #print("Process thread: %s"%str(os.getpid()))
 
     goodpixels=get_good_pixel_list(date)
     omi_lons=np.array(goodpixels['lon'])
@@ -446,10 +446,11 @@ def create_omhchorp(date):
     # takes around 5 mins to do anthromask,
     # 10 mins for firemask,
     # 15 seconds for smoke mask
+    print('Creating masks now')
     firemask,_fdates,_flats,_flons=fio.make_fire_mask(date)
     smokemask,_sdates,_slats,_slons=fio.make_smoke_mask(date)
     anthromask,_adates,_alats,_alons=fio.make_anthro_mask(date)
-
+    print ('MASKS CREATED NOW')
     ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -466,7 +467,7 @@ def create_omhchorp(date):
     AMF_pp  = np.zeros([ny,nx],dtype=np.double)+np.NaN
     counts  = np.zeros([ny,nx],dtype=np.int)
     countspp  = np.zeros([ny,nx],dtype=np.int)
-    
+
     # Skip all this if there is no omhcho data on this day
     if len(omi_lats) > 0:
         for i in range(ny):
@@ -628,6 +629,7 @@ def Reprocess_N_days(date, days=8, processes=8):
 if __name__=='__main__':
     # reprocess a day as a test of the process
     start=timeit.default_timer()
-    create_omhchorp(datetime(2005,1,1))
+    create_omhchorp(datetime(2008,1,1))
+
     print("Took %6.2f minutes to run for 1 day"%((timeit.default_timer()-start)/60.0))
 

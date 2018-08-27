@@ -2,11 +2,11 @@
 #PBS -P m19
 #PBS -q normal
 #PBS -N Inversion
-#PBS -l walltime=00:10:00
+#PBS -l walltime=00:40:00
 #PBS -l mem=10000MB
-#PBS -l cput=00:20:00
+#PBS -l cput=00:40:00
 #PBS -l wd
-#PBS -l ncpus=2
+#PBS -l ncpus=1
 #PBS -j oe
 
 #---------------------------------

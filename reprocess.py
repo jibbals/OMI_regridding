@@ -446,11 +446,10 @@ def create_omhchorp(date):
     # takes around 5 mins to do anthromask,
     # 10 mins for firemask,
     # 15 seconds for smoke mask
-    print('Creating masks now')
     firemask,_fdates,_flats,_flons=fio.make_fire_mask(date)
     smokemask,_sdates,_slats,_slons=fio.make_smoke_mask(date)
     anthromask,_adates,_alats,_alons=fio.make_anthro_mask(date)
-    print ('MASKS CREATED NOW')
+
     ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN

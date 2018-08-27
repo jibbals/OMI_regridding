@@ -1037,7 +1037,7 @@ def make_anthro_mask(d0,dN=None,
 
     # subset to region
     if region is not None:
-        subset=util.lat_lon_subset(newlats,newlons,region,[ret],has_time_dim=len(dates)>1)
+        subset=util.lat_lon_subset(newlats,newlons,region,[ret],has_time_dim=True)
         ret=subset['data'][0]
         lats,lons=subset['lats'],subset['lons']
     return ret, dates, lats, lons

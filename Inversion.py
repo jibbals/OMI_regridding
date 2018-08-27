@@ -121,7 +121,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # subset our lats/lons
     # Arrays to be subset
     arrs_names=['VCC_OMI','VCC_GC','VCC_PP',
-                'firemask','smokemask','anthromask',
+                #'firemask','smokemask','anthromask', # now creating masks in this method
                 'gridentries','ppentries','col_uncertainty_OMI',
                 ]
     # list indices
@@ -153,8 +153,12 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     pixels_u              = OMHsub['gridentries']
     pixels_PP_u           = OMHsub['ppentries']
     uncert                = OMHsub['col_uncertainty_OMI']
-    firefilter            = OMHsub['firemask']+OMHsub['smokemask']
-    anthrofilter          = OMHsub['anthromask']
+
+    firemask              = fio.make_fire_mask(day0, dayn, region=region)
+    smokemask             = fio.make_smoke_mask(day0, dayn, region=region)
+    anthromask            = fio.make_anthro_mask(day0, dayn, region=region)
+    firefilter            = firemask+smokemask
+    anthrofilter          = anthromask
 
     # GC.model_slope gets slope and subsets the region
     # Then Map slope onto higher omhchorp resolution:

@@ -57,27 +57,27 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-#anth=fio.make_anthro_mask(datetime(2008,1,1),datetime(2008,1,31))
-#for thing in anth:
-#    print(thing.shape)
+anth=fio.make_anthro_mask(datetime(2008,1,1),datetime(2008,1,2))
+for thing in anth:
+    print(np.array(thing).shape)
 
-fire,dat,lat,lon = fio.make_fire_mask(datetime(2008,1,1),datetime(2008,1,3))
+#fire,dat,lat,lon = fio.make_fire_mask(datetime(2008,1,1),datetime(2008,1,3))
 
-gct=GC_class.GC_tavg(datetime(2007,1,1))
+#gct=GC_class.GC_tavg(datetime(2007,1,1))
 #gcts=GC_class.GC_sat(datetime(2007,1,1))
 #gcu=GC_class.GC_tavg(datetime(2007,1,1),run='UCX')
 #gcus=GC_class.GC_sat(datetime(2007,1,1),run='UCX')
 
-for key in ['OH','O3']:
-    print ("KEY: ",key)
-    print ('     shape       :', getattr(gct,key).shape)
-    molec = gct.units_to_molec_cm2(keys=[key])[key]
-    print ('     mean surface:', np.nanmean(molec[0,:,:,0]))
-    print ('     max surface :', np.nanmax(molec[0,:,:,0]))
-    tc    = gct.get_total_columns(keys=[key])[key]
-    tc.shape
-    print ('     totcol mean :', np.nanmean(tc[0,:,:]))
-    print ('     totcol max  :', np.nanmax(tc[0,:,:]))
+#for key in ['OH','O3']:
+#    print ("KEY: ",key)
+#    print ('     shape       :', getattr(gct,key).shape)
+#    molec = gct.units_to_molec_cm2(keys=[key])[key]
+#    print ('     mean surface:', np.nanmean(molec[0,:,:,0]))
+#    print ('     max surface :', np.nanmax(molec[0,:,:,0]))
+#    tc    = gct.get_total_columns(keys=[key])[key]
+#    tc.shape
+#    print ('     totcol mean :', np.nanmean(tc[0,:,:]))
+#    print ('     totcol max  :', np.nanmax(tc[0,:,:]))
 #print('tavg trop', gct.attrs.keys())
 #print('tavg ucx',  gcu.attrs.keys())
 #print('sat trop',  gcts.attrs.keys())

@@ -237,14 +237,15 @@ def check_products(month=datetime(2005,1,1), region=pp.__AUSREGION__):
     # Plot
     # 1-day: VCC_omi, VCC_GC, VCC_PP
     # 1-month: '', '', ''
+    # distributions: combined
     f = plt.figure(num=0,figsize=(16,14))
     titles=['OMI','GC','PP']
     vmin,vmax=1e15,1e16
-    cmapname='YlOrBr'
+    cmapname='viridis'
     for i,VC in enumerate(subsets['data']):
         for j in [0,1]:
             VCj=[VC[0],np.nanmean(VC,axis=0)][j]
-            plt.subplot(2,3,1+i+3*j)
+            plt.subplot(3,3,1+i+3*j)
             bmap,cs,cb = pp.createmap(VCj,lats,lons, region=region,
                                    vmin=vmin,vmax=vmax,
                                    title=[titles[i],''][j], cmapname=cmapname,
@@ -252,10 +253,20 @@ def check_products(month=datetime(2005,1,1), region=pp.__AUSREGION__):
 
     yms = month.strftime('%Y%m')
     plt.suptitle('$\Omega_{HCHO}$ for %s'%yms,fontsize=35)
-    pp.add_colourbar(f,cs,label='molec/cm2',fontsize=24)
+
+    plt.subplot(3,1,3) # third row is all three as distributions
+    dists=[]
+    for arr in subsets['data']:
+        print(type(arr), arr.shape)
+        arrlist=arr[~np.isnan(arr)]
+        print(type(arrlist), np.shape(arrlist))
+        dists.append(arrlist)
+    plt.hist(dists, bins=np.logspace(14, 17, 20)/2.0, color=['k','darkblue','lightblue'], label=titles)
+    plt.legend(loc='best')
 
     outfig=month.strftime("Figs/VCC_check_%Y%m.png")
     #plt.tight_layout()
+    pp.add_colourbar(f,cs,label='molec/cm2',fontsize=24)
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
@@ -1755,10 +1766,10 @@ if __name__ == '__main__':
 
     ## Look at what's going on at smearing edgepoints
     # TODO update and dig deeper
-    test_filters.smearing_at_edges()
+    #test_filters.smearing_at_edges()
     ## Test smearing at midday vs average smearing...
     # run/14/8/18
-    test_filters.smearing_definition(threshmask=True)
+    #test_filters.smearing_definition(threshmask=True)
     ## check smearing distributions and filtering
     # run 8/8/18 TODO: add version using midday smearing..
     #test_filters.smearing_threshold()
@@ -1767,7 +1778,7 @@ if __name__ == '__main__':
     ### Tests to be sorted into files
     ######
     #Test_Uncertainty()              # last run 15/5/18
-    #check_products()               # last run 15/5/18
+    check_products()               # last run 28/8/18
 
     # GEOS Chem trop vs ucx restarts
     #check_HEMCO_restarts()

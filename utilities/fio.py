@@ -54,6 +54,11 @@ __Thresh_AAOD__  = 0.03 # AAOD smoke threshhold
 __Thresh_fires__ = 1 # active fire pixel count threshhold
 
 
+# TODO set these up and use
+__path_firemask__=''
+__path_anthromask__=''
+__path_smokemask__=''
+
 __GCHCHO_KEYS__ = [
     'LONGITUDE','LATITUDE',
     'VCHCHO',           # molecs/m2
@@ -993,9 +998,17 @@ def read_GC_output(date=datetime(2005,1,1), Isop=False,
 ## Cant use omhchorp since omhchorp uses these to make the masks the first time
 ##############
 
+def get_anthro_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
+    '''
+        Read anthro mask from d0 to dN.
+            If the mask does not exist, make it directly using make_anthro_mask
+        better to use make_anthro_mask_file sometime before calling this, but not necessary
+    '''
+    # file name for anthro mask:
+
 def make_anthro_mask(d0,dN=None,
                      threshy=__Thresh_NO2_y__, threshd=__Thresh_NO2_d__,
-                     latres=__LATRES__, lonres=__LONRES__, region=None):
+                     latres=__LATRES__, lonres=__LONRES__):
     '''
         Read year of OMNO2d
         Create filter from d0 to dN using yearly average over threshy
@@ -1041,6 +1054,13 @@ def make_anthro_mask(d0,dN=None,
         ret=subset['data'][0]
         lats,lons=subset['lats'],subset['lons']
     return ret, dates, lats, lons
+
+def make_anthro_mask_file(year,
+                          threshy=__Thresh_NO2_y__, threshd=__Thresh_NO2_d__,
+                          latres=__LATRES__, lonres=__LONRES__):
+    '''
+        Create anthro mask file for whole year
+    '''
 
 def make_smoke_mask(d0, dN=None, aaod_thresh=__Thresh_AAOD__,
                     latres=__LATRES__, lonres=__LONRES__, region=None):

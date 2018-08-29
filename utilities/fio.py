@@ -55,9 +55,9 @@ __Thresh_fires__ = 1 # active fire pixel count threshhold
 
 
 # TODO set these up and use
-__path_firemask__=''
-__path_anthromask__=''
-__path_smokemask__=''
+__dir_fire__='Data/MOD14A1_D_FIRE/'
+__dir_anthro__='Data/OMNO2d/'
+__dir_smoke__='Data/OMAERUVd/'
 
 __GCHCHO_KEYS__ = [
     'LONGITUDE','LATITUDE',
@@ -839,7 +839,7 @@ def read_omno2d(day0,dayN=None,month=False):
     tropname='HDFEOS/GRIDS/ColumnAmountNO2/Data Fields/ColumnAmountNO2TropCloudScreened'
     #latname='HDFEOS/GRIDS/ColumnAmountNO2/lat'
     #lonname='HDFEOS/GRIDS/ColumnAmountNO2/lon'
-    ddir='Data/OMNO2d/data/'
+    ddir=__dir_anthro__+'data/'
 
     dates=util.list_days(day0,dayN)
     data=np.zeros([len(dates),720,1440])+np.NaN
@@ -889,7 +889,7 @@ def yearly_anthro_avg(date,latres=__LATRES__,lonres=__LONRES__,region=None):
     '''
     year=date.year
 
-    filepath='Data/OMNO2d/yearavg_%4d.h5'%year
+    filepath=__dir_anthro__+'/yearavg_%4d.h5'%year
     # Read and save file if it doesn't exist yet:
     if not isfile(filepath):
         if __VERBOSE__:
@@ -998,17 +998,12 @@ def read_GC_output(date=datetime(2005,1,1), Isop=False,
 ## Cant use omhchorp since omhchorp uses these to make the masks the first time
 ##############
 
-def get_anthro_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
-    '''
-        Read anthro mask from d0 to dN.
-            If the mask does not exist, make it directly using make_anthro_mask
-        better to use make_anthro_mask_file sometime before calling this, but not necessary
-    '''
-    # file name for anthro mask:
+
 
 def make_anthro_mask(d0,dN=None,
                      threshy=__Thresh_NO2_y__, threshd=__Thresh_NO2_d__,
-                     latres=__LATRES__, lonres=__LONRES__):
+                     latres=__LATRES__, lonres=__LONRES__,
+                     region=None):
     '''
         Read year of OMNO2d
         Create filter from d0 to dN using yearly average over threshy
@@ -1061,6 +1056,33 @@ def make_anthro_mask_file(year,
     '''
         Create anthro mask file for whole year
     '''
+    ## First make year long filter using method above
+    #
+    d0=datetime(year.year,1,1)
+    dN=datetime(year.year,12,31)
+    anthromask,dates,lats,lons=make_anthro_mask(d0,dN,threshy=threshy, threshd=threshd,
+                                                latres=latres,lonres=lonres,
+                                                region=None)
+    ## add attributes to be saved in file
+    #
+    dattrs  = {'threshy':{'value':threshy,'desc':'Threshold for yearly averaged NO2 in molec/cm2'},
+              'threshd':{'value':threshd,'desc':'Threshold for daily NO2 in molec/cm2'},
+              'latres':{'value':latres,'desc':'latitude resolution in degrees'},
+              'lonres':{'value':lonres,'desc':'longitude resolution in degrees'},
+              'anthromask':{'units':'boolean','desc':'grid square potentially affected by anthropogenic influence'},
+              'dates':{'units':'numpy datetime','desc':'day axis of anthromask array'},
+              'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
+              'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
+    ## data dictionary to save to hdf
+    #
+    datadict={'anthromask':anthromask,'dates':dates,'lats':lats,'lons':lons}
+
+    # filename and save to h5 file
+    path=year.strftime(__dir_anthro__+'anthromask_%Y.h5')
+    save_to_hdf5(path, datadict, attrdicts=dattrs)
+
+
+
 
 def make_smoke_mask(d0, dN=None, aaod_thresh=__Thresh_AAOD__,
                     latres=__LATRES__, lonres=__LONRES__, region=None):
@@ -1092,9 +1114,38 @@ def make_smoke_mask(d0, dN=None, aaod_thresh=__Thresh_AAOD__,
         mask=smoke>aaod_thresh
     return mask, dates,lats,lons
 
+def make_smoke_mask_file(year,aaod_thresh=__Thresh_AAOD__,
+                         latres=__LATRES__, lonres=__LONRES__,):
+    '''
+    '''
+    ## First make year long filter using method above
+    #
+    d0=datetime(year.year,1,1)
+    dN=datetime(year.year,12,31)
+    smokemask,dates,lats,lons=make_smoke_mask(d0,dN,aaod_thresh=aaod_thresh,
+                                            latres=latres,lonres=lonres,
+                                            region=None)
+    ## add attributes to be saved in file
+    #
+    attrs  = {'aaod_thresh':{'value':aaod_thresh,'desc':'aaod threshold for smoke influence'},
+              'latres':{'value':latres,'desc':'latitude resolution in degrees'},
+              'lonres':{'value':lonres,'desc':'longitude resolution in degrees'},
+              'smokemask':{'units':'boolean','desc':'grid square potentially affected by smoke'},
+              'dates':{'units':'numpy datetime','desc':'day axis of firemask array'},
+              'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
+              'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
+    ## data dictionary to save to hdf
+    #
+    datadict={'smokemask':smokemask,'dates':dates,'lats':lats,'lons':lons}
+
+    # filename and save to h5 file
+    path=year.strftime(__dir_smoke__+'smokemask_%Y.h5')
+    save_to_hdf5(path, datadict, attrdicts=attrs)
+
+
 def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires__,
-                   adjacent=True, use_omhchorp=False,
-                   latres=__LATRES__,lonres=__LONRES__, region=None):
+                   adjacent=True, latres=__LATRES__, lonres=__LONRES__,
+                   region=None):
     '''
         Return fire mask with dimensions [len(d0-dN), n_lats, n_lons]
         looks at fires between [d0-days_masked+1, dN], for each day in d0 to dN
@@ -1114,17 +1165,9 @@ def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires_
         print("VERBOSE: make_fire_mask will return rolling %d day fire masks between "%(prior_days_masked+1), d0, '-', last_day)
         print("VERBOSE: They will filter gridsquares with more than %d fire pixels detected"%fire_thresh)
 
-    if use_omhchorp:
-        if __VERBOSE__:
-            print("VERBOSE: fire mask will be read from omhchorp now.")
-        om=read_omhchorp(first_day,last_day,keylist=['fires'],latres=latres,lonres=lonres)
-        fires=om['fires']
-        lats,lons = om['lats'], om['lons']
-    else:
-        # read fires[dates,lats,lons]
-        # Takes a long time
-        fires, _dates, lats, lons = read_fires(d0=first_day,dN=last_day,
-                                               latres=latres,lonres=lonres)
+    # Takes a long time to read and collate all the fires files
+    fires, _dates, lats, lons = read_fires(d0=first_day,dN=last_day,
+                                           latres=latres,lonres=lonres)
 
     # mask squares with more fire pixels than allowed
     mask = fires>fire_thresh
@@ -1159,6 +1202,92 @@ def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires_
         lons=subsets['lons']
 
     return retmask, daylist, lats,lons
+
+def make_fire_mask_file(year, prior_days_masked=2, fire_thresh=__Thresh_fires__,
+                        adjacent=True, latres=__LATRES__,lonres=__LONRES__):
+    '''
+        Create fire mask file for year, save into h5 file for re-use
+
+        mask is true where more than fire_thresh fire pixels exist
+
+    '''
+
+    ## First make year long filter using method above
+    #
+    d0=datetime(year.year,1,1)
+    dN=datetime(year.year,12,31)
+    firemask,dates,lats,lons=make_fire_mask(d0,dN,prior_days_masked=prior_days_masked,
+                                            fire_thresh=fire_thresh, adjacent=adjacent,
+                                            latres=latres,lonres=lonres,
+                                            region=None)
+    ## add attributes to be saved in file
+    #
+    dattrs  = {'prior_days_masked':{'value':prior_days_masked,'desc':'How many prior days of active fires are used in mask creation'},
+              'fire_thresh':{'value':fire_thresh,'desc':'How many fires required to mask gridsquare as fire affected'},
+              'adjacent':{'value':adjacent,'desc':'Are adjacent squares masked as affected?'},
+              'latres':{'value':latres,'desc':'latitude resolution in degrees'},
+              'lonres':{'value':lonres,'desc':'longitude resolution in degrees'},
+              'firemask':{'units':'boolean','desc':'grid square potentially affected by fire'},
+              'dates':{'units':'numpy datetime','desc':'day axis of firemask array'},
+              'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
+              'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
+    ## data dictionary to save to hdf
+    #
+    datadict={'firemask':firemask,'dates':dates,'lats':lats,'lons':lons}
+
+    # filename and save to h5 file
+    path=year.strftime(__dir_fire__+'firemask_%Y.h5')
+    save_to_hdf5(path, datadict, attrdicts=dattrs)
+
+
+def get_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires__,
+                   adjacent=True, latres=__LATRES__,lonres=__LONRES__,
+                   region=None):
+    ''' read firemask from file or else create one  '''
+
+    # look for file first
+    path=__dir_fire__+d0.strftime('firemask_%Y.h5')
+    firemask = None
+    if isfile(path):
+        data, attrs = read_hdf5(path)
+        # check file uses settings we want
+        if (attrs['prior_days_masked']['value'] == prior_days_masked) \
+            and (attrs['fire_thresh']['value'] == fire_thresh) \
+            and (attrs['adjacent']['value'] == adjacent) \
+            and (attrs['latres']['value'] == latres) \
+            and (attrs['lonres']['value'] == lonres):
+            firemask=data['firemask']
+            dates=data['dates']
+            lats=data['lats']
+            lons=data['lons']
+            # subset to requested dates, lats and lons
+            di = util.date_index(d0,dates,dN=dN)
+            subset=util.lat_lon_subset(lats,lons,[firemask],has_time_dim=True)
+            firemask=subset['data'][0]
+            firemask=firemask[di]
+            lats=subset['lats']
+            lons=subset['lons']
+            dates=np.array(dates)[di]
+    if firemask is None:
+        #if __VERBOSE__:
+        print ("WARNING: creating fire mask rather than reading firemask file, this is slow")
+        firemask,dates,lats,lons=make_fire_mask(d0,dN,prior_days_masked=prior_days_masked,
+                                                fire_thresh=fire_thresh,adjacent=adjacent,
+                                                latres=latres,lonres=lonres,region=region)
+
+    return firemask,dates,lats,lons
+
+def get_anthro_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
+    '''
+        Read anthro mask from d0 to dN.
+            If the mask does not exist, make it directly using make_anthro_mask
+        better to use make_anthro_mask_file sometime before calling this, but not necessary
+    '''
+    # file name for anthro mask:
+
+def get_smoke_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
+    ''' read smoke mask or else create one  '''
+
 
 #########################
 ###  READ MUMBA FROM JENNY

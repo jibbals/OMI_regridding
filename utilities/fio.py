@@ -1075,7 +1075,7 @@ def make_anthro_mask_file(year,
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
     ## data dictionary to save to hdf
     #
-    datadict={'anthromask':anthromask,'dates':dates,'lats':lats,'lons':lons}
+    datadict={'anthromask':anthromask.astype(np.int8),'dates':dates,'lats':lats,'lons':lons}
 
     # filename and save to h5 file
     path=year.strftime(__dir_anthro__+'anthromask_%Y.h5')
@@ -1136,7 +1136,7 @@ def make_smoke_mask_file(year,aaod_thresh=__Thresh_AAOD__,
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
     ## data dictionary to save to hdf
     #
-    datadict={'smokemask':smokemask,'dates':dates,'lats':lats,'lons':lons}
+    datadict={'smokemask':smokemask.astype(np.int8),'dates':dates,'lats':lats,'lons':lons}
 
     # filename and save to h5 file
     path=year.strftime(__dir_smoke__+'smokemask_%Y.h5')
@@ -1233,7 +1233,7 @@ def make_fire_mask_file(year, prior_days_masked=2, fire_thresh=__Thresh_fires__,
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
     ## data dictionary to save to hdf
     #
-    datadict={'firemask':firemask,'dates':dates,'lats':lats,'lons':lons}
+    datadict={'firemask':firemask.astype(np.int8),'dates':dates,'lats':lats,'lons':lons}
 
     # filename and save to h5 file
     path=year.strftime(__dir_fire__+'firemask_%Y.h5')

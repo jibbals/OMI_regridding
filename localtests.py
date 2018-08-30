@@ -57,6 +57,7 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+fio.make_smoke_mask_file(d0)
 
 #fire,dat,lat,lon = fio.make_fire_mask(datetime(2008,1,1),datetime(2008,1,3))
 

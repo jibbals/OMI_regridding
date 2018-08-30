@@ -198,7 +198,10 @@ def get_masked(arr, lats=None, lons=None, masknan=True, maskocean=False, masklan
     return np.ma.masked_array(arr,mask=mask)
 
 def gregorian_from_dates(dates):
-    ''' gregorian array from datetime list'''
+    ''' gregorian array from datetime list
+        gregorian is hours since 1985,1,1,0,0
+
+    '''
     d0=datetime(1985,1,1,0,0,0)
     return np.array([(date-d0).seconds/3600 for date in dates ])
 

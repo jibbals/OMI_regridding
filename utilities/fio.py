@@ -1063,19 +1063,25 @@ def make_anthro_mask_file(year,
     anthromask,dates,lats,lons=make_anthro_mask(d0,dN,threshy=threshy, threshd=threshd,
                                                 latres=latres,lonres=lonres,
                                                 region=None)
+
+    ## to save an HDF we need to change boolean to int8 and dates to strings
+    #
+    dates=[day.strftime("%Y%m%d") for day in dates]
+    anthromask=anthromask.astype(int)
+    
     ## add attributes to be saved in file
     #
     dattrs  = {'threshy':{'value':threshy,'desc':'Threshold for yearly averaged NO2 in molec/cm2'},
               'threshd':{'value':threshd,'desc':'Threshold for daily NO2 in molec/cm2'},
               'latres':{'value':latres,'desc':'latitude resolution in degrees'},
               'lonres':{'value':lonres,'desc':'longitude resolution in degrees'},
-              'anthromask':{'units':'boolean','desc':'grid square potentially affected by anthropogenic influence'},
-              'dates':{'units':'numpy datetime','desc':'day axis of anthromask array'},
+              'anthromask':{'units':'int','desc':'0 or 1: grid square potentially affected by anthropogenic influence'},
+              'dates':{'units':'string','desc':'"%Y%m%d" day axis of anthromask array'},
               'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
     ## data dictionary to save to hdf
     #
-    datadict={'anthromask':anthromask.astype(np.int8),'dates':dates,'lats':lats,'lons':lons}
+    datadict={'anthromask':anthromask,'dates':dates,'lats':lats,'lons':lons}
 
     # filename and save to h5 file
     path=year.strftime(__dir_anthro__+'anthromask_%Y.h5')
@@ -1125,18 +1131,23 @@ def make_smoke_mask_file(year,aaod_thresh=__Thresh_AAOD__,
     smokemask,dates,lats,lons=make_smoke_mask(d0,dN,aaod_thresh=aaod_thresh,
                                             latres=latres,lonres=lonres,
                                             region=None)
+    ## to save an HDF we need to change boolean to int8 and dates to strings
+    #
+    dates=[day.strftime("%Y%m%d") for day in dates]
+    smokemask=smokemask.astype(int)
+    
     ## add attributes to be saved in file
     #
     attrs  = {'aaod_thresh':{'value':aaod_thresh,'desc':'aaod threshold for smoke influence'},
               'latres':{'value':latres,'desc':'latitude resolution in degrees'},
               'lonres':{'value':lonres,'desc':'longitude resolution in degrees'},
-              'smokemask':{'units':'boolean','desc':'grid square potentially affected by smoke'},
-              'dates':{'units':'numpy datetime','desc':'day axis of firemask array'},
+              'smokemask':{'units':'int','desc':'0 or 1: grid square potentially affected by smoke'},
+              'dates':{'units':'string','desc':'"%Y%m%d" day axis of firemask array'},
               'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
     ## data dictionary to save to hdf
     #
-    datadict={'smokemask':smokemask.astype(np.int8),'dates':dates,'lats':lats,'lons':lons}
+    datadict={'smokemask':smokemask, 'dates':dates,'lats':lats,'lons':lons}
 
     # filename and save to h5 file
     path=year.strftime(__dir_smoke__+'smokemask_%Y.h5')
@@ -1220,6 +1231,12 @@ def make_fire_mask_file(year, prior_days_masked=2, fire_thresh=__Thresh_fires__,
                                             fire_thresh=fire_thresh, adjacent=adjacent,
                                             latres=latres,lonres=lonres,
                                             region=None)
+    
+    ## to save an HDF we need to change boolean to int8 and dates to strings
+    #
+    dates=[day.strftime("%Y%m%d") for day in dates]
+    firemask=firemask.astype(int)
+    
     ## add attributes to be saved in file
     #
     dattrs  = {'prior_days_masked':{'value':prior_days_masked,'desc':'How many prior days of active fires are used in mask creation'},
@@ -1227,13 +1244,13 @@ def make_fire_mask_file(year, prior_days_masked=2, fire_thresh=__Thresh_fires__,
               'adjacent':{'value':adjacent,'desc':'Are adjacent squares masked as affected?'},
               'latres':{'value':latres,'desc':'latitude resolution in degrees'},
               'lonres':{'value':lonres,'desc':'longitude resolution in degrees'},
-              'firemask':{'units':'boolean','desc':'grid square potentially affected by fire'},
-              'dates':{'units':'numpy datetime','desc':'day axis of firemask array'},
+              'firemask':{'units':'int','desc':'0 or 1: grid square potentially affected by fire'},
+              'dates':{'units':'str','desc':'"%Y%m%d" day axis of firemask array'},
               'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
     ## data dictionary to save to hdf
     #
-    datadict={'firemask':firemask.astype(np.int8),'dates':dates,'lats':lats,'lons':lons}
+    datadict={'firemask':firemask,'dates':dates,'lats':lats,'lons':lons}
 
     # filename and save to h5 file
     path=year.strftime(__dir_fire__+'firemask_%Y.h5')

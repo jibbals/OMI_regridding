@@ -1773,12 +1773,14 @@ if __name__ == '__main__':
     ## check smearing distributions and filtering
     # run 8/8/18 TODO: add version using midday smearing..
     #test_filters.smearing_threshold()
+    # check smearing vs NO2
+    test_filters.smearing_vs_NO2()
 
     ######
     ### Tests to be sorted into files
     ######
     #Test_Uncertainty()              # last run 15/5/18
-    check_products()               # last run 28/8/18
+    #check_products()               # last run 28/8/18
 
     # GEOS Chem trop vs ucx restarts
     #check_HEMCO_restarts()

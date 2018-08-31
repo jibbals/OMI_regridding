@@ -31,6 +31,11 @@ import pandas as pd
 
 import timeit
 
+
+# parallelism
+import concurrent.futures as confut
+
+
 ###############
 ### Globals ###
 ###############
@@ -57,11 +62,20 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-fio.make_smoke_mask_file(d0)
+#fio.make_smoke_mask_file(d0)
 
 #fire,dat,lat,lon = fio.make_fire_mask(datetime(2008,1,1),datetime(2008,1,3))
 
+# split work into pool of 2 cpus
+with confut.ProcessPoolExecutor(max_workers=2) as executor:
+    dates=util.list_days(d0,dN) # 5 days
+    latres=[1]* len(dates)
+    lonres=[1]* len(dates)
+    procreturns=executor.map(fio.read_AAOD_interpolated, dates,latres,lonres)
+    #fio.read_AAOD_interpolated returns aaod[lats,lons], lats, lons
 
+    for ret in procreturns:
+        print(ret[0].shape, ret[1].shape, ret[2].shape)
 
 ###########
 ### Record and time STUJFFS

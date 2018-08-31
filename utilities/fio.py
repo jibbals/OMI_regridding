@@ -27,8 +27,7 @@ import timeit # to check how long stuff takes
 import warnings
 
 # for paralellel file reading
-import ctypes
-import multiprocessing as mp
+import concurrent.futures
 
 
 # interpolation method for ND arrays
@@ -499,7 +498,7 @@ def read_MOD14A1_interpolated(date=datetime(2005,1,1), latres=__LATRES__,lonres=
     newfires=util.regrid_to_lower(fires,lats,lons,newlats,newlons,np.nansum)
     return newfires, newlats, newlons
 
-def read_fires(d0, dN, latres=__LATRES__, lonres=__LONRES__,nprocesses = 1):
+def read_fires(d0, dN, latres=__LATRES__, lonres=__LONRES__,max_procs=1):
     '''
         Read fires from MOD14A1 into a time,lat,lon array
         Returns Fires[dates,lats,lons], dates,lats,lons
@@ -513,15 +512,20 @@ def read_fires(d0, dN, latres=__LATRES__, lonres=__LONRES__,nprocesses = 1):
     retfires[0] = fire0
     if len(dates) > 1:
         # Can use multiple processes
-        if nprocesses > 1:
-            args=dates[1:] # assume default lat/lon res if using parallelism
-            with concurrent.futures.ProcessPoolExecutor() as executor:
-                procreturns=executor.map(
+        if max_procs>1:
+            ndates=dates[1:]
+            n = len(ndates)
+            nlatres=[latres] * n # list with n instances of latres
+            nlonres=[lonres] * n # also for lonres
+            with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
+                procreturns=executor.map(read_MOD14A1_interpolated,ndates,nlatres,nlonres)
+                for i,pret in enumerate(procreturns):
+                    retfires[i+1]=pret[0]
         else:
             for i,day in enumerate(dates[1:]):
                 firei,lats,lons=read_MOD14A1_interpolated(date=day,latres=latres,lonres=lonres)
                 retfires[i+1] = firei
-    
+
     return retfires, dates, lats, lons
 
 
@@ -847,13 +851,8 @@ def read_gchcho(date):
             ret_data[key] = dset[key].squeeze()
     return ret_data
 
-def read_omno2d(day0,dayN=None,month=False):
-    '''
-        Read daily gridded OMNO2d data, optionally with time dimension
-    '''
-    # set dayN if not set
-    if dayN is None:
-        dayN=[day0, util.last_day(day0)][month]
+def read_omno2d_interpolated(date,latres=__LATRES__,lonres=__LONRES__):
+    ''' Read one day of OMNO2d data - for one day '''
 
     #vcdname='HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields/ColumnAmountNO2'
     #vcdcsname='HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields/ColumnAmountNO2CloudScreened'
@@ -862,8 +861,7 @@ def read_omno2d(day0,dayN=None,month=False):
     #lonname='HDFEOS/GRIDS/ColumnAmountNO2/lon'
     ddir=__dir_anthro__+'data/'
 
-    dates=util.list_days(day0,dayN)
-    data=np.zeros([len(dates),720,1440])+np.NaN
+    data=np.zeros([720,1440])+np.NaN
     # OMNO2d dataset has these lats/lons
     #   0.25x0.25 horizontal resolution into 720 lats x 1440 lons
     #   full coverage implies
@@ -871,28 +869,79 @@ def read_omno2d(day0,dayN=None,month=False):
     #   lons: -179.875 ... dx=0.25 ... 179.875
     lats=np.arange(-90,90,0.25)+0.125
     lons=np.arange(-180,180,0.25)+0.125
-    lats_e=np.arange(-180,180.001,0.25)
-    lons_e=np.arange(-90,90.001,0.25)
+
     # filenames:
-    for ii, date in enumerate(dates):
-        fname=ddir+'OMI*%s*.he5'%date.strftime('%Ym%m%d')
-        fpaths=glob(fname)
-        if len(fpaths)==0:
-            print("WARNING: %s does not exist!!!!"%fname)
-            print("WARNING:     continuing with nans for %s"%date.strftime("%Y%m%d"))
-        else:
-            fpath=fpaths[0]
-            if __VERBOSE__:
-                print('reading ',fpath)
-            with h5py.File(fpath,'r') as in_f:
-                #for name in in_f[tropname]:
-                #    print (name)
-                trop=in_f[tropname].value
-                trop[trop<-1e20] = np.NaN
+    fname=ddir+'OMI*%s*.he5'%date.strftime('%Ym%m%d')
+    fpaths=glob(fname)
+    if len(fpaths)==0:
+        print("WARNING: %s does not exist!!!!"%fname)
+        print("WARNING:     continuing with nans for %s"%date.strftime("%Y%m%d"))
+    else:
+        fpath=fpaths[0]
+        if __VERBOSE__:
+            print('reading ',fpath)
+        with h5py.File(fpath,'r') as in_f:
+            #for name in in_f[tropname]:
+            #    print (name)
+            trop=in_f[tropname].value
+            trop[trop<-1e20] = np.NaN
 
-                data[ii]=trop
-
+            data=trop
     data=np.squeeze(data)
+
+    # now we interpolate to resolution desired
+    newlats,newlons=util.lat_lon_grid(latres,lonres)
+    lats_e=util.edges_from_mids(newlats,fix_max=None)
+    lons_e=util.edges_from_mids(newlons,fix_max=None)
+    newdata=util.regrid(data,lats,lons,newlats,newlons)
+
+    # trop column units: molec/cm2 from ~ 1e13-1e16
+    attrs={'tropno2':{'desc':'tropospheric NO2 cloud screened for <30% cloudy pixels',
+                      'units':'molec/cm2'},
+           'lats':{'desc':'latitude midpoints'},
+           'lons':{'desc':'longitude midpoints'},}
+    ret={'tropno2':newdata,'lats':newlats,'lons':newlons,'lats_e':lats_e,'lons_e':lons_e}
+    return ret,attrs
+
+
+def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1):
+    '''
+        Read daily gridded OMNO2d data
+    '''
+
+    dates=util.list_days(day0,dayN)
+
+    lats=None
+    lons=None
+    no2=None
+    # Can use multiple processes
+    if max_procs>1:
+        nlatres=[latres]*len(dates)
+        nlonres=[lonres]*len(dates)
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
+            procreturns=executor.map(read_omno2d,dates,nlatres,nlonres)
+            # loop over returned dictionaries from read_omno2d()
+            for ii, pret in enumerate(procreturns):
+                omno2 = pret[0]['tropno2']
+                if no2 is None:
+                    no2=np.zeros([len(dates),omno2.shape[0],omno2.shape[1]]) # [dates, lats, lons]
+                no2[ii]=omno2
+                if lats is None:
+                    lats=pret[0]['lats']
+                if lons is None:
+                    lons=pret[0]['lons']
+    else:
+        for ii, date in enumerate(dates):
+            data,attrs = read_omno2d(date)
+            omno2=data['tropno2']
+            if no2 is None:
+                no2=np.zeros([len(dates),omno2.shape[0],omno2.shape[1]]) # [dates, lats, lons]
+            no2[ii] = omno2
+            if lats is None:
+                lats=data['lats']
+            if lons is None:
+                lons=data['lons']
+
 
     # trop column units: molec/cm2 from ~ 1e13-1e16
     attrs={'tropno2':{'desc':'tropospheric NO2 cloud screened for <30% cloudy pixels',
@@ -1024,7 +1073,8 @@ def read_GC_output(date=datetime(2005,1,1), Isop=False,
 def make_anthro_mask(d0,dN=None,
                      threshy=__Thresh_NO2_y__, threshd=__Thresh_NO2_d__,
                      latres=__LATRES__, lonres=__LONRES__,
-                     region=None):
+                     region=None,
+                     max_procs=1):
     '''
         Read year of OMNO2d
         Create filter from d0 to dN using yearly average over threshy
@@ -1037,7 +1087,8 @@ def make_anthro_mask(d0,dN=None,
     dates=util.list_days(d0,dN,month=False)
 
     # Read the tropno2 columns for dates we want to look at
-    omno2, omno2_attrs = read_omno2d(day0=d0, dayN=dN, month=False)
+
+    omno2, omno2_attrs = read_omno2d_interpolated(day0=d0, dayN=dN, latres=latres,lonres=lonres, max_procs=max_procs)
     lats = omno2['lats']
     lons = omno2['lons']
     no2  = omno2['tropno2'] # [[dates,] lats, lons]
@@ -1177,7 +1228,7 @@ def make_smoke_mask_file(year,aaod_thresh=__Thresh_AAOD__,
 
 def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires__,
                    adjacent=True, latres=__LATRES__, lonres=__LONRES__,
-                   region=None):
+                   region=None, max_procs=1):
     '''
         Return fire mask with dimensions [len(d0-dN), n_lats, n_lons]
         looks at fires between [d0-days_masked+1, dN], for each day in d0 to dN
@@ -1199,7 +1250,8 @@ def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires_
 
     # Takes a long time to read and collate all the fires files
     fires, _dates, lats, lons = read_fires(d0=first_day,dN=last_day,
-                                           latres=latres,lonres=lonres)
+                                           latres=latres,lonres=lonres,
+                                           max_procs=max_procs)
 
     # mask squares with more fire pixels than allowed
     mask = fires>fire_thresh

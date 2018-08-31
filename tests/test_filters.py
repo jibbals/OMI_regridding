@@ -1359,7 +1359,6 @@ def smearing_threshold(year=datetime(2005,1,1), strict=4000, loose=6000):
     print("SAVED FIGURE ", pname)
 
 
-
 def smearing_vs_slope(month=datetime(2005,1,1)):
     '''
         compare map of smearing to map of model slope
@@ -1376,7 +1375,47 @@ def smearing_vs_slope(month=datetime(2005,1,1)):
                     titles=['Smearing','Slope'],
                     linear=True,
                     pname=d0.strftime("Figs/Filters/smear_vs_slope_%Y%m.png"))
+def smearing_vs_NO2(month=datetime(2005,1,1)):
+    '''
+    '''
+    d0=datetime(month.year,month.month, 1)
+    dn=util.last_day(month)
+    enew=E_new(d0,dn,dkeys=['smearing','smearfilter'])
+    lats=enew.lats_lr
+    lons=enew.lons_lr
+    smear=enew.smearing[0] # monthly smearing
 
+    # Read and regrid tropospheric NO2 data from daily gridded OMNO2d dataset
+    no2_data, no2_attrs = fio.read_omno2d(d0, dn)
+    no2 = np.nanmean(no2_data['tropno2'], axis=0) # monthly average
+    no2 = util.regrid_to_lower(no2, no2_data['lats'], no2_data['lons'], lats, lons)
+
+    plt.figure(figsize=(16,16))
+    plt.subplot(2,1,1)
+    pp.createmap(no2,lats,lons,vmin=1e13,vmax=2e15, title='NO$_2$ from OMNO2d',
+                 linear=False,aus=True)
+    plt.subplot(2,1,2)
+
+    # Bin the gridsquares into no2 bins
+    bins=np.arange(1e14, 2.01e15, 1e14)
+    bin_edges = util.edges_from_mids(bins,fix_max=None)
+    # each bin will have mean, std, outer 15,10,5 % quantiles, and count
+    smears=np.zeros([9,len(bins)])
+    distrs=[]
+    for i in range(len(bins)):
+        ledge,redge=bin_edges[i],bin_edges[i+1]
+        match = (no2 > ledge) * (no2 < redge)
+        smears[0,i] = np.nanmean(smear[match])
+        smears[1,i] = np.nanstd(smear[match])
+        smears[2:8,i] = np.nanpercentile(smear,[15,85,10,90,5,95])
+        smears[8,i] = np.sum(~np.isnan(smear[match])) # how many non-nans
+        #sbins=np.arange(1000,5001,200)
+        distrs.append(np.histogram(smear[match][~np.isnan(smear[match])], bins=15, range=[1000,4000]))
+        plt.plot(util.edges_to_mids(distrs[i][1]), distrs[i][0], label=bins[i])
+    plt.legend(title='NO$_2$ bin', loc='best')
+    plt.savefig('testfig.png')
+    plt.close()
+    print('saved ','testfig.png')
 
 def smearing_regridding(date=datetime(2005,1,1)):
     '''

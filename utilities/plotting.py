@@ -829,12 +829,12 @@ def subzones(data, dates, lats, lons, comparison=None, subzones=__subzones_AUS__
 
 
 
-def compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
+def compare_maps(datas, lats, lons, pname=None, titles=['A','B'], suptitle=None,
                  clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
                  rmin=-200.0, rmax=200., amin=None, amax=None,
-                 axeslist=[None,None,None,None],
-                 maskocean=False, ticks=None,
-                 lower_resolution=False, normalise=False,
+                 axeslist = [None,None,None,None],
+                 maskocean = False, ticks=None,
+                 lower_resolution = False, normalise = False,
                  linear=False, alinear=True, rlinear=True):
     '''
         Plot two maps and their relative and absolute differences

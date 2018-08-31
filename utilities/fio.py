@@ -26,6 +26,10 @@ import os.path, time # for modification times
 import timeit # to check how long stuff takes
 import warnings
 
+# for paralellel file reading
+import ctypes
+import multiprocessing as mp
+
 
 # interpolation method for ND arrays
 # todo: remove once this is ported to reprocess.py
@@ -490,15 +494,16 @@ def read_MOD14A1_interpolated(date=datetime(2005,1,1), latres=__LATRES__,lonres=
 
     # can skip regridding if file is missing...
     if np.all(np.isnan(fires)):
-        return np.zeros([len(newlats),len(newlons)])+np.NaN, newlats, newlons
+        return np.zeros([len(newlats),len(newlons)]), newlats, newlons
 
     newfires=util.regrid_to_lower(fires,lats,lons,newlats,newlons,np.nansum)
     return newfires, newlats, newlons
 
-def read_fires(d0, dN, latres=__LATRES__, lonres=__LONRES__):
+def read_fires(d0, dN, latres=__LATRES__, lonres=__LONRES__,nprocesses = 1):
     '''
         Read fires from MOD14A1 into a time,lat,lon array
         Returns Fires[dates,lats,lons], dates,lats,lons
+        try to use multiple processors if nprocesses>1
     '''
     dates=util.list_days(d0,dN,month=False)
     fire0,lats,lons=read_MOD14A1_interpolated(date=d0,latres=latres,lonres=lonres)
@@ -507,10 +512,16 @@ def read_fires(d0, dN, latres=__LATRES__, lonres=__LONRES__):
     retfires=np.zeros([len(dates),len(lats),len(lons)])
     retfires[0] = fire0
     if len(dates) > 1:
-        for i,day in enumerate(dates[1:]):
-            firei,lats,lons=read_MOD14A1_interpolated(date=day,latres=latres,lonres=lonres)
-            retfires[i+1] = firei
-
+        # Can use multiple processes
+        if nprocesses > 1:
+            args=dates[1:] # assume default lat/lon res if using parallelism
+            with concurrent.futures.ProcessPoolExecutor() as executor:
+                procreturns=executor.map(
+        else:
+            for i,day in enumerate(dates[1:]):
+                firei,lats,lons=read_MOD14A1_interpolated(date=day,latres=latres,lonres=lonres)
+                retfires[i+1] = firei
+    
     return retfires, dates, lats, lons
 
 

@@ -890,9 +890,7 @@ def read_omno2d_interpolated(date,latres=__LATRES__,lonres=__LONRES__):
     data=np.squeeze(data)
 
     # now we interpolate to resolution desired
-    newlats,newlons=util.lat_lon_grid(latres,lonres)
-    lats_e=util.edges_from_mids(newlats,fix_max=None)
-    lons_e=util.edges_from_mids(newlons,fix_max=None)
+    newlats,newlons, lats_e, lons_e=util.lat_lon_grid(latres,lonres)
     newdata=util.regrid(data,lats,lons,newlats,newlons)
 
     # trop column units: molec/cm2 from ~ 1e13-1e16
@@ -913,13 +911,15 @@ def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1)
 
     lats=None
     lons=None
+    lats_e=None
+    lons_e=None
     no2=None
     # Can use multiple processes
     if max_procs>1:
         nlatres=[latres]*len(dates)
         nlonres=[lonres]*len(dates)
         with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
-            procreturns=executor.map(read_omno2d,dates,nlatres,nlonres)
+            procreturns=executor.map(read_omno2d_interpolated,dates,nlatres,nlonres)
             # loop over returned dictionaries from read_omno2d()
             for ii, pret in enumerate(procreturns):
                 omno2 = pret[0]['tropno2']
@@ -930,9 +930,13 @@ def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1)
                     lats=pret[0]['lats']
                 if lons is None:
                     lons=pret[0]['lons']
+                if lons_e is None:
+                    lons_e=pret[0]['lons_e']
+                if lats_e is None:
+                    lats_e=pret[0]['lats_e']
     else:
         for ii, date in enumerate(dates):
-            data,attrs = read_omno2d(date)
+            data,attrs = read_omno2d_interpolated(date)
             omno2=data['tropno2']
             if no2 is None:
                 no2=np.zeros([len(dates),omno2.shape[0],omno2.shape[1]]) # [dates, lats, lons]
@@ -941,6 +945,10 @@ def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1)
                 lats=data['lats']
             if lons is None:
                 lons=data['lons']
+            if lons_e is None:
+                lons_e=data['lons_e']
+            if lats_e is None:
+                lats_e=data['lats_e']
 
 
     # trop column units: molec/cm2 from ~ 1e13-1e16
@@ -949,7 +957,7 @@ def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1)
            'lats':{'desc':'latitude midpoints'},
            'lons':{'desc':'longitude midpoints'},
            'dates':{'desc':'datetimes for each day of averaged pixels'}}
-    ret={'tropno2':data,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
+    ret={'tropno2':omno2,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
     return ret,attrs
 
 def yearly_anthro_avg(date,latres=__LATRES__,lonres=__LONRES__,region=None):
@@ -1088,13 +1096,13 @@ def make_anthro_mask(d0,dN=None,
 
     # Read the tropno2 columns for dates we want to look at
 
-    omno2, omno2_attrs = read_omno2d_interpolated(day0=d0, dayN=dN, latres=latres,lonres=lonres, max_procs=max_procs)
+    omno2, omno2_attrs = read_omno2d(day0=d0, dayN=dN, latres=latres, lonres=lonres, max_procs=max_procs)
     lats = omno2['lats']
     lons = omno2['lons']
     no2  = omno2['tropno2'] # [[dates,] lats, lons]
 
     # regridding 0.25x0.25 to 0.25x0.3125 may cause issues, but lets see
-    newlats, newlons, _nlate, _nlone = util.lat_lon_grid(latres=latres,lonres=lonres)
+    newlats, newlons, _nlate, _nlone = util.lat_lon_grid(latres=latres, lonres=lonres)
 
     # bool array we will return
     ret = np.zeros([len(dates),len(newlats),len(newlons)],dtype=np.bool)
@@ -1104,7 +1112,9 @@ def make_anthro_mask(d0,dN=None,
     # ignore warning from comparing NaNs to number
     with np.errstate(invalid='ignore'):
         for i,day in enumerate(dates):
-            no2day=[no2,no2[i]][len(dates)>1]
+            no2day=no2
+            if len(dates)>1:
+                no2day=no2[i]
             no2i[i] = util.regrid_to_lower(no2day,lats,lons,newlats,newlons,func=np.nanmean)
             ret[i] = no2i[i] > threshd
 

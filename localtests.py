@@ -52,7 +52,7 @@ dstr=d0.strftime('%Y%m%d')
 mstr=d0.strftime('%Y%m')
 latres=0.25
 lonres=0.3125
-dN=datetime(2005,1,5)
+dN=datetime(2005,1,2)
 d3=datetime(2005,3,1)
 dates=util.list_days(d0,dN,month=False)
 # start timer
@@ -66,16 +66,31 @@ start1=timeit.default_timer()
 
 #fire,dat,lat,lon = fio.make_fire_mask(datetime(2008,1,1),datetime(2008,1,3))
 
-# split work into pool of 2 cpus
-with confut.ProcessPoolExecutor(max_workers=2) as executor:
-    dates=util.list_days(d0,dN) # 5 days
-    latres=[1]* len(dates)
-    lonres=[1]* len(dates)
-    procreturns=executor.map(fio.read_AAOD_interpolated, dates,latres,lonres)
-    #fio.read_AAOD_interpolated returns aaod[lats,lons], lats, lons
+## Test multiple processes for filter fio
+anthro, dates, lats, lons  = fio.make_anthro_mask(d0,dN,max_procs=1)
+anthro2,dates2,lats2,lons2 = fio.make_anthro_mask(d0,dN,max_procs=3)
+assert np.all(anthro == anthro2), "make_anthro_mask array differs with multiprocs"
+assert np.all(lats  == lats2), "make_anthro_mask lats differs with multiprocs"
+assert np.all(lons  == lons2), "make_anthro_mask lons differs with multiprocs"
+assert np.all(np.array(dates) == np.array(dates2)), "make_anthro_mask dates differs with multiprocs"
 
-    for ret in procreturns:
-        print(ret[0].shape, ret[1].shape, ret[2].shape)
+## Test multiple processes for filter fio
+fires, dates, lats, lons  = fio.read_fires(d0,dN,max_procs=1)
+fires2,dates2,lats2,lons2 = fio.read_fires(d0,dN,max_procs=3)
+assert np.all(fires == fires2), "read_fires array differs with multiprocs"
+assert np.all(lats  == lats2), "read_fires lats differs with multiprocs"
+assert np.all(lons  == lons2), "read_fires lons differs with multiprocs"
+assert np.all(np.array(dates) == np.array(dates2)), "read_fires dates differs with multiprocs"
+
+## Test multiple processes for filter fio
+fires, dates, lats, lons  = fio.make_fire_mask(d0,dN,max_procs=1)
+fires2,dates2,lats2,lons2 = fio.make_fire_mask(d0,dN,max_procs=3)
+assert np.all(fires == fires2), "make_fire_mask array differs with multiprocs"
+assert np.all(lats  == lats2), "make_fire_mask lats differs with multiprocs"
+assert np.all(lons  == lons2), "make_fire_mask lons differs with multiprocs"
+assert np.all(np.array(dates) == np.array(dates2)), "make_fire_mask dates differs with multiprocs"
+
+
 
 ###########
 ### Record and time STUJFFS

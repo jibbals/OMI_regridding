@@ -957,7 +957,7 @@ def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1)
            'lats':{'desc':'latitude midpoints'},
            'lons':{'desc':'longitude midpoints'},
            'dates':{'desc':'datetimes for each day of averaged pixels'}}
-    ret={'tropno2':omno2,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
+    ret={'tropno2':no2,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
     return ret,attrs
 
 def yearly_anthro_avg(date,latres=__LATRES__,lonres=__LONRES__,region=None):
@@ -967,7 +967,7 @@ def yearly_anthro_avg(date,latres=__LATRES__,lonres=__LONRES__,region=None):
     '''
     year=date.year
 
-    filepath=__dir_anthro__+'/yearavg_%4d.h5'%year
+    filepath=__dir_anthro__+'yearavg_%4d.h5'%year
     # Read and save file if it doesn't exist yet:
     if not isfile(filepath):
         if __VERBOSE__:

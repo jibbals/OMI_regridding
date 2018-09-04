@@ -230,7 +230,43 @@ def show_mask_filtering(d0=datetime(2005,1,1), dn=datetime(2006,1,1)):
         plt.savefig(pname)
         print('Saved ',pname)
 
+def test_multiprocess_mask_creation(d0=datetime(2005,2,1),dN=datetime(2005,2,2)):
+    '''
+        Look at creation of masks with/without using multiprocessing
+    '''
+    ## check things are the same
+    def check_outputs(A,B,fname):
+        data,dates,lats,lons=A
+        data2,dates2,lats2,lons2=B
+        assert np.all(data == data2), fname+ " array differs"
+        assert np.all(lats  == lats2), fname+ " lats differs"
+        assert np.all(lons  == lons2), fname+ " lons differs"
+        assert np.all(np.array(dates) == np.array(dates2)), fname+" dates differs"
 
+    ## test can handle missing days
+
+
+    ## Test multiple processes for filter fio
+    # returns data,dates,lats,lons
+    A  = fio.make_anthro_mask(d0,dN,max_procs=1)
+    B = fio.make_anthro_mask(d0,dN,max_procs=4)
+    check_outputs(A,B,'make_anthro_mask')
+    print("anthro mask passed")
+    ## PASSED
+
+    ## Test multiple processes for filter fio
+    A  = fio.read_fires(d0,dN,max_procs=1)
+    B = fio.read_fires(d0,dN,max_procs=4)
+    check_outputs(A,B,'read_fires')
+    print("read_fire passed")
+    ## PASSED
+
+    ## Test multiple processes for filter fio
+    A = fio.make_fire_mask(d0,dN,max_procs=1)
+    B = fio.make_fire_mask(d0,dN,max_procs=4)
+    check_outputs(A,B,'make_fire_mask')
+    print("fire mask passed")
+    ## PASSED
 
 
 def HCHO_vs_temp_locational(d0=datetime(2005,1,1),d1=datetime(2005,2,28),

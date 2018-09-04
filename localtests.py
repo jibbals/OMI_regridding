@@ -66,29 +66,7 @@ start1=timeit.default_timer()
 
 #fire,dat,lat,lon = fio.make_fire_mask(datetime(2008,1,1),datetime(2008,1,3))
 
-## Test multiple processes for filter fio
-anthro, dates, lats, lons  = fio.make_anthro_mask(d0,dN,max_procs=1)
-anthro2,dates2,lats2,lons2 = fio.make_anthro_mask(d0,dN,max_procs=3)
-assert np.all(anthro == anthro2), "make_anthro_mask array differs with multiprocs"
-assert np.all(lats  == lats2), "make_anthro_mask lats differs with multiprocs"
-assert np.all(lons  == lons2), "make_anthro_mask lons differs with multiprocs"
-assert np.all(np.array(dates) == np.array(dates2)), "make_anthro_mask dates differs with multiprocs"
 
-## Test multiple processes for filter fio
-fires, dates, lats, lons  = fio.read_fires(d0,dN,max_procs=1)
-fires2,dates2,lats2,lons2 = fio.read_fires(d0,dN,max_procs=3)
-assert np.all(fires == fires2), "read_fires array differs with multiprocs"
-assert np.all(lats  == lats2), "read_fires lats differs with multiprocs"
-assert np.all(lons  == lons2), "read_fires lons differs with multiprocs"
-assert np.all(np.array(dates) == np.array(dates2)), "read_fires dates differs with multiprocs"
-
-## Test multiple processes for filter fio
-fires, dates, lats, lons  = fio.make_fire_mask(d0,dN,max_procs=1)
-fires2,dates2,lats2,lons2 = fio.make_fire_mask(d0,dN,max_procs=3)
-assert np.all(fires == fires2), "make_fire_mask array differs with multiprocs"
-assert np.all(lats  == lats2), "make_fire_mask lats differs with multiprocs"
-assert np.all(lons  == lons2), "make_fire_mask lons differs with multiprocs"
-assert np.all(np.array(dates) == np.array(dates2)), "make_fire_mask dates differs with multiprocs"
 
 
 

@@ -2,9 +2,9 @@
 #PBS -P m19
 #PBS -q normal
 #PBS -N anthrofilter
-#PBS -l walltime=4:00:00
+#PBS -l walltime=8:00:00
 #PBS -l mem=10000MB
-#PBS -l cput=20:00:00
+#PBS -l cput=40:00:00
 #PBS -l wd
 #PBS -l ncpus=14
 #PBS -j oe

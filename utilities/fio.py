@@ -1134,7 +1134,7 @@ def make_anthro_mask(d0,dN=None,
 
 def make_anthro_mask_file(year,
                           threshy=__Thresh_NO2_y__, threshd=__Thresh_NO2_d__,
-                          latres=__LATRES__, lonres=__LONRES__):
+                          latres=__LATRES__, lonres=__LONRES__,max_procs=4):
     '''
         Create anthro mask file for whole year
     '''
@@ -1144,7 +1144,7 @@ def make_anthro_mask_file(year,
     dN=datetime(year.year,12,31)
     anthromask,dates,lats,lons=make_anthro_mask(d0,dN,threshy=threshy, threshd=threshd,
                                                 latres=latres,lonres=lonres,
-                                                region=None)
+                                                region=None,max_procs=max_procs)
 
     ## to save an HDF we need to change boolean to int8 and dates to strings
     #
@@ -1298,7 +1298,7 @@ def make_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires_
     return retmask, daylist, lats,lons
 
 def make_fire_mask_file(year, prior_days_masked=2, fire_thresh=__Thresh_fires__,
-                        adjacent=True, latres=__LATRES__,lonres=__LONRES__):
+                        adjacent=True, latres=__LATRES__,lonres=__LONRES__, max_procs=4):
     '''
         Create fire mask file for year, save into h5 file for re-use
 
@@ -1313,7 +1313,7 @@ def make_fire_mask_file(year, prior_days_masked=2, fire_thresh=__Thresh_fires__,
     firemask,dates,lats,lons=make_fire_mask(d0,dN,prior_days_masked=prior_days_masked,
                                             fire_thresh=fire_thresh, adjacent=adjacent,
                                             latres=latres,lonres=lonres,
-                                            region=None)
+                                            region=None,max_procs=max_procs)
 
     ## to save an HDF we need to change boolean to int8 and dates to strings
     #

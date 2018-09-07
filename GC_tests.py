@@ -54,6 +54,50 @@ colours = ['chartreuse','magenta','aqua']
 ###FUNCTIONS####
 ################
 
+def check_modelled_background(month=datetime(2005,1,1)):
+    '''
+        plot map of HCHO over remote pacific
+        also plot map of HCHO when isop emissions are scaled to zero globally
+    '''
+    day0=month
+    dayN=util.last_day(month)
+    
+    # DAILY OUTPUT
+    gc=GC_class.GC_tavg(day0,dayN,)
+    gc_noisop=GC_class.GC_tavg(day0,dayN,run='nochem')
+    
+    lats=gc.lats
+    lons=gc.lons
+    
+    print(gc.O_hcho.shape)
+    hcho1 = np.nanmean(gc.O_hcho,axis=0) # average the month
+    print(hcho1.shape)
+    bg1,bglats,bglons = util.remote_pacific_background(hcho1,lats,lons,)
+    print(bg1.shape)
+    
+    hcho2 = gc_noisop.O_hcho
+    bg2, bglats,bglons = util.remote_pacific_background(hcho2,lats,lons)
+    
+    # plot with  panels, hcho over aus, hcho over remote pacific matching lats
+    #                    hcho over both with no isop emissions
+    vmin=1e14
+    vmax=5e15
+    ausregion=pp.__AUSREGION__
+    bgregion=util.__REMOTEPACIFIC__
+    bgregion[0]=ausregion[0]
+    bgregion[2]=ausregion[2]
+    clabel=r'$\Omega_{HCHO}$ [molec cm$^{-2}$]'
+    
+    plt.figure(figsize=[15,15])
+    plt.subplot(2,2,1)
+    pp.createmap(hcho1,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, clabel=clabel, title='tropchem')
+    plt.subplot(2,2,2)
+    pp.createmap(bg1,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, clabel=clabel, title='tropchem')
+    plt.subplot(2,2,3)
+    pp.createmap(hcho2,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, clabel=clabel, title='noisop')
+    plt.subplot(2,2,4)
+    pp.createmap(bg2,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, clabel=clabel, title='noisop')
+    
 def check_rsc_interp(d0=datetime(2005,1,1)):
     '''
     Look at calc of RSC from month of sat output, and it's interpolation
@@ -1294,10 +1338,14 @@ if __name__=='__main__':
     d1=datetime(2005,1,5)
     region=pp.__AUSREGION__
     label='AUS'
-
+    
+    ## Grab picture of background hcho levels
+    # ran on 7/9/18
+    check_modelled_background()
+    
     ## tropchem vs UCX plots
     # Look at 2007 summer since I have OH for daily avg files from then.
-    compare_tc_ucx(datetime(2007,1,1),util.last_day(datetime(2007,2,1)))
+    #compare_tc_ucx(datetime(2007,1,1),util.last_day(datetime(2007,2,1)))
 
     # Checking units:
 

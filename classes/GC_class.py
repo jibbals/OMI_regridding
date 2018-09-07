@@ -39,10 +39,12 @@ __VERBOSE__=True # For file-wide print statements
 rdir='Data/GC_Output/'
 sat_path  = {'tropchem':rdir+'geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s.bpch',
              'halfisop':rdir+'geos5_2x25_tropchem_halfisoprene/satellite_output/ts_satellite.%s.bpch',
+             'noisop':rdir+'geos5_2x25_tropchem_noisoprene/satellite_output/ts_satellite.%s.bpch',
              'UCX':rdir+'UCX_geos5_2x25/satellite_output/ts_satellite.%s',
              'biogenic':rdir+'geos5_2x25_tropchem_biogenic/satellite_output/sat_biogenic.%s.bpch',}
 tavg_path = {'tropchem':rdir+'geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'halfisop':rdir+'geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
+             'noisop':rdir+'geos5_2x25_tropchem_noisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'UCX':rdir+'UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s',
              'nochem':rdir+'nochem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',}
 

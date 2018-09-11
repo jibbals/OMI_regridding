@@ -64,24 +64,21 @@ def check_modelled_background(month=datetime(2005,1,1)):
     
     # DAILY OUTPUT
     gc=GC_class.GC_tavg(day0,dayN,)
-    gc_noisop=GC_class.GC_tavg(day0,dayN,run='nochem')
+    gc_noisop=GC_class.GC_tavg(day0,dayN,run='noisop')
     
     lats=gc.lats
     lons=gc.lons
     
-    print(gc.O_hcho.shape)
     hcho1 = np.nanmean(gc.O_hcho,axis=0) # average the month
-    print(hcho1.shape)
     bg1,bglats,bglons = util.remote_pacific_background(hcho1,lats,lons,)
-    print(bg1.shape)
     
     hcho2 = gc_noisop.O_hcho
     bg2, bglats,bglons = util.remote_pacific_background(hcho2,lats,lons)
     
     # plot with  panels, hcho over aus, hcho over remote pacific matching lats
     #                    hcho over both with no isop emissions
-    vmin=1e14
-    vmax=5e15
+    vmin=1e15
+    vmax=1e16
     ausregion=pp.__AUSREGION__
     bgregion=util.__REMOTEPACIFIC__
     bgregion[0]=ausregion[0]
@@ -94,9 +91,9 @@ def check_modelled_background(month=datetime(2005,1,1)):
     plt.subplot(2,2,2)
     pp.createmap(bg1,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, clabel=clabel, title='tropchem')
     plt.subplot(2,2,3)
-    pp.createmap(hcho2,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, clabel=clabel, title='noisop')
+    pp.createmap(hcho2,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, clabel=clabel, title='no biogenic isoprene')
     plt.subplot(2,2,4)
-    pp.createmap(bg2,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, clabel=clabel, title='noisop')
+    pp.createmap(bg2,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, clabel=clabel, title='no biogenic isoprene',pname='Figs/GC/GC_background_hcho_%s.png'%month.strftime('%Y%m'))
     
 def check_rsc_interp(d0=datetime(2005,1,1)):
     '''

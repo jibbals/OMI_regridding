@@ -91,9 +91,9 @@ def check_modelled_background(month=datetime(2005,1,1)):
     plt.subplot(2,2,2)
     pp.createmap(bg1,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, clabel=clabel, title='tropchem')
     plt.subplot(2,2,3)
-    pp.createmap(hcho2,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, clabel=clabel, title='no biogenic isoprene')
+    pp.createmap(hcho2,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, clabel=clabel, title='no isoprene emitted')
     plt.subplot(2,2,4)
-    pp.createmap(bg2,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, clabel=clabel, title='no biogenic isoprene',pname='Figs/GC/GC_background_hcho_%s.png'%month.strftime('%Y%m'))
+    pp.createmap(bg2,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, clabel=clabel, title='no isoprene emitted',pname='Figs/GC/GC_background_hcho_%s.png'%month.strftime('%Y%m'))
     
 def check_rsc_interp(d0=datetime(2005,1,1)):
     '''

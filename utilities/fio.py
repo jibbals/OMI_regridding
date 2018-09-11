@@ -297,7 +297,7 @@ def read_hdf5(filename):
             retattrs[key]={}
             # print the attributes
             for akey,val in attrs.items():
-                if __VERBOSE__: print("%s(attr)   %s:%s"%(key,akey,val))
+                if __VERBOSE__: print("reading %s(attr)   %s:%s"%(key,akey,val))
                 retattrs[key][akey]=val
 
     return retstruct, retattrs
@@ -960,7 +960,7 @@ def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1)
     ret={'tropno2':no2,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
     return ret,attrs
 
-def yearly_anthro_avg(date,latres=__LATRES__,lonres=__LONRES__,region=None):
+def yearly_anthro_avg(date,latres=__LATRES__,lonres=__LONRES__,region=None,max_procs=4):
     '''
         Read and save the yearly avg no2 product at natural resolution unless it is already saved
         read it, regrid it, subset it, and return it
@@ -976,7 +976,7 @@ def yearly_anthro_avg(date,latres=__LATRES__,lonres=__LONRES__,region=None):
         yN=util.last_day(datetime(year,12,1))
 
         # Read whole year of omno2d and save to a yearly file
-        omno2, omno2_attrs = read_omno2d(day0=y0, dayN=yN, month=False)
+        omno2, omno2_attrs = read_omno2d(day0=y0, dayN=yN, month=False,max_procs=max_procs)
 
         # Average over the year:
         omno2['tropno2'] = np.nanmean(omno2['tropno2'],axis=0)
@@ -1076,80 +1076,55 @@ def read_GC_output(date=datetime(2005,1,1), Isop=False,
 ## Cant use omhchorp since omhchorp uses these to make the masks the first time
 ##############
 
-
-
-def make_anthro_mask(d0,dN=None,
-                     threshy=__Thresh_NO2_y__, threshd=__Thresh_NO2_d__,
-                     latres=__LATRES__, lonres=__LONRES__,
-                     region=None,
-                     max_procs=1):
-    '''
-        Read year of OMNO2d
-        Create filter from d0 to dN using yearly average over threshy
-        and daily amount over threshd
-
-        takes almost 5 mins to make a mask
-    '''
-
-    # Dates where we want filter
-    dates=util.list_days(d0,dN,month=False)
-
-    # Read the tropno2 columns for dates we want to look at
-
-    omno2, omno2_attrs = read_omno2d(day0=d0, dayN=dN, latres=latres, lonres=lonres, max_procs=max_procs)
-    lats = omno2['lats']
-    lons = omno2['lons']
-    no2  = omno2['tropno2'] # [[dates,] lats, lons]
-
-    # regridding 0.25x0.25 to 0.25x0.3125 may cause issues, but lets see
-    newlats, newlons, _nlate, _nlone = util.lat_lon_grid(latres=latres, lonres=lonres)
-
-    # bool array we will return
-    ret = np.zeros([len(dates),len(newlats),len(newlons)],dtype=np.bool)
-    no2i= np.zeros(ret.shape)+np.NaN
-
-    # Daily filter
-    # ignore warning from comparing NaNs to number
-    with np.errstate(invalid='ignore'):
-        for i,day in enumerate(dates):
-            no2day=no2
-            if len(dates)>1:
-                no2day=no2[i]
-            no2i[i] = util.regrid_to_lower(no2day,lats,lons,newlats,newlons,func=np.nanmean)
-            ret[i] = no2i[i] > threshd
-
-    no2mean,_lats,_lons=yearly_anthro_avg(d0,latres=latres,lonres=lonres,region=region)
-    #assert newlats==_lats, 'yearmask lats are fishy'
-    #assert newlons==_lons, 'yearmask lons are fishy'
-
-    yearmask=no2mean>threshy
-    ret[i,yearmask]=True # mask values where yearly avg threshhold is exceded
-
-    # subset to region
-    if region is not None:
-        subset=util.lat_lon_subset(newlats,newlons,region,[ret],has_time_dim=True)
-        ret=subset['data'][0]
-        lats,lons=subset['lats'],subset['lons']
-    return ret, dates, lats, lons
-
 def make_anthro_mask_file(year,
                           threshy=__Thresh_NO2_y__, threshd=__Thresh_NO2_d__,
                           latres=__LATRES__, lonres=__LONRES__,max_procs=4):
     '''
         Create anthro mask file for whole year
     '''
-    ## First make year long filter using method above
-    #
+
+    ## year long list of datetimes
     d0=datetime(year.year,1,1)
     dN=datetime(year.year,12,31)
-    anthromask,dates,lats,lons=make_anthro_mask(d0,dN,threshy=threshy, threshd=threshd,
-                                                latres=latres,lonres=lonres,
-                                                region=None,max_procs=max_procs)
+    dates=util.list_days(d0,dN)
+
+    ## First read in year of satellite data
+    #
+    omno2, omno2_attrs = read_omno2d(day0=d0, dayN=dN, latres=latres, lonres=lonres, max_procs=max_procs)
+    lats = omno2['lats']
+    lons = omno2['lons']
+    no2  = omno2['tropno2'] # [dates, lats, lons]
+
+    # regridding 0.25x0.25 to 0.25x0.3125 may cause issues, but lets see
+    newlats, newlons, _nlate, _nlone = util.lat_lon_grid(latres=latres, lonres=lonres)
+
+    # bool array
+    ret = np.zeros([len(dates),len(newlats),len(newlons)],dtype=np.bool)
+    no2i= np.zeros(ret.shape)+np.NaN
+
+    # Daily filter
+    # ignore warning from comparing NaNs to number
+    if __VERBOSE__:
+        print('starting regrid_to_lower')
+        start=timeit.default_timer()
+    with np.errstate(invalid='ignore'):
+        for i,day in enumerate(dates):
+            no2day=no2[i]
+            no2i[i] = util.regrid_to_lower(no2day,lats,lons,newlats,newlons,func=np.nanmean)
+            ret[i] = no2i[i] > threshd
+    if __VERBOSE__:
+        print("TIMEIT: it took %6.2f seconds to regrid_to_lower"%(timeit.default_timer()-start))
+
+    no2mean = np.nanmean(ret,axis=0) # yearly average for threshy
+    yearmask=no2mean>threshy
+    ret[:,yearmask]=True # mask values where yearly avg threshhold is exceded
+
+
 
     ## to save an HDF we need to change boolean to int8 and dates to strings
     #
     dates=util.gregorian_from_dates(dates)
-    anthromask=anthromask.astype(np.int8)
+    anthromask=ret.astype(np.int8)
 
     ## add attributes to be saved in file
     #
@@ -1160,17 +1135,17 @@ def make_anthro_mask_file(year,
               'anthromask':{'units':'int','desc':'0 or 1: grid square potentially affected by anthropogenic influence'},
               'dates':{'units':'gregorian','desc':'hours since 1985,1,1,0,0: day axis of anthromask array'},
               'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
-              'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
+              'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'},
+              'yearavg':{'units':'molec/cm2','desc':'year average of NO2'},
+              'no2':{'units':'molec/cm2','desc':'daily NO2 columns regridded'},  }
     ## data dictionary to save to hdf
     #
-    datadict={'anthromask':anthromask,'dates':dates,'lats':lats,'lons':lons}
+    datadict={'anthromask':anthromask,'dates':dates,'lats':lats,'lons':lons,
+              'yearavg':no2mean, 'no2':no2i}
 
     # filename and save to h5 file
     path=year.strftime(__dir_anthro__+'anthromask_%Y.h5')
     save_to_hdf5(path, datadict, attrdicts=dattrs)
-
-
-
 
 def make_smoke_mask(d0, dN=None, aaod_thresh=__Thresh_AAOD__,
                     latres=__LATRES__, lonres=__LONRES__, region=None):
@@ -1383,7 +1358,18 @@ def get_anthro_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
             If the mask does not exist, make it directly using make_anthro_mask
         better to use make_anthro_mask_file sometime before calling this, but not necessary
     '''
-    # file name for anthro mask:
+    # read file for anthro mask:
+    path=__dir_anthro__ + 'anthromask_%4d.h5'%d0.year
+    assert isfile(path), 'NEED TO RUN make_anthro_mask_file(datetime(%4d,1,1))'%d0.year
+    data,attrs=read_hdf5(path)
+    mask=data['anthromask'].astype(bool)
+    lats=data['lats']
+    lons=data['lons']
+    dates=util.date_from_gregorian(data['dates'])
+    di=util.date_index(d0,dates,dN) # indices of dates from d0 to dN
+
+    return mask[di],dates[di],lats,lons
+
 
 def get_smoke_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
     ''' read smoke mask or else create one  '''

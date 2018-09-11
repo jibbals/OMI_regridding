@@ -62,9 +62,7 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-gc = GC_class.GC_tavg(d0,run='noisop')
-print(gc.O_hcho.shape)
-
+fio.make_anthro_mask_file(d0)
 
 
 

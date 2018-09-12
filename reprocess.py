@@ -446,9 +446,10 @@ def create_omhchorp(date):
     # takes around 5 mins to do anthromask,
     # 10 mins for firemask,
     # 15 seconds for smoke mask
-    firemask,_fdates,_flats,_flons=fio.make_fire_mask(date)
-    smokemask,_sdates,_slats,_slons=fio.make_smoke_mask(date)
-    anthromask,_adates,_alats,_alons=fio.make_anthro_mask(date)
+    # Masks now handled seperately
+    #    firemask,_fdates,_flats,_flons=fio.make_fire_mask(date)
+    #    smokemask,_sdates,_slats,_slons=fio.make_smoke_mask(date)
+    #    anthromask,_adates,_alats,_alons=fio.make_anthro_mask(date)
 
     ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -529,9 +530,9 @@ def create_omhchorp(date):
     outd['AMF_PP']              = AMF_pp
     outd['fires']               = fire_count.astype(np.int16)
     outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
-    outd['firemask']            = np.squeeze(firemask.astype(np.int16))
-    outd['smokemask']           = np.squeeze(smokemask.astype(np.int16))
-    outd['anthromask']          = np.squeeze(anthromask.astype(np.int16))
+    #outd['firemask']            = np.squeeze(firemask.astype(np.int16))
+    #outd['smokemask']           = np.squeeze(smokemask.astype(np.int16))
+    #outd['anthromask']          = np.squeeze(anthromask.astype(np.int16))
     # Check we got everything:
     assert all( [ keyname in outd.keys() for keyname in fio.__OMHCHORP_KEYS__] ), 'Missing some keys from OMHCHORP product'
     outfilename=fio.determine_filepath(date,reprocessed=True)

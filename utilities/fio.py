@@ -869,6 +869,7 @@ def read_omno2d_interpolated(date,latres=__LATRES__,lonres=__LONRES__):
     #   lons: -179.875 ... dx=0.25 ... 179.875
     lats=np.arange(-90,90,0.25)+0.125
     lons=np.arange(-180,180,0.25)+0.125
+    newlats,newlons, lats_e, lons_e=util.lat_lon_grid(latres,lonres)
 
     # filenames:
     fname=ddir+'OMI*%s*.he5'%date.strftime('%Ym%m%d')
@@ -876,10 +877,12 @@ def read_omno2d_interpolated(date,latres=__LATRES__,lonres=__LONRES__):
     if len(fpaths)==0:
         print("WARNING: %s does not exist!!!!"%fname)
         print("WARNING:     continuing with nans for %s"%date.strftime("%Y%m%d"))
+        newdata=np.zeros([len(newlats),len(newlons)])+np.NaN
     else:
         fpath=fpaths[0]
         if __VERBOSE__:
             print('reading ',fpath)
+            start=timeit.default_timer()
         with h5py.File(fpath,'r') as in_f:
             #for name in in_f[tropname]:
             #    print (name)
@@ -887,11 +890,12 @@ def read_omno2d_interpolated(date,latres=__LATRES__,lonres=__LONRES__):
             trop[trop<-1e20] = np.NaN
 
             data=trop
-    data=np.squeeze(data)
+        data=np.squeeze(data)
 
-    # now we interpolate to resolution desired
-    newlats,newlons, lats_e, lons_e=util.lat_lon_grid(latres,lonres)
-    newdata=util.regrid(data,lats,lons,newlats,newlons)
+        if __VERBOSE__:
+            print('done reading ',date.strftime('%Ym%m%d'),' took %6.2f seconds'%(timeit.default_timer()-start))
+        # now we interpolate to resolution desired
+        newdata=util.regrid(data,lats,lons,newlats,newlons)
 
     # trop column units: molec/cm2 from ~ 1e13-1e16
     attrs={'tropno2':{'desc':'tropospheric NO2 cloud screened for <30% cloudy pixels',
@@ -936,7 +940,7 @@ def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1)
                     lats_e=pret[0]['lats_e']
     else:
         for ii, date in enumerate(dates):
-            data,attrs = read_omno2d_interpolated(date)
+            data,attrs = read_omno2d_interpolated(date,latres,lonres)
             omno2=data['tropno2']
             if no2 is None:
                 no2=np.zeros([len(dates),omno2.shape[0],omno2.shape[1]]) # [dates, lats, lons]
@@ -960,47 +964,47 @@ def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1)
     ret={'tropno2':no2,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
     return ret,attrs
 
-def yearly_anthro_avg(date,latres=__LATRES__,lonres=__LONRES__,region=None,max_procs=4):
-    '''
-        Read and save the yearly avg no2 product at natural resolution unless it is already saved
-        read it, regrid it, subset it, and return it
-    '''
-    year=date.year
-
-    filepath=__dir_anthro__+'yearavg_%4d.h5'%year
-    # Read and save file if it doesn't exist yet:
-    if not isfile(filepath):
-        if __VERBOSE__:
-            print("Reading OMNO2d %d then writing year avg to %s"%(year,filepath))
-        y0=datetime(year,1,1)
-        yN=util.last_day(datetime(year,12,1))
-
-        # Read whole year of omno2d and save to a yearly file
-        omno2, omno2_attrs = read_omno2d(day0=y0, dayN=yN, month=False,max_procs=max_procs)
-
-        # Average over the year:
-        omno2['tropno2'] = np.nanmean(omno2['tropno2'],axis=0)
-        # remove dates arrays
-        omno2.pop('dates')
-        omno2_attrs.pop('dates')
-
-        # save the file:
-        save_to_hdf5(filepath, omno2,attrdicts=omno2_attrs)
-    else:
-        omno2, omno2_attrs = read_hdf5(filepath)
-
-    # omno2d is saved on 0.25x0.25 grid, regrid_to_lower should always be the choice
-    newlats,newlons,_late,_lone=util.lat_lon_grid(latres=latres,lonres=lonres)
-    lats,lons=omno2['lats'],omno2['lons']
-    no2=util.regrid_to_lower(omno2['tropno2'],lats,lons,newlats,newlons)
-
-    if region is not None:
-        subset=util.lat_lon_subset(newlats,newlons,region,[no2])
-        newlats=subset['lats']
-        newlons=subset['lons']
-        no2=subset['data'][0]
-
-    return no2,newlats,newlons
+#def yearly_anthro_avg(date,latres=__LATRES__,lonres=__LONRES__,region=None,max_procs=4):
+#    '''
+#        Read and save the yearly avg no2 product at natural resolution unless it is already saved
+#        read it, regrid it, subset it, and return it
+#    '''
+#    year=date.year
+#
+#    filepath=__dir_anthro__+'yearavg_%4d.h5'%year
+#    # Read and save file if it doesn't exist yet:
+#    if not isfile(filepath):
+#        if __VERBOSE__:
+#            print("Reading OMNO2d %d then writing year avg to %s"%(year,filepath))
+#        y0=datetime(year,1,1)
+#        yN=util.last_day(datetime(year,12,1))
+#
+#        # Read whole year of omno2d and save to a yearly file
+#        omno2, omno2_attrs = read_omno2d(day0=y0, dayN=yN, month=False,max_procs=max_procs)
+#
+#        # Average over the year:
+#        omno2['tropno2'] = np.nanmean(omno2['tropno2'],axis=0)
+#        # remove dates arrays
+#        omno2.pop('dates')
+#        omno2_attrs.pop('dates')
+#
+#        # save the file:
+#        save_to_hdf5(filepath, omno2,attrdicts=omno2_attrs)
+#    else:
+#        omno2, omno2_attrs = read_hdf5(filepath)
+#
+#    # omno2d is saved on 0.25x0.25 grid, regrid_to_lower should always be the choice
+#    newlats,newlons,_late,_lone=util.lat_lon_grid(latres=latres,lonres=lonres)
+#    lats,lons=omno2['lats'],omno2['lons']
+#    no2=util.regrid_to_lower(omno2['tropno2'],lats,lons,newlats,newlons)
+#
+#    if region is not None:
+#        subset=util.lat_lon_subset(newlats,newlons,region,[no2])
+#        newlats=subset['lats']
+#        newlons=subset['lons']
+#        no2=subset['data'][0]
+#
+#    return no2,newlats,newlons
 
 
 
@@ -1088,38 +1092,21 @@ def make_anthro_mask_file(year,
     dN=datetime(year.year,12,31)
     dates=util.list_days(d0,dN)
 
-    ## First read in year of satellite data
+    ## First read in year of satellite data (gridded to latres,lonres)
     #
     omno2, omno2_attrs = read_omno2d(day0=d0, dayN=dN, latres=latres, lonres=lonres, max_procs=max_procs)
     lats = omno2['lats']
     lons = omno2['lons']
     no2  = omno2['tropno2'] # [dates, lats, lons]
-
-    # regridding 0.25x0.25 to 0.25x0.3125 may cause issues, but lets see
-    newlats, newlons, _nlate, _nlone = util.lat_lon_grid(latres=latres, lonres=lonres)
-
-    # bool array
-    ret = np.zeros([len(dates),len(newlats),len(newlons)],dtype=np.bool)
-    no2i= np.zeros(ret.shape)+np.NaN
+    no2mean = np.nanmean(no2,axis=0) # yearly average for threshy
 
     # Daily filter
     # ignore warning from comparing NaNs to number
-    if __VERBOSE__:
-        print('starting regrid_to_lower')
-        start=timeit.default_timer()
     with np.errstate(invalid='ignore'):
-        for i,day in enumerate(dates):
-            no2day=no2[i]
-            no2i[i] = util.regrid_to_lower(no2day,lats,lons,newlats,newlons,func=np.nanmean)
-            ret[i] = no2i[i] > threshd
-    if __VERBOSE__:
-        print("TIMEIT: it took %6.2f seconds to regrid_to_lower"%(timeit.default_timer()-start))
+        ret = no2 > threshd # day threshold
+        yearmask=no2mean>threshy # year threshold
 
-    no2mean = np.nanmean(ret,axis=0) # yearly average for threshy
-    yearmask=no2mean>threshy
     ret[:,yearmask]=True # mask values where yearly avg threshhold is exceded
-
-
 
     ## to save an HDF we need to change boolean to int8 and dates to strings
     #
@@ -1141,7 +1128,7 @@ def make_anthro_mask_file(year,
     ## data dictionary to save to hdf
     #
     datadict={'anthromask':anthromask,'dates':dates,'lats':lats,'lons':lons,
-              'yearavg':no2mean, 'no2':no2i}
+              'yearavg':no2mean, 'no2':no2}
 
     # filename and save to h5 file
     path=year.strftime(__dir_anthro__+'anthromask_%Y.h5')

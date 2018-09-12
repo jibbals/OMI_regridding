@@ -18,6 +18,7 @@ import numpy as np
 from scipy.interpolate import griddata # for regrid function
 from mpl_toolkits.basemap import maskoceans #
 import timeit
+import concurrent.futures # parallelism
 
 from utilities import GMAO
 
@@ -510,6 +511,12 @@ def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean, pixels=
     start=timeit.default_timer()
     if __VERBOSE__:
         print('regridding from %s to %s'%(str(data.shape),str([len(newlats),len(newlons)])))
+
+    # don't run if we don't have to, this function takes ages
+    if np.all(lats == newlats) and np.all(lons==newlons):
+        print('WARNING: regrid_to_lower called using identical grid..')
+        return data
+
     newlats_e,newlons_e=edges_from_mids(newlats),edges_from_mids(newlons)
     ret=np.zeros([len(newlats_e)-1,len(newlons_e)-1])+np.NaN
     # Ignore numpy warnings... (they suck)
@@ -531,21 +538,21 @@ def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean, pixels=
                     n_pixels   = float(np.nansum(sub_pixels))
 
                     # check how many pixels are added in NaN squares...
-                    nanpix= np.nansum(sub_pixels[np.isnan(tmp)]) # how many pixels when value is nan (should be 0)
+                    #nanpix= np.nansum(sub_pixels[np.isnan(tmp)]) # how many pixels when value is nan (should be 0)
                     #assert nanpix==0, 'nan pixels: %d, (Should be zero)'%nanpix
-                    if __VERBOSE__:
-                        if nanpix > 0:
-                            print("WARNING:",nanpix,' pixels used to create np.NaN column...')
+                    #if __VERBOSE__:
+                    #    if nanpix > 0:
+                    #        print("WARNING:",nanpix,' pixels used to create np.NaN column...')
 
 
                     # Pixel weighted average is sum of entries / how many entries within this subregion
                     tmp= np.nansum( (tmp * sub_pixels) / n_pixels )
 
                     # Testing
-                    if __VERBOSE__:
-                        if not np.isnan(prebin):
-                            if prebin/tmp < 0.5 or prebin/tmp > 2:
-                                print("Warning: weighted binning has more than halved or doubled the bin from %.2e (avg) to %.2e (weighted avg)"%(prebin,tmp))
+                    #if __VERBOSE__:
+                    #    if not np.isnan(prebin):
+                    #        if prebin/tmp < 0.5 or prebin/tmp > 2:
+                    #            print("Warning: weighted binning has more than halved or doubled the bin from %.2e (avg) to %.2e (weighted avg)"%(prebin,tmp))
 
                     #print('post_binning, positive subset mean: %.2e'%(np.nansum(pos*sub_pixels)/n_pixels_pos))
                     #print('post_binning, positive2 subset mean: %.2e'%(np.nansum(pos2*sub_pixels)/n_pixels))
@@ -562,6 +569,29 @@ def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean, pixels=
         print("TIMEIT: it took %6.2f seconds to REGRID"%(timeit.default_timer()-start))
     return ret
 
+def regrid_3d(data,lats,lons,newlats,newlons,interp='nearest', groupfunc=np.nanmean,max_procs=4):
+    '''
+    call regrid in parallel over time (first) dimension of data argument
+    '''
+    ntimes=data.shape[0]
+    # turn input args into repeated list of same argument
+    nlats=[lats]*ntimes
+    nlons=[lons]*ntimes
+    nnewlats=[newlats]*ntimes
+    nnewlons=[newlons]*ntimes
+    ninterp=[interp]*ntimes
+    ngroupfunc=[groupfunc]*ntimes
+    ndata = [data[i] for i in range(ntimes)]
+
+    ret=np.zeros([ntimes,len(newlats),len(newlons)])
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
+        procreturns=executor.map(regrid,ndata,nlats,nlons,nnewlats,nnewlons,ninterp,ngroupfunc)
+        # loop over returned dictionaries from read_omno2d()
+        for ii, pret in enumerate(procreturns):
+            ret[ii] = pret
+
+    return ret
 
 def regrid(data,lats,lons,newlats,newlons, interp='nearest', groupfunc=np.nanmean):
     '''

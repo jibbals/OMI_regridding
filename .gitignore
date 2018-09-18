@@ -15,6 +15,7 @@ __pycache__/
 pictures/levels_debug
 Figs/levels_debug
 Figs/Checks
+Figs/GC/old
 
 # ignore log files
 logs/*

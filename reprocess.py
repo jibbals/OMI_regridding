@@ -434,23 +434,6 @@ def create_omhchorp(date):
     # Filter for removing cloudy entries
     cloud_filter = omi_clouds < 0.4 # This is a list of booleans for the pixels
 
-    # fire filter can be made from the fire_count
-    fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date)
-    assert all(_flats == lats), "fire interpolation does not match our resolution"
-
-    # Smoke filter similarly can be made from AAOD stored each day
-    smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date)
-    assert all(_flats == lats), "smoke aaod interpolation does not match our resolution"
-
-    # masks here made using default values...
-    # takes around 5 mins to do anthromask,
-    # 10 mins for firemask,
-    # 15 seconds for smoke mask
-    # Masks now handled seperately
-    #    firemask,_fdates,_flats,_flons=fio.make_fire_mask(date)
-    #    smokemask,_sdates,_slats,_slons=fio.make_smoke_mask(date)
-    #    anthromask,_adates,_alats,_alons=fio.make_anthro_mask(date)
-
     ## DATA which will be outputted in gridded file
     SC      = np.zeros([ny,nx],dtype=np.double)+np.NaN
     VC_gc   = np.zeros([ny,nx],dtype=np.double)+np.NaN
@@ -528,8 +511,9 @@ def create_omhchorp(date):
     outd['AMF_GCz']             = AMF_gcz
     outd['AMF_OMI']             = AMF_omi
     outd['AMF_PP']              = AMF_pp
-    outd['fires']               = fire_count.astype(np.int16)
-    outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
+    # fires, smoke, and masks now handled separately
+    #outd['fires']               = fire_count.astype(np.int16)
+    #outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
     #outd['firemask']            = np.squeeze(firemask.astype(np.int16))
     #outd['smokemask']           = np.squeeze(smokemask.astype(np.int16))
     #outd['anthromask']          = np.squeeze(anthromask.astype(np.int16))
@@ -549,87 +533,88 @@ def create_omhchorp(date):
     ## TODO: Save analysis metadata like SSDs or other metrics
     #
 
-def create_omhchorp_justfires(date):
-    '''
-        Function to create omhchorp with just fires, this is for fire filtering the first few days in 2005
-    '''
+# Using seperate files for fire/smoke/anthro masks now
+#def create_omhchorp_justfires(date):
+#    '''
+#        Function to create omhchorp with just fires, this is for fire filtering the first few days in 2005
+#    '''
+#
+#    ymdstr=date.strftime("%Y%m%d")
+#
+#    if __VERBOSE__:
+#        print("create_omhchorp_justfires called for %s"%ymdstr)
+#
+#    # how many lats, lons
+#    lats,lons,lat_bounds,lon_bounds=__latm__,__lonm__,__late__,__lone__
+#    ny,nx = len(lats), len(lons)
+#
+#    # fire filter can be made from the fire_count
+#    fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date)
+#    assert all(_flats == lats), "fire interpolation does not match our resolution"
+#
+#    # Smoke filter similarly can be made from AAOD stored each day
+#    smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date)
+#    assert all(_flats == lats), "smoke aaod interpolation does not match our resolution"
+#
+#    # Save fires, smoke out to H5 format, along with dates, lats, lons
+#    outd=dict()
+#    outd['latitude']            = lats
+#    outd['longitude']           = lons
+#    outd['fires']               = fire_count.astype(np.int16)
+#    #outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
+#    firemask,_fdates,_flats,_flons=fio.make_fire_mask(date)
+#    outd['firemask']            = np.squeeze(firemask.astype(np.int16))
+#    outfilename=fio.determine_filepath(date,reprocessed=True)
+#
+#    if __VERBOSE__:
+#        print("sending day average to be saved: "+outfilename)
+#    if __DEBUG__:
+#        print(("keys: ",outd.keys()))
+#
+#    fio.save_to_hdf5(outfilename, outd, attrdicts=fio.__OMHCHORP_ATTRS__, verbose=__DEBUG__)
+#    if __DEBUG__:
+#        print("File should be saved now...")
 
-    ymdstr=date.strftime("%Y%m%d")
 
-    if __VERBOSE__:
-        print("create_omhchorp_justfires called for %s"%ymdstr)
-
-    # how many lats, lons
-    lats,lons,lat_bounds,lon_bounds=__latm__,__lonm__,__late__,__lone__
-    ny,nx = len(lats), len(lons)
-
-    # fire filter can be made from the fire_count
-    fire_count,_flats,_flons=fio.read_MOD14A1_interpolated(date)
-    assert all(_flats == lats), "fire interpolation does not match our resolution"
-
-    # Smoke filter similarly can be made from AAOD stored each day
-    smoke_aaod,_flats,_flons=fio.read_AAOD_interpolated(date)
-    assert all(_flats == lats), "smoke aaod interpolation does not match our resolution"
-
-    # Save fires, smoke out to H5 format, along with dates, lats, lons
-    outd=dict()
-    outd['latitude']            = lats
-    outd['longitude']           = lons
-    outd['fires']               = fire_count.astype(np.int16)
-    #outd['AAOD']                = smoke_aaod # omaeruvd aaod 500nm product interpolated
-    firemask,_fdates,_flats,_flons=fio.make_fire_mask(date)
-    outd['firemask']            = np.squeeze(firemask.astype(np.int16))
-    outfilename=fio.determine_filepath(date,reprocessed=True)
-
-    if __VERBOSE__:
-        print("sending day average to be saved: "+outfilename)
-    if __DEBUG__:
-        print(("keys: ",outd.keys()))
-
-    fio.save_to_hdf5(outfilename, outd, attrdicts=fio.__OMHCHORP_ATTRS__, verbose=__DEBUG__)
-    if __DEBUG__:
-        print("File should be saved now...")
-
-
-def Reprocess_N_days(date, days=8, processes=8):
-    '''
-    run the one day reprocessing function in parallel using N processes for M days
-    '''
-
-    # time how long it all takes
-    if __VERBOSE__:
-        print('processing %3d days using %2d processes'%(days,processes))
-        start_time=timeit.default_timer()
-
-    # our N days in a list
-    daysN = [ date + timedelta(days=dd) for dd in range(days)]
-
-    # create pool of M processes
-    pool = Pool(processes=processes)
-    if __DEBUG__:
-        print ("Process pool created ")
-
-    #arguments: date,latres,lonres,getsum
-    # function arguments in a list, for each of N days
-    inputs = [(dd) for dd in daysN]
-
-    # run all at once since each day can be independantly processed
-    results = [ pool.apply_async(create_omhchorp, args=inp) for inp in inputs ]
-
-    if __DEBUG__:
-        print("apply_async called for each day")
-    pool.close()
-    pool.join() # wait until all jobs have finished(~ 70 minutes)
-    if __DEBUG__:
-        print("Pool Closed and Joined")
-    if __VERBOSE__:
-        elapsed = timeit.default_timer() - start_time
-        print ("Took %6.2f minutes to reprocess %3d days using %2d processes"%(elapsed/60.0,days,processes))
+#def Reprocess_N_days(date, days=8, processes=8):
+#    '''
+#    run the one day reprocessing function in parallel using N processes for M days
+#    '''
+#
+#    # time how long it all takes
+#    if __VERBOSE__:
+#        print('processing %3d days using %2d processes'%(days,processes))
+#        start_time=timeit.default_timer()
+#
+#    # our N days in a list
+#    daysN = [ date + timedelta(days=dd) for dd in range(days)]
+#
+#    # create pool of M processes
+#    pool = Pool(processes=processes)
+#    if __DEBUG__:
+#        print ("Process pool created ")
+#
+#    #arguments: date,latres,lonres,getsum
+#    # function arguments in a list, for each of N days
+#    inputs = [(dd) for dd in daysN]
+#
+#    # run all at once since each day can be independantly processed
+#    results = [ pool.apply_async(create_omhchorp, args=inp) for inp in inputs ]
+#
+#    if __DEBUG__:
+#        print("apply_async called for each day")
+#    pool.close()
+#    pool.join() # wait until all jobs have finished(~ 70 minutes)
+#    if __DEBUG__:
+#        print("Pool Closed and Joined")
+#    if __VERBOSE__:
+#        elapsed = timeit.default_timer() - start_time
+#        print ("Took %6.2f minutes to reprocess %3d days using %2d processes"%(elapsed/60.0,days,processes))
 
 if __name__=='__main__':
     # reprocess a day as a test of the process
     start=timeit.default_timer()
-    create_omhchorp(datetime(2008,1,1))
+    create_omhchorp(datetime(2005,1,1))
 
     print("Took %6.2f minutes to run for 1 day"%((timeit.default_timer()-start)/60.0))
 

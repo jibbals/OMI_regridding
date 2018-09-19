@@ -1052,6 +1052,41 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
                         linear=False, region=region,
                         suptitle='%s surface amounts (full day avgs %s) [%s]'%(key,dstr,units[key]))
 
+def AMF_comparison_tc_ucx(month=datetime(2005,1,1)):
+    '''
+    Look at monthly averaged AMF using UCX and using tropchem
+    '''
+    ## read tropchem and ucx run
+    #
+    d0 = month
+    dN = util.last_day(month)
+    ucx=GC_class.GC_sat(d0,dN,run='UCX') # [days, lats, lons,72]
+    trop=GC_class.GC_sat(d0,dN,run='tropchem') # [days, lats, lons, 47]
+
+    ## To calculate AMFs we need scattering weights from satellite swath files
+    #
+
+    for i, d in enumerate(util.list_days(d0, dN)):
+        omhcho = reprocess.get_good_pixel_list(d)
+
+        w=omhcho['omega']
+        w_pmids=omhcho['omega_pmids']
+        AMF_G=omhcho['AMF_G']
+        lat=omhcho['lat']
+        lon=omhcho['lon']
+
+        print("Running amf calc for tropchem")
+        for arr in [w, w_pmids, AMF_G, lat, lon]:
+            print(np.shape(arr))
+            print('      ', arr)
+        trop_amf_z, trop_amf_s = trop.calculate_AMF(w[i], w_pmids[i], AMF_G[i], lat[i], lon[i], plotname=None, debug_levels=False)
+        print(trop_amf_z,trop_amf_s)
+        print("Running amf calc for UCX")
+        ucx_amf_z, ucx_amf_s = ucx.calculate_AMF(w[i], w_pmids[i], AMF_G[i], lat[i], lon[i], plotname=None, debug_levels=False)
+        print(ucx_amf_z,ucx_amf_s)
+        break
+    return
+
 def OLD_compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
     '''
         Check UCX vs Tropchem
@@ -1340,9 +1375,13 @@ if __name__=='__main__':
     # ran on 7/9/18
     #check_modelled_background()
 
+    ## UCX VS TROPCHEM AMF
+    #
+    AMF_comparison_tc_ucx()
+
     ## tropchem vs UCX plots
     # Look at 2007 summer since I have OH for daily avg files from then.
-    compare_tc_ucx(datetime(2007,1,1),util.last_day(datetime(2007,2,1)))
+    #compare_tc_ucx(datetime(2007,1,1),util.last_day(datetime(2007,2,1)))
 
     # Checking units:
 

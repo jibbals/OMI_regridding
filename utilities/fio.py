@@ -697,7 +697,7 @@ def read_omhcho(path, szamax=60, screen=[-5e15, 1e17], maxlat=60, verbose=False)
             'qualityflag':qf, 'xtrackflag':xqf, 'sza':sza, 'vza':vza,
             'coluncertainty':cunc, 'convergenceflag':fcf, 'fittingRMS':frms}
 
-def read_omhcho_day(day=datetime(2005,1,1),verbose=False):
+def read_omhcho_day(day=datetime(2005,1,1),verbose=False, max_procs=4):
     '''
     Read an entire day of omhcho swaths
     '''
@@ -714,13 +714,48 @@ def read_omhcho_day(day=datetime(2005,1,1),verbose=False):
 
     data=read_omhcho(fnames[0],verbose=verbose) # read first swath
     swths=[]
-    for fname in fnames[1:]: # read the rest of the swaths
-        swths.append(read_omhcho(fname,verbose=verbose))
-    for swth in swths: # combine into one struct
+    if max_procs < 2:
+        for fname in fnames[1:]: # read the rest of the swaths
+            swths.append(read_omhcho(fname,verbose=verbose))
+    else: # use multiple processes
+        n = len(fnames[1:])
+        nverbose=[verbose] * n # list of n instances of verbose
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
+            procreturns=executor.map(read_omhcho,fnames[1:],nverbose)
+            for pret in procreturns:
+                swths.append(pret)
+
+    # combine each swath into single structure listing pixel details
+    for swth in swths:
         for key in swth.keys():
             axis= [0,1][key in ['omega','apriori','plevels']]
             data[key] = np.concatenate( (data[key], swth[key]), axis=axis)
+
     return data
+
+def read_omhcho_month(month=datetime(2005,1,1),max_procs=4, keys=None):
+    '''
+    '''
+    if keys is None:
+        keys = ['HCHO','AMF','AMFG', 'apriori','cloudfrac',
+                'rad_ref_col','VCC_OMI','ctp', 'qualityflag','xtrackflag',
+                'sza', 'vza','coluncertainty', 'convergenceflag','fittingRMS',
+                'omega', 'plevels','lats','lons']
+    keys.extend([])
+    dates=util.list_days(month,month=True)
+    n=len(dates)
+    retstruct={} # structure to hold all the data...
+    datas = []
+    for d in dates:
+        datas.append(read_omhcho_day(d,max_procs=max_procs))
+
+    # Combine datas along new first dimension of time
+    for key in keys:
+        keyinfo = [datas[i][key] for i in range(n)]
+        retstruct[key] = np.stack(keyinfo,axis=0)
+    retstruct['dates'] = np.array(dates)
+    return retstruct
+
 
 def read_omhcho_8days(day=datetime(2005,1,1)):
     '''

@@ -2,9 +2,9 @@
 #PBS -P m19
 #PBS -q normal
 #PBS -N anthrofilter
-#PBS -l walltime=8:00:00
+#PBS -l walltime=2:00:00
 #PBS -l mem=10000MB
-#PBS -l cput=40:00:00
+#PBS -l cput=20:00:00
 #PBS -l wd
 #PBS -l ncpus=14
 #PBS -j oe
@@ -15,9 +15,14 @@
 # --------------------------------
 
 if [ -z ${PBS_O_LOGNAME} ] || [ -z ${year} ]; then
-    echo "example:"
-    echo "qsub -o logs/anthromask_2005 -v year=2005 $0"
-    echo "    create Data/OMNO2d/anthromask_2005.h5"
+    if [ $# -lt 1 ]; then
+        echo "#example to create Data/OMNO2d/anthromask_2005.h5"
+        echo "qsub -o logs/anthro_2005 -v year=2005 $0"
+        
+    else
+        echo "qsub -o logs/anthromask_$1 -v year=$1 $0"
+        qsub -o logs/anthromask_$1 -N anthro$1 -v year=$1 $0
+    fi
     exit 0
 fi
 

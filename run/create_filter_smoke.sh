@@ -15,9 +15,14 @@
 # --------------------------------
 
 if [ -z ${PBS_O_LOGNAME} ] || [ -z ${year} ]; then
-    echo "example:"
-    echo "qsub -o logs/smokemask_2005 -v year=2005 $0"
-    echo "#    creates Data/OMAERUv/smokemask_2005.h5"
+    if [ $# -lt 1 ]; then
+        echo "example:"
+        echo "qsub -o logs/smokemask_2005 -v year=2005 $0"
+        echo "#    creates Data/OMAERUv/smokemask_2005.h5"
+    else
+        echo "qsub -o logs/smokemask_$1 -v year=$1 $0"
+        qsub -o logs/smokemask_$1 -N smoke$1 -v year=$1 $0
+    fi
     exit 0
 fi
 

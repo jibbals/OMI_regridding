@@ -14,6 +14,19 @@ function missing {
     echo "$year $month $day missing $1"
 }
 
+### first check for yearly filter files
+##
+if [[ ! -f Data/OMNO2d/anthromask_${year}.h5 ]]; then
+    missing "Yearly anthro mask (from OMNO2d data)"
+fi
+if [[ ! -f Data/MOD14A1_D_FIRE/firemask_${year}.h5 ]]; then
+    missing "Yearly fire mask (from MOD14A1_D data)"
+fi
+if [[ ! -f Data/OMAERUVd/smokemask_${year}.h5 ]]; then
+    missing "Yearly smoke mask (from OMAERUVd data)"
+fi
+
+
 # loop over months (-w adds zero padding)
 for month in `seq -w 1 12`; do
     #how many days in month

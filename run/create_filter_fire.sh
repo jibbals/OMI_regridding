@@ -15,9 +15,13 @@
 # --------------------------------
 
 if [ -z ${PBS_O_LOGNAME} ] || [ -z ${year} ]; then
-    echo "example:"
-    echo "qsub -o logs/firemask_2005 -v year=2005 create_filter_fire.sh"
-    echo "    create Data/MOD14A1/firemask_2005.h5"
+    if [ $# -lt 1 ]; then
+        echo "#example to create Data/MOD14A1/firemask_2005.h5"
+        echo "qsub -o logs/firemask_2005 -v year=2005 $0"
+    else
+        echo "qsub -o logs/firemask_$1 -v year=$1 $0"
+        qsub -o logs/firemask_$1 -N fire$1 -v year=$1 $0
+    fi
     exit 0
 fi
 

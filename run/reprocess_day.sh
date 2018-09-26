@@ -3,7 +3,7 @@
 #PBS -q normal
 #PBS -N RP_Day
 #PBS -l walltime=03:00:00
-#PBS -l mem=10000MB
+#PBS -l mem=5000MB
 #PBS -l cput=03:00:00
 #PBS -l wd
 #PBS -l ncpus=1

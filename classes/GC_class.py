@@ -582,21 +582,11 @@ class GC_sat(GC_base):
             # Add attributes
             self.attrs['O_air']={'units':'molec/cm2','desc':'Total column Air'}
 
-            # Pressure at bottom edge of each level
-            pbots=self.psurf
-            # pressure edges
-            pedges=np.ndarray([n_lats,n_lons,n_levs+1])
-
+            self.add_pedges()
+            pmids=self.pmids
+            pedges=self.pedges
             TOA=GMAO.__TOA__
-            pedges[:,:,:-1]=pbots
-            #pedges[:,:,-1]=pbots[:,:,-1]*0.9 # Make TOA just a little less dense than seconds highest level
-            pedges[:,:,-1] = TOA
-            self.pedges=pedges
-            self.attrs['pedges']={'units':'hPa','desc':'pressure edges'}
-            pmids=np.sqrt(pedges[:,:,:-1]*pedges[:,:,1:])
-            self.pmids=pmids
-            self.attrs['pmids']={'units':'hPa','desc':'pressure midpoints'}
-
+            
             # Top pmid SHOULD be a little higher than 0.01
             assert np.all(pmids[:,:,-1]> TOA), "Problem with pmid calculation"
             #if not np.all(pmids[:,:,-1]>0.1):
@@ -610,10 +600,9 @@ class GC_sat(GC_base):
                 #print(pedges[:,:,-2])
 
             # surface pressure matching pmids array
+            pbots=self.psurf
             psurf=pbots[:,:,0]
             psurfs = np.repeat(psurf[:,:,np.newaxis],n_levs,axis=2)
-            #toa  = pedges[:,:,-1]
-            #toa  = np.repeat(toa[:,:,np.newaxis],n_levs,axis=2)
 
             # box heights (m)
             h=self.boxH
@@ -642,7 +631,39 @@ class GC_sat(GC_base):
             self.Shape_s = self.hcho * 1e-9 * (O_air_rep / O_hcho_rep)
             self.attrs['Shape_s']={'units':'unitless','desc':'Shape_sigma at each level'}
 
+    def add_pedges(self):
+        '''
+            Add pedges to class
+        '''
+        
+        # Pressure at bottom edge of each level
+        pbots=self.psurf
+        TOA=GMAO.__TOA__
+        
+        if self._has_time_dim:
+            n_times, n_lats,n_lons,n_levs = self.psurf.shape
+            pedges=np.ndarray([n_times,n_lats,n_lons,n_levs+1])
 
+            pedges[:,:,:,:-1]=pbots
+            pedges[:,:,:,-1] = TOA
+            pmids=np.sqrt(pedges[:,:,:,:-1]*pedges[:,:,:,1:])
+            
+        else:
+            n_lats,n_lons,n_levs = self.psurf.shape
+            
+            # pressure edges
+            pedges=np.ndarray([n_lats,n_lons,n_levs+1])
+
+            TOA=GMAO.__TOA__
+            pedges[:,:,:-1]=pbots
+            pedges[:,:,-1] = TOA
+            pmids=np.sqrt(pedges[:,:,:-1]*pedges[:,:,1:])
+        
+        self.pedges=pedges
+        self.attrs['pedges']={'units':'hPa','desc':'pressure edges'}
+        self.pmids=pmids
+        self.attrs['pmids']={'units':'hPa','desc':'pressure midpoints'}
+        
 
     def calculate_AMF(self, w, w_pmids, AMF_G, lat, lon, plotname=None, debug_levels=False):
         '''

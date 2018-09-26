@@ -1060,31 +1060,39 @@ def AMF_comparison_tc_ucx(month=datetime(2005,1,1)):
     #
     d0 = month
     dN = util.last_day(month)
-    ucx=GC_class.GC_sat(d0,dN,run='UCX') # [days, lats, lons,72]
-    trop=GC_class.GC_sat(d0,dN,run='tropchem') # [days, lats, lons, 47]
+    #ucx=GC_class.GC_sat(d0,dN,run='UCX') # [days, lats, lons,72]
+    #trop=GC_class.GC_sat(d0,dN,run='tropchem') # [days, lats, lons, 47]
+    # read one day at a time....
 
     ## To calculate AMFs we need scattering weights from satellite swath files
     #
-
+    lats,lons,amfu,amft = [],[],[],[]
     for i, d in enumerate(util.list_days(d0, dN)):
-        omhcho = reprocess.get_good_pixel_list(d)
-
-        w=omhcho['omega']
-        w_pmids=omhcho['omega_pmids']
-        AMF_G=omhcho['AMF_G']
-        lat=omhcho['lat']
-        lon=omhcho['lon']
+        omhcho  = reprocess.get_good_pixel_list(d,getExtras=True)
+        ucx     = GC_class.GC_sat(d, run='UCX')
+        trop    = GC_class.GC_sat(d, run='tropchem')
+        w       = omhcho['omega'] # [47, 677...]
+        w_pmids = omhcho['omega_pmids'] #[47,677...]
+        AMF_G   = omhcho['AMF_G'] # [677...]
+        lat     = omhcho['lat']   # [677...]
+        lon     = omhcho['lon']   # [677...]
 
         print("Running amf calc for tropchem")
-        for arr in [w, w_pmids, AMF_G, lat, lon]:
-            print(np.shape(arr))
-            print('      ', arr)
-        trop_amf_z, trop_amf_s = trop.calculate_AMF(w[i], w_pmids[i], AMF_G[i], lat[i], lon[i], plotname=None, debug_levels=False)
-        print(trop_amf_z,trop_amf_s)
-        print("Running amf calc for UCX")
-        ucx_amf_z, ucx_amf_s = ucx.calculate_AMF(w[i], w_pmids[i], AMF_G[i], lat[i], lon[i], plotname=None, debug_levels=False)
-        print(ucx_amf_z,ucx_amf_s)
-        break
+        for j in range(len(AMF_G)):
+            trop_amf_z, trop_amf_s = trop.calculate_AMF(w[:,j], w_pmids[:,j], AMF_G[j], lat[j], lon[j], plotname=None, debug_levels=False)
+            ucx_amf_z, ucx_amf_s = ucx.calculate_AMF(w[:,j], w_pmids[:,j], AMF_G[j], lat[j], lon[j], plotname=None, debug_levels=False)
+            lats.append(lat[j])
+            lons.append(lon[j])
+            amfu.append(ucx_amf_z)
+            amft.append(trop_amf_z)
+    plt.figure(figsize=(14,10))
+    pp.density(np.array(amfu),color='m',label="UCX")
+    pp.density(np.array(amft),color='k',label="tropchem")
+    plt.title("AMF distributions")
+    plt.savefig("AMF_dists_trop_vs_ucx.png")
+    plt.close()
+    
+            
     return
 
 def OLD_compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):

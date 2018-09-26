@@ -36,7 +36,7 @@ from classes import GC_class
 from classes.omhchorp import omhchorp
 from classes.campaign import campaign
 import reprocess
-
+import concurrent.futures
 
 ##################
 #####GLOBALS######
@@ -1052,7 +1052,7 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
                         linear=False, region=region,
                         suptitle='%s surface amounts (full day avgs %s) [%s]'%(key,dstr,units[key]))
 
-def AMF_comparison_tc_ucx(month=datetime(2005,1,1)):
+def AMF_comparison_tc_ucx(month=datetime(2005,1,1),max_procs=14):
     '''
     Look at monthly averaged AMF using UCX and using tropchem
     '''
@@ -1063,11 +1063,12 @@ def AMF_comparison_tc_ucx(month=datetime(2005,1,1)):
     #ucx=GC_class.GC_sat(d0,dN,run='UCX') # [days, lats, lons,72]
     #trop=GC_class.GC_sat(d0,dN,run='tropchem') # [days, lats, lons, 47]
     # read one day at a time....
-
+    start=timeit.default_timer()
     ## To calculate AMFs we need scattering weights from satellite swath files
     #
     lats,lons,amfu,amft = [],[],[],[]
-    for i, d in enumerate(util.list_days(d0, dN)):
+    print("TESTING: NEED TO DO WHOLE MONTH")
+    for i, d in enumerate(util.list_days(datetime(2005,1,1), datetime(2005,1,2))):
         omhcho  = reprocess.get_good_pixel_list(d,getExtras=True)
         ucx     = GC_class.GC_sat(d, run='UCX')
         trop    = GC_class.GC_sat(d, run='tropchem')
@@ -1078,21 +1079,46 @@ def AMF_comparison_tc_ucx(month=datetime(2005,1,1)):
         lon     = omhcho['lon']   # [677...]
 
         print("Running amf calc for tropchem")
+        omegain,pmidsin,amfgin,latin,lonin=[],[],[],[],[]
         for j in range(len(AMF_G)):
-            trop_amf_z, trop_amf_s = trop.calculate_AMF(w[:,j], w_pmids[:,j], AMF_G[j], lat[j], lon[j], plotname=None, debug_levels=False)
-            ucx_amf_z, ucx_amf_s = ucx.calculate_AMF(w[:,j], w_pmids[:,j], AMF_G[j], lat[j], lon[j], plotname=None, debug_levels=False)
-            lats.append(lat[j])
-            lons.append(lon[j])
-            amfu.append(ucx_amf_z)
-            amft.append(trop_amf_z)
+
+            omegain.append(w[:,j])
+            pmidsin.append(w_pmids[:,j])
+            amfgin.append(AMF_G[j])
+            latin.append(lat[j])
+            lonin.append(lon[j])
+            lats.extend(lat)
+            lons.extend(lon)
+
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
+            #trop_amf_z, trop_amf_s = trop.calculate_AMF(...)
+            #ucx_amf_z, ucx_amf_s = ucx.calculate_AMF(w[:,j], w_pmids[:,j], AMF_G[j], lat[j], lon[j], plotname=None, debug_levels=False)
+            tropreturns=executor.map(trop.calculate_AMF,omegain,pmidsin,amfgin,latin,lonin)
+            ucxreturns=executor.map(ucx.calculate_AMF,omegain,pmidsin,amfgin,latin,lonin)
+            amft.extend([a for a,b in tropreturns])
+            amfu.extend([a for a,b in ucxreturns])
+
+
+    end=timeit.default_timer()
+    print("TIMEIT: took %6.2 minutes to run amf comparison"%(end-start/60.0))
+
+    # lets save since it takes so long to run...
+    fio.save_to_hdf5(month.strftime('Data/amfs_trop_ucx_%Y%m.h5'),
+                     arraydict={'amfu':amfu,'amft':amft,'lats':lats,'lons':lons,},
+                     attrdicts={'amfu':{'desc':'list of AMFs from UCX model output'},
+                                'amft':{'desc':'list of AMFs from tropchem model output'},})
+
+    #save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attrdicts={}, fattrs={},verbose=False)
+
     plt.figure(figsize=(14,10))
     pp.density(np.array(amfu),color='m',label="UCX")
     pp.density(np.array(amft),color='k',label="tropchem")
     plt.title("AMF distributions")
-    plt.savefig("AMF_dists_trop_vs_ucx.png")
+    plt.savefig(month.strftime("AMF_dists_trop_vs_ucx_%Y%m.png"))
     plt.close()
-    
-            
+
+
+
     return
 
 def OLD_compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):

@@ -1072,15 +1072,15 @@ def AMF_comparison_tc_ucx(month=datetime(2005,1,1),max_procs=14):
         omhcho  = reprocess.get_good_pixel_list(d,getExtras=True)
         ucx     = GC_class.GC_sat(d, run='UCX')
         trop    = GC_class.GC_sat(d, run='tropchem')
-        w       = omhcho['omega'] # [47, 677...]
-        w_pmids = omhcho['omega_pmids'] #[47,677...]
-        AMF_G   = omhcho['AMF_G'] # [677...]
-        lat     = omhcho['lat']   # [677...]
-        lon     = omhcho['lon']   # [677...]
+        w       = omhcho['omega'][:,0::50] # [47, 677...]
+        w_pmids = omhcho['omega_pmids'][:,0::50] #[47,677...]
+        AMF_G   = omhcho['AMF_G'][0::50] # [677...]
+        lat     = omhcho['lat'][0::50]   # [677...]
+        lon     = omhcho['lon'][0::50]   # [677...]
 
         print("Running amf calc for tropchem")
         omegain,pmidsin,amfgin,latin,lonin=[],[],[],[],[]
-        for j in range(len(AMF_G)):
+        for j in range(len(AMF_G)): # just do one pixel from each 50
 
             omegain.append(w[:,j])
             pmidsin.append(w_pmids[:,j])

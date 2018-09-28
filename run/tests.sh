@@ -1,12 +1,12 @@
 #!/bin/bash
 #PBS -P m19
-#PBS -q express
+#PBS -q normal
 #PBS -N script
-#PBS -l walltime=01:45:00
+#PBS -l walltime=04:45:00
 #PBS -l mem=50000MB
-#PBS -l cput=01:45:00
+#PBS -l cput=10:45:00
 #PBS -l wd
-#PBS -l ncpus=1
+#PBS -l ncpus=14
 #PBS -j oe
 
 #---------------------------------

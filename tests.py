@@ -1773,8 +1773,12 @@ if __name__ == '__main__':
     ## check smearing distributions and filtering
     # run 8/8/18 TODO: add version using midday smearing..
     #test_filters.smearing_threshold()
-    # check smearing vs NO2
-    test_filters.smearing_vs_NO2()
+    ## check smearing vs NO2
+    # TODO: THIS ONE
+    #test_filters.smearing_vs_NO2()
+    ## check smearing and yield
+    # TODO: Finish this one
+    test_filters.smearing_vs_yield()
 
     ######
     ### Tests to be sorted into files

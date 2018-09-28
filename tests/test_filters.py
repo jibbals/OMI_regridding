@@ -1220,6 +1220,96 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=__AUSREGIO
     plt.savefig(pname)
     print("Saved figure ",pname)
 
+def smearing_vs_yield(month=datetime(2005,1,1), hcho_life=2.5):
+    '''
+        Look at yield vs slopes and smearing, assuming hcho lasts <hcho_life> hours
+    '''
+    region = pp.__AUSREGION__
+    # loss rate (assuming loss only from chemistry)
+    k_hcho = 1/(hcho_life*3600) # in seconds
+
+    # read omhcho at one and halfed isoprene emissions
+    d0 = datetime(month.year, month.month, 1)
+    d1 = util.last_day(d0)
+    satfull         = GC_sat(d0, d1)
+    sathalf         = GC_sat(d0, d1, run='halfisop')
+    hcho_full       = satfull.O_hcho
+    hcho_half       = sathalf.O_hcho # molec/cm2
+    lats,lons       = satfull.lats,satfull.lons
+    emiss           = Hemco_diag(d0,d1)
+
+    days,eisop_full=emiss.daily_LT_averaged()
+    #eisop_units=emiss.attrs['E_isop_bio']['units'] # AtomC/cm2/s
+
+    aus=util.lat_lon_subset(lats,lons,region, [hcho_full,hcho_half,eisop_full], has_time_dim=True)
+    hcho_full, hcho_half, eisop_full = aus['data'][0],aus['data'][1],aus['data'][2]
+    lats,lons = aus['lats'],aus['lons']
+    S1 = np.zeros([len(lats),len(lons)]) + np.NaN
+    S2 = np.zeros([len(lats),len(lons)]) + np.NaN
+    B1 = np.zeros([len(lats),len(lons)]) + np.NaN
+    B2 = np.zeros([len(lats),len(lons)]) + np.NaN
+    # loop over lats,lons to get Slope in each gridsquare for the month
+    for i in range(len(lats)):
+        for j in range(len(lons)):
+            x  = eisop_full[:,i,j]
+            y  = hcho_full[:,i,j]
+            y2 = hcho_half[:,i,j]
+            S1tmp, B1tmp, r1, CIr, CIjm = RMA(x,y)
+            S2tmp, B2tmp, r2, CIr, CIjm = RMA(x/2.0,y2)
+            S1[i,j]=S1tmp
+            S2[i,j]=S2tmp
+            B1[i,j]=B1tmp
+            B2[i,j]=B2tmp
+
+
+    # hat{S}
+    smear       = (hcho_full-hcho_half)/(eisop_full/2.0)
+    smear[np.isinf(smear)] = np.NaN # don't use infinity
+    smear_units = 'molec$_{HCHO}$ s atom$_C^{-1}$'
+    smear_mean  = np.nanmean(smear,axis=0)
+
+    # figure top left: aus map of S
+    # bottom left: S1 vs S2 scatter plot of regressions
+    # right side: S1, S2, hat{S} distributions, second top axis showing yield
+    plt.figure(figsize=(14,10))
+    plt.subplot(3,2,1)
+    pp.createmap(S1,lats,lons,title="Slope on %s"%month.strftime("%Y%m"),
+                 vmin=500,vmax=5000,linear=True, aus=True)
+
+    plt.subplot(3,2,3)
+    plt.scatter(S1.flatten(),S2.flatten())
+    plt.xlim([-1000,10000])
+    plt.ylim([-1000,10000])
+    plt.plot([-1e4,1e5],[-1e4,1e5], '--k') # dashed 1 to 1 line
+    plt.xlabel("S1")
+    plt.ylabel("S2")
+
+    plt.subplot(3,2,5)
+    plt.scatter(B1.flatten(),B2.flatten())
+    #plt.xlim([1e13,1e15])
+    #plt.ylim([1e13,1e15])
+    plt.plot([-3e16,1e16],[-3e16,1e16], '--k') # dashed 1 to 1 line
+    plt.xlabel("B1")
+    plt.ylabel("B2")
+
+    # distribution
+    bins=np.arange(500,5001,250)
+    plt.subplot(1,2,2)
+    slope1 = S1.flatten()
+    slope1 = slope1[np.isfinite(slope1)]
+    slope2 = S2.flatten()
+    slope2 = slope2[np.isfinite(slope2)]
+    slopehat = smear_mean.flatten()
+    slopehat = slopehat[np.isfinite(slopehat)]
+    plt.hist(slope1,bins=bins, color='k')
+    plt.hist(slope2,bins=bins, color='r')
+    plt.hist(slopehat,bins=bins, color='m')
+
+    # top axis should be yield
+
+    plt.savefig('Figs/Filters/smearing_yield.png')
+
+
 def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
     '''
         test smearing creation process.

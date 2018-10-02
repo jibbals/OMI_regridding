@@ -257,6 +257,7 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
               region=__GLOBALREGION__, aus=False, linear=False,
               clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,
               ticks=None, cbarorient='bottom',
+              xticklabels=None,
               set_bad=None, set_under=None, set_over=None,
               pname=None,title=None,suptitle=None, smoothed=False,
               cmapname=None):
@@ -406,7 +407,8 @@ def createmap(data, lats, lons, make_edges=False, GC_shift=True,
         cbargs={'format':cbarfmt, 'ticks':ticks,
                 'size':'5%', 'pad':'1%', 'extend':'both'}
         cb=m.colorbar(cs, cbarorient, **cbargs)
-
+        if xticklabels is not None:
+            cb.ax.set_xticklabels(xticklabels)
 
         if clabel is not None:
             cb.set_label(clabel)

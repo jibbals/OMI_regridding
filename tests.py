@@ -1778,7 +1778,8 @@ if __name__ == '__main__':
     #test_filters.smearing_vs_NO2()
     ## check smearing and yield
     # TODO: Finish this one
-    test_filters.smearing_vs_yield()
+    #test_filters.smearing_vs_yield()
+    test_filters.smearing_vs_nox()
 
     ######
     ### Tests to be sorted into files

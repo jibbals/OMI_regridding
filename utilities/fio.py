@@ -886,7 +886,7 @@ def read_gchcho(date):
     return ret_data
 
 def read_omno2d_interpolated(date,latres=__LATRES__,lonres=__LONRES__):
-    ''' Read one day of OMNO2d data - for one day '''
+    ''' Read one day of OMNO2d data'''
 
     #vcdname='HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields/ColumnAmountNO2'
     #vcdcsname='HDFEOS/GRIDS/ColumnAmountNO2/Data_Fields/ColumnAmountNO2CloudScreened'

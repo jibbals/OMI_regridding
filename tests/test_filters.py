@@ -18,7 +18,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 # Local stuff
-from utilities import fio
+from utilities import fio, GMAO
 from utilities import plotting as pp
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
@@ -114,7 +114,7 @@ def smearing(month=datetime(2005,1,1), region=pp.__AUSREGION__):
 
     # hat{S}
     Shat       = (hcho_full-hcho_half)/(eisop_full/2.0)
-    Shat[np.isinf(Shat)] = np.NaN # don't use infinity
+    Shat[~np.isfinite(Shat)] = np.NaN # don't use infinity
 
     return S1, B1, S2, B2, Shat, days,lats,lons
 
@@ -1266,7 +1266,7 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=__AUSREGIO
     plt.savefig(pname)
     print("Saved figure ",pname)
 
-def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5):
+def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[500,4000]):
     '''
         Look at smearing and satellite no2
     '''
@@ -1276,23 +1276,36 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5):
 
     S1, B1, S2, B2, smear, days,lats,lons = smearing(month,region=region)
     smear_mean = np.nanmean(smear,axis=0) # average over time
+    smear_low = smear < smear_bounds[0]
+    smear_high = smear > smear_bounds[1]
+    smear_filter =  smear_low + smear_high
 
-    # read NO2 from omno2d
+
+    # read NO2 from omno2d at GEOS CHEM resolution
     d0 = datetime(month.year, month.month, 1)
     d1 = util.last_day(d0)
-    omno2d, omno2dattrs = fio.read_omno2d(d0,d1,max_procs=4) # ~ 1e13-1e17 molec/cm2
-    #ret={'tropno2':no2,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
+    omno2d, omno2dattrs = fio.read_omno2d(d0,d1,max_procs=4,
+                                          latres=GMAO.__LATRES_GC__,
+                                          lonres=GMAO.__LONRES_GC__,) # ~ 1e13-1e17 molec/cm2
     no2=omno2d['tropno2']
+
+    # just take aus region
     no2 = util.lat_lon_subset(omno2d['lats'],omno2d['lons'],
                               region=region, data=[no2],
                               has_time_dim=True)['data'][0]
     no2_mean=np.nanmean(no2,axis=0) # average the month
 
+    # filtered version of no2 and smearing
+    fno2                 = np.copy(no2)
+    fsmear               = np.copy(smear)
+    fno2[smear_filter]   = np.NaN
+    fsmear[smear_filter] = np.NaN
 
-    # figure top left: aus map of NO2
+
+    ## figure top left: aus map of NO2
     # bottom left: NO2 vs Shat scatter plot of regressions
     # right side: Distributions of smearing binned by NO2 levels
-    plt.figure(figsize=(14,10))
+    plt.figure(figsize=(14,14))
     plt.subplot(2,2,1)
     pp.createmap(no2_mean,lats,lons,
                  title="OMNO2d on %s"%month.strftime("%Y%m"),aus=True,linear=True)
@@ -1302,42 +1315,75 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5):
 
 
     plt.subplot(2,2,3)
-    plt.scatter(smear.flatten(), no2.flatten())
+    plt.scatter(smear.flatten(), no2.flatten(), color='orange')
     #slims = [-1e4,8e4] # plot limits for slopes
     #plt.xlim(slims)
     #plt.ylim(slims)
     #plt.plot(slims,slims, '--k') # dashed 1 to 1 line
-    plt.xlabel("$\hat{S}")
-    plt.ylabel("OMNO2d")
+    plt.ylabel("$\hat{S}$")
+    plt.xlabel("NO$_2$ [molec cm$^{-2}$]")
+    #plt.title('unfiltered regression $\hat{S} = m NO$_2$ + b$')
+    # Again regression after filtering outside smearing bounds.
 
-    #    plt.subplot(3,2,5)
-    #    plt.scatter(B1.flatten(),B2.flatten())
-    #    blims=[-2.4e16,1e16] # plot limits for background hcho levels
-    #    plt.plot(blims,blims, '--k') # dashed 1 to 1 line
-    #    plt.xlim(blims)
-    #    plt.ylim(blims)
-    #    plt.xlabel("B1")
-    #    plt.ylabel("B2")
+    #pp.plot_regression(fno2.flatten(), fsmear.flatten(), logscale=False,
+    #                   colour='magenta')
+    plt.scatter(fsmear.flatten(), fno2.flatten(), color='magenta')
 
-    # distribution binned by NO2
-    no2lims=[1e13,1e17]
-    bins=np.logspace(13,17,20,base=10) # 1e13-1e17 ish
+    ## distribution binned by NO2
+    no2lims=[1e14,1e15]
+    #bins=np.logspace(14,15,20,base=10) # 1e13-1e17 ish
+    bins=np.linspace(5e13,1e15,21)
     plt.subplot(1,2,2)
+    plt.plot(no2[smear_high], smear[smear_high], 'ro', alpha=0.7, zorder=-32)
+    plt.plot(no2[smear_low], smear[smear_low], 'bo', alpha=0.7, zorder=-32)
+    plt.plot(no2[~smear_filter], smear[~smear_filter], 'ko', alpha=0.7, zorder=-32)
+    ymax=np.nanmax(smear)
+    plt.ylim(1,ymax)
 
     # y binned by x
-    no2=no2.flatten()
-    smear=smear.flatten()
-    n, _   = np.histogram(no2, bins=bins) # number in each bin
-    sy, _  = np.histogram(no2, bins=bins, weights=smear) # sum per bin
-    sy2, _ = np.histogram(no2, bins=bins, weights=smear*smear) # sum of y^2 per bin
+    X=no2.flatten()
+    fX = fno2.flatten()
+    Y=smear.flatten()
+    fY=fsmear.flatten()
+    # remove all nans first
+    nans = np.isnan(X) + np.isnan(Y)
+    fnans = np.isnan(fX) + np.isnan(fY)
+
+    X=X[~nans]
+    Y=Y[~nans]
+    fX = fX[~fnans]
+    fY = fY[~fnans]
+
+    n, _   = np.histogram(X,range=(bins[0],bins[-1]), bins=bins) # number in each bin
+    sy, _  = np.histogram(X,range=(bins[0],bins[-1]), bins=bins, weights=Y) # sum per bin
+    sy2, _ = np.histogram(X,range=(bins[0],bins[-1]), bins=bins, weights=Y*Y) # sum of y^2 per bin
     mean   = sy / n # mean per bin
     std    = np.sqrt(sy2/n - mean*mean) # stdev per bin
+    #, add error bar of Y
+    plt.errorbar((_[1:] + _[:-1])/2 - 1e14, mean, yerr=std, lolims=True, # don't show down error bars
+                  linewidth=2, color='orange',fmt='-', barsabove=True)
+
+    # add error bar of fY
+    fn, _   = np.histogram(fX,range=(bins[0],bins[-1]), bins=bins) # number in each bin
+    fsy, _  = np.histogram(fX,range=(bins[0],bins[-1]), bins=bins, weights=fY) # sum per bin
+    fsy2, _ = np.histogram(fX,range=(bins[0],bins[-1]), bins=bins, weights=fY*fY) # sum of y^2 per bin
+    fmean   = fsy / fn # mean per bin
+    fstd    = np.sqrt(fsy2/fn - fmean*fmean) # stdev per bin
 
     #, add error bar of y
-    plt.plot(no2, smear, 'ko')
-    plt.errorbar((_[1:] + _[:-1])/2, mean, yerr=std, fmt='r-')
+    plt.errorbar((_[1:] + _[:-1])/2 + 1e14, fmean, yerr=fstd,
+                  linewidth=2, color='magenta',fmt='-', barsabove=True)
+
+
     plt.xlim(no2lims)
-    plt.gca().set_xscale('log')
+    #plt.gca().set_xscale('log')
+    plt.gca().set_yscale('log')
+
+    plt.ylabel('$\hat{S}$')
+    plt.xlabel('NO$_2$')
+
+    ## Now do the same thing but using smear filtered data
+
 
     plt.savefig('Figs/Filters/smearing_nox.png')
 

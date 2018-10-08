@@ -1100,7 +1100,7 @@ def AMF_comparison_tc_ucx(month=datetime(2005,1,1),max_procs=14):
 
 
     end=timeit.default_timer()
-    print("TIMEIT: took %6.2 minutes to run amf comparison"%(end-start/60.0))
+    print("TIMEIT: took %6.2f minutes to run amf comparison"%(end-start/60.0))
 
     # lets save since it takes so long to run...
     fio.save_to_hdf5(month.strftime('Data/amfs_trop_ucx_%Y%m.h5'),

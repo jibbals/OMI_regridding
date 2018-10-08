@@ -62,8 +62,22 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-fio.make_anthro_mask_file(d0)
+# check how many pixels in normal vs pp day/month
+day=omhchorp(d0)
+month=omhchorp(d0,d1)
 
+inds_aus = day.inds_aus(maskocean=False)
+
+pp = day.data['AMF_PP'][inds_aus]
+gc = day.data['AMF_GC'][inds_aus]
+ppm = month.data['AMF_PP'][:,inds_aus]
+gcm = month.data['AMF_GC'][:,inds_aus]
+
+
+print(np.sum(~np.isnan(pp)),' good pp entries (1 day)')
+print(np.sum(~np.isnan(gc)),' good gc entries (1 day)')
+print(np.sum(~np.isnan(ppm)),' good pp entries (1 month)')
+print(np.sum(~np.isnan(gcm)),' good gc entries (1 month)')
 
 
 ###########

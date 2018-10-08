@@ -1,0 +1,237 @@
+create_omhchorp called for 20080101
+WARNING: NO-SOIL_NO not in dataset
+WARNING: IJ-AVG-$_O3 not in dataset
+WARNING: BIOBSRCE_CH20 not in dataset
+WARNING: BXHGHT-$_N(AIR) not in dataset
+WARNING: TR-PAUSE_TP-LEVEL not in dataset
+WARNING: DXYP_DXYP not in dataset
+WARNING: ANTHSRCE_NO not in dataset
+WARNING: time not in dataset
+WARNING: BIOBSRCE_NO not in dataset
+WARNING: IJ-AVG-$_NO2 not in dataset
+WARNING: BXHGHT-$_AVGW not in dataset
+WARNING: BXHGHT-$_AD not in dataset
+(144, 91, 47) 1 91 144 47
+IJ-AVG-$_CH2O
+READING IJ-AVG-$_CH2O(now hcho) (144, 91, 47)(now (91, 144, 47))
+          full_name:    CH2O tracer
+     original_shape:  (144, 91, 47)
+              units:           ppbv
+(144, 91, 47) 1 91 144 47
+BXHGHT-$_BXHEIGHT
+READING BXHGHT-$_BXHEIGHT(now boxH) (144, 91, 47)(now (91, 144, 47))
+          full_name:Grid box height
+     original_shape:  (144, 91, 47)
+              units:m                                       
+(144, 91, 47) 1 91 144 47
+TR-PAUSE_TPLEV
+READING TR-PAUSE_TPLEV(now tplev) (144, 91, 47)(now (91, 144, 47))
+          full_name:Averaged tropopause level
+     original_shape:  (144, 91, 47)
+              units:level                                   
+READING modification_times(now modification_times) (1,)(now (1,))
+READING lon(now lons) (144,)(now (144,))
+              units:   degrees_east
+(144, 91, 47) 1 91 144 47
+CHEM-L=$_OH
+READING CHEM-L=$_OH(now OH) (144, 91, 47)(now (91, 144, 47))
+          full_name:Chemically produced OH
+     original_shape:  (144, 91, 47)
+              units:molec/cm3                               
+(144, 91, 47) 1 91 144 47
+IJ-AVG-$_ISOP
+READING IJ-AVG-$_ISOP(now isop) (144, 91, 47)(now (91, 144, 47))
+          full_name:    ISOP tracer
+     original_shape:  (144, 91, 47)
+              units:           ppbC
+(144, 91, 47) 1 91 144 47
+DAO-3D-$_TMPU
+READING DAO-3D-$_TMPU(now temp) (144, 91, 47)(now (91, 144, 47))
+          full_name:GMAO TMPU field
+     original_shape:  (144, 91, 47)
+              units:K                                       
+(144, 91, 47) 1 91 144 47
+BIOGSRCE_ISOP
+READING BIOGSRCE_ISOP(now E_isop_bio) (144, 91, 47)(now (91, 144, 47))
+          full_name: ISOP emissions
+     original_shape:  (144, 91, 47)
+              units:atomC/cm2/s                             
+READING time(now time) (1,)(now (1,))
+READING lev(now press) (47,)(now (47,))
+      standard_name:atmosphere_hybrid_sigma_pressure_coordinate
+               axis:              Z
+(144, 91, 47) 1 91 144 47
+TIME-SER_AIRDEN
+TIME-SER_AIRDEN (91, 144, 47) surface N_air: 2.51441e+19
+attrs          :     values
+         number:              7
+       category:       TIME-SER
+          scale:            1.0
+          molwt:            0.0
+              C:              1
+    hydrocarbon:          False
+           unit:molec/cm3                               
+           name:         AIRDEN
+       chemical:          False
+         tracer:          19007
+      full_name:    Air density
+ original_shape:  (144, 91, 47)
+         origin:      (1, 1, 1)
+READING TIME-SER_AIRDEN(now N_air) (144, 91, 47)(now (91, 144, 47))
+          full_name:    Air density
+     original_shape:  (144, 91, 47)
+          orig_unit:molec/cm3                               
+              units:      molec/cm3
+READING lat(now lats) (91,)(now (91,))
+              units:  degrees_north
+(144, 91, 47) 1 91 144 47
+PEDGE-$_PSURF
+READING PEDGE-$_PSURF(now psurf) (144, 91, 47)(now (91, 144, 47))
+          full_name:Surface pressure
+     original_shape:  (144, 91, 47)
+              units:hPa                                     
+(144, 91, 47) 1 91 144 47
+DAO-FLDS_TS
+READING DAO-FLDS_TS(now surftemp) (144, 91, 47)(now (91, 144, 47))
+          full_name:  GMAO TS field
+     original_shape:  (144, 91, 47)
+              units:K                                       
+CHECK:hcho (91, 144, 47), mean = 1.41e-01 ppbv
+CHECK:O_hcho (91, 144), mean=2.77e+15 molec/cm2
+15 omhcho files for 2008-01-01 00:00:00
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1517-o18427_v003-2014m0623t100800.he5
+44577 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1517-o18427_v003-2014m0623t100800.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1021-o18424_v003-2014m0623t101041.he5
+43863 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1021-o18424_v003-2014m0623t101041.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1200-o18425_v003-2014m0623t100420.he5
+44239 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1200-o18425_v003-2014m0623t100420.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0028-o18418_v003-2014m0623t100154.he5
+44231 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0028-o18418_v003-2014m0623t100154.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1835-o18429_v003-2014m0623t100846.he5
+43941 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1835-o18429_v003-2014m0623t100846.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0524-o18421_v003-2014m0623t100742.he5
+43531 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0524-o18421_v003-2014m0623t100742.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0703-o18422_v003-2014m0623t100432.he5
+44268 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0703-o18422_v003-2014m0623t100432.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0345-o18420_v003-2014m0623t100457.he5
+43573 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0345-o18420_v003-2014m0623t100457.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t2014-o18430_v003-2014m0623t101116.he5
+44267 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t2014-o18430_v003-2014m0623t101116.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t2332-o18432_v003-2014m0623t100748.he5
+44126 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t2332-o18432_v003-2014m0623t100748.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0206-o18419_v003-2014m0623t100519.he5
+43693 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0206-o18419_v003-2014m0623t100519.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t2153-o18431_v003-2014m0623t101058.he5
+44510 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t2153-o18431_v003-2014m0623t101058.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0842-o18423_v003-2014m0623t100530.he5
+44269 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t0842-o18423_v003-2014m0623t100530.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1339-o18426_v003-2014m0623t100411.he5
+44321 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1339-o18426_v003-2014m0623t100411.he5
+trying to read Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1656-o18428_v003-2014m0623t101228.he5
+43090 good pixels in Data/omhcho/2008/OMI-Aura_L2-OMHCHO_2008m0101t1656-o18428_v003-2014m0623t101228.he5
+35 of the PP_AMFs are < 0 on 20080101
+mean PP_AMF from Data/pp_amf/tropchem/amf_20080101.csv = 1.481393
+WARNING: time not in dataset
+(31, 144, 91, 47) 31 91 144 47
+IJ-AVG-$_CH2O
+READING IJ-AVG-$_CH2O(now hcho) (31, 144, 91, 47)(now (31, 91, 144, 47))
+          full_name:    CH2O tracer
+     original_shape:  (144, 91, 47)
+              units:           ppbv
+(31, 144, 91, 47) 31 91 144 47
+BXHGHT-$_BXHEIGHT
+READING BXHGHT-$_BXHEIGHT(now boxH) (31, 144, 91, 47)(now (31, 91, 144, 47))
+          full_name:Grid box height
+     original_shape:  (144, 91, 47)
+              units:m                                       
+READING lev(now press) (47,)(now (47,))
+      standard_name:atmosphere_hybrid_sigma_pressure_coordinate
+               axis:              Z
+(31, 144, 91, 47) 31 91 144 47
+TIME-SER_AIRDEN
+TIME-SER_AIRDEN (31, 91, 144, 47) surface N_air: 2.51432e+19
+attrs          :     values
+         number:              7
+       category:       TIME-SER
+          scale:            1.0
+          molwt:            0.0
+              C:              1
+    hydrocarbon:          False
+           unit:molec/cm3                               
+           name:         AIRDEN
+       chemical:          False/apps/python3/3.5.2/lib/python3.5/site-packages/numpy-1.11.1-py3.5-linux-x86_64.egg/numpy/lib/function_base.py:3569: RuntimeWarning: Invalid value encountered in median
+  RuntimeWarning)
+
+         tracer:          19007
+      full_name:    Air density
+ original_shape:  (144, 91, 47)
+         origin:      (1, 1, 1)
+READING TIME-SER_AIRDEN(now N_air) (31, 144, 91, 47)(now (31, 91, 144, 47))
+          full_name:    Air density
+     original_shape:  (144, 91, 47)
+          orig_unit:molec/cm3                               
+              units:      molec/cm3
+READING lat(now lats) (91,)(now (91,))
+              units:  degrees_north
+READING lon(now lons) (144,)(now (144,))
+              units:   degrees_east
+READING modification_times(now modification_times) (31,)(now (31,))
+READING time(now time) (31,)(now (31,))
+CHECK:hcho (31, 91, 144, 47), mean = 1.40e-01 ppbv
+CHECK:O_hcho (31, 91, 144), mean=2.75e+15 molec/cm2
+Reading  Data/MOD14A1_D_FIRE/2008/MOD14A1_D_FIRE_2008-01-01.CSV
+TIMEIT: it took 141.58 seconds to read the day of fire
+Reading AAOD from  Data/OMAERUVd/OMI-Aura_L3-OMAERUVd_2008m0101_v003-2017m0821t134457.he5
+Creating masks now
+VERBOSE: make_fire_mask will return rolling 3 day fire masks between  2008-01-01 00:00:00 - 2008-01-01 00:00:00
+VERBOSE: They will filter gridsquares with more than 1 fire pixels detected
+Reading  Data/MOD14A1_D_FIRE/2007/MOD14A1_D_FIRE_2007-12-30.CSV
+TIMEIT: it took 141.43 seconds to read the day of fire
+Reading  Data/MOD14A1_D_FIRE/2007/MOD14A1_D_FIRE_2007-12-31.CSV
+TIMEIT: it took 140.46 seconds to read the day of fire
+Reading  Data/MOD14A1_D_FIRE/2008/MOD14A1_D_FIRE_2008-01-01.CSV
+TIMEIT: it took 142.52 seconds to read the day of fire
+Making smoke mask for 2008-01-01 00:00:00 - 2008-01-01 00:00:00
+Smoke mask being created for any square with aaod > 0.030
+Reading AAOD from  Data/OMAERUVd/OMI-Aura_L3-OMAERUVd_2008m0101_v003-2017m0821t134457.he5
+reading  Data/OMNO2d/data/OMI-Aura_L3-OMNO2d_2008m0101_v003-2018m0626t175046.he5
+reading from file Data/OMNO2d/yearavg_2008.h5
+lats
+Traceback (most recent call last):
+  File "<stdin>", line 6, in <module>
+  File "/short/m19/jwg574/OMI_regridding/reprocess.py", line 452, in create_omhchorp
+    anthromask,_adates,_alats,_alons=fio.make_anthro_mask(date)
+  File "/short/m19/jwg574/OMI_regridding/utilities/fio.py", line 1031, in make_anthro_mask
+    no2mean,_lats,_lons=yearly_anthro_avg(d0,latres=latres,lonres=lonres,region=region)
+  File "/short/m19/jwg574/OMI_regridding/utilities/fio.py", line 907, in yearly_anthro_avg
+    omno2, omno2_attrs = read_hdf5(filepath)
+  File "/short/m19/jwg574/OMI_regridding/utilities/fio.py", line 277, in read_hdf5
+    retstruct[key]=in_f[key].value
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper (/short/m19/jwg574/tmp/pip-build-nrt9ivfh/h5py/h5py/_objects.c:2677)
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper (/short/m19/jwg574/tmp/pip-build-nrt9ivfh/h5py/h5py/_objects.c:2635)
+  File "/home/574/jwg574/.local/lib/python3.5/site-packages/h5py/_hl/dataset.py", line 246, in value
+    return self[()]
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper (/short/m19/jwg574/tmp/pip-build-nrt9ivfh/h5py/h5py/_objects.c:2677)
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper (/short/m19/jwg574/tmp/pip-build-nrt9ivfh/h5py/h5py/_objects.c:2635)
+  File "/home/574/jwg574/.local/lib/python3.5/site-packages/h5py/_hl/dataset.py", line 494, in __getitem__
+    self.id.read(mspace, fspace, arr, mtype, dxpl=self._dxpl)
+  File "h5py/_objects.pyx", line 54, in h5py._objects.with_phil.wrapper (/short/m19/jwg574/tmp/pip-build-nrt9ivfh/h5py/h5py/_objects.c:2677)
+  File "h5py/_objects.pyx", line 55, in h5py._objects.with_phil.wrapper (/short/m19/jwg574/tmp/pip-build-nrt9ivfh/h5py/h5py/_objects.c:2635)
+  File "h5py/h5d.pyx", line 181, in h5py.h5d.DatasetID.read (/short/m19/jwg574/tmp/pip-build-nrt9ivfh/h5py/h5py/h5d.c:3230)
+  File "h5py/_proxy.pyx", line 130, in h5py._proxy.dset_rw (/short/m19/jwg574/tmp/pip-build-nrt9ivfh/h5py/h5py/_proxy.c:1857)
+  File "h5py/_proxy.pyx", line 84, in h5py._proxy.H5PY_H5Dread (/short/m19/jwg574/tmp/pip-build-nrt9ivfh/h5py/h5py/_proxy.c:1505)
+OSError: Can't read data (Inflate() failed)
+Finished job 9450566.r-man2
+
+======================================================================================
+                  Resource Usage on 2018-08-25 01:01:49:
+   Job Id:             9450566.r-man2
+   Project:            m19
+   Exit Status:        0
+   Service Units:      0.33
+   NCPUs Requested:    1                      NCPUs Used: 1               
+                                           CPU Time Used: 00:18:16                                   
+   Memory Requested:   9.77GB                Memory Used: 1.12GB          
+   Walltime requested: 03:00:00            Walltime Used: 00:20:05        
+   JobFS requested:    100.0MB                JobFS used: 0B              
+======================================================================================

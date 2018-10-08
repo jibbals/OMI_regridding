@@ -62,7 +62,6 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-# check how many pixels in normal vs pp day/month
 day=omhchorp(d0)
 month=omhchorp(d0,d1)
 

@@ -62,7 +62,11 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-fio.make_anthro_mask_file(d0)
+# read and rewrite altered isoprene mask file
+
+#with xarray.open_dataset('Data/isoprene_scale_mask.nc') as isop:
+    # set subset of australia to zero:
+    #print(isop.keys())
 
 
 

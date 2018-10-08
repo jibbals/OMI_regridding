@@ -154,9 +154,13 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     pixels_PP_u           = OMHsub['ppentries']
     uncert                = OMHsub['col_uncertainty_OMI']
 
-    firemask              = fio.make_fire_mask(day0, dayn, region=region)
-    smokemask             = fio.make_smoke_mask(day0, dayn, region=region)
-    anthromask            = fio.make_anthro_mask(day0, dayn, region=region)
+    # instead of having masks in this file, we can pull them from their own files
+    #firemask              = fio.make_fire_mask(day0, dayn, region=region)
+    #smokemask             = fio.make_smoke_mask(day0, dayn, region=region)
+    #anthromask            = fio.make_anthro_mask(day0, dayn, region=region)
+    firemask              = fio.get_fire_mask(day0,dN=dayn,region=region)
+    smokemask             = fio.get_smoke_mask(day0,dN=dayn, region=region)
+    anthromask            = fio.get_anthro_mask(day0,dN=dayn, region=region)
     firefilter            = firemask+smokemask
     anthrofilter          = anthromask
 
@@ -492,67 +496,67 @@ def smearing(month, region=pp.__AUSREGION__, pname=None, midday=True):
 
     return sub['data'][0], days, sub['lats'], sub['lons']
 
-def OLD_smearing(month, region=pp.__AUSREGION__, pname=None):
-    '''
-        Read full and half isop bpch output, calculate smearing
-        S = d column_HCHO / d E_isop
-        TODO:
-            can use tavg for monthly avg smearing or satellite overpass output
-            for midday daily smearing
-    '''
-    if __VERBOSE__:
-        print('calculating smearing over ',region,' in month ',month)
-
-    full=GC_class.GC_tavg(month, run='tropchem')
-    half=GC_class.GC_tavg(month, run='halfisop') # month avg right now
-
-    lats=full.lats
-    lons=full.lons
-
-    assert all(lats == half.lats), "Lats between runs don't match"
-
-    full_month=full.month_average(keys=['O_hcho','E_isop_bio'])
-    half_month=half.month_average(keys=['O_hcho','E_isop_bio'])
-    f_hcho=full_month['O_hcho'] # molec/cm2
-    h_hcho=half_month['O_hcho'] # molec/cm2
-    f_E_isop=full_month['E_isop_bio'] # molec/cm2/s
-    h_E_isop=half_month['E_isop_bio'] # molec/cm2/s
-
-    dlist=[f_hcho,h_hcho,f_E_isop,h_E_isop]
-    #for ddata in dlist:
-    #    print('nanmean ',np.nanmean(ddata))
-    sub=util.lat_lon_subset(lats,lons,region,dlist)
-    lats=sub['lats']
-    lons=sub['lons']
-    f_hcho=sub['data'][0]
-    h_hcho=sub['data'][1]
-    f_E_isop=sub['data'][2]
-    h_E_isop=sub['data'][3]
-    #for ddata in [f_hcho,h_hcho,f_E_isop,h_E_isop]:
-    #    print('nanmean after subsetting',np.nanmean(ddata))
-
-    # where emissions are zero, smearing is infinite, ignore warning:
-    with np.errstate(divide='ignore'):
-        S = (f_hcho - h_hcho) / (f_E_isop - h_E_isop) # s
-
-    #print("emissions from Full,Half:",np.sum(f_E_isop),np.sum(h_E_isop))
-    #print("O_hcho from Full, Half:",np.sum(f_hcho),np.sum(h_hcho))
-    # ignore squares when emissions are zero
-    S[f_E_isop <= 0] = np.NaN
-
-    print("S shape:",S.shape)
-    print("Average S:",np.nanmean(S))
-    if pname is not None:
-        pp.InitMatplotlib()
-        mstr=month.strftime("%Y%m")
-
-        #pp.createmap(f_hcho,lats,lons,latlon=True,edges=False,linear=True,pname=pname,title='f_hcho')
-        # lie about edges...
-        pp.createmap(S,lats,lons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
-                     linear=True, vmin=1000, vmax=10000,
-                     clabel='S', pname=pname, title='Smearing %s'%mstr)
-
-    return S, lats,lons
+#def OLD_smearing(month, region=pp.__AUSREGION__, pname=None):
+#    '''
+#        Read full and half isop bpch output, calculate smearing
+#        S = d column_HCHO / d E_isop
+#        TODO:
+#            can use tavg for monthly avg smearing or satellite overpass output
+#            for midday daily smearing
+#    '''
+#    if __VERBOSE__:
+#        print('calculating smearing over ',region,' in month ',month)
+#
+#    full=GC_class.GC_tavg(month, run='tropchem')
+#    half=GC_class.GC_tavg(month, run='halfisop') # month avg right now
+#
+#    lats=full.lats
+#    lons=full.lons
+#
+#    assert all(lats == half.lats), "Lats between runs don't match"
+#
+#    full_month=full.month_average(keys=['O_hcho','E_isop_bio'])
+#    half_month=half.month_average(keys=['O_hcho','E_isop_bio'])
+#    f_hcho=full_month['O_hcho'] # molec/cm2
+#    h_hcho=half_month['O_hcho'] # molec/cm2
+#    f_E_isop=full_month['E_isop_bio'] # molec/cm2/s
+#    h_E_isop=half_month['E_isop_bio'] # molec/cm2/s
+#
+#    dlist=[f_hcho,h_hcho,f_E_isop,h_E_isop]
+#    #for ddata in dlist:
+#    #    print('nanmean ',np.nanmean(ddata))
+#    sub=util.lat_lon_subset(lats,lons,region,dlist)
+#    lats=sub['lats']
+#    lons=sub['lons']
+#    f_hcho=sub['data'][0]
+#    h_hcho=sub['data'][1]
+#    f_E_isop=sub['data'][2]
+#    h_E_isop=sub['data'][3]
+#    #for ddata in [f_hcho,h_hcho,f_E_isop,h_E_isop]:
+#    #    print('nanmean after subsetting',np.nanmean(ddata))
+#
+#    # where emissions are zero, smearing is infinite, ignore warning:
+#    with np.errstate(divide='ignore'):
+#        S = (f_hcho - h_hcho) / (f_E_isop - h_E_isop) # s
+#
+#    #print("emissions from Full,Half:",np.sum(f_E_isop),np.sum(h_E_isop))
+#    #print("O_hcho from Full, Half:",np.sum(f_hcho),np.sum(h_hcho))
+#    # ignore squares when emissions are zero
+#    S[f_E_isop <= 0] = np.NaN
+#
+#    print("S shape:",S.shape)
+#    print("Average S:",np.nanmean(S))
+#    if pname is not None:
+#        pp.InitMatplotlib()
+#        mstr=month.strftime("%Y%m")
+#
+#        #pp.createmap(f_hcho,lats,lons,latlon=True,edges=False,linear=True,pname=pname,title='f_hcho')
+#        # lie about edges...
+#        pp.createmap(S,lats,lons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
+#                     linear=True, vmin=1000, vmax=10000,
+#                     clabel='S', pname=pname, title='Smearing %s'%mstr)
+#
+#    return S, lats,lons
 
 if __name__=='__main__':
     print('Inversion has been called...')

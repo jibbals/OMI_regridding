@@ -1347,35 +1347,30 @@ def get_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires__
 
     # look for file first
     path=__dir_fire__+d0.strftime('firemask_%Y.h5')
-    firemask = None
 
     assert isfile(path), "NO FIREMASK FILE CREATED: "+path
     data, attrs = read_hdf5(path)
     # check file uses settings we want
-    if (attrs['prior_days_masked']['value'] == prior_days_masked) \
+    assert (attrs['prior_days_masked']['value'] == prior_days_masked) \
         and (attrs['fire_thresh']['value'] == fire_thresh) \
         and (attrs['adjacent']['value'] == adjacent) \
         and (attrs['latres']['value'] == latres) \
-        and (attrs['lonres']['value'] == lonres):
-        firemask=data['firemask']
-        dates=data['dates']
-        lats=data['lats']
-        lons=data['lons']
-        # subset to requested dates, lats and lons
-        di = util.date_index(d0,dates,dN=dN)
-        subset=util.lat_lon_subset(lats,lons,[firemask],has_time_dim=True)
+        and (attrs['lonres']['value'] == lonres), "FIREMASK ATTRIBUTES ARE UNEXPECTED"
+
+    firemask=data['firemask']
+    dates=data['dates']
+    lats=data['lats']
+    lons=data['lons']
+    # subset to requested dates, lats and lons
+    di = util.date_index(d0,dates,dN=dN)
+    if region is not None:
+        subset=util.lat_lon_subset(lats,lons,region=region,[firemask],has_time_dim=True)
         firemask=subset['data'][0]
-        firemask=firemask[di]
         lats=subset['lats']
         lons=subset['lons']
-        dates=np.array(dates)[di]
-    #    if firemask is None:
-    #        #if __VERBOSE__:
-    #        print ("WARNING: creating fire mask rather than reading firemask file, this is slow")
-    #        firemask,dates,lats,lons=make_fire_mask(d0,dN,prior_days_masked=prior_days_masked,
-    #                                                fire_thresh=fire_thresh,adjacent=adjacent,
-    #                                                latres=latres,lonres=lonres,region=region)
 
+    firemask=firemask[di]
+    dates=np.array(dates)[di]
     return firemask,dates,lats,lons
 
 def get_anthro_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
@@ -1391,7 +1386,14 @@ def get_anthro_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
     lats=data['lats']
     lons=data['lons']
     dates=util.date_from_gregorian(data['dates'])
+
+    # subset to desired time/area
     di=util.date_index(d0,dates,dN) # indices of dates from d0 to dN
+    if region is not None:
+        subset=util.lat_lon_subset(lats,lons,region=region,[mask],has_time_dim=True)
+        mask=subset['data'][0]
+        lats=subset['lats']
+        lons=subset['lons']
 
     return mask[di],dates[di],lats,lons
 
@@ -1406,7 +1408,14 @@ def get_smoke_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
     lats=data['lats']
     lons=data['lons']
     dates=util.date_from_gregorian(data['dates'])
+
+    # subset to desired time/area
     di=util.date_index(d0,dates,dN) # indices of dates from d0 to dN
+    if region is not None:
+        subset=util.lat_lon_subset(lats,lons,region=region,[mask],has_time_dim=True)
+        mask=subset['data'][0]
+        lats=subset['lats']
+        lons=subset['lons']
 
     return mask[di],dates[di],lats,lons
 

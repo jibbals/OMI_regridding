@@ -1305,35 +1305,41 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[500,4
     ## figure top left: aus map of NO2
     # bottom left: NO2 vs Shat scatter plot of regressions
     # right side: Distributions of smearing binned by NO2 levels
-    plt.figure(figsize=(14,14))
-    plt.subplot(2,2,1)
+    plt.figure(figsize=(12,14))
+    plt.subplot(3,2,1)
     pp.createmap(no2_mean,lats,lons,
                  title="OMNO2d on %s"%month.strftime("%Y%m"),aus=True,linear=True)
                  #vmin=500,vmax=5000,linear=True,
                  #ticks=[500,2000,3500,5000],
                  #xticklabels=['500','2000','3500','5000'])
 
+    ## Plot NO2 vs Shat
+    no2lims=[1e14,1e15]
+    slims=[-1e3,3e4]
+    plt.subplot(3,2,3)
+    plt.scatter(no2.flatten(), smear.flatten(), color='orange')
+    plt.scatter(fno2.flatten(), fsmear.flatten(), color='magenta')
+    plt.ylabel("$\hat{S}$")
+    #plt.xlabel("NO$_2$ [molec cm$^{-2}$]")
 
-    plt.subplot(2,2,3)
-    plt.scatter(smear.flatten(), no2.flatten(), color='orange')
-    #slims = [-1e4,8e4] # plot limits for slopes
-    #plt.xlim(slims)
-    #plt.ylim(slims)
-    #plt.plot(slims,slims, '--k') # dashed 1 to 1 line
+    ## Plot again but zoomed in with regression
+    plt.subplot(3,2,5)
+    plt.scatter(no2.flatten(), smear.flatten(), color='orange')
+    #plt.scatter(fno2.flatten(), fsmear.flatten(), color='magenta')
+    pp.plot_regression(fno2.flatten(), fsmear.flatten(), legendfont=16,
+                       logscale=False, colour='magenta')
     plt.ylabel("$\hat{S}$")
     plt.xlabel("NO$_2$ [molec cm$^{-2}$]")
-    #plt.title('unfiltered regression $\hat{S} = m NO$_2$ + b$')
-    # Again regression after filtering outside smearing bounds.
 
-    #pp.plot_regression(fno2.flatten(), fsmear.flatten(), logscale=False,
-    #                   colour='magenta')
-    plt.scatter(fsmear.flatten(), fno2.flatten(), color='magenta')
+    plt.xlim(no2lims)
+    plt.ylim(slims)
 
-    ## distribution binned by NO2
-    no2lims=[1e14,1e15]
-    #bins=np.logspace(14,15,20,base=10) # 1e13-1e17 ish
-    bins=np.linspace(5e13,1e15,21)
+
     plt.subplot(1,2,2)
+    ## distribution binned by NO2
+
+    bins=np.linspace(5e13,1e15,21)
+
     plt.plot(no2[smear_high], smear[smear_high], 'ro', alpha=0.7, zorder=-32)
     plt.plot(no2[smear_low], smear[smear_low], 'bo', alpha=0.7, zorder=-32)
     plt.plot(no2[~smear_filter], smear[~smear_filter], 'ko', alpha=0.7, zorder=-32)

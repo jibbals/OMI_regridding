@@ -588,7 +588,7 @@ def plot_regression(X,Y, limsx=None, limsy=None, logscale=True,
                 cb.set_label(clabel)
         m,b,r,CI1,CI2=RMA(X[~nans], Y[~nans]) # get regression
         plt.plot(limsx, m*np.array(limsx)+b,color=linecolour,
-                 label='Y = %.5fX + %.2e\n r=%.5f, n=%d'%(m,b,r,np.sum(~nans)))
+                 label='Y = %.1eX + %.2e\n r=%.5f, n=%d'%(m,b,r,np.sum(~nans)))
     else:
         omask=~(nans+~oceanmask ) # true where not nan or land
         lmask=~(nans+oceanmask ) # true where not nan or ocean
@@ -607,9 +607,9 @@ def plot_regression(X,Y, limsx=None, limsy=None, logscale=True,
 
         #plot lobf and label
         plt.plot( limsx, lm*limsx+lx0, color='k', linewidth=2,
-                label='Land: Y = %.5fX + %.2e; r=%.5f'%(lm,lx0,lr))
+                label='Land: Y = %.1eX + %.2e; r=%.5f'%(lm,lx0,lr))
         plt.plot( limsx, m*limsx+x0, color='blue',
-                label='Ocean: Y = %.5fX + %.2e, r=%.5f'%(m,x0,r))
+                label='Ocean: Y = %.1eX + %.2e, r=%.5f'%(m,x0,r))
 
         print('Land: Y = %.5fX + %.2e; r=%.5f'%(lm,lx0,lr))
         print('with CI ranges of slope %2.5f, %2.5f'%(lci1[0][0],lci1[0][1]))

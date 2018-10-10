@@ -1364,7 +1364,7 @@ def get_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires__
     # subset to requested dates, lats and lons
     di = util.date_index(d0,dates,dN=dN)
     if region is not None:
-        subset=util.lat_lon_subset(lats,lons,region=region,[firemask],has_time_dim=True)
+        subset=util.lat_lon_subset(lats,lons,region=region,data=[firemask],has_time_dim=True)
         firemask=subset['data'][0]
         lats=subset['lats']
         lons=subset['lons']
@@ -1390,7 +1390,7 @@ def get_anthro_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
     # subset to desired time/area
     di=util.date_index(d0,dates,dN) # indices of dates from d0 to dN
     if region is not None:
-        subset=util.lat_lon_subset(lats,lons,region=region,[mask],has_time_dim=True)
+        subset=util.lat_lon_subset(lats,lons,region=region,data=[mask],has_time_dim=True)
         mask=subset['data'][0]
         lats=subset['lats']
         lons=subset['lons']
@@ -1412,7 +1412,7 @@ def get_smoke_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
     # subset to desired time/area
     di=util.date_index(d0,dates,dN) # indices of dates from d0 to dN
     if region is not None:
-        subset=util.lat_lon_subset(lats,lons,region=region,[mask],has_time_dim=True)
+        subset=util.lat_lon_subset(lats,lons,region=region,data=[mask],has_time_dim=True)
         mask=subset['data'][0]
         lats=subset['lats']
         lons=subset['lons']

@@ -68,6 +68,8 @@ __other__  = ['PEDGE-$_PSURF',      # pressure at surface of each gridbox (hPa)
               'BXHGHT-$_AVGW',      # water ??
               'BXHGHT-$_N(AIR)',    # air density (?)
               'DXYP_DXYP',          # gridbox horizontal area (m?)
+              'PORL-L=$_LHCHO',     # HCHO loss in mol/cm3/s
+              'PORL-L=$_LISO',      # isoprene loss in mol/cm3/s
               'TR-PAUSE_TP-LEVEL',  #
               'TR-PAUSE_TPLEV',    # Added satellite output for ppamf
               'DAO-3D-$_TMPU',      # Temperature field (Kelvin)
@@ -101,6 +103,8 @@ _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     'TR-PAUSE_TPLEV':'tplev', # this one is added to satellite output manually
     'TR-PAUSE_TP-HGHT':'tpH', # trop height: km
     'TR-PAUSE_TP-PRESS':'tpP', # trop Pressure: mb
+    'PORL-L=$_LHCHO':'Lhcho', # loss of hcho mol/cm3/s
+    'PORL-L=$_LISO':'Lisop', # loss of isop mol/cm3/s
     # Many more in trac_avg_yyyymm.nc, not read here yet...
     'CHEM-L=$_OH':'OH', # OH molec/cm3: (time, alt059, lat, lon) : 'chemically produced OH'
                         # alt059 is 38 levels for no reason
@@ -150,7 +154,7 @@ class GC_base:
             # Make sure array has dims: [[time,]lats,lons[,levs]]
             arr=data[key]
             if len(arr.shape) > 1:
-                if key in ['CHEM-L=$_OH']:
+                if key in ['CHEM-L=$_OH', 'PORL-L=$_LHCHO','PORL-L=$_LISO']:
                     levdim=len(arr.shape)-1
                     keylevels=arr.shape[levdim] # sometimes 38 levels instead of 47...
                 else:
@@ -586,7 +590,7 @@ class GC_sat(GC_base):
             pmids=self.pmids
             pedges=self.pedges
             TOA=GMAO.__TOA__
-            
+
             # Top pmid SHOULD be a little higher than 0.01
             assert np.all(pmids[:,:,-1]> TOA), "Problem with pmid calculation"
             #if not np.all(pmids[:,:,-1]>0.1):
@@ -635,11 +639,11 @@ class GC_sat(GC_base):
         '''
             Add pedges to class
         '''
-        
+
         # Pressure at bottom edge of each level
         pbots=self.psurf
         TOA=GMAO.__TOA__
-        
+
         if self._has_time_dim:
             n_times, n_lats,n_lons,n_levs = self.psurf.shape
             pedges=np.ndarray([n_times,n_lats,n_lons,n_levs+1])
@@ -647,10 +651,10 @@ class GC_sat(GC_base):
             pedges[:,:,:,:-1]=pbots
             pedges[:,:,:,-1] = TOA
             pmids=np.sqrt(pedges[:,:,:,:-1]*pedges[:,:,:,1:])
-            
+
         else:
             n_lats,n_lons,n_levs = self.psurf.shape
-            
+
             # pressure edges
             pedges=np.ndarray([n_lats,n_lons,n_levs+1])
 
@@ -658,12 +662,12 @@ class GC_sat(GC_base):
             pedges[:,:,:-1]=pbots
             pedges[:,:,-1] = TOA
             pmids=np.sqrt(pedges[:,:,:-1]*pedges[:,:,1:])
-        
+
         self.pedges=pedges
         self.attrs['pedges']={'units':'hPa','desc':'pressure edges'}
         self.pmids=pmids
         self.attrs['pmids']={'units':'hPa','desc':'pressure midpoints'}
-        
+
 
     def calculate_AMF(self, w, w_pmids, AMF_G, lat, lon, plotname=None, debug_levels=False):
         '''

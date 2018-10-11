@@ -25,6 +25,7 @@ import seaborn # Plotting density function
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import warnings # To catch annoying warnings
 import timeit
+from scipy.constants import N_A as N_Avogadro
 
 # local imports:
 import utilities.plotting as pp
@@ -761,6 +762,38 @@ def compare_to_campaigns(d0=datetime(2005,1,31), de=datetime(2005,6,1), dfmt='%b
     plt.close()
     print('SAVED: ',pname)
 
+def hcho_lifetime(year=2005):
+    '''
+    Use tau = HCHO / Loss    to look at hcho lifetime over the year
+    '''
+    d0=datetime(year,1,1)
+    dtest=datetime(year,1,31)
+    dN=datetime(year,12,31)
+
+    # read hcho and losses from trac_avg
+    # ch20 in ppbv, air density in molec/cm3,  Loss HCHO mol/cm3/s
+    keys=['IJ-AVG-$_CH2O','BXHGHT-$_N(AIR)', 'PORL-L=$_LHCHO']
+    run = GC_class.GC_tavg(d0,dtest, keys=keys) # [time, lat, lon, lev]
+    hcho = run.hcho[:,:,:,0] # [time, lat, lon, lev=47] @ ppbv
+    N_air = run.N_air[:,:,:,0] # [time, lat, lon, lev=47] @ molec/cm3
+    Lhcho = run.Lhcho[:,:,:,0] # [time, lat, lon, lev=38] @ mol/cm3/s  == molec/cm3/s !!!!
+
+
+    #N_Avogadro = molec/mol
+    # [ppbv * 1e-9 * (molec air / cm3) / (molec/cm3/s)] = s
+    tau = hcho * 1e-9 * N_air  /  Lhcho
+    print (np.mean(hcho), np.mean(N_air), np.mean(Lhcho))
+    # [time, lat, lon, lev]
+    # just want surface I guess?
+    print(tau.shape)
+    print(np.mean(tau), np.min(tau), np.max(tau), '(in seconds)')
+    # change to hours
+    tau=tau/3600.
+    print(np.mean(tau), np.min(tau), np.max(tau), '(in hours)')
+
+    pp.createmap(np.nanmean(tau,axis=0),lats=run.lats, lons=run.lons, aus=True,
+                 pname='tau_test.png',linear=True, title="HCHO lifetime in hours ")
+
 def compare_to_campaigns_daily_cycle():
 
     # Read campaigns:
@@ -1409,9 +1442,13 @@ if __name__=='__main__':
     # ran on 7/9/18
     #check_modelled_background()
 
+    ## Look at HCHO lifetime over Australia
+    #
+    hcho_lifetime(2005)
+
     ## UCX VS TROPCHEM AMF
     #
-    AMF_comparison_tc_ucx()
+    #AMF_comparison_tc_ucx()
 
     ## tropchem vs UCX plots
     # Look at 2007 summer since I have OH for daily avg files from then.

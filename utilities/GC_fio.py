@@ -242,6 +242,58 @@ def _test_trop_column_calc():
         print("PASS: every box matches")
 
 
+def hcho_lifetime(month):
+    '''
+    Use tau = HCHO / Loss    to look at hcho lifetime over a month
+    return lifetimes[day,lat,lon],
+    '''
+
+    d0=util.first_day(month)
+    dN=util.last_day(month)
+
+    # read hcho and losses from trac_avg
+    # ch20 in ppbv, air density in molec/cm3,  Loss HCHO mol/cm3/s
+    keys=['IJ-AVG-$_CH2O','BXHGHT-$_N(AIR)', 'PORL-L=$_LHCHO']
+    run = GC_class.GC_tavg(d0,dN, keys=keys) # [time, lat, lon, lev]
+    # TODO: Instead of surface use tropospheric average??
+    hcho = run.hcho[:,:,:,0] # [time, lat, lon, lev=47] @ ppbv
+    N_air = run.N_air[:,:,:,0] # [time, lat, lon, lev=47] @ molec/cm3
+    Lhcho = run.Lhcho[:,:,:,0] # [time, lat, lon, lev=38] @ mol/cm3/s  == molec/cm3/s !!!!
+
+    # [ppbv * 1e-9 * (molec air / cm3) / (molec/cm3/s)] = s
+    tau = hcho * 1e-9 * N_air  /  Lhcho
+
+    # change to hours
+    tau=tau/3600.
+    #
+
+    return tau, run.dates, run.lats, run.lons
+
+def make_smear_mask_file(year, use_GC_lifetime=True, max_procs=4):
+    '''
+        Estimate expected yield (assuming HCHO lifetime=2.5 or using GC hcho loss to approximate)
+        determine bounds for acceptable smearing range
+        create a 3d mask for the year of smearing min and max values
+        saves smear_mask.nc: lifetimes, yields, smearmin, smearmax, smear, smearmask
+    '''
+
+    # first read year of GC lifetimes
+    if max_procs>1:
+        ndates=dates[1:]
+        n = len(ndates)
+        nlatres=[latres] * n # list with n instances of latres
+        nlonres=[lonres] * n # also for lonres
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
+            procreturns=executor.map(read_MOD14A1_interpolated,ndates,nlatres,nlonres)
+            for i,pret in enumerate(procreturns):
+                retfires[i+1]=pret[0]
+    else:
+        for i,day in enumerate(dates[1:]):
+            firei,lats,lons=read_MOD14A1_interpolated(date=day,latres=latres,lonres=lonres)
+            retfires[i+1] = firei
+
+
+
 if __name__=='__main__':
     #get_tropchem_data()
     _test_trop_column_calc()

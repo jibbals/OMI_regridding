@@ -25,7 +25,7 @@ def hcho_lifetime(month, region=pp.__AUSREGION__):
     Use tau = HCHO / Loss    to look at hcho lifetime over a month
     return lifetimes[day,lat,lon],
     '''
-
+    print("CHECK: TRYING HCHO_LIFETIME:",month)
     d0=util.first_day(month)
     dN=util.last_day(month)
 
@@ -52,10 +52,10 @@ def hcho_lifetime(month, region=pp.__AUSREGION__):
         tau=subset['data'][0]
         lats=subset['lats']
         lons=subset['lons']
-
+    print("CHECK: MANAGED HCHO_LIFETIME:",month)
     return tau, run.dates, lats, lons
 
-def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True, max_procs=4):
+def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True, max_procs=2):
     '''
         Estimate expected yield (assuming HCHO lifetime=2.5 or using GC hcho loss to approximate)
         determine bounds for acceptable smearing range
@@ -83,26 +83,29 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True, ma
     # first read year of GC lifetimes
     di0 = util.date_index(d0,dates,util.last_day(d0))
     tau[di0] = tau0
+    print("CHECK: Reading year of GC loss rates and concentrations to get lifetimes")
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
-        procreturns=executor.map(hcho_lifetime, months[1:])
+        procreturns=executor.map(hcho_lifetime, months[1:], [region]*11)
         for i,pret in enumerate(procreturns):
             datesi = pret[1] # dates for this month
-            di = util.date_index(datesi[0],datesi,util.last_day(datesi[0]))
+            di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
             tau[di]=pret[0]
 
     ## read year of smear
     # first read month
     smear0, dates0, lats, lons = Inversion.smearing(d0,region=region)
     smear[di0]  = smear0
+    print("CHECK: Reading year of GC columns and emissions to get smearing")
     with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
         procreturns=executor.map(Inversion.smearing, months[1:], [region]*11)
         for i,pret in enumerate(procreturns):
             datesi = pret[1] # dates for this month
-            di = util.date_index(datesi[0],datesi,util.last_day(datesi[0]))
+            di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
             smear[di]=pret[0]
 
     ## read monthly slope
     #
+    print("CHECK: Reading year of biogenic GC columns to get slope")
     for month in months:
         gc=GC_class.GC_biogenic(month)
         model_slope=gc.model_slope(region=region)

@@ -48,7 +48,7 @@ geofieldsg  = 'HDFEOS/GRIDS/OMI Total Column Amount HCHO/Geolocation Fields/'
 datafields = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Data Fields/'
 geofields  = 'HDFEOS/SWATHS/OMI Total Column Amount HCHO/Geolocation Fields/'
 
-__VERBOSE__=True
+__VERBOSE__=False
 
 __Thresh_NO2_d__ = 2e15 # daily threshhold for anthro filter
 __Thresh_NO2_y__ = 1.5e15 # yearly avg threshhold
@@ -1167,6 +1167,9 @@ def make_anthro_mask_file(year,
     # filename and save to h5 file
     path=year.strftime(__dir_anthro__+'anthromask_%Y.h5')
     save_to_hdf5(path, datadict, attrdicts=dattrs)
+
+
+
 
 def make_smoke_mask(d0, dN=None, aaod_thresh=__Thresh_AAOD__,
                     latres=__LATRES__, lonres=__LONRES__, region=None):

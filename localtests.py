@@ -65,7 +65,7 @@ start1=timeit.default_timer()
 ##########
 
 
-masks.make_smear_mask_file(2005)
+masks.make_smear_mask_file(2005, max_procs=1)
 
 ###########
 ### Record and time STUJFFS

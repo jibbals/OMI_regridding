@@ -25,7 +25,8 @@ def hcho_lifetime(month, region=pp.__AUSREGION__):
     Use tau = HCHO / Loss    to look at hcho lifetime over a month
     return lifetimes[day,lat,lon],
     '''
-    print("CHECK: TRYING HCHO_LIFETIME:",month)
+    print("CHECK: TRYING HCHO_LIFETIME:",month, region)
+
     d0=util.first_day(month)
     dN=util.last_day(month)
 
@@ -33,6 +34,7 @@ def hcho_lifetime(month, region=pp.__AUSREGION__):
     # ch20 in ppbv, air density in molec/cm3,  Loss HCHO mol/cm3/s
     keys=['IJ-AVG-$_CH2O','BXHGHT-$_N(AIR)', 'PORL-L=$_LHCHO']
     run = GC_class.GC_tavg(d0,dN, keys=keys) # [time, lat, lon, lev]
+    print('     :READ GC_tavg')
     # TODO: Instead of surface use tropospheric average??
     hcho = run.hcho[:,:,:,0] # [time, lat, lon, lev=47] @ ppbv
     N_air = run.N_air[:,:,:,0] # [time, lat, lon, lev=47] @ molec/cm3
@@ -42,7 +44,7 @@ def hcho_lifetime(month, region=pp.__AUSREGION__):
 
     # [ppbv * 1e-9 * (molec air / cm3) / (molec/cm3/s)] = s
     tau = hcho * 1e-9 * N_air  /  Lhcho
-
+    print('     :CALCULATED tau')
     # change to hours
     tau=tau/3600.
     #
@@ -84,24 +86,36 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True, ma
     di0 = util.date_index(d0,dates,util.last_day(d0))
     tau[di0] = tau0
     print("CHECK: Reading year of GC loss rates and concentrations to get lifetimes")
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
-        procreturns=executor.map(hcho_lifetime, months[1:], [region]*11)
-        for i,pret in enumerate(procreturns):
-            datesi = pret[1] # dates for this month
+    if max_procs>1:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
+            procreturns=executor.map(hcho_lifetime, months[1:], [region]*11)
+            for i,pret in enumerate(procreturns):
+                datesi = pret[1] # dates for this month
+                di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
+                tau[di]=pret[0]
+    else:
+        for i, month in enumerate(months[1:]):
+            taui, datesi, latsi, lonsi = hcho_lifetime(month, region)
             di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
-            tau[di]=pret[0]
+            tau[di] = taui
 
     ## read year of smear
     # first read month
     smear0, dates0, lats, lons = Inversion.smearing(d0,region=region)
     smear[di0]  = smear0
     print("CHECK: Reading year of GC columns and emissions to get smearing")
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
-        procreturns=executor.map(Inversion.smearing, months[1:], [region]*11)
-        for i,pret in enumerate(procreturns):
-            datesi = pret[1] # dates for this month
+    if max_procs>1:
+        with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
+            procreturns=executor.map(Inversion.smearing, months[1:], [region]*11)
+            for i,pret in enumerate(procreturns):
+                datesi = pret[1] # dates for this month
+                di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
+                smear[di]=pret[0]
+    else:
+        for i, month in enumerate(months[1:]):
+            smeari, datesi, latsi, lonsi = Inversion.smearing(month, region)
             di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
-            smear[di]=pret[0]
+            smear[di] = smeari
 
     ## read monthly slope
     #

@@ -152,5 +152,5 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True, ma
               'smear':smear, 'yields':yields,'tau':tau, 'slope':slope}
 
     # filename and save to h5 file
-    path=year.strftime('Data/smearmask_%Y.h5')
+    path='Data/smearmask_%d.h5'%year
     fio.save_to_hdf5(path, datadict, attrdicts=dattrs)

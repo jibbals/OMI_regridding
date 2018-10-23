@@ -204,7 +204,7 @@ def gregorian_from_dates(dates):
 
     '''
     d0=datetime(1985,1,1,0,0,0)
-    return np.array([(date-d0).seconds/3600 for date in dates ])
+    return np.array([(date-d0).total_seconds()/3600.0 for date in dates ])
 
 def index_from_gregorian(gregs, date):
     '''

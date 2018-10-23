@@ -57,7 +57,7 @@ def hcho_lifetime(month, region=pp.__AUSREGION__):
     print("CHECK: MANAGED HCHO_LIFETIME:",month)
     return tau, run.dates, lats, lons
 
-def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True, max_procs=2):
+def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
     '''
         Estimate expected yield (assuming HCHO lifetime=2.5 or using GC hcho loss to approximate)
         determine bounds for acceptable smearing range
@@ -86,36 +86,20 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True, ma
     di0 = util.date_index(d0,dates,util.last_day(d0))
     tau[di0] = tau0
     print("CHECK: Reading year of GC loss rates and concentrations to get lifetimes")
-    if max_procs>1:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
-            procreturns=executor.map(hcho_lifetime, months[1:], [region]*11)
-            for i,pret in enumerate(procreturns):
-                datesi = pret[1] # dates for this month
-                di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
-                tau[di]=pret[0]
-    else:
-        for i, month in enumerate(months[1:]):
-            taui, datesi, latsi, lonsi = hcho_lifetime(month, region)
-            di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
-            tau[di] = taui
+    for i, month in enumerate(months[1:]):
+        taui, datesi, latsi, lonsi = hcho_lifetime(month, region)
+        di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
+        tau[di] = taui
 
     ## read year of smear
     # first read month
     smear0, dates0, lats, lons = Inversion.smearing(d0,region=region)
     smear[di0]  = smear0
     print("CHECK: Reading year of GC columns and emissions to get smearing")
-    if max_procs>1:
-        with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
-            procreturns=executor.map(Inversion.smearing, months[1:], [region]*11)
-            for i,pret in enumerate(procreturns):
-                datesi = pret[1] # dates for this month
-                di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
-                smear[di]=pret[0]
-    else:
-        for i, month in enumerate(months[1:]):
-            smeari, datesi, latsi, lonsi = Inversion.smearing(month, region)
-            di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
-            smear[di] = smeari
+    for i, month in enumerate(months[1:]):
+        smeari, datesi, latsi, lonsi = Inversion.smearing(month, region)
+        di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
+        smear[di] = smeari
 
     ## read monthly slope
     #
@@ -134,6 +118,12 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True, ma
     #Yield is just k(=1/lifetime) * Slope
     yields = slope / tau
 
+    ## Now create mask based on smearing number
+    ##
+    # If we assume lifetimes are roughly half that estimated from GEOS-Chem, we 
+    # can get a range of acceptable yields for each grid square..
+    
+    
     ## Finally save the data to a file
     ## add attributes to be saved in file
     #
@@ -154,3 +144,36 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True, ma
     # filename and save to h5 file
     path='Data/smearmask_%d.h5'%year
     fio.save_to_hdf5(path, datadict, attrdicts=dattrs)
+
+def read_smearmask(d0, dN=None, keys=None):
+    '''
+        Read smearmask (or extra keys) between d0 and dN 
+    '''
+    path= 'Data/smearmask_%d.h5'%d0.year
+    data, attrs = fio.read_hdf5(path)
+    # subset to rerquested dates, after converting greg to numpy datetime
+    dates = util.date_from_gregorian(data['dates'])
+    data['dates'] = np.array(dates)
+    attrs['dates']['units'] = 'numpy datetime'
+    
+    di = util.date_index( d0, dates, dN)
+    for key in ['smearmask','smear','yields','tau','slope', 'dates']:
+        data[key]=data[key][di]
+    
+    # subset to desired keys
+    if keys is not None:
+        for key in ['smearmask','smear','yields','tau','slope']:
+            if key not in keys:
+                removed = data.pop(key)
+                removed = attrs.pop(key)
+    return data, attrs
+
+def get_smear_mask(d0, dN=None):
+    '''
+        Just grab smearing mask in true/false from d0 to dN
+    '''
+    data, attrs = read_smearmask(d0, dN, keys=['smearmask'])
+    smearmask=data['smearmask'] > 0.5
+    dates=data['dates']
+    return smearmask,dates,data['lats'],data['lons']
+

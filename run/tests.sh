@@ -4,7 +4,7 @@
 #PBS -N script
 #PBS -l walltime=01:00:00
 #PBS -l mem=50000MB
-#PBS -l cput=05:00:00
+#PBS -l cput=01:00:00
 #PBS -l wd
 #PBS -l ncpus=1
 #PBS -j oe

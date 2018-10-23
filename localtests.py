@@ -64,8 +64,18 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-
-masks.make_smear_mask_file(2005, max_procs=1)
+#data,attrs=fio.read_hdf5('Data/smearmask_2005.h5')
+#print(data['dates'])
+#
+masks.make_smear_mask_file(2005)
+#data,attrs = masks.read_smearmask(d0,d1)
+#tau=data['tau']
+#lats=data['lats']
+#lons=data['lons']
+#print(np.shape(tau))
+#pp.createmap(np.nanmean(tau,axis=0), lats,lons,aus=True)
+#plt.savefig('tautest.png')
+#print('saved tautest.png')
 
 ###########
 ### Record and time STUJFFS

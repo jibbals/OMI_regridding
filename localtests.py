@@ -54,7 +54,7 @@ dstr=d0.strftime('%Y%m%d')
 mstr=d0.strftime('%Y%m')
 latres=0.25
 lonres=0.3125
-dN=datetime(2005,1,2)
+dN=datetime(2005,12,31)
 d3=datetime(2005,3,1)
 dates=util.list_days(d0,dN,month=False)
 # start timer
@@ -64,18 +64,72 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+year=2005
+d0          = datetime(year,1,1)
+dN          = datetime(year,12,31)
+data, attrs = masks.read_smearmask(d0,dN)
+tau         = data['tau']
+lats        = data['lats']
+lons        = data['lons']
+dates       = data['dates']
+d64         = util.datetimes_from_np_datetime64(dates, reverse=True)
+summer      = util.date_index(datetime(year,1,1),dates, util.last_day(datetime(year,2,1)))
+winter      = util.date_index(datetime(year,6,1),dates, datetime(year,8,31))
+
+f=plt.figure(figsize=(14,14))
+ax=plt.subplot(2,2,1)
+pp.createmap(np.nanmean(tau[summer],axis=0), lats,lons,aus=True,
+             vmin=2, vmax=12,linear=True, clabel='hrs',title='Summer')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.spines['left'].set_visible(False)
+
+ax = plt.subplot(2,2,2)
+bmap,cs,cb = pp.createmap(np.nanmean(tau[winter],axis=0), lats,lons,aus=True,
+                          vmin=2, vmax=12,linear=True, clabel='hrs',title='Winter')
+ax.spines['top'].set_visible(False)
+ax.spines['right'].set_visible(False)
+ax.spines['bottom'].set_visible(False)
+ax.spines['left'].set_visible(False)
+
+oceanmask=util.oceanmask(lats,lons)
+colors=pp.get_colors('plasma',len(lats)*len(lons))
+for yi, y in enumerate(lats):
+    for xi, x in enumerate(lons):
+        if not oceanmask[yi,xi]:
+            color=colors[yi*len(lons)+xi]
+
+            # add marker to winter map
+            plt.subplot(2,2,2)
+            mx,my = bmap(x, y)
+            bmap.plot(mx, my, 'o', markersize=5, color=color)
+
+            # use color for timeseries
+            plt.subplot(2,1,2)
+            plt.plot(d64,tau[:,yi,xi], 'o', color=color, alpha=0.7, linewidth=0)
+
+
+
+plt.ylim([2,20])
+plt.ylabel('hrs')
+plt.tight_layout()
+plt.suptitle('HCHO lifetime %d'%year,fontsize=20)
+fname='Figs/Filters/tau_%d.png'%year
+plt.savefig(fname)
+print('saved ',fname)
+plt.close()
+
+
+
+
+
 #data,attrs=fio.read_hdf5('Data/smearmask_2005.h5')
 #print(data['dates'])
-#
-masks.make_smear_mask_file(2005)
-#data,attrs = masks.read_smearmask(d0,d1)
-#tau=data['tau']
-#lats=data['lats']
-#lons=data['lons']
-#print(np.shape(tau))
-#pp.createmap(np.nanmean(tau,axis=0), lats,lons,aus=True)
-#plt.savefig('tautest.png')
-#print('saved tautest.png')
+#print(util.date_from_gregorian(data['dates']))
+
+
+#masks.make_smear_mask_file(2005)
 
 ###########
 ### Record and time STUJFFS

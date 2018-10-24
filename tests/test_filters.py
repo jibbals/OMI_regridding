@@ -18,7 +18,7 @@ import matplotlib
 matplotlib.use('Agg')
 
 # Local stuff
-from utilities import fio, GMAO
+from utilities import fio, GMAO, masks
 from utilities import plotting as pp
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
@@ -314,6 +314,25 @@ def test_multiprocess_mask_creation(d0=datetime(2005,2,1),dN=datetime(2005,2,2))
     print("fire mask passed")
     ## PASSED
 
+def no2_filter_check(year):
+    '''
+    '''
+    # First read and whole year of NO2
+    dat, attrs = fio.read_omno2d(datetime(year.year,1,1), util.last_day(datetime(year.year,12,1)))
+    # Tropospheric cloud screened (<30%) no2 columns (molec/cm2)
+    no2_orig=dat['tropno2']
+    lats=dat['lats']
+    lons=dat['lons']
+    dates=dat['dates']
+
+    with open(__no2_txt_file__,'a') as outf: # append to file
+        outf.write("Year = %d\n"%year.year)
+
+    # Now run all the NO2 analysis functions
+    #
+    no2_densities(year, no2_orig, lats, lons)
+    typical_no2(no2_orig, dates, lats, lons)
+    no2_thresh(no2_orig, dates, lats, lons)
 
 def HCHO_vs_temp_locational(d0=datetime(2005,1,1),d1=datetime(2005,2,28),
                             locations=None,suffix=''):
@@ -1732,23 +1751,63 @@ def smearing_regridding(date=datetime(2005,1,1)):
     plt.savefig('Figs/Filters/smearing_test.png')
     plt.close()
 
-
-def check_no2_filter(year):
+def tau_check(year=2005):
     '''
+        look at lifetime of hcho over the year according to geos chem daily avgs
     '''
-    # First read and whole year of NO2
-    dat, attrs = fio.read_omno2d(datetime(year.year,1,1), util.last_day(datetime(year.year,12,1)))
-    # Tropospheric cloud screened (<30%) no2 columns (molec/cm2)
-    no2_orig=dat['tropno2']
-    lats=dat['lats']
-    lons=dat['lons']
-    dates=dat['dates']
+    d0          = datetime(year,1,1)
+    dN          = datetime(year,12,31)
+    data, attrs = masks.read_smearmask(d0,dN)
+    tau         = data['tau']
+    lats        = data['lats']
+    lons        = data['lons']
+    dates       = data['dates']
+    d64         = util.datetimes_from_np_datetime64(dates, reverse=True)
+    summer      = util.date_index(datetime(year,1,1),dates, util.last_day(datetime(year,2,1)))
+    winter      = util.date_index(datetime(year,6,1),dates, datetime(year,8,31))
 
-    with open(__no2_txt_file__,'a') as outf: # append to file
-        outf.write("Year = %d\n"%year.year)
+    f=plt.figure(figsize=(14,14))
+    ax=plt.subplot(2,2,1)
+    pp.createmap(np.nanmean(tau[summer],axis=0), lats,lons,aus=True,
+                 vmin=2, vmax=12,linear=True, clabel='hrs',title='Summer')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
 
-    # Now run all the NO2 analysis functions
-    #
-    no2_densities(year, no2_orig, lats, lons)
-    typical_no2(no2_orig, dates, lats, lons)
-    no2_thresh(no2_orig, dates, lats, lons)
+    ax = plt.subplot(2,2,2)
+    bmap,cs,cb = pp.createmap(np.nanmean(tau[winter],axis=0), lats,lons,aus=True,
+                              vmin=2, vmax=12,linear=True, clabel='hrs',title='Winter')
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['bottom'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+
+    oceanmask=util.oceanmask(lats,lons)
+    colors=pp.get_colors('plasma',len(lats)*len(lons))
+    for yi, y in enumerate(lats):
+        for xi, x in enumerate(lons):
+            if not oceanmask[yi,xi]:
+                color=colors[yi*len(lons)+xi]
+
+                # add marker to winter map
+                plt.subplot(2,2,2)
+                mx,my = bmap(x, y)
+                bmap.plot(mx, my, 'o', markersize=5, color=color)
+
+                # use color for timeseries
+                plt.subplot(2,1,2)
+                plt.plot(d64,tau[:,yi,xi], 'o', color=color, alpha=0.7, linewidth=0)
+
+
+
+    plt.ylim([2,20])
+    plt.ylabel('hrs')
+    plt.tight_layout()
+    plt.suptitle('HCHO lifetime %d'%year,fontsize=20)
+    fname='Figs/Filters/tau_%d.png'%year
+    plt.savefig(fname)
+    print('saved ',fname)
+    plt.close()
+
+

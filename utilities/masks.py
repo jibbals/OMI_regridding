@@ -20,6 +20,15 @@ from datetime import datetime
 import numpy as np
 import timeit # see how slow stuff is
 
+### GLOBALS ###
+#1.5hrs at 0.2 yield up to 4hrs at .4 yield minus 10% and rounded to 100
+__smearminlit__ = 900
+__smearmaxlit__ = 5200
+
+
+
+
+
 def hcho_lifetime(month, region=pp.__AUSREGION__):
     '''
     Use tau = HCHO / Loss    to look at hcho lifetime over a month
@@ -82,9 +91,7 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
     smearmax    = np.zeros(tau.shape) # dynamic smear mask ..
     smearmask   = np.zeros(tau.shape, dtype=np.int) # smearmask from GEOS-Chem or Caaba Mecca if possible
 
-    #1.5hrs at 0.2 yield up to 4hrs at .4 yield minus roughly 10%
-    smearminlit = 900
-    smearmaxlit = 5000
+
     smearmasklit= np.zeros(tau.shape, dtype=np.int) # smearmask from literature (900-5000)
 
     ## first read year of GC lifetimes
@@ -109,8 +116,8 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
 
     ## Smearmask based on literature
     #
-    smearmasklit[smear < smearminlit] = 1
-    smearmasklit[smear > smearmaxlit] = 1
+    smearmasklit[smear < __smearminlit__] = 1
+    smearmasklit[smear > __smearmaxlit__] = 2
 
     ## read monthly slope
     #
@@ -139,7 +146,7 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
     ## add attributes to be saved in file
     #
     dattrs = {'smearmask':{'units':'int','desc':'0 or 1: grid square potentially affected by smearing'},
-              'smearmasklit':{'units':'int','desc':'0 or 1: smearing outside range of 900 to 5000 (estimated from literature)'},
+              'smearmasklit':{'units':'int','desc':'0 or 1 or 2: smearing outside range of %d to %d (less than range=1, greater than range = 2)'%(__smearminlit__,__smearmaxlit__)},
               'dates':{'units':'gregorian','desc':'hours since 1985,1,1,0,0: day axis of anthromask array'},
               'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'},

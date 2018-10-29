@@ -78,11 +78,17 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
     #yields      = np.zeros(tau.shape)
     slope       = np.zeros(tau.shape)
     smear       = np.zeros(tau.shape)
-    smearmin    = np.zeros(tau.shape)
-    smearmax    = np.zeros(tau.shape)
-    smearmask   = np.zeros(tau.shape, dtype=np.int)
+    smearmin    = np.zeros(tau.shape) # dynamic smear mask if possible from geos-chem
+    smearmax    = np.zeros(tau.shape) # dynamic smear mask ..
+    smearmask   = np.zeros(tau.shape, dtype=np.int) # smearmask from GEOS-Chem or Caaba Mecca if possible
 
-    # first read year of GC lifetimes
+    #1.5hrs at 0.2 yield up to 4hrs at .4 yield minus roughly 10%
+    smearminlit = 900
+    smearmaxlit = 5000
+    smearmasklit= np.zeros(tau.shape, dtype=np.int) # smearmask from literature (900-5000)
+
+    ## first read year of GC lifetimes
+    # one month at a time: starting at jan
     di0 = util.date_index(d0,dates,util.last_day(d0))
     tau[di0] = tau0
     print("CHECK: Reading year of GC loss rates and concentrations to get lifetimes")
@@ -100,6 +106,11 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
         smeari, datesi, latsi, lonsi = Inversion.smearing(month, region)
         di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
         smear[di] = smeari
+
+    ## Smearmask based on literature
+    #
+    smearmasklit[smear < smearminlit] = 1
+    smearmasklit[smear > smearmaxlit] = 1
 
     ## read monthly slope
     #
@@ -120,14 +131,15 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
 
     ## Now create mask based on smearing number
     ##
-    # If we assume lifetimes are roughly half that estimated from GEOS-Chem, we 
+    # If we assume lifetimes are roughly half that estimated from GEOS-Chem, we
     # can get a range of acceptable yields for each grid square..
-    
-    
+
+
     ## Finally save the data to a file
     ## add attributes to be saved in file
     #
-    dattrs  = {'smearmask':{'units':'int','desc':'0 or 1: grid square potentially affected by smearing'},
+    dattrs = {'smearmask':{'units':'int','desc':'0 or 1: grid square potentially affected by smearing'},
+              'smearmasklit':{'units':'int','desc':'0 or 1: smearing outside range of 900 to 5000 (estimated from literature)'},
               'dates':{'units':'gregorian','desc':'hours since 1985,1,1,0,0: day axis of anthromask array'},
               'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'},
@@ -139,6 +151,7 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
     #
     dates=util.gregorian_from_dates(dates)
     datadict={'smearmask':smearmask,'dates':dates,'lats':lats,'lons':lons,
+              'smearmasklit':smearmasklit,
               'smear':smear, 'yields':yields,'tau':tau, 'slope':slope}
 
     # filename and save to h5 file
@@ -147,7 +160,7 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
 
 def read_smearmask(d0, dN=None, keys=None):
     '''
-        Read smearmask (or extra keys) between d0 and dN 
+        Read smearmask (or extra keys) between d0 and dN
     '''
     path= 'Data/smearmask_%d.h5'%d0.year
     data, attrs = fio.read_hdf5(path)
@@ -155,25 +168,26 @@ def read_smearmask(d0, dN=None, keys=None):
     dates = util.date_from_gregorian(data['dates'])
     data['dates'] = np.array(dates)
     attrs['dates']['units'] = 'numpy datetime'
-    
+
     di = util.date_index( d0, dates, dN)
-    for key in ['smearmask','smear','yields','tau','slope', 'dates']:
+    for key in ['smearmask','smearmasklit','smear','yields','tau','slope', 'dates']:
         data[key]=data[key][di]
-    
+
     # subset to desired keys
     if keys is not None:
-        for key in ['smearmask','smear','yields','tau','slope']:
+        for key in ['smearmask','smearmasklit','smear','yields','tau','slope']:
             if key not in keys:
                 removed = data.pop(key)
                 removed = attrs.pop(key)
     return data, attrs
 
-def get_smear_mask(d0, dN=None):
+def get_smear_mask(d0, uselitmask=True, dN=None):
     '''
         Just grab smearing mask in true/false from d0 to dN
     '''
-    data, attrs = read_smearmask(d0, dN, keys=['smearmask'])
-    smearmask=data['smearmask'] > 0.5
+    key = ['smearmask','smearmasklit'][uselitmask]
+    data, attrs = read_smearmask(d0, dN, keys=[key,])
+    smearmask=data[key] > 0.5
     dates=data['dates']
     return smearmask,dates,data['lats'],data['lons']
 

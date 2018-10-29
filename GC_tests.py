@@ -1281,7 +1281,9 @@ def Examine_Model_Slope(month=datetime(2005,1,1)):
     hcho_min=1e14
     hcho_max=3e16
     Eisop_min=1e11
-    Eisop_max=1.2e13
+    Eisop_max=1.4e13
+    slopemin=1e3
+    slopemax=1e5
     cmapname='gnuplot'
     # plot names
     pname=month.strftime('Figs/GC/E_isop_vs_hcho_%Y%m.png')
@@ -1307,10 +1309,10 @@ def Examine_Model_Slope(month=datetime(2005,1,1)):
     plt.sca(axes[0,0]) # first plot slope
     vmin=1e-7
     slope[slope < vmin] = np.NaN # Nan the zeros and negatives for nonlinear plot
-    pp.createmap(slope, lats, lons, vmin=1e3, vmax=1e6,
+    pp.createmap(slope, lats, lons, vmin=slopemin, vmax=slopemax,
                  aus=True, linear=False, cmapname=cmapname,
                  suptitle="HCHO trop column vs isoprene emissions %s"%ymstr,
-                 clabel='slope', title=r'$\Omega_{HCHO}$ = slope x E$_{isop}$ + b')
+                 clabel='slope', title=r'$\Omega_{HCHO}$ = $S$ x $E_{isop}$ + b')
     plt.sca(axes[1,0]) # then plot r2 and save figure
     bmap,cs,cb = pp.createmap(reg**2,lats,lons,vmin=0,vmax=1.0,
                               aus=True,linear=True, cmapname=cmapname,
@@ -1335,11 +1337,21 @@ def Examine_Model_Slope(month=datetime(2005,1,1)):
     plt.autoscale(True)
     # plot a sample of ii_max scatter plots and their regressions
     ii=0; ii_max=9
-    colours=[cm.rainbow(i) for i in np.linspace(0, 0.9, ii_max)]
-    randlats= np.random.choice(range(len(lats)), size=30)
-    randlons= np.random.choice(range(len(lons)), size=30)
+    colours=[cm.Set1(i) for i in np.linspace(0, 0.9, ii_max)]
+    randlati= np.random.choice(range(len(lats)), size=30)
+    randloni= np.random.choice(range(len(lons)), size=30)
+    # UPDATE: using sydney, west of sydney, and 2 west 1 north of sydney as sample
+    # also use mid queensland
+    samplelats = [-34, -34, -32, -22]
+    samplelons = [ 151, 148.5, 146, 145]
+    randlati, randloni=[],[]
+    for i in range(len(samplelats)):
+        randlattmp, randlontmp  = util.lat_lon_index(samplelats[i],samplelons[i],lats,lons)
+        randlati.append(randlattmp)
+        randloni.append(randlontmp)
+
     # loop over random lats and lons
-    for xi,yi in zip(randlons,randlats):
+    for xi,yi in zip(randloni,randlati):
         if ii==ii_max: break
         lat=lats[yi]; lon=lons[xi]
         X=isop[:,yi,xi]; Y=hcho[:,yi,xi]
@@ -1347,14 +1359,15 @@ def Examine_Model_Slope(month=datetime(2005,1,1)):
         xlims=np.array([Eisop_min,Eisop_max])
         # add dot to map
         plt.sca(axes[1,0])
-        bmap.plot(lon,lat,latlon=True,markersize=10,marker='o',)
+        bmap.plot(lon,lat,latlon=True,markersize=10,marker='o',color=colours[ii])
 
         # Plot scatter and regression
         plt.sca(axes[1,1])
         plt.scatter(X,Y,color=colours[ii])
         m,b,r = slope[yi,xi],off[yi,xi],reg[yi,xi]
         plt.plot(xlims, m*xlims+b,color=colours[ii],
-            label='Y[%5.1fS,%5.1fE] = %.1eX + %.2e, r=%.2f'%(-1*lat,lon,m,b,r))
+                 label='Y = %.1eX + %.2e, r=%.2f'%(m,b,r))
+            #label='Y[%5.1fS,%5.1fE] = %.1eX + %.2e, r=%.2f'%(-1*lat,lon,m,b,r))
 
         ii=ii+1
     plt.xlim(xlims)
@@ -1362,7 +1375,7 @@ def Examine_Model_Slope(month=datetime(2005,1,1)):
     plt.xlabel(r'E$_{isop}$ [atom C cm$^{-2}$ s$^{-1}$]')
     plt.ylabel(r'$\Omega_{HCHO}$ [molec cm$^{-2}$]')
     plt.title('Sample of regressions')
-    plt.legend(loc=0,fontsize=9) # show legend
+    plt.legend(loc=0,fontsize=12) # show legend
 
     plt.savefig(pname)
     plt.close()
@@ -1444,7 +1457,7 @@ if __name__=='__main__':
 
     ## Look at HCHO lifetime over Australia
     #
-    hcho_lifetime(2005)
+    #hcho_lifetime(2005)
 
     ## UCX VS TROPCHEM AMF
     #
@@ -1456,7 +1469,7 @@ if __name__=='__main__':
 
     # Checking units:
 
-    #Examine_Model_Slope() # unfinished 30/5/18
+    Examine_Model_Slope() # unfinished 30/5/18
     #check_rsc_interp()   # last run 29/5/18
 
     #HCHO_vs_temp(d0=d0,d1=d1,

@@ -1285,7 +1285,7 @@ def smoke_vs_fire(d0=datetime(2005,1,1),dN=datetime(2005,1,31),region=__AUSREGIO
     plt.savefig(pname)
     print("Saved figure ",pname)
 
-def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[500,4000]):
+def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks.__smearminlit__,masks.__smearmaxlit__]):
     '''
         Look at smearing and satellite no2
     '''
@@ -1324,34 +1324,36 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[500,4
     ## figure top left: aus map of NO2
     # bottom left: NO2 vs Shat scatter plot of regressions
     # right side: Distributions of smearing binned by NO2 levels
-    plt.figure(figsize=(12,14))
-    plt.subplot(3,2,1)
+    plt.figure(figsize=(12,12))
+    plt.subplot(2,2,1)
     pp.createmap(no2_mean,lats,lons,
-                 title="OMNO2d on %s"%month.strftime("%Y%m"),aus=True,linear=True)
+                 title="OMNO2d on %s"%month.strftime("%Y%m"),
+                 aus=True,linear=True, clabel='molec cm$^{-2}$')
                  #vmin=500,vmax=5000,linear=True,
                  #ticks=[500,2000,3500,5000],
                  #xticklabels=['500','2000','3500','5000'])
+    pp.remove_spines(plt.gca()) # just show bottom
 
     ## Plot NO2 vs Shat
     no2lims=[1e14,1e15]
     slims=[-1e3,3e4]
-    plt.subplot(3,2,3)
+    plt.subplot(2,2,3)
     plt.scatter(no2.flatten(), smear.flatten(), color='orange')
     plt.scatter(fno2.flatten(), fsmear.flatten(), color='magenta')
     plt.ylabel("$\hat{S}$")
     #plt.xlabel("NO$_2$ [molec cm$^{-2}$]")
 
     ## Plot again but zoomed in with regression
-    plt.subplot(3,2,5)
-    plt.scatter(no2.flatten(), smear.flatten(), color='orange')
-    #plt.scatter(fno2.flatten(), fsmear.flatten(), color='magenta')
-    pp.plot_regression(fno2.flatten(), fsmear.flatten(), legendfont=16,
-                       logscale=False, colour='magenta')
-    plt.ylabel("$\hat{S}$")
-    plt.xlabel("NO$_2$ [molec cm$^{-2}$]")
+    #plt.subplot(3,2,5)
+    #plt.scatter(no2.flatten(), smear.flatten(), color='orange')
+    ##plt.scatter(fno2.flatten(), fsmear.flatten(), color='magenta')
+    #pp.plot_regression(fno2.flatten(), fsmear.flatten(), legendfont=16,
+    #                   logscale=False, colour='magenta')
+    #plt.ylabel("$\hat{S}$")
+    #plt.xlabel("NO$_2$ [molec cm$^{-2}$]")
 
-    plt.xlim(no2lims)
-    plt.ylim(slims)
+    #plt.xlim(no2lims)
+    #plt.ylim(slims)
 
 
     plt.subplot(1,2,2)
@@ -1363,7 +1365,7 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[500,4
     plt.plot(no2[smear_low], smear[smear_low], 'bo', alpha=0.7, zorder=-32)
     plt.plot(no2[~smear_filter], smear[~smear_filter], 'ko', alpha=0.7, zorder=-32)
     ymax=np.nanmax(smear)
-    plt.ylim(1,ymax)
+    plt.ylim(10,ymax)
 
     # y binned by x
     X=no2.flatten()
@@ -1406,11 +1408,9 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[500,4
 
     plt.ylabel('$\hat{S}$')
     plt.xlabel('NO$_2$')
-
-    ## Now do the same thing but using smear filtered data
-
-
-    plt.savefig('Figs/Filters/smearing_nox.png')
+    pname=month.strftime('Figs/Filters/smearing_nox_%Y%m.png')
+    plt.savefig(pname)
+    print('saved ',pname)
 
 def smearing_vs_yield(month=datetime(2005,1,1), hcho_life=2.5):
     '''

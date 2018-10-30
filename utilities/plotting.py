@@ -1132,3 +1132,9 @@ def add_marker_to_map(bmap, mask, lats, lons, marker='o', landonly=False, **bmap
             if mask[y,x]:
                 mx,my = bmap(lons[x], lats[y])
                 bmap.plot(mx, my, marker=marker, **bmapargs)
+
+def remove_spines(ax, top=False, right=False, bottom=False, left=False):
+    ax.spines['top'].set_visible(top)
+    ax.spines['right'].set_visible(right)
+    ax.spines['bottom'].set_visible(bottom)
+    ax.spines['left'].set_visible(left)

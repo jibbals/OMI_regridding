@@ -28,7 +28,7 @@ from classes.omhchorp import omhchorp # class reading OMHCHORP
 from utilities import fio as fio
 import utilities.plotting as pp
 import utilities.utilities as util
-from utilities import GMAO
+from utilities import GMAO, masks
 
 import timeit
 # EG using timer:
@@ -42,8 +42,6 @@ import timeit
 ###############
 __VERBOSE__=True
 __DEBUG__=True
-
-__Thresh_Smearing__=4000 # taken from Marais africa paper
 
 ###############
 ### METHODS ###
@@ -158,11 +156,11 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     #firemask              = fio.make_fire_mask(day0, dayn, region=region)
     #smokemask             = fio.make_smoke_mask(day0, dayn, region=region)
     #anthromask            = fio.make_anthro_mask(day0, dayn, region=region)
-    firemask              = fio.get_fire_mask(day0,dN=dayn,region=region)
-    smokemask             = fio.get_smoke_mask(day0,dN=dayn, region=region)
-    anthromask            = fio.get_anthro_mask(day0,dN=dayn, region=region)
-    firefilter            = firemask+smokemask
-    anthrofilter          = anthromask
+    firemask,_,_,_        = fio.get_fire_mask(day0,dN=dayn, region=region)
+    smokemask,_,_,_       = fio.get_smoke_mask(day0,dN=dayn, region=region)
+    anthromask,_,_,_      = fio.get_anthro_mask(day0,dN=dayn, region=region)
+    smearmask,_,_,_       = masks.get_smear_mask(day0,dN=dayn, region=region)
+
 
     # GC.model_slope gets slope and subsets the region
     # Then Map slope onto higher omhchorp resolution:
@@ -173,7 +171,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     GC_slope = util.regrid_to_higher(GC_slope_lr,gclats,gclons,omilats,omilons,interp='nearest')
 
     # Also save smearing
-    smear, sdates, slats, slons = smearing(month, region=region,)#pname='Figs/GC/smearing_%s.png'%mstr)
+    #smear, sdates, slats, slons = smearing(month, region=region,)#pname='Figs/GC/smearing_%s.png'%mstr)
     # Not regridding to higher resolution any more, low res is fine
     #smear = util.regrid_to_higher(smear,slats,slons,omilats,omilons,interp='nearest')
     #pp.createmap(smear,omilats,omilons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
@@ -182,7 +180,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     #print("Smearing plots saved in Figs/GC/smearing...")
 
     # TODO: Smearing Filter
-    smearfilter = smear > __Thresh_Smearing__#4000 molec_hcho s / atom_C from marais et al
+    #smearfilter = smear > __Thresh_Smearing__#4000 molec_hcho s / atom_C from marais et al
 
 
     # emissions using different columns as basis
@@ -242,7 +240,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
 
     # run with filters
     # apply filters
-    allmasks            = (firefilter + anthrofilter)>0 # + smearfilter
+    allmasks            = (firemask + anthromask + smearmask + smokemask)>0
     # filter the VCC arrays
     VCC_GC              = np.copy(VCC_GC_u)
     VCC_PP              = np.copy(VCC_PP_u)
@@ -261,12 +259,13 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     VCC_OMI_lr          = np.copy(BG_OMI_lr)
     pixels_lr           = np.copy(BG_OMI_lr)
     pixels_PP_lr        = np.copy(BG_OMI_lr)
-    #print("VCC GC has ",np.sum(np.isnan(VCC_GC) * pixels>0), "nan columns where pixel count is non zero")
-    # 3093 nan columns with pixel count > 0
-    #print("VCC OMI has ",np.sum(np.isnan(VCC_OMI) * pixels>0), "nan columns where pixel count is non zero")
-    # 0!!
-    #print("VCC PP has ",np.sum(np.isnan(VCC_PP) * pixels_PP>0), "nan columns where pixel count is non zero")
-    # 3936 !! TODO: Why is this?
+    if __DEBUG__:
+        print("VCC GC has ",np.sum(np.isnan(VCC_GC) * pixels>0), "nan columns where pixel count is non zero")
+        # 3093 nan columns with pixel count > 0
+        print("VCC OMI has ",np.sum(np.isnan(VCC_OMI) * pixels>0), "nan columns where pixel count is non zero")
+        # 0!!
+        print("VCC PP has ",np.sum(np.isnan(VCC_PP) * pixels_PP>0), "nan columns where pixel count is non zero")
+        # 3936 !! TODO: Why is this?
 
     for i in range(len(days)):
         VCC_GC_lr[i]    = util.regrid_to_lower(VCC_GC[i],omilats,omilons,lats_lr,lons_lr,pixels=pixels[i])
@@ -290,7 +289,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     E_pp_u       = (VCC_PP_u - BG_PP) / GC_slope
     E_omi_u      = (VCC_OMI_u - BG_OMI) / GC_slope
 
-    # Run calculations with masked fires/anthro
+    # Run calculations with masked fires/anthro/smear
     E_gc            = (VCC_GC - BG_VCC) / GC_slope
     E_pp            = (VCC_PP - BG_PP) / GC_slope
     E_omi           = (VCC_OMI - BG_OMI) / GC_slope
@@ -338,8 +337,6 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['ModelSlope']   = GC_slope_lr[0] # just one value per month
     outattrs['ModelSlope']  = {'units':'molec_HCHO s/atomC',
                                'desc':'Yield calculated from RMA regression of MEGAN midday emissions vs GEOS-Chem midday HCHO columns' }
-    outdata['smearing'] = smear
-    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for at 2x2.5 resolution'}
     outattrs['E_VCC_GC']    = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope'}
     outattrs['E_VCC_PP']    = {'units':'atomC/cm2/s',
@@ -360,9 +357,9 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope, binned after filtering'}
 
     # Extras like pixel counts etc..
-    outdata['firefilter']   = firefilter.astype(np.int)
-    outdata['anthrofilter'] = anthrofilter.astype(np.int)
-    outdata['smearfilter']  = smearfilter.astype(np.int)
+    outdata['firemask']   = firemask.astype(np.int)
+    outdata['anthromask'] = anthromask.astype(np.int)
+    outdata['smearmask']  = smearmask.astype(np.int)
     outdata['pixels']       = pixels
     outdata['pixels_u']     = pixels_u
     outdata['pixels_PP']    = pixels_PP
@@ -370,12 +367,14 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['pixels_lr']    = pixels_lr
     outdata['pixels_PP_lr'] = pixels_PP_lr
     outdata['uncert_OMI']   = uncert
-    outattrs['firefilter']  = {'units':'N/A',
-                               'desc':'Squares with more than one fire (over today or last two days, in any adjacent square) or AAOD greater than %.1f'%(fio.__Thresh_AAOD__)}
-    outattrs['anthrofilter']= {'units':'N/A',
+    outattrs['firemask']    = {'units':'int',
+                               'desc':'Squares with more than one fire (over today or last two days, in any adjacent square)'}
+    outattrs['smokemask']   = {'units':'int',
+                               'desc':'Squares with AAOD greater than %.1f'%(fio.__Thresh_AAOD__)}
+    outattrs['anthromask']  = {'units':'int',
                                'desc':'Squares with tropNO2 from OMI greater than %.1e or yearly averaged tropNO2 greater than %.1e'%(fio.__Thresh_NO2_d__,fio.__Thresh_NO2_y__)}
-    outattrs['smearfilter'] = {'units':'N/A',
-                               'desc':'Squares where smearing greater than %.1f'%(__Thresh_Smearing__)}
+    outattrs['smearmask']   = {'units':'int',
+                               'desc':'smearing = Delta(HCHO)/Delta(E_isop), we filter outside of [%d to %d] where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for at 2x2.5 resolution'%(masks.__smearminlit__,masks.__smearmaxlit__)}
     outattrs['uncert_OMI']  = {'units':'molec/cm2',
                                'desc':'OMI pixel uncertainty averaged for each gridsquare'}
     outattrs['pixels']      = {'units':'n',
@@ -562,10 +561,10 @@ if __name__=='__main__':
     print('Inversion has been called...')
 
     t0=timeit.default_timer()
-    day0=datetime(2005,2,1)
+    day0=datetime(2005,1,1)
     day1=datetime(2005,2,28)
     dayn=datetime(2005,12,31)
-    store_emissions(day0=day0,dayn=dayn)
+    store_emissions(day0=day0,dayn=day1)
     t1=timeit.default_timer()
     print("TIMEIT: took %6.2f minutes to run store_emissions(%s,%s)"%((t1-t0)/60.0,day0.strftime('%Y%m%d'),dayn.strftime('%Y%m%d')))
     #for day in [datetime(2005,9,1),datetime(2005,10,1),datetime(2005,11,1),datetime(2005,12,1),]:

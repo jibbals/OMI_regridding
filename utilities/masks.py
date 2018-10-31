@@ -188,7 +188,7 @@ def read_smearmask(d0, dN=None, keys=None):
                 removed = attrs.pop(key)
     return data, attrs
 
-def get_smear_mask(d0, uselitmask=True, dN=None):
+def get_smear_mask(d0, dN=None, region=None, uselitmask=True):
     '''
         Just grab smearing mask in true/false from d0 to dN
     '''
@@ -196,5 +196,13 @@ def get_smear_mask(d0, uselitmask=True, dN=None):
     data, attrs = read_smearmask(d0, dN, keys=[key,])
     smearmask=data[key] > 0.5
     dates=data['dates']
-    return smearmask,dates,data['lats'],data['lons']
+    lats,lons = data['lats'],data['lons']
+
+    if region is not None:
+        subset=util.lat_lon_subset(lats,lons,region=region,data=[smearmask],has_time_dim=True)
+        smearmask=subset['data'][0]
+        lats=subset['lats']
+        lons=subset['lons']
+
+    return smearmask, dates, lats, lons
 

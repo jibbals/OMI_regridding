@@ -111,7 +111,7 @@ def date_index(date,dates, dn=None):
     whr=np.where(np.array(dates) == date) # returns (matches_array,something)
     if len(whr[0])==0:
         print (date, 'not in', dates)
-    if dn is None:
+    elif dn is None:
         return whr[0][0] # We just want the match
     else:
         whrn=np.where(np.array(dates) == dn) # returns last date match

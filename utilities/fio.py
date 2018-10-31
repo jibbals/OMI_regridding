@@ -195,12 +195,14 @@ def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
         f.attrs['Fill_Value']       = fillvalue
         # optional extra file attributes from argument
         for key in fattrs.keys():
+            if verbose:
+                print(key,fattrs[key], type(fattrs[key]))
             f.attrs[key] = fattrs[key]
 
 
         for name in arraydict.keys():
             # create dataset, using arraydict values
-            darr=arraydict[name]
+            darr=np.array(arraydict[name])
             if verbose:
                 print((name, darr.shape, darr.dtype))
 
@@ -287,8 +289,6 @@ def read_hdf5(filename):
             print('reading from file '+filename)
 
         # READ DATA AND ATTRIBUTES:
-        #attrs=in_f.attrs
-
         for key in in_f.keys():
             if __VERBOSE__: print(key)
             retstruct[key]=in_f[key].value
@@ -298,6 +298,11 @@ def read_hdf5(filename):
             for akey,val in attrs.items():
                 if __VERBOSE__: print("reading %s(attr)   %s:%s"%(key,akey,val))
                 retattrs[key][akey]=val
+
+        # ADD FILE ATTRIBUTES TO ATTRS
+        retattrs['file']={}
+        for fkey in in_f.attrs.keys():
+            retattrs['file'][fkey] = in_f.attrs[fkey]
 
     return retstruct, retattrs
 
@@ -1149,10 +1154,10 @@ def make_anthro_mask_file(year,
 
     ## add attributes to be saved in file
     #
-    dattrs  = {'threshy':{'value':threshy,'desc':'Threshold for yearly averaged NO2 in molec/cm2'},
-              'threshd':{'value':threshd,'desc':'Threshold for daily NO2 in molec/cm2'},
-              'latres':{'value':latres,'desc':'latitude resolution in degrees'},
-              'lonres':{'value':lonres,'desc':'longitude resolution in degrees'},
+    dattrs  = {'threshy':{'units':'molec/cm2','desc':'Threshold for yearly averaged NO2'},
+              'threshd':{'units':'molec/cm2','desc':'Threshold for daily NO2'},
+              'latres':{'units':'degrees','desc':'latitude resolution'},
+              'lonres':{'units':'degrees','desc':'longitude resolution'},
               'anthromask':{'units':'int','desc':'0 or 1: grid square potentially affected by anthropogenic influence'},
               'dates':{'units':'gregorian','desc':'hours since 1985,1,1,0,0: day axis of anthromask array'},
               'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
@@ -1162,7 +1167,8 @@ def make_anthro_mask_file(year,
     ## data dictionary to save to hdf
     #
     datadict={'anthromask':anthromask,'dates':dates,'lats':lats,'lons':lons,
-              'yearavg':no2mean, 'no2':no2}
+              'yearavg':no2mean, 'no2':no2,
+              'threshy':threshy, 'threshd':threshd, 'latres':latres, 'lonres':lonres}
 
     # filename and save to h5 file
     path=year.strftime(__dir_anthro__+'anthromask_%Y.h5')
@@ -1220,9 +1226,9 @@ def make_smoke_mask_file(year,aaod_thresh=__Thresh_AAOD__,
 
     ## add attributes to be saved in file
     #
-    attrs  = {'aaod_thresh':{'value':aaod_thresh,'desc':'aaod threshold for smoke influence'},
-              'latres':{'value':latres,'desc':'latitude resolution in degrees'},
-              'lonres':{'value':lonres,'desc':'longitude resolution in degrees'},
+    attrs  = {'aaod_thresh':{'units':'AAOD','desc':'aaod threshold for smoke influence'},
+              'latres':{'units':'degrees','desc':'latitude resolution in degrees'},
+              'lonres':{'units':'degrees','desc':'longitude resolution in degrees'},
               'smokemask':{'units':'int','desc':'0 or 1: grid square potentially affected by smoke'},
               'smoke':{'units':'AAOD','desc':'OMAERUVd AAOD at 550nm'},
               'dates':{'units':'gregorian','desc':'hours since 1985,1,1,0,0: day axis of firemask array'},
@@ -1230,7 +1236,8 @@ def make_smoke_mask_file(year,aaod_thresh=__Thresh_AAOD__,
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
     ## data dictionary to save to hdf
     #
-    datadict={'smokemask':smokemask,'smoke':smoke, 'dates':dates,'lats':lats,'lons':lons}
+    datadict={'smokemask':smokemask,'smoke':smoke, 'dates':dates,'lats':lats,'lons':lons,
+              'aaod_thresh':aaod_thresh, 'latres':latres,'lonres':lonres}
 
     # filename and save to h5 file
     path=year.strftime(__dir_smoke__+'smokemask_%Y.h5')
@@ -1324,11 +1331,11 @@ def make_fire_mask_file(year, prior_days_masked=2, fire_thresh=__Thresh_fires__,
 
     ## add attributes to be saved in file
     #
-    dattrs  = {'prior_days_masked':{'value':prior_days_masked,'desc':'How many prior days of active fires are used in mask creation'},
-              'fire_thresh':{'value':fire_thresh,'desc':'How many fires required to mask gridsquare as fire affected'},
-              'adjacent':{'value':adjacent,'desc':'Are adjacent squares masked as affected?'},
-              'latres':{'value':latres,'desc':'latitude resolution in degrees'},
-              'lonres':{'value':lonres,'desc':'longitude resolution in degrees'},
+    dattrs  = {'prior_days_masked':{'units':'int','desc':'How many prior days of active fires are used in mask creation'},
+              'fire_thresh':{'units':'float','desc':'How many fires required to mask gridsquare as fire affected'},
+              'adjacent':{'units':'int','desc':'Are adjacent squares masked as affected? (1 or 0)'},
+              'latres':{'units':'degrees','desc':'latitude resolution in degrees'},
+              'lonres':{'units':'degrees','desc':'longitude resolution in degrees'},
               'firemask':{'units':'int','desc':'0 or 1: grid square potentially affected by fire'},
               'fires':{'units':'int','desc':'sum of fire detected pixels'},
               'dates':{'units':'gregorian','desc':'hours since 1985,1,1,0,0: day axis of firemask array'},
@@ -1336,7 +1343,9 @@ def make_fire_mask_file(year, prior_days_masked=2, fire_thresh=__Thresh_fires__,
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
     ## data dictionary to save to hdf
     #
-    datadict={'firemask':firemask,'fires':fires,'dates':dates,'lats':lats,'lons':lons}
+    datadict={'firemask':firemask,'fires':fires,'dates':dates,'lats':lats,'lons':lons,
+              'fire_thresh':fire_thresh, 'adjacent':adjacent, 'latres':latres, 'lonres':lonres,
+              'prior_days_masked':prior_days_masked}
 
     # filename and save to h5 file
     path=year.strftime(__dir_fire__+'firemask_%Y.h5')
@@ -1354,18 +1363,20 @@ def get_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires__
     assert isfile(path), "NO FIREMASK FILE CREATED: "+path
     data, attrs = read_hdf5(path)
     # check file uses settings we want
-    assert (attrs['prior_days_masked']['value'] == prior_days_masked) \
-        and (attrs['fire_thresh']['value'] == fire_thresh) \
-        and (attrs['adjacent']['value'] == adjacent) \
-        and (attrs['latres']['value'] == latres) \
-        and (attrs['lonres']['value'] == lonres), "FIREMASK ATTRIBUTES ARE UNEXPECTED"
+    # for now assume it does..
+    #assert (attrs['file']['prior_days_masked'] == prior_days_masked) \
+    #    and (attrs['file']['fire_thresh'] == fire_thresh) \
+    #    and (attrs['file']['adjacent'] == adjacent) \
+    #    and (attrs['file']['latres'] == latres) \
+    #    and (attrs['file']['lonres'] == lonres), "FIREMASK ATTRIBUTES ARE UNEXPECTED"
 
     firemask=data['firemask']
     dates=data['dates']
+    dates=util.date_from_gregorian(dates)
     lats=data['lats']
     lons=data['lons']
     # subset to requested dates, lats and lons
-    di = util.date_index(d0,dates,dN=dN)
+    di = util.date_index(d0,dates,dn=dN)
     if region is not None:
         subset=util.lat_lon_subset(lats,lons,region=region,data=[firemask],has_time_dim=True)
         firemask=subset['data'][0]

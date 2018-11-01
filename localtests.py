@@ -64,65 +64,7 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-year=d0
-prior_days_masked=2
-fire_thresh=fio.__Thresh_fires__
-adjacent=True
-latres=fio.__LATRES__
-lonres=fio.__LONRES__
-max_procs=4
-'''
-    Create fire mask file for year, save into h5 file for re-use
-
-    mask is true where more than fire_thresh fire pixels exist
-
-'''
-
-## First make year long filter using method above
-#
-d0=datetime(year.year,1,1)
-dN=datetime(year.year,12,31)
-#firemask,dates,lats,lons, fires = make_fire_mask(d0,dN,prior_days_masked=prior_days_masked,
-#                                        fire_thresh=fire_thresh, adjacent=adjacent,
-#                                        latres=latres,lonres=lonres,
-#                                        region=None,max_procs=max_procs)
-
-## to save an HDF we need to change boolean to int8 and dates to strings
-#
-firemask=np.zeros([365,5,5])
-fires=np.zeros([365,5,5])
-lats=np.arange(0,5,1)
-lons=np.arange(0,5,1)
-dates=util.list_days(d0,dN)
-dates=util.gregorian_from_dates(dates)
-firemask=firemask.astype(np.int8)
-
-## add attributes to be saved in file
-#
-dattrs  = {'firemask':{'units':'int','desc':'0 or 1: grid square potentially affected by fire'},
-          'fires':{'units':'int','desc':'sum of fire detected pixels'},
-          'dates':{'units':'gregorian','desc':'hours since 1985,1,1,0,0: day axis of firemask array'},
-          'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
-          'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'}, }
-
-fattrs = {'fire_thresh':fire_thresh, 'adjacent':np.int8(adjacent), 'latres':latres, 'lonres':lonres,
-          'prior_days_masked':prior_days_masked}
-## data dictionary to save to hdf
-#
-datadict={'firemask':firemask,'fires':fires,'dates':dates,'lats':lats,'lons':lons}
-
-# filename and save to h5 file
-path=year.strftime(fio.__dir_fire__+'test_firemask_%Y.h5')
-fio.save_to_hdf5(path, datadict, attrdicts=dattrs, fattrs=fattrs, verbose=True)
-
-f,dates,lats,lons = fio.get_fire_mask(d0)
-
-#data,attrs=fio.read_hdf5('Data/smearmask_2005.h5')
-#print(data['dates'])
-#print(util.date_from_gregorian(data['dates']))
-
-
-#masks.make_smear_mask_file(2005)
+ret = masks.get_smear_mask(d0,dN)
 
 ###########
 ### Record and time STUJFFS

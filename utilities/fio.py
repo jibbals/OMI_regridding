@@ -1426,8 +1426,8 @@ def get_smoke_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
         mask=subset['data'][0]
         lats=subset['lats']
         lons=subset['lons']
-
-    return mask[di],dates[di],lats,lons
+    
+    return mask[di], dates[di], lats,lons
 
 #########################
 ###  READ MUMBA FROM JENNY

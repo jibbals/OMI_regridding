@@ -16,3 +16,6 @@ qsub -N fire$1 -o logs/firemask_$1 -v year=$1 run/create_filter_fire.sh
 
 echo "submit job for smoke mask:"
 qsub -N smoke$1 -o logs/smokemask_$1 -v year=$1 run/create_filter_smoke.sh
+
+echo "submit job for smear mask:"
+qsub -N smear$1 -o logs/smearmask_$1 -v year=$1 run/create_filter_smear.sh

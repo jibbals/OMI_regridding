@@ -148,7 +148,7 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
               'dates':{'units':'gregorian','desc':'hours since 1985,1,1,0,0: day axis of anthromask array'},
               'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'},
-              'smear':{'units':'s','desc':'year average of NO2'},
+              'smear':{'units':'s','desc':'Daily midday smearing from GEOS-Chem'},
               'yields':{'units':'molec_HCHO/atom_C','desc':'HCHO molecules per Atom C isoprene emissions'},
               'slope':{'units':'s','desc':'modelled slope between HCHO columns and E_isop, repeated from monthly to a daily timescale'},
               'tau':{'utits':'hrs','desc':'hcho lifetime modelled from GEOS-Chem'}}

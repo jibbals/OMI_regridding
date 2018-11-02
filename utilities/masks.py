@@ -21,11 +21,9 @@ import numpy as np
 import timeit # see how slow stuff is
 
 ### GLOBALS ###
-#1.5hrs at 0.2 yield up to 4hrs at .4 yield minus 10% and rounded to 100
-__smearminlit__ = 900
-__smearmaxlit__ = 5200
-
-
+#1.5hrs at 0.2 yield up to 4hrs at .4 yield minus 20% and rounded to 100
+__smearminlit__ = 800
+__smearmaxlit__ = 4600
 
 
 

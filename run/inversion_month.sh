@@ -24,7 +24,7 @@ if [ -z ${PBS_O_LOGNAME} ] || [ -z ${MONTH} ]; then
         read -r -p "run that command? (N will run directly) [y/N] " response
         response=${response,,}    # tolower
         if [[ "$response" =~ ^(yes|y)$ ]]; then
-            qsub -o logs/inversion_${1}.log -v MONTH=${1} run/inversion_month.sh
+            qsub -N invers${1} -o logs/inversion_${1}.log -v MONTH=${1} run/inversion_month.sh
             exit 0
         fi
         MONTH=$1

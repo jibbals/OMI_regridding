@@ -918,8 +918,19 @@ def yield_and_lifetime(year=2005):
     slope=data['slope']
     mask=data['smearmasklit']
     
+    # Want to look at timeseires and densities in these subregions:
+    subregions = [pp.__AUSREGION__,  # first zone is container for the rest
+                  [-36,146,-30,153], # south eastern aus
+                  [-30,140,-20,150], # north eastern aus
+                  [-27,128,-22,137], # Emptly land
+                  [-34,114,-28,125], # south western aus
+                  [-25, 126,-15,140], # Northern Aus
+                 ]
+    subregions_colors = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
+    
+    
     # use slope = Y/k to get Y assuming tau = 1/k = 2.5hrs,
-    tau=2.5*3600
+    tau=2.5*3600.  # hours -> seconds
     Yield= slope/tau # hcho/ atom C 
     Yield[mask>0] = np.NaN # mask applied
     
@@ -927,11 +938,14 @@ def yield_and_lifetime(year=2005):
     # plot australian slope and show regions of averaging
     plt.figure(figsize=[14,16])
     plt.subplot(3,1,1)
-    pp.subzones_map(yearavg, lats,lons,vmin=800, vmax=5200,linear=True, title='slope %d'%year)
-    
+    pp.subzones_map(yearavg, lats,lons,
+                    vmin=800, vmax=5200,linear=True, title='slope %d'%year,
+                    subzones=subregions, colors=subregions_colors)
     
     plt.subplot(323)
-    pp.subzones_TS(Yield, dates, lats, lons )
+    pp.subzones_TS(Yield, dates, lats, lons, 
+                   subzones=subregions, colors=subregions_colors,
+                   skip_first_region=True)
     
 def check_smearing():
     '''

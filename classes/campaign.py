@@ -57,60 +57,35 @@ class campaign:
         data=getattr(self,key)[inds]
         return dates,data
 
-    def read_sps(self, number=1):
-        '''
-            Read the sps1 or sps2 dataset
-            # Measurements are reported in local time (UTC+10)
-            # units are unlisted in the doi
-        '''
+    def plot_series(self,title=None,pname=None,dfmt='%Y%m%d'): #'%d %b'):
 
-        # data
-        self.fpath='Data/campaigns/SPS%d/SPS%d_PTRMS.csv'%(number,number)
-        data=fio.read_csv(self.fpath)
-        # PTRMS names the columns with m/z ratio, we use
-        #   HCHO = 31, ISOP = 69
-        h_key='m/z 31'
-        i_key='m/z 69'
+        dates=self.dates
 
-        self.lat,self.lon=-33.8688, 151.2093 # sydney lat/lon
+        for key,c in zip(['hcho','isop'],['orange','green']):
+            data=getattr(self,key)
+            dlim=self.attrs[key]['DL']
+            #plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', **pltargs)
+            # Plot time series
+            pp.plot_time_series(dates, data, dfmt=dfmt, label=key, color=c)
+            # add detection limit
+            if not np.isnan(dlim):
+                plt.plot([dates[0],dates[-1]], [dlim,dlim], color=c, linestyle='--')
 
-        # First row is detection limits
-        self.attrs['hcho']['DL']=float(data[h_key][0])
-        self.attrs['isop']['DL']=float(data[i_key][0])
+        plt.ylabel('[%s]'%self.attrs['hcho']['units'])
+        plt.title(title)
+        # 3 xticks:
+        plt.gca().xaxis.set_ticks([dates[0],dates[len(dates)//2],dates[-1]])
 
+        if pname is not None:
+            plt.legend()
+            plt.savefig(pname)
+            print("Saved %s"%pname)
+            plt.close()
 
-        # second row is empty in sps1
-        # last row is empty
-        start=[1,2][number==1]
-        hcho=np.array(data[h_key][start:-1])
-        isop=np.array(data[i_key][start:-1])
-
-        # convert from strings to floats
-        hcho_low = hcho=='<mdl'
-        hcho[hcho_low] = 'NaN'
-        self.hcho = hcho.astype(np.float)
-        self.hcho[hcho_low] = self.attrs['hcho']['DL'] / 2.0 # set to half of detection limit
-
-        isop_low = isop=='<mdl'
-        isop[isop_low] = 'NaN'
-        self.isop = isop.astype(np.float)
-        self.isop[isop_low] = self.attrs['isop']['DL'] / 2.0 # set to half of detection limit
-
-        self.dates=[]
-        # Convert strings to dates:
-        for date in data['Timestamp'][start:-1]:
-            #if date == '':
-            #    self.dates.append(np.NaN)
-            #else:
-            # Timestamp like this: 18/02/2011 17:00
-            self.dates.append(datetime.strptime(date,'%d/%m/%Y %H:%M'))
-
-        if __VERBOSE__:
-            print("read %d entries from %s to %s"%(len(self.dates),self.dates[0],self.dates[-1]))
-        #self.dates=[datetime.strptime('%d/%m/%Y %H',d) for d in dates]
-
-        #print(data)
-    def read_mumba(self,):
+class mumba(campaign):
+    '''
+    '''
+    def __init__(self):
         '''
             Reads MUMBA campaign data isoprene, ozone, and hcho
             Code taken from Jenny's READ_MUMBA method
@@ -165,35 +140,70 @@ class campaign:
         #hcho_dl3 = hcho[range3 * (hcho<0.186)] # 13 times
         self.hcho[range1 * (self.hcho<0.186)] = 0.186/2.0
 
-    def plot_series(self,title=None,pname=None,dfmt='%Y%m%d'): #'%d %b'):
+class sps(campaign):
+    '''
+    '''
+    def __init__(self, number=1):
+        '''
+            Read the sps1 or sps2 dataset
+            # Measurements are reported in local time (UTC+10)
+            # units are unlisted in the doi
+        '''
 
-        dates=self.dates
+        # data
+        self.fpath='Data/campaigns/SPS%d/SPS%d_PTRMS.csv'%(number,number)
+        data=fio.read_csv(self.fpath)
+        # PTRMS names the columns with m/z ratio, we use
+        #   HCHO = 31, ISOP = 69
+        h_key='m/z 31'
+        i_key='m/z 69'
 
-        for key,c in zip(['hcho','isop'],['orange','green']):
-            data=getattr(self,key)
-            dlim=self.attrs[key]['DL']
-            #plot_time_series(datetimes,values,ylabel=None,xlabel=None, pname=None, legend=False, title=None, xtickrot=30, dfmt='%Y%m', **pltargs)
-            # Plot time series
-            pp.plot_time_series(dates, data, dfmt=dfmt, label=key, color=c)
-            # add detection limit
-            if not np.isnan(dlim):
-                plt.plot([dates[0],dates[-1]], [dlim,dlim], color=c, linestyle='--')
+        self.lat,self.lon=-33.8688, 151.2093 # sydney lat/lon
 
-        plt.ylabel('[%s]'%self.attrs['hcho']['units'])
-        plt.title(title)
-        # 3 xticks:
-        plt.gca().xaxis.set_ticks([dates[0],dates[len(dates)//2],dates[-1]])
+        # First row is detection limits
+        self.attrs['hcho']['DL']=float(data[h_key][0])
+        self.attrs['isop']['DL']=float(data[i_key][0])
 
-        if pname is not None:
-            plt.legend()
-            plt.savefig(pname)
-            print("Saved %s"%pname)
-            plt.close()
 
-if __name__=='__main__':
-    print('fun')
-    #sps=campaign()
-    #sps.read_SPS(1)
-    #sps.plot_series('SPS1: 2011','sps1.png')
-    #sps.read_SPS(2)
-    #sps.plot_series('SPS2: 2012','sps2.png')
+        # second row is empty in sps1
+        # last row is empty
+        start=[1,2][number==1]
+        hcho=np.array(data[h_key][start:-1])
+        isop=np.array(data[i_key][start:-1])
+
+        # convert from strings to floats
+        hcho_low = hcho=='<mdl'
+        hcho[hcho_low] = 'NaN'
+        self.hcho = hcho.astype(np.float)
+        self.hcho[hcho_low] = self.attrs['hcho']['DL'] / 2.0 # set to half of detection limit
+
+        isop_low = isop=='<mdl'
+        isop[isop_low] = 'NaN'
+        self.isop = isop.astype(np.float)
+        self.isop[isop_low] = self.attrs['isop']['DL'] / 2.0 # set to half of detection limit
+
+        self.dates=[]
+        # Convert strings to dates:
+        for date in data['Timestamp'][start:-1]:
+            #if date == '':
+            #    self.dates.append(np.NaN)
+            #else:
+            # Timestamp like this: 18/02/2011 17:00
+            self.dates.append(datetime.strptime(date,'%d/%m/%Y %H:%M'))
+
+        if __VERBOSE__:
+            print("read %d entries from %s to %s"%(len(self.dates),self.dates[0],self.dates[-1]))
+        #self.dates=[datetime.strptime('%d/%m/%Y %H',d) for d in dates]
+
+        #print(data)
+
+class Wgong(campaign):
+    '''
+    '''
+    def __init__(self):#, year=datetime(2007,1,1)):
+        '''
+            Read the h5 data
+        '''
+        datadir='Data/campaigns/'
+        data, attrs= fio.read_hdf5(datadir+'ftir_2007.h5')
+

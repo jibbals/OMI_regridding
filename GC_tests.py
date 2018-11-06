@@ -910,14 +910,14 @@ def yield_and_lifetime(year=2005):
     '''
     # read GEOS-Chem midday slopes
     d0=datetime(year,1,1); dN=datetime(year,12,31)
-    
+
     data, attrs = masks.read_smearmask(d0,dN,keys=['slope','smearmasklit'])
     lats=data['lats']
     lons=data['lons']
     dates=data['dates']
     slope=data['slope']
     mask=data['smearmasklit']
-    
+
     # Want to look at timeseires and densities in these subregions:
     subregions = [pp.__AUSREGION__,  # first zone is container for the rest
                   [-36,146,-30,153], # south eastern aus
@@ -927,13 +927,13 @@ def yield_and_lifetime(year=2005):
                   [-25, 126,-15,140], # Northern Aus
                  ]
     subregions_colors = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
-    
-    
+
+
     # use slope = Y/k to get Y assuming tau = 1/k = 2.5hrs,
     tau=2.5*3600.  # hours -> seconds
-    Yield= slope/tau # hcho/ atom C 
+    Yield= slope/tau # hcho/ atom C
     Yield[mask>0] = np.NaN # mask applied
-    
+
     yearavg = np.nanmean(slope,axis=0)
     # plot australian slope and show regions of averaging
     plt.figure(figsize=[14,16])
@@ -941,12 +941,12 @@ def yield_and_lifetime(year=2005):
     pp.subzones_map(yearavg, lats,lons,
                     vmin=800, vmax=5200,linear=True, title='slope %d'%year,
                     subzones=subregions, colors=subregions_colors)
-    
+
     plt.subplot(323)
-    pp.subzones_TS(Yield, dates, lats, lons, 
+    pp.subzones_TS(Yield, dates, lats, lons,
                    subzones=subregions, colors=subregions_colors,
                    skip_first_region=True)
-    
+
 def check_smearing():
     '''
         Calculate smearing using halfisoprene and tropchem trac_avg files..
@@ -1311,7 +1311,7 @@ def OLD_compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=No
 
 
 
-def Examine_Model_Slope(month=datetime(2005,1,1)):
+def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
     '''
         compares isop emission [atom_C/cm2/s] against hcho vert_column [molec_hcho/cm2]
         as done in Palmer et al. 2003
@@ -1327,23 +1327,26 @@ def Examine_Model_Slope(month=datetime(2005,1,1)):
     hcho_max=3e16
     Eisop_min=1e11
     Eisop_max=1.4e13
+    xlims=np.array([Eisop_min,Eisop_max])
     slopemin=1e3
     slopemax=1e5
     cmapname='gnuplot'
     # plot names
-    pname=month.strftime('Figs/GC/E_isop_vs_hcho_%Y%m.png')
+    yyyymm=month.strftime('%Y%m')
+    pname = 'Figs/GC/E_isop_vs_hcho%s_%s.png'%(['','_sf'][use_smear_filter], yyyymm)
 
 
     # Get slope and stuff we want to plot
     model   = GC.model_slope(return_X_and_Y=True)
     lats    = model['lats']
     lons    = model['lons']
-    hcho    = model['hcho']
-    isop    = model['isop']
+    sfstr   = ['','sf'][use_smear_filter]
+    hcho    = model['hcho'+sfstr]
+    isop    = model['isop'+sfstr]
     # Y=slope*X+b with regression coeff r
-    reg     = model['r']
-    off     = model['b']
-    slope   = model['slope']
+    reg     = model['r'+sfstr]
+    off     = model['b'+sfstr]
+    slope   = model['slope'+sfstr]
     ocean   = util.oceanmask(lats,lons)
     hcho[:,ocean] = np.NaN
     isop[:,ocean] = np.NaN
@@ -1400,8 +1403,8 @@ def Examine_Model_Slope(month=datetime(2005,1,1)):
         if ii==ii_max: break
         lat=lats[yi]; lon=lons[xi]
         X=isop[:,yi,xi]; Y=hcho[:,yi,xi]
-        if np.isclose(np.mean(X),0.0) or np.isnan(np.mean(X)): continue
-        xlims=np.array([Eisop_min,Eisop_max])
+        if np.isclose(np.nanmean(X),0.0) or np.isnan(np.nanmean(X)): continue
+
         # add dot to map
         plt.sca(axes[1,0])
         bmap.plot(lon,lat,latlon=True,markersize=10,marker='o',color=colours[ii])
@@ -1514,7 +1517,8 @@ if __name__=='__main__':
 
     # Checking units:
 
-    Examine_Model_Slope() # unfinished 30/5/18
+    #Examine_Model_Slope() # unfinished 30/5/18
+    Examine_Model_Slope(use_smear_filter=True) # unfinished 30/5/18
     #check_rsc_interp()   # last run 29/5/18
 
     #HCHO_vs_temp(d0=d0,d1=d1,

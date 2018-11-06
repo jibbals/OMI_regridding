@@ -169,6 +169,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # Then Map slope onto higher omhchorp resolution:
     slope_dict=GCB.model_slope(region=region)
     GC_slope_lr=slope_dict['slope'] # it's at 2x2.5 resolution
+    GC_slope_sf=slope_dict['slopesf'] # slope after applying smearing filter
     gclats,gclons = slope_dict['lats'],slope_dict['lons']
     assert np.all(gclats == lats_lr), "Regional lats from slope function don't match GMAO"
     GC_slope = util.regrid_to_higher(GC_slope_lr,gclats,gclons,omilats,omilons,interp='nearest')
@@ -203,6 +204,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     BG_PP       = np.zeros(out_shape) + np.NaN
     BG_OMI      = np.zeros(out_shape) + np.NaN
 
+    # using slope after applying smearing filter
+
 
     time_emiss_calc=timeit.default_timer()
     # Need background values from remote pacific
@@ -231,6 +234,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # Also repeat Slope array along time axis to avoid looping
     GC_slope    = np.repeat(GC_slope[np.newaxis,:,:], len(days),axis=0)
     GC_slope_lr = np.repeat(GC_slope_lr[np.newaxis,:,:], len(days), axis=0)
+    GC_slope_sf = np.repeat(GC_slope_sf[np.newaxis,:,:], len(days), axis=0)
 
     # Need low resolution versions also...
     BG_VCC_lr=np.zeros([len(days),len(lats_lr),len(lons_lr)]) + np.NaN
@@ -302,6 +306,10 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     E_pp_lr         = (VCC_PP_lr - BG_PP_lr) / GC_slope_lr
     E_omi_lr        = (VCC_OMI_lr - BG_OMI_lr) / GC_slope_lr
 
+    # Now do the low resolution version with slope filtered by smearing
+    E_gc_sf         = (VCC_GC_lr - BG_VCC_lr) / GC_slope_sf
+    E_pp_sf         = (VCC_PP_lr - BG_PP_lr) / GC_slope_sf
+    E_omi_sf        = (VCC_OMI_lr - BG_OMI_lr) / GC_slope_sf
 
 
     elapsed = timeit.default_timer() - time_emiss_calc
@@ -312,57 +320,69 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     #
 
     # Save the backgrounds, as well as units/descriptions
-    outdata['BG_VCC']    = BG_VCC
-    outdata['BG_PP']     = BG_PP
-    outdata['BG_OMI']    = BG_OMI
-    outattrs['BG_VCC']   = {'units':'molec/cm2','desc':'Background: VCC zonally averaged from remote pacific'}
-    outattrs['BG_PP']    = {'units':'molec/cm2','desc':'Background: VCC_PP zonally averaged from remote pacific'}
-    outattrs['BG_OMI']   = {'units':'molec/cm2','desc':'Background: VCC_OMI zonally averaged from remote pacific'}
+    outdata['BG_VCC']       = BG_VCC
+    outdata['BG_PP']        = BG_PP
+    outdata['BG_OMI']       = BG_OMI
+    outattrs['BG_VCC']      = {'units':'molec/cm2','desc':'Background: VCC zonally averaged from remote pacific'}
+    outattrs['BG_PP']       = {'units':'molec/cm2','desc':'Background: VCC_PP zonally averaged from remote pacific'}
+    outattrs['BG_OMI']      = {'units':'molec/cm2','desc':'Background: VCC_OMI zonally averaged from remote pacific'}
 
     # Save the Vertical columns, as well as units/descriptions
-    outdata['VCC_GC']     = VCC_GC_u
-    outdata['VCC_PP']     = VCC_PP_u
-    outdata['VCC_OMI']    = VCC_OMI_u
-    outattrs['VCC_GC']    = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, unmasked by fires/anthro'}
-    outattrs['VCC_PP']    = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code, unmasked by fires/anthro'}
-    outattrs['VCC_OMI']   = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column, unmasked by fires,anthro'}
+    outdata['VCC_GC']       = VCC_GC_u
+    outdata['VCC_PP']       = VCC_PP_u
+    outdata['VCC_OMI']      = VCC_OMI_u
+    outattrs['VCC_GC']      = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, unmasked by fires/anthro'}
+    outattrs['VCC_PP']      = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code, unmasked by fires/anthro'}
+    outattrs['VCC_OMI']     = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column, unmasked by fires,anthro'}
 
     # Save the Emissions estimates, as well as units/descriptions
-    outdata['E_VCC_GC']     = E_gc
-    outdata['E_VCC_PP']     = E_pp
-    outdata['E_VCC_OMI']    = E_omi
-    outdata['E_VCC_GC_u']   = E_gc_u
-    outdata['E_VCC_PP_u']   = E_pp_u
-    outdata['E_VCC_OMI_u']  = E_omi_u
-    outdata['E_VCC_GC_lr']  = E_gc_lr
-    outdata['E_VCC_PP_lr']  = E_pp_lr
-    outdata['E_VCC_OMI_lr'] = E_omi_lr
+    outdata['E_GC']         = E_gc
+    outdata['E_PP']         = E_pp
+    outdata['E_OMI']        = E_omi
+    outdata['E_GC_u']       = E_gc_u
+    outdata['E_PP_u']       = E_pp_u
+    outdata['E_OMI_u']      = E_omi_u
+    outdata['E_GC_sf']      = E_gc_sf
+    outdata['E_PP_sf']      = E_pp_sf
+    outdata['E_OMI_sf']     = E_omi_sf
+    outdata['E_GC_lr']      = E_gc_lr
+    outdata['E_PP_lr']      = E_pp_lr
+    outdata['E_OMI_lr']     = E_omi_lr
     outdata['ModelSlope']   = GC_slope_lr[0] # just one value per month
     outattrs['ModelSlope']  = {'units':'molec_HCHO s/atomC',
                                'desc':'Yield calculated from RMA regression of MEGAN midday emissions vs GEOS-Chem midday HCHO columns' }
-    outattrs['E_VCC_GC']    = {'units':'atomC/cm2/s',
+    outdata['ModelSlope_sf']   = GC_slope_lr[0] # just one value per month
+    outattrs['ModelSlope_sf']  = {'units':'molec_HCHO s/atomC',
+                               'desc':'Yield calculated from RMA regression of MEGAN midday emissions vs GEOS-Chem midday HCHO columns AFTER FILTERING FOR SMEARING' }
+    outattrs['E_GC']        = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope'}
-    outattrs['E_VCC_PP']    = {'units':'atomC/cm2/s',
+    outattrs['E_PP']        = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC_PP and GC_slope'}
-    outattrs['E_VCC_OMI']   = {'units':'atomC/cm2/s',
+    outattrs['E_OMI']       = {'units':'atomC/cm2/s',
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope'}
-    outattrs['E_VCC_GC_u']  = {'units':'atomC/cm2/s',
+    outattrs['E_GC_u']      = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope, unmasked by fire or anthro'}
-    outattrs['E_VCC_PP_u']  = {'units':'atomC/cm2/s',
+    outattrs['E_PP_u']      = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC_PP and GC_slope, unmasked by fire or anthro'}
-    outattrs['E_VCC_OMI_u'] = {'units':'atomC/cm2/s',
+    outattrs['E_OMI_u']     = {'units':'atomC/cm2/s',
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope, unmasked by fire or anthro'}
-    outattrs['E_VCC_GC_lr'] = {'units':'atomC/cm2/s',
+    outattrs['E_GC_lr']     = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope, binned after filtering'}
-    outattrs['E_VCC_PP_lr'] = {'units':'atomC/cm2/s',
+    outattrs['E_PP_lr']     = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC_PP and GC_slope, binned after filtering'}
-    outattrs['E_VCC_OMI_lr']= {'units':'atomC/cm2/s',
+    outattrs['E_OMI_lr']    = {'units':'atomC/cm2/s',
                                'desc':'Isoprene emissions based on VCC_OMI and GC_slope, binned after filtering'}
+    outattrs['E_GC_sf']     = {'units':'atomC/cm2/s',
+                               'desc':'Isoprene Emissions based on VCC and GC_slope, binned after filtering, slope calculated after smear filtering'}
+    outattrs['E_PP_sf']     = {'units':'atomC/cm2/s',
+                               'desc':'Isoprene Emissions based on VCC_PP and GC_slope, binned after filtering, slope calculated after smear filtering'}
+    outattrs['E_OMI_sf']    = {'units':'atomC/cm2/s',
+                               'desc':'Isoprene emissions based on VCC_OMI and GC_slope, binned after filtering, slope calculated after smear filtering'}
 
     # Extras like pixel counts etc..
-    outdata['firemask']   = firemask.astype(np.int)
-    outdata['anthromask'] = anthromask.astype(np.int)
-    outdata['smearmask']  = smearmask.astype(np.int)
+    outdata['firemask']     = firemask.astype(np.int)
+    outdata['anthromask']   = anthromask.astype(np.int)
+    outdata['smearmask']    = smearmask.astype(np.int)
     outdata['pixels']       = pixels
     outdata['pixels_u']     = pixels_u
     outdata['pixels_PP']    = pixels_PP

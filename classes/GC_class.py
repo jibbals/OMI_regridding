@@ -21,7 +21,7 @@ from scipy.constants import N_A as N_Avogadro
 #from glob import glob
 
 # 'local' modules
-from utilities import GC_fio
+from utilities import GC_fio, masks
 import utilities.utilities as util
 from utilities import plotting as pp
 from utilities.plotting import __AUSREGION__
@@ -506,6 +506,44 @@ class GC_tavg(GC_base):
         if hasattr(self,'E_isop_bio'):
             self._set_E_isop_bio_kgs()
 
+    def hcho_lifetime(self, month, region=pp.__AUSREGION__):
+        '''
+        Use tau = HCHO / Loss    to look at hcho lifetime over a month
+        return lifetimes[day,lat,lon],
+        '''
+        print("CHECK: TRYING HCHO_LIFETIME:",month, region)
+
+        d0=util.first_day(month)
+        dN=util.last_day(month)
+
+        # read hcho and losses from trac_avg
+        # ch20 in ppbv, air density in molec/cm3,  Loss HCHO mol/cm3/s
+        keys=['IJ-AVG-$_CH2O','BXHGHT-$_N(AIR)', 'PORL-L=$_LHCHO']
+        #run = GC_class.GC_tavg(d0,dN, keys=keys) # [time, lat, lon, lev]
+        print('     :READ GC_tavg')
+        # TODO: Instead of surface use tropospheric average??
+        hcho = self.hcho[:,:,:,0] # [time, lat, lon, lev=47] @ ppbv
+        N_air = self.N_air[:,:,:,0] # [time, lat, lon, lev=47] @ molec/cm3
+        Lhcho = self.Lhcho[:,:,:,0] # [time, lat, lon, lev=38] @ mol/cm3/s  == molec/cm3/s !!!!
+        lats=self.lats
+        lons=self.lons
+
+        # [ppbv * 1e-9 * (molec air / cm3) / (molec/cm3/s)] = s
+        tau = hcho * 1e-9 * N_air  /  Lhcho
+        print('     :CALCULATED tau')
+        # change to hours
+        tau=tau/3600.
+        #
+        self.tau=tau
+
+        if region is not None:
+            subset=util.lat_lon_subset(lats,lons,region,[tau],has_time_dim=True)
+            tau=subset['data'][0]
+            lats=subset['lats']
+            lons=subset['lons']
+        print("CHECK: MANAGED HCHO_LIFETIME:",month)
+
+        return tau, self.dates, lats, lons
 
 class GC_sat(GC_base):
     '''
@@ -1035,6 +1073,7 @@ class GC_biogenic:
         self.hemco=Hemco_diag(month,month=True)
         # also get satellite output
         self.sat_out=GC_sat(month, dayN=util.last_day(month) ,run='biogenic')
+        self.dates=self.sat_out.dates
 
     def model_slope(self, region=pp.__AUSREGION__, overpass_hour=13, return_X_and_Y=False):
         '''
@@ -1045,9 +1084,10 @@ class GC_biogenic:
                 HCHO: molec/cm2
                 E_isop: atomC/cm2/s
                 b: molec/cm2
-                S: s*molec/atomC
+                S: s
+                Slope_SF = Slope after filtering by the smear (\hat{S})
 
-            Return {'lats','lons','r':regression, 'b':bg, 'slope':slope}
+            Return {'lats','lons','r':regression, 'b':bg, 'slope':slope, 'slope_sf'}
 
         '''
         #
@@ -1073,6 +1113,7 @@ class GC_biogenic:
         assert megan.attrs['E_isop_bio']['units'] == 'atomC/cm2/s', 'units are bad in E_isop_bio %s'%megan.attrs['E_isop_bio']['units']
 
 
+
         O_hcho=sat_out.O_hcho # should be very similar to hcho molec/cm2
         if __VERBOSE__:
             hcho = sat_out.get_trop_columns(keys=['hcho'])['hcho'] # ppbv -> molec/cm2
@@ -1091,6 +1132,7 @@ class GC_biogenic:
         hcho = hcho[:, :, loni]
         sublats, sublons = lats[lati], lons[loni]
 
+
         # Convert to atomC/cm2/s
         #isop=isop * self.hemco.kgC_per_m2_to_atomC_per_cm2
         #assert self.hemco.attrs['E_isop_bio']['units'] == 'kgC/cm2/s', 'units are bad for E_isop_bio (%s)'%self.hemco.attrs['E_isop_bio']
@@ -1106,6 +1148,27 @@ class GC_biogenic:
         slope  = np.zeros([n_y,n_x]) + np.NaN
         bg     = np.zeros([n_y,n_x]) + np.NaN
         reg    = np.zeros([n_y,n_x]) + np.NaN
+        err    = np.zeros([n_y,n_x,2]) + np.NaN
+
+        # similar arrays for smear filtered versions
+        slopesf  = np.zeros([n_y,n_x]) + np.NaN
+        bgsf     = np.zeros([n_y,n_x]) + np.NaN
+        regsf    = np.zeros([n_y,n_x]) + np.NaN
+        errsf    = np.zeros([n_y,n_x,2]) + np.NaN
+        isopsf   = np.zeros([n_y,n_x]) + np.NaN
+        hchosf   = np.zeros([n_y,n_x]) + np.NaN
+
+        # Read smearing mask from file
+        d0,dN = self.dates[0], self.dates[-1]
+        smearmask, smeardates, smearlats, smearlons = masks.get_smear_mask(d0,dN,region=region)
+        assert np.all(smearlats == sublats), 'smear lats are different to model lats '+str(smearlats)+str(sublats)
+        assert np.all(smearlons == sublons), 'smear lons are different to model lons '+str(smearlons)+str(sublons)
+        # apply to isop and hcho
+        isopsf = np.copy(isop)
+        isopsf[smearmask] = np.NaN
+        hchosf = np.copy(hcho)
+        hchosf[smearmask] = np.NaN
+
 
         # regression for each lat/lon gives us slope
         for xi in range(n_x):
@@ -1115,7 +1178,8 @@ class GC_biogenic:
                 Y=hcho[:, yi, xi]
 
                 # Skip ocean or no emissions squares:
-                # When using kgC/cm2/s, we are always close to zero (1e-11 order)
+                # potential problem: When using kgC/cm2/s, we are always close to zero (1e-11 order)
+                # however we are using molec/cm2/s
                 if np.isclose(np.mean(X), 0.0): continue
 
                 # get regression
@@ -1123,6 +1187,18 @@ class GC_biogenic:
                 slope[yi, xi] = m
                 bg[yi, xi] = b
                 reg[yi, xi] = r
+                err[yi,xi] = CI1[0] # slope limits (CI: ricker method)
+
+                # now all the same but using smear filtered version
+                Xsf=isopsf[:,yi,xi]
+                Ysf=hchosf[:,yi,xi]
+
+                if np.all(np.isnan(Xsf)) : continue
+                msf, bsf, rsf, CI1sf, CI2sf=RMA(Xsf, Ysf)
+                slopesf[yi, xi] = msf
+                bgsf[yi, xi] = bsf
+                regsf[yi, xi] = rsf
+                errsf[yi, xi] = CI1sf[0] # slope limits
 
         if __VERBOSE__:
             print('GC_tavg.model_yield() calculates avg. slope of %.2e'%np.nanmean(slope))
@@ -1133,10 +1209,13 @@ class GC_biogenic:
                              # indexes of lats/lons for slope
                              'lati':lati, 'loni':loni,
                              # regression, background, and slope
-                             'r':reg, 'b':bg, 'slope':slope}
+                             'r':reg, 'b':bg, 'slope':slope, 'err':err,
+                             'rsf':regsf, 'bsf':bgsf, 'slopesf':slopesf, 'errsf':errsf}
         if return_X_and_Y:
             self.modelled_slope['hcho']=hcho
             self.modelled_slope['isop']=isop
+            self.modelled_slope['hchosf']=hchosf
+            self.modelled_slope['isopsf']=isopsf
         return self.modelled_slope
 
 ################

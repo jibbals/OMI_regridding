@@ -106,6 +106,17 @@ def date_from_gregorian(greg):
         return np.array( [d0+timedelta(seconds=int(greg*3600)),])
     return np.array([d0+timedelta(seconds=int(hr*3600)) for hr in greg])
 
+def date_from_mjd2k(mjd2k):
+    '''
+        gregorian = "days since 1, jan, 2000 00:00:00"
+        Returns list of datetimes
+    '''
+    d0=datetime(2000,1,1,0,0,0)
+    mjd2k=np.array(mjd2k)
+    if mjd2k.ndim==0:
+        return([d0+timedelta(seconds=int(mjd2k*3600*24)),])
+    return([d0+timedelta(seconds=int(hr*3600*24)) for hr in mjd2k])
+
 def date_index(date,dates, dn=None):
 
     whr=np.where(np.array(dates) == date) # returns (matches_array,something)

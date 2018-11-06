@@ -12,7 +12,6 @@ import Inversion # for smearing ... should move here?
 from utilities import utilities as util
 from utilities import plotting as pp
 from utilities import fio
-from classes import GC_class
 
 
 import concurrent.futures # parallel reading of data
@@ -25,44 +24,6 @@ import timeit # see how slow stuff is
 __smearminlit__ = 800
 __smearmaxlit__ = 4600
 
-
-
-def hcho_lifetime(month, region=pp.__AUSREGION__):
-    '''
-    Use tau = HCHO / Loss    to look at hcho lifetime over a month
-    return lifetimes[day,lat,lon],
-    '''
-    print("CHECK: TRYING HCHO_LIFETIME:",month, region)
-
-    d0=util.first_day(month)
-    dN=util.last_day(month)
-
-    # read hcho and losses from trac_avg
-    # ch20 in ppbv, air density in molec/cm3,  Loss HCHO mol/cm3/s
-    keys=['IJ-AVG-$_CH2O','BXHGHT-$_N(AIR)', 'PORL-L=$_LHCHO']
-    run = GC_class.GC_tavg(d0,dN, keys=keys) # [time, lat, lon, lev]
-    print('     :READ GC_tavg')
-    # TODO: Instead of surface use tropospheric average??
-    hcho = run.hcho[:,:,:,0] # [time, lat, lon, lev=47] @ ppbv
-    N_air = run.N_air[:,:,:,0] # [time, lat, lon, lev=47] @ molec/cm3
-    Lhcho = run.Lhcho[:,:,:,0] # [time, lat, lon, lev=38] @ mol/cm3/s  == molec/cm3/s !!!!
-    lats=run.lats
-    lons=run.lons
-
-    # [ppbv * 1e-9 * (molec air / cm3) / (molec/cm3/s)] = s
-    tau = hcho * 1e-9 * N_air  /  Lhcho
-    print('     :CALCULATED tau')
-    # change to hours
-    tau=tau/3600.
-    #
-
-    if region is not None:
-        subset=util.lat_lon_subset(lats,lons,region,[tau],has_time_dim=True)
-        tau=subset['data'][0]
-        lats=subset['lats']
-        lons=subset['lons']
-    print("CHECK: MANAGED HCHO_LIFETIME:",month)
-    return tau, run.dates, lats, lons
 
 def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
     '''
@@ -78,33 +39,35 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
     months  = util.list_months(d0,dN)
 
     # Read first month of HCHO lifetime
-    tau0, dates0, lats, lons = hcho_lifetime(d0, region=region)
-
-    # set up variables we will save
-    tau         = np.zeros([len(dates), len(lats), len(lons)])
-    #yields      = np.zeros(tau.shape)
-    slope       = np.zeros(tau.shape)
-    smear       = np.zeros(tau.shape)
-    smearmin    = np.zeros(tau.shape) # dynamic smear mask if possible from geos-chem
-    smearmax    = np.zeros(tau.shape) # dynamic smear mask ..
-    smearmask   = np.zeros(tau.shape, dtype=np.int) # smearmask from GEOS-Chem or Caaba Mecca if possible
-
-
-    smearmasklit= np.zeros(tau.shape, dtype=np.int) # smearmask from literature (900-5000)
-
-    ## first read year of GC lifetimes
-    # one month at a time: starting at jan
-    di0 = util.date_index(d0,dates,util.last_day(d0))
-    tau[di0] = tau0
-    print("CHECK: Reading year of GC loss rates and concentrations to get lifetimes")
-    for i, month in enumerate(months[1:]):
-        taui, datesi, latsi, lonsi = hcho_lifetime(month, region)
-        di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
-        tau[di] = taui
-
+    #tau0, dates0, lats, lons = hcho_lifetime(d0, region=region)
     ## read year of smear
     # first read month
     smear0, dates0, lats, lons = Inversion.smearing(d0,region=region)
+
+    # set up variables we will save
+    #tau         = np.zeros([len(dates), len(lats), len(lons)])
+    #yields      = np.zeros(tau.shape)
+    #slope       = np.zeros(tau.shape)
+    smear       = np.zeros([len(dates), len(lats), len(lons)])
+    smearmin    = np.zeros(smear.shape) # dynamic smear mask if possible from geos-chem
+    smearmax    = np.zeros(smear.shape) # dynamic smear mask ..
+    smearmask   = np.zeros(smear.shape, dtype=np.int) # smearmask from GEOS-Chem or Caaba Mecca if possible
+
+
+    smearmasklit= np.zeros(smear.shape, dtype=np.int) # smearmask from literature (800-4600)
+
+    # first date index
+    di0 = util.date_index(d0,dates,util.last_day(d0))
+
+    #    ## first read year of GC lifetimes
+    #    # one month at a time: starting at jan
+    #    tau[di0] = tau0
+    #    print("CHECK: Reading year of GC loss rates and concentrations to get lifetimes")
+    #    for i, month in enumerate(months[1:]):
+    #        taui, datesi, latsi, lonsi = hcho_lifetime(month, region)
+    #        di = util.date_index(datesi[0],dates,util.last_day(datesi[0]))
+    #        tau[di] = taui
+
     smear[di0]  = smear0
     print("CHECK: Reading year of GC columns and emissions to get smearing")
     for i, month in enumerate(months[1:]):
@@ -119,20 +82,20 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
 
     ## read monthly slope
     #
-    print("CHECK: Reading year of biogenic GC columns to get slope")
-    for month in months:
-        gc=GC_class.GC_biogenic(month)
-        model_slope=gc.model_slope(region=region)
-        slopei = model_slope['slope']
-        days=util.list_days(month,month=True)
-        datesi = util.date_index(days[0], dates, days[-1])
-        # Also repeat Slope array along time axis to avoid looping
-        slopei  = np.repeat(slopei[np.newaxis,:,:], len(days), axis=0)
-        slope[datesi] = slopei
+    #    print("CHECK: Reading year of biogenic GC columns to get slope")
+    #    for month in months:
+    #        gc=GC_class.GC_biogenic(month)
+    #        model_slope=gc.model_slope(region=region)
+    #        slopei = model_slope['slope']
+    #        days=util.list_days(month,month=True)
+    #        datesi = util.date_index(days[0], dates, days[-1])
+    #        # Also repeat Slope array along time axis to avoid looping
+    #        slopei  = np.repeat(slopei[np.newaxis,:,:], len(days), axis=0)
+    #        slope[datesi] = slopei
 
     ## S = Y/k
     #Yield is just k(=1/lifetime) * Slope
-    yields = slope / tau
+    #yields = slope / tau
 
     ## Now create mask based on smearing number
     ##
@@ -157,7 +120,7 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
     dates=util.gregorian_from_dates(dates)
     datadict={'smearmask':smearmask,'dates':dates,'lats':lats,'lons':lons,
               'smearmasklit':smearmasklit,
-              'smear':smear, 'yields':yields,'tau':tau, 'slope':slope}
+              'smear':smear,} #'yields':yields,'tau':tau, 'slope':slope}
 
     # filename and save to h5 file
     path='Data/smearmask_%d.h5'%year

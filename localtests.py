@@ -64,7 +64,99 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-ret = masks.get_smear_mask(d0,dN)
+datadir='Data/campaigns/Wgong/'
+data, attrs= fio.read_hdf5(datadir+'ftir_2007.h5')
+
+datetime = data['DATETIME'] # MJD2K: days since jan 1?
+dates=util.date_from_mjd2k(datetime)
+
+height = data['ALTITUDE']
+# VAR_NOTES = The altitudes are the centre (geometric mean of layer boundaries) of the altitude layers
+# VAR_UNITS = km
+
+
+# column hcho [molec cm-2]
+hcho_col = data['H2CO.COLUMN_ABSORPTION.SOLAR']
+
+# profile in ppmv, and apriori and AVG KERNAL
+hcho_prof     = data['H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR']
+# apriori has 1 entry per measurement but all are equal
+hcho_prof_apr = data['H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_APRIORI']
+hcho_prof_ak  = data['H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_AVK']
+
+def show_distr(x,y, vertical=False, label=None, color='blue', linecolor='k', quantile=False):
+    var_2d=np.copy(y)
+    if vertical:
+        var_2d=np.copy(x)
+    mid=np.nanmean(var_2d, axis=0)
+    lower=mid - np.nanstd(var_2d, axis=0)
+    upper=mid + np.nanstd(var_2d, axis=0)
+    if quantile:
+        lower=np.nanpercentile(var_2d,25,axis=0)
+        upper=np.nanpercentile(var_2d,75,axis=0)
+
+    if vertical:
+        plt.fill_betweenx(y,lower,upper, color=color)
+        plt.plot(mid,y,color=linecolor, linewidth=2)
+    else:
+        plt.fill_between(x,lower,upper, color=color)
+        plt.plot(x,mid,color=linecolor, linewidth=2)
+
+show_distr(hcho_prof,height,vertical=True, color='blue')
+show_distr(hcho_prof_apr,height, vertical=True,color='red')
+plt.xlabel('hcho [ppmv]')
+plt.ylabel('height [km]')
+
+
+#def yield_and_lifetime(year=2005):
+'''
+    Read midday slope:
+        assume lifetime is 2.5 hours and plot area averaged yields
+        assume yields = 0.2 (or use prior mean?) and look at area averaged lifetimes
+    Plot(311) of Aus slope with 5 regions (2 on east coast, one southwest, one north, one middle aus)
+    subplot(323) time series of yields     subplot(324) distr of yields over summer/winter
+    subplot(325) time series of lifetimes  subplot(326) distr of lifetimes over summer/winter
+'''
+year=2005
+# read GEOS-Chem midday slopes
+d0=datetime(year,1,1); dN=datetime(year,12,31)
+
+data, attrs = masks.read_smearmask(d0,dN,keys=['slope','smearmasklit'])
+lats=data['lats']
+lons=data['lons']
+dates=data['dates']
+slope=data['slope']
+mask=data['smearmasklit']
+
+# Want to look at timeseires and densities in these subregions:
+subregions = [pp.__AUSREGION__,  # first zone is container for the rest
+              [-36,146,-27,153], # south eastern aus
+              [-30,140,-20,153], # north eastern aus
+              [-28,128,-22,137], # Emptly land
+              [-34,114,-28,125], # south western aus
+              [-22, 122,-14,140], # Northern Aus
+             ]
+subregions_colors = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
+
+
+# use slope = Y/k to get Y assuming tau = 1/k = 2.5hrs,
+tau=2.5*3600.  # hours -> seconds
+Yield= slope/tau # hcho/ atom C 
+Yield[mask>0] = np.NaN # mask applied
+Ylims=[-1,2]
+
+yearavg = np.nanmean(slope,axis=0)
+# plot australian slope and show regions of averaging
+plt.figure(figsize=[14,16])
+plt.subplot(3,1,1)
+pp.subzones_map(yearavg, lats,lons,
+                vmin=800, vmax=5200,linear=True, title='slope %d'%year,
+                subzones=subregions, colors=subregions_colors)
+
+plt.subplot(323)
+pp.subzones_TS(Yield, dates, lats, lons, ylims= Ylims,
+               subzones=subregions, colors=subregions_colors,
+               skip_first_region=True)
 
 ###########
 ### Record and time STUJFFS

@@ -88,7 +88,7 @@ def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,1,31),region=pp.__AUSREGI
     '''
     # Read data
     Enew=E_new(d0,dn)
-    dates,E_isop=Enew.get_series('E_VCC_OMI',region=region, testplot=True)
+    dates,E_isop=Enew.get_series('E_OMI',region=region, testplot=True)
 
     negs=np.where(E_isop<0)[0]
     highs=np.where(E_isop>6e11)[0]
@@ -123,14 +123,14 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
                   ylims=None):
     '''
         Plot the time series of E_new, eventually compare against MEGAN, etc..
-        Look at E_VCC_OMI, E_VCC_GC, and E_VCC_PP
+        Look at E_OMI, E_GC, and E_PP
 
         Add vertical lines for monthly uncertainty(stdev,)
 
     '''
 
     # Read in E_VCC_...
-    allkeys=['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP','E_VCC_OMI_lr','E_VCC_GC_lr','E_VCC_PP_lr',
+    allkeys=['E_OMI', 'E_GC', 'E_PP','E_OMI_lr','E_GC_lr','E_PP_lr',
              'E_MEGAN', 'pixels','pixels_PP','pixels_lr','pixels_PP_lr']
     Enew  = E_new(d0,dn,allkeys)
     E_meg = Enew.E_MEGAN
@@ -145,7 +145,7 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
         lrstr=['','_lr'][lowres]
         pname='Figs/Emiss/E_new_series_%s%s.png'%(locname,lrstr)
         # key names for reading E_new
-        ekeys = [ek+lrstr for ek in ['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP']]
+        ekeys = [ek+lrstr for ek in ['E_OMI', 'E_GC', 'E_PP']]
         labels      = ['MEGAN',ekeys[0],ekeys[1],ekeys[2] ]
         pixels = getattr(Enew, 'pixels'+lrstr)
         pixelspp = getattr(Enew, 'pixels_PP'+lrstr)
@@ -219,7 +219,7 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
                            force_monthly=False, force_monthly_func='median'):
     '''
         Plot the time series of E_new, compare against MEGAN, etc..
-        Look at E_VCC_OMI, E_VCC_GC, and E_VCC_PP
+        Look at E_OMI, E_GC, and E_PP
         Averaged within some regions
 
         currently can't compare high-res E_new to low res E_MEGAN
@@ -227,7 +227,7 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
     # Low res or not changes plotname and other stuff
     lrstr=['','_lr'][lowres]
     etype=str.upper(etype)
-    ekey= 'E_VCC_'+etype+lrstr
+    ekey= 'E_'+etype+lrstr
     pname='Figs/Emiss/E_%s_zones%s.png'%(etype,lrstr)
 
 
@@ -291,9 +291,9 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
                  vmin=clims[0], vmax=clims[1]*2, linear=linear, aus=True,
                  clabel=r'Atoms C cm$^{-2}$ s$^{-1}$', cmapname=cmapname)
 
-    for i,arr in enumerate([em.E_VCC_OMI, em.E_VCC_OMI_u , em.E_VCC_OMI_lr,
-                            em.E_VCC_GC, em.E_VCC_GC_u, em.E_VCC_GC_lr,
-                            em.E_VCC_PP, em.E_VCC_PP_u, em.E_VCC_PP_lr]):
+    for i,arr in enumerate([em.E_OMI, em.E_OMI_u , em.E_OMI_lr,
+                            em.E_GC, em.E_GC_u, em.E_GC_lr,
+                            em.E_PP, em.E_PP_u, em.E_PP_lr]):
         plt.subplot(4,3,i+4)
         lats=[em.lats, em.lats_lr][(i%3) == 2]
         lons=[em.lons, em.lons_lr][(i%3) == 2]
@@ -315,7 +315,7 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
 
 
 def MEGAN_vs_E_new(d0=datetime(2006,1,1), d1=datetime(2006,1,31),
-                  key='E_VCC_GC_lr',
+                  key='E_GC_lr',
                   region=pp.__AUSREGION__):
     '''
         Plot E_gc, E_new, diff, ratio

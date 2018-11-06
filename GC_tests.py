@@ -29,8 +29,7 @@ from scipy.constants import N_A as N_Avogadro
 
 # local imports:
 import utilities.plotting as pp
-from utilities import GC_fio
-from utilities import fio
+from utilities import GC_fio, fio, masks
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
 from classes import GC_class
@@ -900,8 +899,54 @@ def biogenic_vs_tavg():
     print('Saved figure ',pname)
 
 
-
-
+def yield_and_lifetime(year=2005):
+    '''
+        Read midday slope:
+            assume lifetime is 2.5 hours and plot area averaged yields
+            assume yields = 0.2 (or use prior mean?) and look at area averaged lifetimes
+        Plot(311) of Aus slope with 5 regions (2 on east coast, one southwest, one north, one middle aus)
+        subplot(323) time series of yields     subplot(324) distr of yields over summer/winter
+        subplot(325) time series of lifetimes  subplot(326) distr of lifetimes over summer/winter
+    '''
+    # read GEOS-Chem midday slopes
+    d0=datetime(year,1,1); dN=datetime(year,12,31)
+    
+    data, attrs = masks.read_smearmask(d0,dN,keys=['slope','smearmasklit'])
+    lats=data['lats']
+    lons=data['lons']
+    dates=data['dates']
+    slope=data['slope']
+    mask=data['smearmasklit']
+    
+    # Want to look at timeseires and densities in these subregions:
+    subregions = [pp.__AUSREGION__,  # first zone is container for the rest
+                  [-36,146,-30,153], # south eastern aus
+                  [-30,140,-20,150], # north eastern aus
+                  [-27,128,-22,137], # Emptly land
+                  [-34,114,-28,125], # south western aus
+                  [-25, 126,-15,140], # Northern Aus
+                 ]
+    subregions_colors = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
+    
+    
+    # use slope = Y/k to get Y assuming tau = 1/k = 2.5hrs,
+    tau=2.5*3600.  # hours -> seconds
+    Yield= slope/tau # hcho/ atom C 
+    Yield[mask>0] = np.NaN # mask applied
+    
+    yearavg = np.nanmean(slope,axis=0)
+    # plot australian slope and show regions of averaging
+    plt.figure(figsize=[14,16])
+    plt.subplot(3,1,1)
+    pp.subzones_map(yearavg, lats,lons,
+                    vmin=800, vmax=5200,linear=True, title='slope %d'%year,
+                    subzones=subregions, colors=subregions_colors)
+    
+    plt.subplot(323)
+    pp.subzones_TS(Yield, dates, lats, lons, 
+                   subzones=subregions, colors=subregions_colors,
+                   skip_first_region=True)
+    
 def check_smearing():
     '''
         Calculate smearing using halfisoprene and tropchem trac_avg files..

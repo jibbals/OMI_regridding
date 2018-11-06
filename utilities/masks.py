@@ -21,11 +21,9 @@ import numpy as np
 import timeit # see how slow stuff is
 
 ### GLOBALS ###
-#1.5hrs at 0.2 yield up to 4hrs at .4 yield minus 10% and rounded to 100
-__smearminlit__ = 900
-__smearmaxlit__ = 5200
-
-
+#1.5hrs at 0.2 yield up to 4hrs at .4 yield minus 20% and rounded to 100
+__smearminlit__ = 800
+__smearmaxlit__ = 4600
 
 
 
@@ -150,7 +148,7 @@ def make_smear_mask_file(year, region=pp.__AUSREGION__, use_GC_lifetime=True):
               'dates':{'units':'gregorian','desc':'hours since 1985,1,1,0,0: day axis of anthromask array'},
               'lats':{'units':'degrees','desc':'latitude centres north (equator=0)'},
               'lons':{'units':'degrees','desc':'longitude centres east (gmt=0)'},
-              'smear':{'units':'s','desc':'year average of NO2'},
+              'smear':{'units':'s','desc':'Daily midday smearing from GEOS-Chem'},
               'yields':{'units':'molec_HCHO/atom_C','desc':'HCHO molecules per Atom C isoprene emissions'},
               'slope':{'units':'s','desc':'modelled slope between HCHO columns and E_isop, repeated from monthly to a daily timescale'},
               'tau':{'utits':'hrs','desc':'hcho lifetime modelled from GEOS-Chem'}}

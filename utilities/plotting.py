@@ -693,8 +693,7 @@ def subzones_map(data, lats, lons, cmapname='plasma',
 
 def subzones_TS(data, dates, lats, lons,
                 subzones=__subzones_AUS__,colors=__subzones_colours__,
-                logy=False,
-                ylims=None):#, use_doys=True):
+                logy=False, ylims=None, skip_first_region=False):#, use_doys=True):
     '''
         time series for each subzone in data[time,lats,lons]
     '''
@@ -708,6 +707,8 @@ def subzones_TS(data, dates, lats, lons,
     # loop over subzones
     for i,subzone in enumerate(subzones):
         # Subset our data to subzone
+        if i==0 and skip_first_region:
+            continue
         datz=np.copy(data)
         lati,loni=util.lat_lon_range(lats,lons,subzone)
         datz = datz[:,lati,:]

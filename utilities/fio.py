@@ -550,7 +550,8 @@ def read_E_new_month(month=datetime(2005,1,1), oneday=None, filename=None):
     if filename is not None:
         fpath=filename
 
-    print("Reading E_new: %s"%fpath)
+    if __VERBOSE__:
+        print("Reading E_new: %s"%fpath)
 
     datastruct, attributes=read_hdf5(fpath)
 
@@ -1426,7 +1427,7 @@ def get_smoke_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
         mask=subset['data'][0]
         lats=subset['lats']
         lons=subset['lons']
-    
+
     return mask[di], dates[di], lats,lons
 
 #########################

@@ -124,7 +124,8 @@ class E_new:
             # Read the dimensions
             if key in __E_new_dims__:
                 setattr(self,key,E_new_list[0][key])
-                print("Reading %s"%key )
+                if __VERBOSE__:
+                    print("Reading %s"%key )
             # Read the data and append to time dimensions if there's more than
             # one month file being read
             elif (key in ['ModelSlope']) and key in dkeys:
@@ -143,7 +144,8 @@ class E_new:
                 # convert filters to boolean
                 if 'filter' in key:
                     setattr(self,key,data.astype(np.bool))
-                print("Reading %s"%key )
+                if __VERBOSE__:
+                    print("Reading %s"%key )
 
             elif (key in ['time','dates']) or (key in dkeys):
 
@@ -158,7 +160,8 @@ class E_new:
                 # convert filters to boolean
                 if 'filter' in key:
                     setattr(self,key,data.astype(np.bool))
-                print("Reading %s"%key )
+                if __VERBOSE__:
+                    print("Reading %s"%key )
             #elif __VERBOSE__:
                 #print("KEY %s not being read from E_new dataset"%key )
 

@@ -53,13 +53,26 @@ __cities__ = {'Syd':[-33.87,151.21], # Sydney
              }
 
 # Want to look at timeseires and densities in these subregions:
-__subzones_AUS__ = [__AUSREGION__,  # first zone is container for the rest
-                    [-36,148,-32,153], # Canberra, Newcastle, and Sydney
-                    [-36,134,-33,140], # Adelaide and port lincoln
-                    [-30,125,-25,135], # Emptly land
-                    [-39,142,-36,148], # Melbourne
-                   ]
+__subzones_AUS__     = [__AUSREGION__,  # first zone is container for the rest
+                        [-36,148,-32,153], # Canberra, Newcastle, and Sydney
+                        [-36,134,-33,140], # Adelaide and port lincoln
+                        [-30,125,-25,135], # Emptly land
+                        [-39,142,-36,148], # Melbourne
+                       ]
 __subzones_colours__ = ['k', 'red', 'green', 'cyan', 'darkred']
+
+__subzones_labels__  = ['Aus', 'Sydney','Adelaide','Mid','Melbourne']
+
+# Want to look at timeseires and densities in these subregions:
+__subregions__ = [__AUSREGION__,  # first zone is container for the rest
+                  [-37,146,-31,153.5], # south eastern aus
+                  [-31,141,-21,151], # north eastern aus
+                  [-29,126,-23,136], # Emptly land
+                  [-35,113.5,-27,123.5], # south western aus
+                  [-23,126,-15,141], # Northern Aus
+                  ]
+__subregions_colors__ = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
+__subregions_labels__ = ['Aus', 'SE','NE','Mid','SW','N']
 
 ###############
 ### METHODS ###
@@ -668,6 +681,7 @@ def subzones_map(data, lats, lons, cmapname='plasma',
                  cities=__cities__,
                  subzones=__subzones_AUS__,
                  colors=__subzones_colours__,
+                 labelcities=True,
                  **createmapargs):
     '''
         Plot australia, with subzones and stuff added
@@ -680,10 +694,11 @@ def subzones_map(data, lats, lons, cmapname='plasma',
     bmap,cs,cb = createmap(data, lats, lons, region=region,
                            cmapname=cmapname, **createmapargs)
     # Add cities to map
-    for city,latlon in cities.items():
-        add_point(bmap,latlon[0],latlon[1],markersize=6, marker='o',
-                  color='k', label=city, fontsize=12,
-                  xlabeloffset=-50000,ylabeloffset=30000)
+    if labelcities:
+        for city,latlon in cities.items():
+            add_point(bmap,latlon[0],latlon[1],markersize=6, marker='o',
+                      color='k', label=city, fontsize=12,
+                      xlabeloffset=-50000,ylabeloffset=30000)
 
     # Add squares to map:
     for i,subzone in enumerate(subzones[1:]):
@@ -692,17 +707,20 @@ def subzones_map(data, lats, lons, cmapname='plasma',
     return bmap,cs,cb
 
 def subzones_TS(data, dates, lats, lons,
-                subzones=__subzones_AUS__,colors=__subzones_colours__,
+                subzones=__subzones_AUS__,colors=__subzones_colours__, labels=None,
                 logy=False, ylims=None, skip_first_region=False):#, use_doys=True):
     '''
         time series for each subzone in data[time,lats,lons]
     '''
-
+    series=[]
     #if use_doys:
     #    doys = [ d.timetuple().tm_yday for d in dates ]
     #else: # use days from start of input
     d0=dates[0]
     doys = [ (d-d0).days for d in dates ]
+
+    if labels is None:
+        labels=[None,]*len(subzones)
 
     # loop over subzones
     for i,subzone in enumerate(subzones):
@@ -724,6 +742,7 @@ def subzones_TS(data, dates, lats, lons,
         upper = np.nanpercentile(datz,75,axis=(1,2))
         lower = np.nanpercentile(datz,25,axis=(1,2))
         mean = np.nanmean(datz,axis=(1,2))
+        series.append(mean)
         totmean = np.nanmean(datz)
 
         lw=[1,4][i==0] # linewidth
@@ -732,18 +751,18 @@ def subzones_TS(data, dates, lats, lons,
         plt.plot(doys, mean, color=colors[i],linewidth=lw)
         # Add IQR shading for first plot
         if i==0:
-            plt.fill_between(doys, lower, upper, color=colors[i],alpha=0.2)
+            plt.fill_between(doys, lower, upper, color=colors[i],alpha=0.2, label=labels[i])
 
         # show yearly mean
         endbit=np.max(doys)
         doyslen=np.max(doys)-np.min(doys)
         plt.xlim([np.min(doys)-doyslen/100.0, endbit + doyslen*.15])
-        plt.plot([endbit+doyslen*.02,endbit+doyslen*.1],[totmean,totmean], color=colors[i],linewidth=lw)
+        plt.plot([endbit+doyslen*.02, endbit+doyslen*.1], [totmean, totmean],
+                 color=colors[i], linewidth=lw, label=labels[i])
 
         # change to log y scale?
         if logy:
             plt.yscale('log')
-
 
         if ylims is not None:
             plt.ylim(ylims)
@@ -753,13 +772,18 @@ def subzones_TS(data, dates, lats, lons,
 
         #plt.ylabel(ylabel)
         plt.xlabel('Days since %s'%d0.strftime("%Y%m%d"))
+    if labels[0] is not None:
+        plt.legend(loc='best', fontsize=10)
+    return series
 
 def subzones(data, dates, lats, lons, comparison=None, subzones=__subzones_AUS__,
              pname=None,title=None,suptitle=None, comparisontitle=None,
              clabel=None, vmin=None, vmax=None, linear=False,
+             mapvmin=None, mapvmax=None,
              maskoceans=True,
+             labelcities=True, labels=None,
              force_monthly=False, force_monthly_func='mean',
-             colors=__subzones_colours__):
+             colors=__subzones_colours__, noplot=False):
     '''
         Look at map of data[time,lats,lons], draw subzones, show time series over map and subzones
         can clear ocean with maskoceans=True (default).
@@ -770,8 +794,10 @@ def subzones(data, dates, lats, lons, comparison=None, subzones=__subzones_AUS__
     j=int(comparison is not None)
 
     axs=[]
+    series=[]
+    series2=[]
     axs.append(plt.subplot(2,j+1,1))
-    createmapargs={'vmin':vmin, 'vmax':vmax, 'clabel':clabel,
+    createmapargs={'vmin':mapvmin, 'vmax':mapvmax, 'clabel':clabel,
                  'title':title, 'suptitle':suptitle, 'linear':linear}
 
     # Mask ocean
@@ -781,46 +807,43 @@ def subzones(data, dates, lats, lons, comparison=None, subzones=__subzones_AUS__
         data[:,oceanmask] = np.NaN
         if comparison is not None:
             comparison[:,oceanmask] = np.NaN
+
     data_mean = np.nanmean(data,axis=0)
+    if comparison is not None:
+        comparison_mean=np.nanmean(comparison,axis=0)
 
-    subzones_map(data_mean,lats,lons,subzones=subzones,colors=colors,
+    subzones_map(data_mean,lats,lons,subzones=subzones,colors=colors, labelcities=labelcities,
                  **createmapargs)
-
-    #createmap(data_mean, lats,lons,region=region,
-    #          title=title, suptitle=suptitle,
-    #          clabel=clabel, vmin=vmin,vmax=vmax,linear=linear)
 
     # For each subset here, plot the timeseries
     if force_monthly:
-        print(np.shape(data))
+
         monthly_data=util.monthly_averaged(dates,data,keep_spatial=True)
         data=monthly_data[force_monthly_func]
-        print(np.shape(data))
-        dates=monthly_data['dates']
-        print(len(dates))
-        print(dates)
+
         if comparison is not None:
             monthly_comparison=util.monthly_averaged(dates,comparison,keep_spatial=True)
             comparison=monthly_comparison[force_monthly_func]
+        # use date list of monthly midpoints
+        dates=monthly_data['dates']
 
     axs.append(plt.subplot(2,j+1,2+j))
-    subzones_TS(data, dates, lats, lons, subzones=subzones,colors=colors,
-                ylims=[vmin,vmax])
+    series=subzones_TS(data, dates, lats, lons, subzones=subzones,colors=colors,
+                       labels=labels, ylims=[vmin,vmax])
 
     if comparison is not None:
-        comparison_mean=np.nanmean(comparison,axis=0)
 
         axs.append(plt.subplot(2,2,2))
         createmapargs['title']=comparisontitle
         createmapargs['suptitle']=None
-        subzones_map(comparison_mean, lats, lons,
+        subzones_map(comparison_mean, lats, lons, labelcities=labelcities,
                      subzones=subzones,colors=colors,
                      **createmapargs)
 
-        axs.append(plt.subplot(2,2,4))
-        subzones_TS(comparison, dates, lats, lons,
-                    subzones=subzones, colors=colors,
-                    ylims=[vmin,vmax])
+        axs.append(plt.subplot(2,2,4, sharey=axs[1]))
+        series2=subzones_TS(comparison, dates, lats, lons,
+                            subzones=subzones, colors=colors,
+                            ylims=[vmin,vmax])
 
 
     if pname is not None:
@@ -828,7 +851,7 @@ def subzones(data, dates, lats, lons, comparison=None, subzones=__subzones_AUS__
         print("saved ",pname)
         plt.close()
 
-    return axs
+    return axs, series, series2, dates
 
 
 

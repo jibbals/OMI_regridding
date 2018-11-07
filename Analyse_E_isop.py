@@ -16,6 +16,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')# don't plot on screen, send straight to file
 import matplotlib.pyplot as plt
+plt.ioff()
 
 # local modules
 import utilities.utilities as util
@@ -130,7 +131,7 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
     '''
 
     # Read in E_VCC_...
-    allkeys=['E_OMI', 'E_GC', 'E_PP','E_OMI_lr','E_GC_lr','E_PP_lr',
+    allkeys=['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP','E_VCC_OMI_lr','E_VCC_GC_lr','E_VCC_PP_lr',
              'E_MEGAN', 'pixels','pixels_PP','pixels_lr','pixels_PP_lr']
     Enew  = E_new(d0,dn,allkeys)
     E_meg = Enew.E_MEGAN
@@ -145,7 +146,7 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
         lrstr=['','_lr'][lowres]
         pname='Figs/Emiss/E_new_series_%s%s.png'%(locname,lrstr)
         # key names for reading E_new
-        ekeys = [ek+lrstr for ek in ['E_OMI', 'E_GC', 'E_PP']]
+        ekeys = [ek+lrstr for ek in ['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP']]
         labels      = ['MEGAN',ekeys[0],ekeys[1],ekeys[2] ]
         pixels = getattr(Enew, 'pixels'+lrstr)
         pixelspp = getattr(Enew, 'pixels_PP'+lrstr)
@@ -223,41 +224,57 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
         Averaged within some regions
 
         currently can't compare high-res E_new to low res E_MEGAN
+
+        Plot:    MAP ENEW    |    MAP MEGAN
+                 time series |    time series
+                 differences one row per region
     '''
     # Low res or not changes plotname and other stuff
     lrstr=['','_lr'][lowres]
     etype=str.upper(etype)
-    ekey= 'E_'+etype+lrstr
-    pname='Figs/Emiss/E_%s_zones%s.png'%(etype,lrstr)
+    ekey= 'E_VCC_'+etype+lrstr
+    mstr=['','_monthly'][force_monthly]
+    pname='Figs/Emiss/E_zones_%s%s%s.png'%(etype,mstr,lrstr)
+    vmin=0; vmax=1.5e13
 
-
-    # Read in MEGAN emission
-    #Meg   = GC_class.Hemco_diag(d0,dn)
-    # Only want 1pm averaged emissions
-    #dates_Meg, E_meg = Meg.daily_LT_averaged(hour=13)
-    # Only want australia...
-    #subs=util.lat_lon_subset(Meg.lats,Meg.lons,region=pp.__AUSREGION__,data=[E_meg],has_time_dim=True)
-    #E_meg=subs['data'][0]
-    #meglats=subs['lats']
-    #meglons=subs['lons']
-
-    # Read in E_VCC_...
+    # Read in E_new and E_MEGAN
     Enew  = E_new(d0,dn,[ekey,'E_MEGAN'])
     E = getattr(Enew,ekey)
+    E[E<0] = np.NaN # remove negative emissions.
     Emeg= Enew.E_MEGAN
     lats,lons = [ getattr(Enew,s+str.lower(lrstr)) for s in ['lats','lons'] ]
     dates=Enew.dates
 
-    plt.figure(figsize=[16,12])
+    f=plt.figure(figsize=[16,12])
+
     # Plots map, and time series of E over some subzones
     # just want Austalia and sydney area
-    subzones=pp.__subzones_AUS__[0:2]
-    colors=pp.__subzones_colours__[0:2]
-    pp.subzones(E,dates,lats,lons, comparison=Emeg, linear=True,
-                vmin=-.5e12, vmax=8e12, maskoceans=True,
-                subzones=subzones,colors=colors,
-                force_monthly=force_monthly, force_monthly_func=force_monthly_func,
-                title=ekey, comparisontitle='MEGAN')
+    subzones=pp.__subregions__
+    colors=pp.__subregions_colors__
+    labels=pp.__subregions_labels__
+    axs,series,series2,dates=pp.subzones(E,dates,lats,lons, comparison=Emeg, linear=True,
+                                         vmin=vmin, vmax=vmax, maskoceans=True,
+                                         mapvmin=0, mapvmax=5e12,
+                                         labelcities=False,labels=labels,
+                                         subzones=subzones,colors=colors,
+                                         force_monthly=force_monthly, force_monthly_func=force_monthly_func,
+                                         title=ekey, comparisontitle='MEGAN')
+
+    # add row at bottom for differences between Enew and Emeg
+    f.subplots_adjust(bottom=0.35)
+    pos2=axs[1].get_position()
+    pos3=axs[3].get_position()
+    axnew=f.add_axes([pos2.x0, 0.1, pos3.x0 + pos3.width - pos2.x0 , 0.2], sharey=axs[3]) # share x axis with time series
+    plt.sca(axnew)
+    # let's plot the difference for each subregion
+
+    for i in range(len(series)):
+        # plot megan -enew
+
+        plt.plot_date(dates, series2[i] - series[i], fmt='-', color=colors[i])
+
+    plt.ylim([vmin,vmax])
+    plt.title('MEGAN - %s'%ekey)
 
 
     # save figure
@@ -738,16 +755,21 @@ if __name__=='__main__':
 
     ## Plot showing time series within Australia, and Sydney area
     ## In isop chapter results
-    ## Ran 16/7/18
-    #E_regional_time_series(d0,de,etype='gc')
-                           #force_monthly=True, force_monthly_func='median')
-    ## Time series at a particular location
-    ## Takes a few minuts (use qsub), In isop chapter results
-    ## Ran 25/7/18 - updating for pixel counts and errorbars
-    E_time_series(d0,de,#lon=pp.__cities__['Wol'][1]-2.5, locname='Inland',count=False)
-                  lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
-                  locname='Wollongong', ylims=[-0.2e13,2.5e13],
-                  monthly=True, monthly_func='median')
+    ## Ran 7/11/18
+    with np.warnings.catch_warnings():
+        np.warnings.filterwarnings('ignore')
+        for etype in ['gc','omi','pp']:
+            for monthly in [True, False]:
+                E_regional_time_series(d0,de,etype=etype, force_monthly=monthly,
+                                       force_monthly_func='median')
+
+        ## Time series at a particular location
+        ## Takes a few minuts (use qsub), In isop chapter results
+        ## Ran 25/7/18 - updating for pixel counts and errorbars
+        #E_time_series(d0,de,#lon=pp.__cities__['Wol'][1]-2.5, locname='Inland',count=False)
+        #              lat=pp.__cities__['Wol'][0],lon=pp.__cities__['Wol'][1],
+        #              locname='Wollongong', ylims=[-0.2e13,2.5e13],
+        #              monthly=True, monthly_func='median')
 
 
     #All_maps()

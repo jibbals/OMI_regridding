@@ -397,7 +397,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outattrs['anthromask']  = {'units':'int',
                                'desc':'Squares with tropNO2 from OMI greater than %.1e or yearly averaged tropNO2 greater than %.1e'%(fio.__Thresh_NO2_d__,fio.__Thresh_NO2_y__)}
     outattrs['smearmask']   = {'units':'int',
-                               'desc':'smearing = Delta(HCHO)/Delta(E_isop), we filter outside of [%d to %d] where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for at 2x2.5 resolution'%(masks.__smearminlit__,masks.__smearmaxlit__)}
+                               'desc':'smearing = Delta(HCHO)/Delta(E_isop), we filter outside of [%d to %d] where Delta is the difference between full and half isoprene emission runs from GEOS-Chem at 2x2.5 resolution'%(masks.__smearminlit__,masks.__smearmaxlit__)}
     outattrs['uncert_OMI']  = {'units':'molec/cm2',
                                'desc':'OMI pixel uncertainty averaged for each gridsquare'}
     outattrs['pixels']      = {'units':'n',

@@ -188,8 +188,30 @@ class E_new:
         self.conversion_to_kg    = np.repeat(conversion[np.newaxis,:,:],len(self.dates),axis=0)
         self.conversion_to_kg_lr = np.repeat(conversion_lr[np.newaxis,:,:],len(self.dates),axis=0)
 
+    def get_monthly_multiyear(self, key, region, maskocean=True):
+        '''
+            multiyear monthly average of key over region
+        '''
+        assert False, 'Not implemented yet'
+        # Get months in class
+        months=util.list_months(self.dates[0],self.dates[-1])
 
-    def get_season(self,key,region,maskocean=True):
+        # initialise array
+        mavg=np.zeros(len(months))+np.NaN
+
+        # grab time series over region
+        dates,arr=self.get_series(key=key,region=region,maskocean=maskocean,testplot=False)
+
+        # average of each month
+        for i,m in enumerate(months):
+            di=self.date_indices(util.list_days(m,month=True))
+            # Average of the month:
+            mavg[i]=np.nanmean(arr[di])
+            # deseasonalised data:
+            arr[di]=arr[di]-mavg[i]
+        return mavg, arr
+
+    def get_monthly(self,key,region,maskocean=True):
         '''
             Monthly average of key over region
         '''

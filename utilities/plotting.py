@@ -16,6 +16,7 @@ import numpy as np
 from matplotlib import ticker
 from mpl_toolkits.basemap import Basemap, interp
 import matplotlib.pyplot as plt
+plt.ioff() # seems to fix bug with plotting against datetimes
 import matplotlib.dates as mdates
 import warnings # To ignore warnings
 #import matplotlib.colors as mcolors #, colormapping
@@ -708,7 +709,7 @@ def subzones_map(data, lats, lons, cmapname='plasma',
 
 def subzones_TS(data, dates, lats, lons,
                 subzones=__subzones_AUS__,colors=__subzones_colours__, labels=None,
-                logy=False, ylims=None, skip_first_region=False):#, use_doys=True):
+                logy=False, ylims=None, skip_first_region=False):
     '''
         time series for each subzone in data[time,lats,lons]
     '''
@@ -748,16 +749,23 @@ def subzones_TS(data, dates, lats, lons,
         lw=[1,4][i==0] # linewidth
 
         # plot timeseries
-        plt.plot(doys, mean, color=colors[i],linewidth=lw)
+        #plt.plot(doys, mean, color=colors[i],linewidth=lw)
+        plt.plot_date(dates, mean, '-', color=colors[i],linewidth=lw)
         # Add IQR shading for first plot
         if i==0:
-            plt.fill_between(doys, lower, upper, color=colors[i],alpha=0.2, label=labels[i])
+            #plt.fill_between(doys, lower, upper, color=colors[i],alpha=0.2, label=labels[i])
+            plt.fill_between(dates, lower, upper, color=colors[i],alpha=0.2, label=labels[i])
 
         # show yearly mean
-        endbit=np.max(doys)
-        doyslen=np.max(doys)-np.min(doys)
-        plt.xlim([np.min(doys)-doyslen/100.0, endbit + doyslen*.15])
-        plt.plot([endbit+doyslen*.02, endbit+doyslen*.1], [totmean, totmean],
+        #endbit=np.max(doys)
+        #doyslen=np.max(doys)-np.min(doys)
+        #plt.xlim([np.min(doys)-doyslen/100.0, endbit + doyslen*.15])
+        #plt.plot([endbit+doyslen*.02, endbit+doyslen*.1], [totmean, totmean],
+        #         color=colors[i], linewidth=lw, label=labels[i])
+        endbit=np.max(dates)
+        dateslen=np.max(dates)-np.min(dates)
+        plt.xlim([np.min(dates)-dateslen/100.0, endbit + dateslen*.15])
+        plt.plot([endbit+dateslen*.02, endbit+dateslen*.1], [totmean, totmean],
                  color=colors[i], linewidth=lw, label=labels[i])
 
         # change to log y scale?
@@ -772,6 +780,8 @@ def subzones_TS(data, dates, lats, lons,
 
         #plt.ylabel(ylabel)
         plt.xlabel('Days since %s'%d0.strftime("%Y%m%d"))
+
+    #plt.gcf().autofmt_xdate()
     if labels[0] is not None:
         plt.legend(loc='best', fontsize=10)
     return series

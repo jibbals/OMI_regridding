@@ -213,11 +213,19 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
         print("SAVED ",pname)
 
 
+def Emissions_weight():
+    '''
+        Print out emissions in molec/cm2/s and kg/s for each season
+    '''
+    d0=datetime(2005,1,1)
+    de=datetime(2010,12,31)
+    print('TODO: extend to 2013 when ready')
+    Enew=E_new(d0,de)
 
 
 def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
                            etype='gc', lowres=True,
-                           force_monthly=False, force_monthly_func='median'):
+                           force_monthly=True, force_monthly_func='median'):
     '''
         Plot the time series of E_new, compare against MEGAN, etc..
         Look at E_OMI, E_GC, and E_PP
@@ -258,24 +266,35 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
                                          labelcities=False,labels=labels,
                                          subzones=subzones,colors=colors,
                                          force_monthly=force_monthly, force_monthly_func=force_monthly_func,
-                                         title=ekey, comparisontitle='MEGAN')
+                                         title='E$_{new}$', comparisontitle='E$_{MEGAN}$')
 
     # add row at bottom for differences between Enew and Emeg
-    f.subplots_adjust(bottom=0.35)
+    f.subplots_adjust(bottom=0.37)
     pos2=axs[1].get_position()
     pos3=axs[3].get_position()
-    axnew=f.add_axes([pos2.x0, 0.1, pos3.x0 + pos3.width - pos2.x0 , 0.2], sharey=axs[3]) # share x axis with time series
+    for tick in axs[1].get_xticklabels():
+        tick.set_rotation(20)
+    for tick in axs[3].get_xticklabels():
+        tick.set_rotation(20)
+
+    axnew=f.add_axes([pos2.x0, 0.05, pos3.x0 + pos3.width - pos2.x0 , 0.2],) #sharey=axs[3]) # share x axis with time series
+    axs[1].set_ylim([vmin,vmax])
+    axs[3].set_ylim([vmin,vmax])
     plt.sca(axnew)
     # let's plot the difference for each subregion
 
     for i in range(len(series)):
         # plot megan -enew
+        lw=[1,3][i==0] # wider black line
+        reldif = 100*(series[i]-series2[i]) / series2[i]
+        plt.plot_date(dates, reldif, fmt='-', color=colors[i], linewidth=lw)
 
-        plt.plot_date(dates, series2[i] - series[i], fmt='-', color=colors[i])
+    plt.ylim([-101,101])
+    plt.ylabel('%')
+    plt.title('(E$_{new}$-E$_{MEGAN}$) / E$_{MEGAN}$')
+    plt.plot_date([dates[0],dates[-1]],[0,0],'--k')
 
-    plt.ylim([vmin,vmax])
-    plt.title('MEGAN - %s'%ekey)
-
+    f.autofmt_xdate()
 
     # save figure
     plt.savefig(pname)

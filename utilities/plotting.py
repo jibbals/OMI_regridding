@@ -1052,8 +1052,8 @@ def plot_daily_cycle(dates, data, houroffset=0, color='k', overplot=False):
     dE=dates[-1]
 
     n_days=len(util.list_days(d0,dE,month=False))
-    hours=np.array([d.hour for d in dates])
-    days=np.array([d.day for d in dates])
+    hours=np.array([d.hour for d in dates]) # [0, ..., 23, 0, ...]
+    days=np.array([d.day for d in dates])   # [0, ...,  0, 1, ...]
     # split data into 24xn_days array
     arr=np.zeros([24, n_days]) + np.NaN
     for i in range(n_days):

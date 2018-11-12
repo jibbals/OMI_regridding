@@ -423,6 +423,12 @@ def match_bottom_levels(p1i, p2i, arr1i, arr2i):
 
     return p1,p2,arr1,arr2
 
+def multi_year_average(dates,data,keep_spatial=False):
+    '''
+        Use pandas dataframes to get average for each month of the year
+
+    '''
+
 def monthly_averaged(dates,data,keep_spatial=False):
     '''
         return monthly averaged version of inputs

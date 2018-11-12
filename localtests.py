@@ -64,99 +64,207 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-datadir='Data/campaigns/Wgong/'
-data, attrs= fio.read_hdf5(datadir+'ftir_2007.h5')
+MEGAN = GC_class.Hemco_diag(d0,dN) # read whole year?
+# MEGAN.E_isop_bio.shape [ time, lats, lons]
+data=MEGAN.E_isop_bio # hours, lats, lons
+dates=np.array(MEGAN.dates)
+subset=util.lat_lon_subset(MEGAN.lats, MEGAN.lons, pp.__AUSREGION__, [data], has_time_dim=True)
+aus=subset['data'][0]
+series=np.nanmean(aus,axis=(1,2))
+offset=10 # UTC offset for x axis
 
-datetime = data['DATETIME'] # MJD2K: days since jan 1?
-dates=util.date_from_mjd2k(datetime)
+df=pd.DataFrame(data=series, index=dates)
+# grouping by hour and month, returns 288 (24x12) rows
+#  columns: count, mean, std, min, 25%, 50%, 75%, max
+monthly_daycycle= df.groupby([df.index.month, df.index.hour])
 
-height = data['ALTITUDE']
-# VAR_NOTES = The altitudes are the centre (geometric mean of layer boundaries) of the altitude layers
-# VAR_UNITS = km
-
-
-# column hcho [molec cm-2]
-hcho_col = data['H2CO.COLUMN_ABSORPTION.SOLAR']
-
-# profile in ppmv, and apriori and AVG KERNAL
-hcho_prof     = data['H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR']
-# apriori has 1 entry per measurement but all are equal
-hcho_prof_apr = data['H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_APRIORI']
-hcho_prof_ak  = data['H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_AVK']
-
-def show_distr(x,y, vertical=False, label=None, color='blue', linecolor='k', quantile=False):
-    var_2d=np.copy(y)
-    if vertical:
-        var_2d=np.copy(x)
-    mid=np.nanmean(var_2d, axis=0)
-    lower=mid - np.nanstd(var_2d, axis=0)
-    upper=mid + np.nanstd(var_2d, axis=0)
-    if quantile:
-        lower=np.nanpercentile(var_2d,25,axis=0)
-        upper=np.nanpercentile(var_2d,75,axis=0)
-
-    if vertical:
-        plt.fill_betweenx(y,lower,upper, color=color)
-        plt.plot(mid,y,color=linecolor, linewidth=2)
-    else:
-        plt.fill_between(x,lower,upper, color=color)
-        plt.plot(x,mid,color=linecolor, linewidth=2)
-
-show_distr(hcho_prof,height,vertical=True, color='blue')
-show_distr(hcho_prof_apr,height, vertical=True,color='red')
-plt.xlabel('hcho [ppmv]')
-plt.ylabel('height [km]')
+# monthly day cycles : 4 rows 3 columns with shared axes
+f, axes = plt.subplots(4,3, sharex=True, sharey=True, figsize=(16,16))
+axes[3,1].set_xlabel('Hour (UTC+%d)'%offset)
+xlim=[0,23]
+axes[3,1].set_xlim(xlim)
+axes[1,0].set_ylabel('Emission (molec/cm2/s)')
+ylim=[0,2.5e12]
+axes[1,0].set_ylim(ylim)
+titles=np.array([['Dec','Jan','Feb'],['Mar','Apr','May'],['Jun','Jul','Aug'],['Sep','Oct','Nov']])
 
 
-#def yield_and_lifetime(year=2005):
-'''
-    Read midday slope:
-        assume lifetime is 2.5 hours and plot area averaged yields
-        assume yields = 0.2 (or use prior mean?) and look at area averaged lifetimes
-    Plot(311) of Aus slope with 5 regions (2 on east coast, one southwest, one north, one middle aus)
-    subplot(323) time series of yields     subplot(324) distr of yields over summer/winter
-    subplot(325) time series of lifetimes  subplot(326) distr of lifetimes over summer/winter
-'''
-year=2005
-# read GEOS-Chem midday slopes
-d0=datetime(year,1,1); dN=datetime(year,12,31)
+# plot the daily cycle and std range
+for i in range(4): # 4 rows
+    for j in range(3): # 3 columns
+        # shift forward by one month to get dec as first entry
+        ii, jj = (i+int((j+1)%3==0))%4, (j+1)%3
+        # grab month (map i,j onto (0-11)*24)
+        mi=i*3*24 + j*24
+        # grab mean and std from dataset
+        data=monthly_daycycle.mean()[mi:mi+24].squeeze()
+        std=monthly_daycycle.std()[mi:mi+24].squeeze()
 
-data, attrs = masks.read_smearmask(d0,dN,keys=['slope','smearmasklit'])
-lats=data['lats']
-lons=data['lons']
-dates=data['dates']
-slope=data['slope']
-mask=data['smearmasklit']
+        # roll over x axis to get local time midday in the middle
+        high=np.roll(data+std,offset)
+        low=np.roll(data-std,offset)
 
-# Want to look at timeseires and densities in these subregions:
-subregions = [pp.__AUSREGION__,  # first zone is container for the rest
-              [-36,146,-27,153], # south eastern aus
-              [-30,140,-20,153], # north eastern aus
-              [-28,128,-22,137], # Emptly land
-              [-34,114,-28,125], # south western aus
-              [-22, 122,-14,140], # Northern Aus
-             ]
-subregions_colors = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
+        #plot into monthly panel, and remove ticks
+        ax=axes[ii,jj]
+        plt.sca(ax)
+        #ax.set_xticks([])
+        #ax.set_yticks([])
+        # remove ticks from right and top edges
+        plt.tick_params(
+            axis='both',      # changes apply to the x-axis
+            which='both',     # both major and minor ticks are affected
+            right=False,      # ticks along the right edge are off
+            top=False,       # ticks along the top edge are off
+            left=jj==0,
+            bottom=ii==3)
+        plt.fill_between(np.arange(24), high, low, color='k')
+        plt.title(titles[ii,jj])
+
+#for ax in axes[3,:]:
+#    ax.set_xticks(np.arange(0,24,6))
+#for ax in axes[:,0]:
+#    ax.set_yticks(np.arange(0,ylim[1],ylim[1]/5))
+# remove gaps between plots
+f.subplots_adjust(wspace=0, hspace=0.1)
+plt.savefig('tmp_dayseries.png')
+plt.close()
 
 
-# use slope = Y/k to get Y assuming tau = 1/k = 2.5hrs,
-tau=2.5*3600.  # hours -> seconds
-Yield= slope/tau # hcho/ atom C 
-Yield[mask>0] = np.NaN # mask applied
-Ylims=[-1,2]
+# Profile plots from ozone paper:
+def monthly_profiles(hour=0, degradesondes=False):
+    '''
+    Profile mean and std deviation for each month for each site
+    If you only want to consider a particular hour then set the hour parameter
+        hour can be one of [0, 6, 12, 18, None]
+    set degradesondes=True to degrade the sondes to matching GEOS-Chem resolution before finding the average..
+    '''
 
-yearavg = np.nanmean(slope,axis=0)
-# plot australian slope and show regions of averaging
-plt.figure(figsize=[14,16])
-plt.subplot(3,1,1)
-pp.subzones_map(yearavg, lats,lons,
-                vmin=800, vmax=5200,linear=True, title='slope %d'%year,
-                subzones=subregions, colors=subregions_colors)
+    # read site data
+    sites = [ fio.read_GC_station(p) for p in range(3) ]
+    o3sondes = [ fio.read_sonde(p) for p in range(3) ]
 
-plt.subplot(323)
-pp.subzones_TS(Yield, dates, lats, lons, ylims= Ylims,
-               subzones=subregions, colors=subregions_colors,
-               skip_first_region=True)
+    # some plot setups stuff
+    titles=np.array([['Dec','Jan','Feb'],['Mar','Apr','May'],['Jun','Jul','Aug'],['Sep','Oct','Nov']])
+    months=np.array([[11,0,1],[2,3,4],[5,6,7],[8,9,10]])
+    seasonalcolours=seasonal_cmap.colors
+
+
+    #for each station do this
+    # site,sonde=sites[1],o3sondes[1]
+    for site, sonde in zip(sites, o3sondes):
+
+        # degrade sonde if we are doing that
+        if degradesondes:
+            sonde.degrade_vertically(site)
+
+        # Set up plot axes
+        f, axes = plt.subplots(4,3, sharex=True, sharey=True, figsize=(16,16))
+        axes[3,1].set_xlabel('Ozone (ppb)')
+        xlim=[0,125]
+        axes[3,1].set_xlim(xlim)
+        axes[1,0].set_ylabel('Altitude (km)')
+        ylim=[0,14]
+        axes[1,0].set_ylim(ylim)
+
+        # Grab Ozone
+        O3 = site['O3']
+        s_O3 = np.array(sonde.o3ppbv)
+
+        # metres to kilometres
+        s_TP = np.array(sonde.tp) # sonde TP is already in km
+        TP = site['TropopauseAltitude'] / 1000.0
+        Z  = site['Altitudes']/1000.0
+        s_Z  = np.array(sonde.gph) / 1000.0
+        Znew= np.linspace(0,14,100)
+        # need to vertically bin the O3 profiles,
+        # interpolated at 100 points up to 14km
+        means=np.zeros([12,100])
+        medians=np.zeros([12,100])
+        pct5 = np.zeros([12,100]) # 5th percentile
+        pct95 = np.zeros([12,100]) # 95th percentile
+        stds =np.zeros([12,100])
+        TPm = np.zeros(12)
+        s_means=np.zeros([12,100])
+        s_medians=np.zeros([12,100])
+        s_pct5 = np.zeros([12,100]) # 5th percentile
+        s_pct95 = np.zeros([12,100]) # 95th percentile
+        s_stds =np.zeros([12,100])
+        s_TPm = np.zeros(12)
+        s_counts=np.zeros(12)
+
+        # bin data into 12 months
+        allmonths=np.array([ d.month for d in site['Date'] ])
+        s_allmonths=np.array( [ d.month for d in sonde.dates ])
+        for month in range(12):
+            # find indices matching the current month
+            inds=np.where(allmonths == month+1)[0]
+            if hour is not None:
+                allhours =np.array([ d.hour for d in site['Date'] ])
+                inds = np.where( (allmonths == month+1) * (allhours==hour) )[0]
+            s_inds=np.where(s_allmonths == month+1)[0]
+            n, s_n = len(inds), len(s_inds)
+            s_counts[month]=s_n
+
+            # each profile needs to be interpolated up to 14km
+            profs=np.zeros([n,100])
+            s_profs=np.zeros([s_n,100])
+            for i in range(n):
+                profs[i,:] = np.interp(Znew, Z[inds[i],:], O3[inds[i],:],left=np.NaN,right=np.NaN)
+            for i in range(s_n):
+                s_profs[i,:] = np.interp(Znew, s_Z[s_inds[i],:], s_O3[s_inds[i],:],left=np.NaN,right=np.NaN)
+            means[month,:]=np.nanmean(profs,axis=0)
+            medians[month,:]=np.nanmedian(profs,axis=0)
+            stds[month,:] =np.nanstd(profs,axis=0)
+            pct5[month,:] = np.nanpercentile(profs,5,axis=0)
+            pct95[month,:] = np.nanpercentile(profs,95,axis=0)
+            TPm[month] = np.nanmean(TP[inds])
+            s_means[month,:]=np.nanmean(s_profs,axis=0)
+            s_medians[month,:]=np.nanmedian(s_profs,axis=0)
+            s_stds[month,:] =np.nanstd(s_profs,axis=0)
+            s_pct5[month,:] = np.nanpercentile(s_profs,5,axis=0)
+            s_pct95[month,:] = np.nanpercentile(s_profs,95,axis=0)
+            s_TPm[month] = np.nanmean(s_TP[s_inds])
+
+        # plot the median profiles and shade the area of 5th-95th percentiles
+        for i in range(4):
+            for j in range(3):
+                plt.sca(axes[i,j]) # set current axis
+                mind=months[i,j]
+                X=medians[mind,:]
+                Xl=X-pct5[mind,:]
+                Xr=X+pct95[mind,:]
+                s_X=s_medians[mind,:]
+                s_Xl=s_X-s_pct5[mind,:]
+                s_Xr=s_X+s_pct95[mind,:]
+
+                # plot averaged profiles + std
+                plt.plot(X, Znew , linewidth=3, color=col['GEOS'])
+                plt.fill_betweenx(Znew, Xl, Xr, alpha=0.5, color=seasonalcolours[i])
+                plt.plot(s_X, Znew , linewidth=3, color=col['Sonde'])
+                plt.fill_betweenx(Znew, s_Xl, s_Xr, alpha=0.5, color=seasonalcolours[i])
+                # plot tropopause
+                Y=TPm[mind]
+                s_Y=s_TPm[mind]
+                plt.plot(xlim, [Y, Y], '--', linewidth=2, color=col['GEOS'])
+                plt.plot(xlim, [s_Y, s_Y], '--', linewidth=2, color=col['Sonde'])
+                # plot title and text
+                plt.title(titles[i,j])
+                # add count text to upper corner
+                plt.text(.72*xlim[1], .5, "%d sondes"%s_counts[mind])
+
+        # set title, and layout, then save figure
+        stn_name=site['Station'].split(' ')[0]
+        if hour is not None: stn_name+='_H%02d'%hour
+        f.suptitle("Monthly Median Profiles over "+stn_name)
+        outfile='images/eventprofiles/%s_monthprofiles.png'%stn_name
+        if degradesondes:
+            outfile='images/eventprofiles/%s_monthprofilesdegraded.png'%stn_name
+        plt.tight_layout()
+        plt.subplots_adjust(top=0.94)
+        plt.savefig(outfile)
+        print("Image saved to %s"%outfile)
+        plt.close(f)
+
 
 ###########
 ### Record and time STUJFFS
@@ -165,6 +273,104 @@ pp.subzones_TS(Yield, dates, lats, lons, ylims= Ylims,
 end=timeit.default_timer()
 print("TIME: %6.2f minutes for stuff"%((end-start1)/60.0))
 
+
+def show_ftir_data():
+    '''
+    '''
+    datadir='Data/campaigns/Wgong/'
+    data, attrs= fio.read_hdf5(datadir+'ftir_2007.h5')
+
+    datetime = data['DATETIME'] # MJD2K: days since jan 1?
+    dates=util.date_from_mjd2k(datetime)
+
+    height = data['ALTITUDE']
+    # VAR_NOTES = The altitudes are the centre (geometric mean of layer boundaries) of the altitude layers
+    # VAR_UNITS = km
+
+
+    # column hcho [molec cm-2]
+    hcho_col = data['H2CO.COLUMN_ABSORPTION.SOLAR']
+
+    # profile in ppmv, and apriori and AVG KERNAL
+    hcho_prof     = data['H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR']
+    # apriori has 1 entry per measurement but all are equal
+    hcho_prof_apr = data['H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_APRIORI']
+    hcho_prof_ak  = data['H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_AVK']
+
+    def show_distr(x,y, vertical=False, label=None, color='blue', linecolor='k', quantile=False):
+        var_2d=np.copy(y)
+        if vertical:
+            var_2d=np.copy(x)
+        mid=np.nanmean(var_2d, axis=0)
+        lower=mid - np.nanstd(var_2d, axis=0)
+        upper=mid + np.nanstd(var_2d, axis=0)
+        if quantile:
+            lower=np.nanpercentile(var_2d,25,axis=0)
+            upper=np.nanpercentile(var_2d,75,axis=0)
+
+        if vertical:
+            plt.fill_betweenx(y,lower,upper, color=color)
+            plt.plot(mid,y,color=linecolor, linewidth=2)
+        else:
+            plt.fill_between(x,lower,upper, color=color)
+            plt.plot(x,mid,color=linecolor, linewidth=2)
+
+    show_distr(hcho_prof,height,vertical=True, color='blue')
+    show_distr(hcho_prof_apr,height, vertical=True,color='red')
+    plt.xlabel('hcho [ppmv]')
+    plt.ylabel('height [km]')
+
+
+def check_yield_time():
+    #def yield_and_lifetime(year=2005):
+    '''
+        Read midday slope:
+            assume lifetime is 2.5 hours and plot area averaged yields
+            assume yields = 0.2 (or use prior mean?) and look at area averaged lifetimes
+        Plot(311) of Aus slope with 5 regions (2 on east coast, one southwest, one north, one middle aus)
+        subplot(323) time series of yields     subplot(324) distr of yields over summer/winter
+        subplot(325) time series of lifetimes  subplot(326) distr of lifetimes over summer/winter
+    '''
+    year=2005
+    # read GEOS-Chem midday slopes
+    d0=datetime(year,1,1); dN=datetime(year,12,31)
+
+    data, attrs = masks.read_smearmask(d0,dN,keys=['slope','smearmasklit'])
+    lats=data['lats']
+    lons=data['lons']
+    dates=data['dates']
+    slope=data['slope']
+    mask=data['smearmasklit']
+
+    # Want to look at timeseires and densities in these subregions:
+    subregions = [pp.__AUSREGION__,  # first zone is container for the rest
+                  [-36,146,-27,153], # south eastern aus
+                  [-30,140,-20,153], # north eastern aus
+                  [-28,128,-22,137], # Emptly land
+                  [-34,114,-28,125], # south western aus
+                  [-22, 122,-14,140], # Northern Aus
+                 ]
+    subregions_colors = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
+
+
+    # use slope = Y/k to get Y assuming tau = 1/k = 2.5hrs,
+    tau=2.5*3600.  # hours -> seconds
+    Yield= slope/tau # hcho/ atom C
+    Yield[mask>0] = np.NaN # mask applied
+    Ylims=[-1,2]
+
+    yearavg = np.nanmean(slope,axis=0)
+    # plot australian slope and show regions of averaging
+    plt.figure(figsize=[14,16])
+    plt.subplot(3,1,1)
+    pp.subzones_map(yearavg, lats,lons,
+                    vmin=800, vmax=5200,linear=True, title='slope %d'%year,
+                    subzones=subregions, colors=subregions_colors)
+
+    plt.subplot(323)
+    pp.subzones_TS(Yield, dates, lats, lons, ylims= Ylims,
+                   subzones=subregions, colors=subregions_colors,
+                   skip_first_region=True)
 
 def check_entries(d0=datetime(2005,1,1),d1=datetime(2005,1,31)):
     day=omhchorp(d0)

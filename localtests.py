@@ -56,7 +56,8 @@ latres=0.25
 lonres=0.3125
 dN=datetime(2005,12,31)
 d3=datetime(2005,3,1)
-dates=util.list_days(d0,dN,month=False)
+dE=datetime(2009,12,31)
+dates=util.list_days(d0,dE,month=False)
 # start timer
 start1=timeit.default_timer()
 
@@ -64,70 +65,6 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-MEGAN = GC_class.Hemco_diag(d0,dN) # read whole year?
-# MEGAN.E_isop_bio.shape [ time, lats, lons]
-data=MEGAN.E_isop_bio # hours, lats, lons
-dates=np.array(MEGAN.dates)
-subset=util.lat_lon_subset(MEGAN.lats, MEGAN.lons, pp.__AUSREGION__, [data], has_time_dim=True)
-aus=subset['data'][0]
-series=np.nanmean(aus,axis=(1,2))
-offset=10 # UTC offset for x axis
-
-df=pd.DataFrame(data=series, index=dates)
-# grouping by hour and month, returns 288 (24x12) rows
-#  columns: count, mean, std, min, 25%, 50%, 75%, max
-monthly_daycycle= df.groupby([df.index.month, df.index.hour])
-
-# monthly day cycles : 4 rows 3 columns with shared axes
-f, axes = plt.subplots(4,3, sharex=True, sharey=True, figsize=(16,16))
-axes[3,1].set_xlabel('Hour (UTC+%d)'%offset)
-xlim=[0,23]
-axes[3,1].set_xlim(xlim)
-axes[1,0].set_ylabel('Emission (molec/cm2/s)')
-ylim=[0,2.5e12]
-axes[1,0].set_ylim(ylim)
-titles=np.array([['Dec','Jan','Feb'],['Mar','Apr','May'],['Jun','Jul','Aug'],['Sep','Oct','Nov']])
-
-
-# plot the daily cycle and std range
-for i in range(4): # 4 rows
-    for j in range(3): # 3 columns
-        # shift forward by one month to get dec as first entry
-        ii, jj = (i+int((j+1)%3==0))%4, (j+1)%3
-        # grab month (map i,j onto (0-11)*24)
-        mi=i*3*24 + j*24
-        # grab mean and std from dataset
-        data=monthly_daycycle.mean()[mi:mi+24].squeeze()
-        std=monthly_daycycle.std()[mi:mi+24].squeeze()
-
-        # roll over x axis to get local time midday in the middle
-        high=np.roll(data+std,offset)
-        low=np.roll(data-std,offset)
-
-        #plot into monthly panel, and remove ticks
-        ax=axes[ii,jj]
-        plt.sca(ax)
-        #ax.set_xticks([])
-        #ax.set_yticks([])
-        # remove ticks from right and top edges
-        plt.tick_params(
-            axis='both',      # changes apply to the x-axis
-            which='both',     # both major and minor ticks are affected
-            right=False,      # ticks along the right edge are off
-            top=False,       # ticks along the top edge are off
-            left=jj==0,
-            bottom=ii==3)
-        plt.fill_between(np.arange(24), high, low, color='k')
-        plt.title(titles[ii,jj])
-
-#for ax in axes[3,:]:
-#    ax.set_xticks(np.arange(0,24,6))
-#for ax in axes[:,0]:
-#    ax.set_yticks(np.arange(0,ylim[1],ylim[1]/5))
-# remove gaps between plots
-f.subplots_adjust(wspace=0, hspace=0.1)
-plt.savefig('tmp_dayseries.png')
-plt.close()
 
 
 # Profile plots from ozone paper:

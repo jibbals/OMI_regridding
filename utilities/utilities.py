@@ -19,6 +19,7 @@ from scipy.interpolate import griddata # for regrid function
 from mpl_toolkits.basemap import maskoceans #
 import timeit
 import concurrent.futures # parallelism
+import pandas as pd # for daily cycles grouping
 
 from utilities import GMAO
 
@@ -423,11 +424,37 @@ def match_bottom_levels(p1i, p2i, arr1i, arr2i):
 
     return p1,p2,arr1,arr2
 
-def multi_year_average(dates,data,keep_spatial=False):
+def multi_year_average(dates,data, grain='hourly'):
     '''
         Use pandas dataframes to get average for each month of the year
-
+        grain = { 'hourly' | 'daily' | 'monthly' }
     '''
+
+    # data is a list or 1d array of data, index is the datetimes of that same data
+    df=pd.DataFrame(data=data, index=dates)
+
+    # grouping monthly
+    ind = [df.index.month,]
+
+    # also grouping either daily or hourly
+    if grain=='daily':
+        ind.append(df.index.day)
+    elif grain=='hourly':
+        ind.append(df.index.hour)
+
+    # grouping by hour and month, returns 288 (24x12) rows if doing hourly grain
+    #  columns: count, mean, std, min, 25%, 50%, 75%, max
+    return df.groupby(ind)
+    # reshape to [month, hour]
+    #rets[key] = data.values.reshape([12,24])
+    #assert np.all(rets[key][0,:]==data[0:24]), 'reshape lost consistency'
+
+
+
+
+
+
+
 
 def monthly_averaged(dates,data,keep_spatial=False):
     '''

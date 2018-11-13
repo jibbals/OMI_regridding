@@ -44,6 +44,90 @@ colours = ['chartreuse','magenta','aqua']
 ###############
 ### Methods ###
 ###############
+
+def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2009,12,31)):
+    '''
+    '''
+    # Read megan
+    MEGAN = GC_class.Hemco_diag(d0,dn)
+    data=MEGAN.E_isop_bio # hours, lats, lons
+    dates=np.array(MEGAN.dates)
+
+    # average over some regions
+    regions=pp.__subregions__
+    region_colours=pp.__subregions_colors__
+    region_labels=pp.__subregions_labels__
+    region_means=[]
+    region_stds=[]
+    # UTC offsets for x axis
+    # region_offsets=[11,10,10,11,12,11]
+    offset=10 # utc + 10
+
+    for region in regions:
+        subset=util.lat_lon_subset(MEGAN.lats, MEGAN.lons, region, [data], has_time_dim=True)
+        series=np.nanmean(subset['data'][0],axis=(1,2))
+        # group by month, and hour to get the multi-year monthly averaged diurnal cycle
+        monthly_hours=util.multi_year_average(dates,series,grain='hourly')
+        # save mean and std into [month, hour] array
+        region_means.append(monthly_hours.mean().squeeze().values.reshape([12,24]))
+        region_stds.append(monthly_hours.std().squeeze().values.reshape([12,24]))
+
+
+
+    ## set up the plots
+    # monthly day cycles : 4 rows 3 columns with shared axes
+    f, axes = plt.subplots(4,3, sharex=True, sharey=True, figsize=(16,16))
+    axes[3,1].set_xlabel('Hour (UTC+%d)'%offset)
+    xlim=[0,23]
+    axes[3,1].set_xlim(xlim)
+    axes[1,0].set_ylabel('Emission (molec/cm2/s)')
+    ylim=[0,2.5e12]
+    axes[1,0].set_ylim(ylim)
+    titles=np.array([['Dec','Jan','Feb'],['Mar','Apr','May'],['Jun','Jul','Aug'],['Sep','Oct','Nov']])
+
+    for r,region in enumerate(regions):
+        means = region_means[r]
+        stds  = region_stds[r]
+        #offset= region_offsets[r]
+
+        # plot the daily cycle and std range
+        for i in range(4): # 4 rows
+            for j in range(3): # 3 columns
+                # shift forward by one month to get dec as first entry
+                ii, jj = (i+int((j+1)%3==0))%4, (j+1)%3
+                # grab month (map i,j onto (0-11)*24)
+                #mi=i*3*24 + j*24
+                mi=i*3+j #month index
+                # grab mean and std from dataset
+                mdata = means[(mi+1)%12,:].squeeze()
+                mstd  = stds[(mi+1)%12,:].squeeze()
+
+                # roll over x axis to get local time midday in the middle
+                #high  = np.roll(data+std, offset)
+                #low   = np.roll(data-std, offset)
+                mdata  = np.roll(mdata, offset)
+
+                #plot into monthly panel, and remove ticks
+                ax   = axes[ii,jj]
+                plt.sca(ax)
+
+                # remove ticks from right and top edges
+                plt.tick_params(
+                    axis='both',      # changes apply to the x-axis
+                    which='both',     # both major and minor ticks are affected
+                    right=False,      # ticks along the right edge are off
+                    top=False,       # ticks along the top edge are off
+                    left=jj==0,
+                    bottom=ii==3)
+                #plt.fill_between(np.arange(24), high, low, color='k')
+                plt.plot(np.arange(24), mdata, color=region_colours[r])
+                plt.title(titles[ii,jj])
+
+    # remove gaps between plots
+    f.subplots_adjust(wspace=0, hspace=0.1)
+    plt.savefig('Figs/Emiss/MEGAN_monthly_daycycle.png')
+    plt.close()
+
 def yearly_cycle_vs_campaigns(d0=datetime(2005,1,1),dn=datetime(2007,12,31)):
     '''
     '''
@@ -762,6 +846,9 @@ if __name__=='__main__':
     dn=datetime(2005,12,31)
     de=datetime(2007,12,31)
 
+    ## Plot megan daily cycle vs top-down emissions in several zones
+    yearly_megan_cycle(d0,de)
+
     ## Plot MEGAN vs E_new (key)
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
@@ -775,12 +862,12 @@ if __name__=='__main__':
     ## Plot showing time series within Australia, and Sydney area
     ## In isop chapter results
     ## Ran 7/11/18
-    with np.warnings.catch_warnings():
-        np.warnings.filterwarnings('ignore')
-        for etype in ['gc','omi','pp']:
-            for monthly in [True, False]:
-                E_regional_time_series(d0,de,etype=etype, force_monthly=monthly,
-                                       force_monthly_func='median')
+    #    with np.warnings.catch_warnings():
+    #        np.warnings.filterwarnings('ignore')
+    #        for etype in ['gc','omi','pp']:
+    #            for monthly in [True, False]:
+    #                E_regional_time_series(d0,de,etype=etype, force_monthly=monthly,
+    #                                       force_monthly_func='median')
 
         ## Time series at a particular location
         ## Takes a few minuts (use qsub), In isop chapter results

@@ -65,7 +65,19 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+testread = GC_class.Hemco_diag(d0,d3)
 
+
+###########
+### Record and time STUJFFS
+###########
+
+end=timeit.default_timer()
+print("TIME: %6.2f minutes for stuff"%((end-start1)/60.0))
+
+
+### Things to be finished
+###
 
 # Profile plots from ozone paper:
 def monthly_profiles(hour=0, degradesondes=False):
@@ -201,15 +213,6 @@ def monthly_profiles(hour=0, degradesondes=False):
         plt.savefig(outfile)
         print("Image saved to %s"%outfile)
         plt.close(f)
-
-
-###########
-### Record and time STUJFFS
-###########
-
-end=timeit.default_timer()
-print("TIME: %6.2f minutes for stuff"%((end-start1)/60.0))
-
 
 def show_ftir_data():
     '''

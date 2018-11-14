@@ -159,8 +159,9 @@ class GC_base:
                     keylevels=arr.shape[levdim] # sometimes 38 levels instead of 47...
                 else:
                     keylevels=self.nlevs
-                print (np.shape(arr),self.ntimes,self.nlats,self.nlons,keylevels)
-                print( key)
+                if __VERBOSE__:
+                    print (np.shape(arr),self.ntimes,self.nlats,self.nlons,keylevels)
+                    print (key)
                 arr = util.reshape_time_lat_lon_lev(arr,self.ntimes,self.nlats,self.nlons,keylevels)
 
             # Fix air density units to molec/cm3, in case they are in molec/m3
@@ -876,39 +877,41 @@ class Hemco_diag(GC_base):
             print('Reading Hemco_diag files:')
 
         # read data/attrs and initialise class:
-        #data,attrs=GC_fio.read_Hemco_diags(day0,dayn,month=month)
-        # For each month read the data
-        data_list=[]
-        months=util.list_months(day0,dayn)
-        for month in months:
-            data,attrs=GC_fio.read_Hemco_diags(month,util.last_day(month))
-            data_list.append(data)
-        datadict={}
+        datadict,attrs=GC_fio.read_Hemco_diags(day0,dayn,month=month)
 
-        # Combine the data
-        for key in data_list[0].keys():
-            if __VERBOSE__:
-                print("Reading ",key, np.shape(data_list[0][key]))
-
-            # Read the dimensions
-            if key in ['lat','lon']:
-                datadict[key] = data_list[0][key]
-            elif (key in ['time','ISOP_BIOG']):
-
-                # np array of the data [time, lats, lons]
-                data=np.array(data_list[0][key])
-
-                # for each extra month, append onto time dim:
-                for i in range(1,len(months)):
-                    data=np.append(data,np.array(data_list[i][key]),axis=0)
-
-                datadict[key]=data
-
-            elif __VERBOSE__:
-                print("KEY %s not being read from E_new dataset"%key )
-
-        attrs['init_date']=day0
-        attrs['n_dims']=len(np.shape(datadict['ISOP_BIOG']))
+        #        ## OLD WAY: now use yearly megan output files
+        #        # For each month read the data
+        #        data_list=[]
+        #        months=util.list_months(day0,dayn)
+        #        for month in months:
+        #            data,attrs=GC_fio.read_Hemco_diags(month,util.last_day(month))
+        #            data_list.append(data)
+        #        datadict={}
+        #
+        #        # Combine the data
+        #        for key in data_list[0].keys():
+        #            if __VERBOSE__:
+        #                print("Reading ",key, np.shape(data_list[0][key]))
+        #
+        #            # Read the dimensions
+        #            if key in ['lat','lon']:
+        #                datadict[key] = data_list[0][key]
+        #            elif (key in ['time','ISOP_BIOG']):
+        #
+        #                # np array of the data [time, lats, lons]
+        #                data=np.array(data_list[0][key])
+        #
+        #                # for each extra month, append onto time dim:
+        #                for i in range(1,len(months)):
+        #                    data=np.append(data,np.array(data_list[i][key]),axis=0)
+        #
+        #                datadict[key]=data
+        #
+        #            elif __VERBOSE__:
+        #                print("KEY %s not being read from E_new dataset"%key )
+        #
+        #        attrs['init_date']=day0
+        #        attrs['n_dims']=len(np.shape(datadict['ISOP_BIOG']))
 
         super(Hemco_diag,self).__init__(datadict,attrs)
 

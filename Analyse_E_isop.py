@@ -45,7 +45,7 @@ colours = ['chartreuse','magenta','aqua']
 ### Methods ###
 ###############
 
-def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2009,12,31)):
+def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2007,12,31)):
     '''
     '''
     # Read megan
@@ -81,8 +81,9 @@ def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2009,12,31)):
     xlim=[0,23]
     axes[3,1].set_xlim(xlim)
     axes[1,0].set_ylabel('Emission (molec/cm2/s)')
-    ylim=[0,2.5e12]
+    ylim=[1e10,1e14]
     axes[1,0].set_ylim(ylim)
+    axes[1,0].set_yscale('log')
     titles=np.array([['Dec','Jan','Feb'],['Mar','Apr','May'],['Jun','Jul','Aug'],['Sep','Oct','Nov']])
 
     for r,region in enumerate(regions):
@@ -119,9 +120,17 @@ def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2009,12,31)):
                     top=False,       # ticks along the top edge are off
                     left=jj==0,
                     bottom=ii==3)
+
+                # first highlight the 1300-1400 time window with soft grey
+                plt.fill_betweenx(ylim,[13,13],[14,14], color='grey', alpha=0.2)
+                plt.plot([13,13], ylim, color='grey',alpha=0.7)
+                plt.plot([14,14], ylim, color='grey',alpha=0.7)
+
                 #plt.fill_between(np.arange(24), high, low, color='k')
                 plt.plot(np.arange(24), mdata, color=region_colours[r])
                 plt.title(titles[ii,jj])
+
+
 
     # remove gaps between plots
     f.subplots_adjust(wspace=0, hspace=0.1)

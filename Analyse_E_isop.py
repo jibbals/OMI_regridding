@@ -397,17 +397,6 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
 def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
                          etype='pp', lowres=True):
     '''
-        Plot the time series of E_new, compare against MEGAN, using multi-year averages monthly averages and std's at midday
-        Look at E_OMI, E_GC, and E_PP
-        Averaged within some regions
-
-        currently can't compare high-res E_new to low res E_MEGAN
-
-        Plot:    MAP ENEW    |    MAP MEGAN
-                 time series |    time series
-                 differences one row per region
-    '''
-    '''
     Plot the time series of E_new, compare against MEGAN, using multi-year averages monthly averages and std's at midday
     Look at E_OMI, E_GC, and E_PP
     Averaged within some regions
@@ -417,7 +406,7 @@ def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
     Plot:    MAP ENEW    |    MAP MEGAN
              time series |    time series
              differences one row per region
-'''
+    '''
     # Low res or not changes plotname and other stuff
     lrstr=['','_lr'][lowres]
     etype=str.upper(etype)

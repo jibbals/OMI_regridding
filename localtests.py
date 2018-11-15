@@ -67,7 +67,85 @@ start1=timeit.default_timer()
 
 #testread = GC_class.Hemco_diag(d0,d3)
 
+#def yield_and_lifetime(year=2005):
+'''
+    Read midday slope:
+        assume lifetime is 2.5 hours and plot area averaged yields
+        assume yields = 0.2 (or use prior mean?) and look at area averaged lifetimes
+    Plot(311) of Aus slope with 5 regions (2 on east coast, one southwest, one north, one middle aus)
+    subplot(323) time series of yields     subplot(324) distr of yields over summer/winter
+    subplot(325) time series of lifetimes  subplot(326) distr of lifetimes over summer/winter
+'''
 
+year=2005
+# read GEOS-Chem midday slopes
+d0=datetime(year,1,1); dN=datetime(year,12,31)
+pname='tmp_slope.png'
+data, attrs = masks.read_smearmask(d0,dN,keys=['slope','smearmasklit'])
+lats=data['lats']
+lons=data['lons']
+dates=data['dates']
+slope=data['slope']
+mask=data['smearmasklit']
+
+# use slope = Y/k to get Y assuming tau = 1/k = 2.5hrs,
+tau=2.5*3600.  # hours -> seconds
+Yield= slope/tau # hcho/ atom C
+Yield[mask>0] = np.NaN # mask applied
+Ylims=[-1,2]
+
+# Want to look at timeseires and densities in these subregions:
+regions=GMAO.__subregions__
+colors=GMAO.__subregions_colors__
+labels=GMAO.__subregions_labels__
+
+# remove ocean squares
+oceanmask       = util.oceanmask(lats,lons)
+oceanmask       = np.repeat(oceanmask[np.newaxis,:,:], len(dates), axis=0)
+slope[oceanmask] = np.NaN
+# k or tau[oceanmask]    = np.NaN
+
+# multi-year monthly averages
+myaS    = util.multi_year_average_regional(slope,dates,lats,lons,grain='monthly',regions=regions)
+#myaEmeg = util.multi_year_average_regional(Emeg,dates,lats,lons,grain='monthly',regions=regions)
+dfS     = myaS['df']
+#dfEmeg  = myaSmeg['df']
+
+x=range(12)
+n=len(dfS)
+f,axes = plt.subplots(n,1,figsize=[16,12], sharex=True,sharey=True)
+for i in range(n):
+    plt.sca(axes[i])
+    mean        = dfS[i].mean().values.squeeze()
+    uq          = dfS[i].quantile(0.75).values.squeeze()
+    lq          = dfS[i].quantile(0.25).values.squeeze()
+    #meanmeg     = dfEmeg[i].mean().values.squeeze()
+    #uqmeg       = dfEmeg[i].quantile(0.75).values.squeeze()
+    #lqmeg       = dfEmeg[i].quantile(0.25).values.squeeze()
+
+    plt.fill_between(x,lq,uq, color=colors[i], alpha=0.5)
+    plt.plot(x, mean, color=colors[i], label='slope')
+    #plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
+    #plt.plot(x, meanmeg, color=colors[i], linestyle='--', label='MEGAN')
+    plt.ylabel(labels[i], color=colors[i], fontsize=24)
+    if i==0:
+        plt.legend(loc='best')
+    if i%2 == 1:
+        axes[i].yaxis.set_label_position("right")
+        axes[i].yaxis.tick_right()
+plt.ylim([0, 6000])
+plt.xlim([-0.5,11.5])
+plt.xticks(x)
+plt.gca().set_xticklabels(['J','F','M','A','M','J','J','A','S','O','N','D'])
+plt.xlabel('month')
+plt.suptitle('estimated slope TODO yield',fontsize=30)
+f.subplots_adjust(hspace=0)
+
+
+## save figure
+plt.savefig(pname)
+print("Saved %s"%pname)
+plt.close()
 
 
 ###########
@@ -263,56 +341,6 @@ def show_ftir_data():
     plt.ylabel('height [km]')
 
 
-def check_yield_time():
-    #def yield_and_lifetime(year=2005):
-    '''
-        Read midday slope:
-            assume lifetime is 2.5 hours and plot area averaged yields
-            assume yields = 0.2 (or use prior mean?) and look at area averaged lifetimes
-        Plot(311) of Aus slope with 5 regions (2 on east coast, one southwest, one north, one middle aus)
-        subplot(323) time series of yields     subplot(324) distr of yields over summer/winter
-        subplot(325) time series of lifetimes  subplot(326) distr of lifetimes over summer/winter
-    '''
-    year=2005
-    # read GEOS-Chem midday slopes
-    d0=datetime(year,1,1); dN=datetime(year,12,31)
-
-    data, attrs = masks.read_smearmask(d0,dN,keys=['slope','smearmasklit'])
-    lats=data['lats']
-    lons=data['lons']
-    dates=data['dates']
-    slope=data['slope']
-    mask=data['smearmasklit']
-
-    # Want to look at timeseires and densities in these subregions:
-    subregions = [pp.__AUSREGION__,  # first zone is container for the rest
-                  [-36,146,-27,153], # south eastern aus
-                  [-30,140,-20,153], # north eastern aus
-                  [-28,128,-22,137], # Emptly land
-                  [-34,114,-28,125], # south western aus
-                  [-22, 122,-14,140], # Northern Aus
-                 ]
-    subregions_colors = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
-
-
-    # use slope = Y/k to get Y assuming tau = 1/k = 2.5hrs,
-    tau=2.5*3600.  # hours -> seconds
-    Yield= slope/tau # hcho/ atom C
-    Yield[mask>0] = np.NaN # mask applied
-    Ylims=[-1,2]
-
-    yearavg = np.nanmean(slope,axis=0)
-    # plot australian slope and show regions of averaging
-    plt.figure(figsize=[14,16])
-    plt.subplot(3,1,1)
-    pp.subzones_map(yearavg, lats,lons,
-                    vmin=800, vmax=5200,linear=True, title='slope %d'%year,
-                    subzones=subregions, colors=subregions_colors)
-
-    plt.subplot(323)
-    pp.subzones_TS(Yield, dates, lats, lons, ylims= Ylims,
-                   subzones=subregions, colors=subregions_colors,
-                   skip_first_region=True)
 
 def check_entries(d0=datetime(2005,1,1),d1=datetime(2005,1,31)):
     day=omhchorp(d0)

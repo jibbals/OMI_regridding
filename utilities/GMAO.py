@@ -6,9 +6,23 @@ import numpy as np
 __LATRES__ = 0.25
 __LONRES__ = 0.3125
 # GEOS CHEM LATxLON resolution
-__LATRES_GC__ = 2.0 
-__LONRES_GC__ = 2.5 
+__LATRES_GC__ = 2.0
+__LONRES_GC__ = 2.5
 __TOA__    = 0.01 # hPa top pressure edge of GEOS-Chem outputs
+
+## REGIONS USED THROUGHOUT CODE:
+__AUSREGION__=[-45, 108.75, -10, 156.25]
+__GLOBALREGION__=[-69, -178.75, 69, 178.75]
+__subregions__ = [__AUSREGION__,  # first zone is container for the rest
+                  [-37,146,-31,153.5], # south eastern aus
+                  [-31,141,-21,151], # north eastern aus
+                  [-29,126,-23,136], # Emptly land
+                  [-35,113.5,-27,123.5], # south western aus
+                  [-23,126,-15,141], # Northern Aus
+                  ]
+__subregions_colors__ = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
+__subregions_labels__ = ['Aus', 'SE','NE','Mid','SW','N']
+
 
 def GMAO_lats(dy=__LATRES__):
     '''
@@ -24,7 +38,7 @@ def GMAO_lats(dy=__LATRES__):
     late[-1]=90
     # the rest is regular from half spaced polar boxes
     late[1:-1] = np.linspace(-90+dy/2.0, 90-dy/2.0, ny)
-    
+
     # Latitude midpoints
     latm=(late[0:-1]+late[1:]) / 2.0
     return latm,late
@@ -38,7 +52,7 @@ def GMAO_lons(dx=__LONRES__):
     nx=int(360/dx) # how many lons
     lone=np.linspace(-180-dx/2.0, 180-dx/2.0, nx+1)
     lonm=(lone[0:-1]+lone[1:]) / 2.0
-    
+
     return lonm, lone
 
 # GMAO FOR 2x2.5 GEOS-Chem OUTPUT:
@@ -82,7 +96,7 @@ assert all(lons_e == np.array([ -181.25, -178.75, -176.25, -173.75, -171.25, -16
                       148.75,  151.25,  153.75,  156.25,  158.75,  161.25,
                       163.75,  166.25,  168.75,  171.25,  173.75,  176.25,
                       178.75,]))
-    
+
 assert all(lons_m == np.array([-180.0, -177.5, -175.0, -172.5, -170.0, -167.5, -165.0, -162.5,
                        -160.0, -157.5, -155.0, -152.5, -150.0, -147.5, -145.0, -142.5,
                        -140.0, -137.5, -135.0, -132.5, -130.0, -127.5, -125.0, -122.5,

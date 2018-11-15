@@ -33,6 +33,11 @@ __grams_per_mole__={'isop':60.06+8.08, # C5H8
 NA     = GMAO.edges_containing_region([-21,115,-11,150])
 SWA    = GMAO.edges_containing_region([-36,114,-29,128])
 SEA    = GMAO.edges_containing_region([-39,144,-29,153])
+# Want to look at timeseires and densities in these subregions:
+__subregions__ = GMAO.__subregions__
+__subregions_colors__ = GMAO.__subregions_colors__
+__subregions_labels__ = GMAO.__subregions_labels__
+
 
 # Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
 # [lat,lon,lat,lon]
@@ -424,7 +429,7 @@ def match_bottom_levels(p1i, p2i, arr1i, arr2i):
 
     return p1,p2,arr1,arr2
 
-def multi_year_average(dates,data, grain='hourly'):
+def multi_year_average(data,dates, grain='hourly'):
     '''
         Use pandas dataframes to get average for each month of the year
         grain = { 'hourly' | 'daily' | 'monthly' }
@@ -449,6 +454,30 @@ def multi_year_average(dates,data, grain='hourly'):
     #rets[key] = data.values.reshape([12,24])
     #assert np.all(rets[key][0,:]==data[0:24]), 'reshape lost consistency'
 
+
+def multi_year_average_regional(data,dates,lats,lons, grain='monthly',regions=__subregions__):
+    '''
+        Use pandas dataframes to get average for each month of the year
+        grain = { 'hourly' | 'daily' | 'monthly' }
+    '''
+
+    rets={}
+    rets['subsets'] = [] # keeping all the subsets
+    rets['df']  = []
+    for region in regions:
+        tmp=lat_lon_subset(lats,lons,region,data=[data],has_time_dim=True)
+        rets['subsets'].append(tmp)
+
+        rseries=np.nanmean(tmp['data'][0], axis=(1,2)) # average over space
+        # grouping by hour and month, returns 288 (24x12) rows if doing hourly grain
+        #  columns: count, mean, std, min, 25%, 50%, 75%, max
+        df = multi_year_average(rseries, dates , grain=grain)
+        rets['df'].append(df)
+
+    return rets
+    # reshape to [month, hour]
+    #rets[key] = data.values.reshape([12,24])
+    #assert np.all(rets[key][0,:]==data[0:24]), 'reshape lost consistency'
 
 
 

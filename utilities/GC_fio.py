@@ -147,7 +147,7 @@ def read_bpch(path,keys):
     attrs['modification_times']={'desc':'When was file last modified'}
     return data,attrs
 
-def read_Hemco_diags(d0,d1=None,month=False):
+def read_Hemco_diags_hourly(d0,d1=None,month=False):
     '''
         Read Hemco diag output, one day or month at a time
     '''
@@ -194,6 +194,47 @@ def read_Hemco_diags(d0,d1=None,month=False):
     data['modification_times']=np.array(mod_times)
     attrs['modification_times']={'desc':'When was file last modified'}
 
+    return data,attrs
+
+def read_Hemco_diags(d0,d1=None, month=False):
+    '''
+        Read Hemco diag output, one day or month at a time
+    '''
+    if month:
+        d1 = util.last_day(d0)
+
+    # maybe want more than 1 year of data
+    fpre='Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_'
+    ylist=util.list_years(d0,d1)
+    # for each day: glob matching files to list
+    files=[]
+    for y in ylist:
+        fend=y.strftime("%Y") + ".nc"
+        files.extend(glob(fpre+fend))
+
+    files.sort() # make sure they're sorted or the data gets read in poorly
+
+    with xarray.open_mfdataset(files) as ds:
+        data,attrs=dataset_to_dicts(ds,['ISOP_BIOG'])
+
+    mod_times=[]
+    for p in files:
+        mod_times.append(time.ctime(os.path.getmtime(p)))
+    data['modification_times']=np.array(mod_times)
+    attrs['modification_times']={'desc':'When was file last modified'}
+
+    # subset to requested dates
+    dates = util.datetimes_from_np_datetime64(data['time'])
+    # subtract an hour so that index represents following hour rather than prior hour
+    dates = [d-timedelta(hours=1) for d in dates]
+    di = util.date_index(d0, dates, d1)
+    #print(di)
+
+    # and store as datetime object
+    data['dates'] = np.array(dates)[di]
+    data['time'] = data['time'][di]
+    attrs['dates'] = {'desc':'python datetime objects converted from np.datetime64 "time" dim'}
+    data['ISOP_BIOG'] = data['ISOP_BIOG'][di]
     return data,attrs
 
 

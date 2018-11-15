@@ -33,6 +33,7 @@ import matplotlib.image as mpimg # for direct image plotting
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
 from utilities.utilities import regrid
+from utilities import GMAO
 
 #sys.path.pop(0)
 
@@ -43,8 +44,8 @@ from utilities.utilities import regrid
 __VERBOSE__=False
 
 # S W N E
-__AUSREGION__=[-45, 108.75, -10, 156.25]
-__GLOBALREGION__=[-69, -178.75, 69, 178.75]
+__AUSREGION__=GMAO.__AUSREGION__
+__GLOBALREGION__=GMAO.__GLOBALREGION__
 
 __cities__ = {'Syd':[-33.87,151.21], # Sydney
               'Can':[-35.28,149.13], # Canberra
@@ -65,15 +66,9 @@ __subzones_colours__ = ['k', 'red', 'green', 'cyan', 'darkred']
 __subzones_labels__  = ['Aus', 'Sydney','Adelaide','Mid','Melbourne']
 
 # Want to look at timeseires and densities in these subregions:
-__subregions__ = [__AUSREGION__,  # first zone is container for the rest
-                  [-37,146,-31,153.5], # south eastern aus
-                  [-31,141,-21,151], # north eastern aus
-                  [-29,126,-23,136], # Emptly land
-                  [-35,113.5,-27,123.5], # south western aus
-                  [-23,126,-15,141], # Northern Aus
-                  ]
-__subregions_colors__ = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
-__subregions_labels__ = ['Aus', 'SE','NE','Mid','SW','N']
+__subregions__ = GMAO.__subregions__
+__subregions_colors__ = GMAO.__subregions_colors__
+__subregions_labels__ = GMAO.__subregions_labels__
 
 ###############
 ### METHODS ###

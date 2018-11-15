@@ -65,7 +65,9 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-testread = GC_class.Hemco_diag(d0,d3)
+#testread = GC_class.Hemco_diag(d0,d3)
+
+
 
 
 ###########

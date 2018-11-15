@@ -317,7 +317,7 @@ def Emissions_weight():
 
 
 def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
-                           etype='gc', lowres=True,
+                           etype='pp', lowres=True,
                            force_monthly=True, force_monthly_func='median'):
     '''
         Plot the time series of E_new, compare against MEGAN, etc..
@@ -390,6 +390,95 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
     f.autofmt_xdate()
 
     # save figure
+    plt.savefig(pname)
+    print("Saved %s"%pname)
+    plt.close()
+
+def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
+                         etype='pp', lowres=True):
+    '''
+        Plot the time series of E_new, compare against MEGAN, using multi-year averages monthly averages and std's at midday
+        Look at E_OMI, E_GC, and E_PP
+        Averaged within some regions
+
+        currently can't compare high-res E_new to low res E_MEGAN
+
+        Plot:    MAP ENEW    |    MAP MEGAN
+                 time series |    time series
+                 differences one row per region
+    '''
+    '''
+    Plot the time series of E_new, compare against MEGAN, using multi-year averages monthly averages and std's at midday
+    Look at E_OMI, E_GC, and E_PP
+    Averaged within some regions
+
+    currently can't compare high-res E_new to low res E_MEGAN
+
+    Plot:    MAP ENEW    |    MAP MEGAN
+             time series |    time series
+             differences one row per region
+'''
+    # Low res or not changes plotname and other stuff
+    lrstr=['','_lr'][lowres]
+    etype=str.upper(etype)
+    ekey= 'E_VCC_'+etype+lrstr
+    pname='Figs/Emiss/E_zones_multiyear_%s%s.png'%(etype,lrstr)
+    regions=GMAO.__subregions__
+    colors=GMAO.__subregions_colors__
+    labels=GMAO.__subregions_labels__
+
+    # Read in E_new and E_MEGAN
+    Enew  = E_new(d0,dn,[ekey,'E_MEGAN'])
+    E = getattr(Enew,ekey)
+    E[E<0] = np.NaN # remove negative and zero emissions.
+    Emeg= Enew.E_MEGAN
+
+    # remove ocean squares
+    lats,lons       = [ getattr(Enew,s+str.lower(lrstr)) for s in ['lats','lons'] ]
+    dates           = Enew.dates
+    oceanmask       = util.oceanmask(lats,lons)
+    oceanmask       = np.repeat(oceanmask[np.newaxis,:,:], len(dates), axis=0)
+    Emeg[oceanmask] = np.NaN
+    E[oceanmask]    = np.NaN
+
+    # multi-year monthly averages
+    myaE    = util.multi_year_average_regional(E,dates,lats,lons,grain='monthly',regions=regions)
+    myaEmeg = util.multi_year_average_regional(Emeg,dates,lats,lons,grain='monthly',regions=regions)
+    dfE     = myaE['df']
+    dfEmeg  = myaEmeg['df']
+
+    x=range(12)
+    n=len(dfE)
+    f,axes = plt.subplots(n,1,figsize=[16,12], sharex=True,sharey=True)
+    for i in range(n):
+        plt.sca(axes[i])
+        mean        = dfE[i].mean().values.squeeze()
+        uq          = dfE[i].quantile(0.75).values.squeeze()
+        lq          = dfE[i].quantile(0.25).values.squeeze()
+        meanmeg     = dfEmeg[i].mean().values.squeeze()
+        uqmeg       = dfEmeg[i].quantile(0.75).values.squeeze()
+        lqmeg       = dfEmeg[i].quantile(0.25).values.squeeze()
+
+        plt.fill_between(x,lq,uq, color=colors[i], alpha=0.5)
+        plt.plot(x, mean, color=colors[i], label='top-down')
+        plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
+        plt.plot(x, meanmeg, color=colors[i], linestyle='--', label='MEGAN')
+        plt.ylabel(labels[i], color=colors[i], fontsize=24)
+        if i==0:
+            plt.legend(loc='best')
+        if i%2 == 1:
+            axes[i].yaxis.set_label_position("right")
+            axes[i].yaxis.tick_right()
+    plt.ylim([0, 1e13])
+    plt.xlim([-0.5,11.5])
+    plt.xticks(x)
+    plt.gca().set_xticklabels(['J','F','M','A','M','J','J','A','S','O','N','D'])
+    plt.xlabel('month')
+    plt.suptitle('E$_{GC}$ vs E$_{OMI}$; mean and IQR',fontsize=30)
+    f.subplots_adjust(hspace=0)
+
+
+    ## save figure
     plt.savefig(pname)
     print("Saved %s"%pname)
     plt.close()
@@ -856,7 +945,7 @@ if __name__=='__main__':
     de=datetime(2007,12,31)
 
     ## Plot megan daily cycle vs top-down emissions in several zones
-    yearly_megan_cycle(d0,de)
+    #yearly_megan_cycle(d0,de)
 
     ## Plot MEGAN vs E_new (key)
     ## compare megan to a top down estimate, both spatially and temporally
@@ -871,12 +960,13 @@ if __name__=='__main__':
     ## Plot showing time series within Australia, and Sydney area
     ## In isop chapter results
     ## Ran 7/11/18
-    #    with np.warnings.catch_warnings():
-    #        np.warnings.filterwarnings('ignore')
-    #        for etype in ['gc','omi','pp']:
-    #            for monthly in [True, False]:
-    #                E_regional_time_series(d0,de,etype=etype, force_monthly=monthly,
-    #                                       force_monthly_func='median')
+    with np.warnings.catch_warnings():
+        np.warnings.filterwarnings('ignore')
+        for etype in ['gc','omi','pp']:
+            E_regional_multiyear(d0=d0,dn=de, etype=etype)
+            #for monthly in [True, False]:
+            #    E_regional_time_series(d0,de,etype=etype, force_monthly=monthly,
+            #                           force_monthly_func='median')
 
         ## Time series at a particular location
         ## Takes a few minuts (use qsub), In isop chapter results

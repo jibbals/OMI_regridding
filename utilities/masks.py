@@ -130,16 +130,27 @@ def read_smearmask(d0, dN=None, keys=None):
     '''
         Read smearmask (or extra keys) between d0 and dN
     '''
-    path= 'Data/smearmask_%d.h5'%d0.year
-    data, attrs = fio.read_hdf5(path)
+    years=util.list_years(d0,dN)
+    for year in years:
+        path= 'Data/smearmask_%d.h5'%year.year
+        datay, attrsy = fio.read_hdf5(path)
+        if year == years[0]:
+            data,attrs=datay,attrsy
+        else:
+            for k in datay:
+                if k not in ['lats','lons']:
+                    data[k] = np.append(datay[k],axis=0)
+
     # subset to rerquested dates, after converting greg to numpy datetime
     dates = util.date_from_gregorian(data['dates'])
     data['dates'] = np.array(dates)
     attrs['dates']['units'] = 'numpy datetime'
 
+
     di = util.date_index( d0, dates, dN)
     for key in ['smearmask','smearmasklit','smear','yields','tau','slope', 'dates']:
         data[key]=data[key][di]
+
 
     # subset to desired keys
     if keys is not None:

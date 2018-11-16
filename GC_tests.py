@@ -38,10 +38,17 @@ from classes.campaign import campaign
 import reprocess
 import concurrent.futures
 
+from utilities import GMAO
+
 ##################
 #####GLOBALS######
 ##################
 
+__AUSREGION__=GMAO.__AUSREGION__
+__GLOBALREGION__=GMAO.__GLOBALREGION__
+__subregions__ = GMAO.__subregions__
+__subregions_colors__ = GMAO.__subregions_colors__
+__subregions_labels__ = GMAO.__subregions_labels__
 
 NA     = util.NA
 SWA    = util.SWA
@@ -49,6 +56,8 @@ SEA    = util.SEA
 subs   = [SWA,NA,SEA]
 labels = ['SWA','NA','SEA']
 colours = ['chartreuse','magenta','aqua']
+
+
 
 ################
 ###FUNCTIONS####
@@ -899,18 +908,15 @@ def biogenic_vs_tavg():
     print('Saved figure ',pname)
 
 
-def yield_and_lifetime(year=2005):
+def yield_and_lifetime(d0=datetime(2005,1,1), dN=datetime(2005,12,31)):
     '''
         Read midday slope:
-            assume lifetime is 2.5 hours and plot area averaged yields
-            assume yields = 0.2 (or use prior mean?) and look at area averaged lifetimes
-        Plot(311) of Aus slope with 5 regions (2 on east coast, one southwest, one north, one middle aus)
-        subplot(323) time series of yields     subplot(324) distr of yields over summer/winter
-        subplot(325) time series of lifetimes  subplot(326) distr of lifetimes over summer/winter
+            assume yields = 0.4 and look at area averaged lifetimes
+            Use those lifetimes and monthly area averaged slopes to check yields
+        multi-year avg time series - one for each subregion
     '''
     # read GEOS-Chem midday slopes
-    d0=datetime(year,1,1); dN=datetime(year,12,31)
-
+    pname='Figs/GC/Yield_lifetime_monthly.png'
     data, attrs = masks.read_smearmask(d0,dN,keys=['slope','smearmasklit'])
     lats=data['lats']
     lons=data['lons']
@@ -918,34 +924,97 @@ def yield_and_lifetime(year=2005):
     slope=data['slope']
     mask=data['smearmasklit']
 
-    # Want to look at timeseires and densities in these subregions:
-    subregions = [pp.__AUSREGION__,  # first zone is container for the rest
-                  [-36,146,-30,153], # south eastern aus
-                  [-30,140,-20,150], # north eastern aus
-                  [-27,128,-22,137], # Emptly land
-                  [-34,114,-28,125], # south western aus
-                  [-25, 126,-15,140], # Northern Aus
-                 ]
-    subregions_colors = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
-
-
     # use slope = Y/k to get Y assuming tau = 1/k = 2.5hrs,
-    tau=2.5*3600.  # hours -> seconds
-    Yield= slope/tau # hcho/ atom C
-    Yield[mask>0] = np.NaN # mask applied
+    tau_const       = 2.5*3600.  # hours -> seconds
+    Yield_const     = 0.4
+    tau             = slope/Yield_const / 3600. # seconds -> hours
+    tau[mask>0]     = np.NaN
+    tau[tau<0]      = np.NaN
+    Yield           = slope/tau_const # hcho/ atom C
+    Yield[mask>0]   = np.NaN # mask applied
+    Yield[Yield<0]  = np.NaN # remove negatives...
+    slope[mask>0]   = np.NaN # mask applied
+    slope[slope<=0]  = np.NaN # remove negatives...
+    slope[slope>10000] = np.NaN # extra mask..
 
-    yearavg = np.nanmean(slope,axis=0)
-    # plot australian slope and show regions of averaging
-    plt.figure(figsize=[14,16])
-    plt.subplot(3,1,1)
-    pp.subzones_map(yearavg, lats,lons,
-                    vmin=800, vmax=5200,linear=True, title='slope %d'%year,
-                    subzones=subregions, colors=subregions_colors)
+    Ylims           = [0,.6]   # yield
+    Yticks          = [0.2, 0.3, 0.4, 0.5]
+    tlims           = [1, 10] # hours
+    tticks          = [1,3,5,7,9]
 
-    plt.subplot(323)
-    pp.subzones_TS(Yield, dates, lats, lons,
-                   subzones=subregions, colors=subregions_colors,
-                   skip_first_region=True)
+    # Want to look at timeseires and densities in these subregions:
+    regions=__subregions__
+    colors=__subregions_colors__
+    labels=__subregions_labels__
+
+    # remove ocean squares
+    oceanmask       = util.oceanmask(lats,lons)
+    oceanmask       = np.repeat(oceanmask[np.newaxis,:,:], len(dates), axis=0)
+    Yield[oceanmask] = np.NaN
+    tau[oceanmask]  = np.NaN
+    # k or tau[oceanmask]    = np.NaN
+
+    # multi-year monthly averages
+    myat    = util.multi_year_average_regional(tau,dates,lats,lons,grain='monthly',regions=regions)
+    myaY    = util.multi_year_average_regional(Yield,dates,lats,lons,grain='monthly',regions=regions)
+    myaS    = util.multi_year_average_regional(slope,dates,lats,lons,grain='monthly',regions=regions)
+
+    dfY     = myaY['df']
+    dft     = myat['df']
+    dfS     = myaS['df']
+
+    x=range(12)
+    n=len(dfY)
+    f,axes = plt.subplots(n,1,figsize=[16,12], sharex=True,sharey=True)
+    for i in range(n):
+        ax=axes[i]
+        plt.sca(ax)
+        meanS       = dfS[i].mean().values.squeeze()
+        uqS         = dfS[i].quantile(0.75).values.squeeze()
+        lqS         = dfS[i].quantile(0.25).values.squeeze()
+        meant       = dft[i].mean().values.squeeze()
+        uqt         = dft[i].quantile(0.75).values.squeeze()
+        lqt         = dft[i].quantile(0.25).values.squeeze()
+
+        meanY       = meanS/(meant * 3600.) # S = Y*t # tau is in hours
+        uqY         = uqS/(meant * 3600.)
+        lqY         = lqS/(meant * 3600.)
+
+        plt.fill_between(x,lqY,uqY, color=colors[i], alpha=0.5)
+        plt.plot(x, meanY, color=colors[i], label='Yield')
+        if i == 2:
+            plt.ylabel('Yield', fontsize=22)
+
+        # tau on other axis
+        ax2=ax.twinx()
+        plt.sca(ax2)
+        plt.fill_between(x, lqt,uqt, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
+        plt.plot(x, meant, color=colors[i], linestyle='--')
+        plt.ylim(tlims)
+        plt.yticks(tticks)
+        if i == 2:
+            plt.ylabel('t [hrs] (dashed)', fontsize=22)
+
+        #if i==0:
+        #    plt.legend(loc='best')
+        #if i%2 == 1:
+        #    axes[i].yaxis.set_label_position("right")
+        #    axes[i].yaxis.tick_right()
+    plt.sca(axes[-1])
+    plt.ylim(Ylims)
+    plt.yticks(Yticks)
+    plt.xlim([-0.5,11.5])
+    plt.xticks(x)
+    plt.gca().set_xticklabels(['J','F','M','A','M','J','J','A','S','O','N','D'])
+    plt.xlabel('month')
+    plt.suptitle('estimated yield and lifetime',fontsize=30)
+    f.subplots_adjust(hspace=0)
+
+
+    ## save figure
+    plt.savefig(pname)
+    print("Saved %s"%pname)
+    plt.close()
 
 def check_smearing():
     '''
@@ -1506,6 +1575,7 @@ if __name__=='__main__':
     ## Look at HCHO lifetime over Australia
     #
     #hcho_lifetime(2005)
+    yield_and_lifetime()
 
     ## UCX VS TROPCHEM AMF
     #
@@ -1518,7 +1588,7 @@ if __name__=='__main__':
     # Checking units:
 
     #Examine_Model_Slope() # unfinished 30/5/18
-    Examine_Model_Slope(use_smear_filter=True) # unfinished 30/5/18
+    #Examine_Model_Slope(use_smear_filter=True) # unfinished 30/5/18
     #check_rsc_interp()   # last run 29/5/18
 
     #HCHO_vs_temp(d0=d0,d1=d1,

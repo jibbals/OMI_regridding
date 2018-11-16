@@ -66,6 +66,8 @@ __subzones_colours__ = ['k', 'red', 'green', 'cyan', 'darkred']
 __subzones_labels__  = ['Aus', 'Sydney','Adelaide','Mid','Melbourne']
 
 # Want to look at timeseires and densities in these subregions:
+__AUSREGION__=GMAO.__AUSREGION__
+__GLOBALREGION__=GMAO.__GLOBALREGION__
 __subregions__ = GMAO.__subregions__
 __subregions_colors__ = GMAO.__subregions_colors__
 __subregions_labels__ = GMAO.__subregions_labels__

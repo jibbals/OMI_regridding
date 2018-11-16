@@ -67,86 +67,13 @@ start1=timeit.default_timer()
 
 #testread = GC_class.Hemco_diag(d0,d3)
 
-#def yield_and_lifetime(year=2005):
-'''
-    Read midday slope:
-        assume lifetime is 2.5 hours and plot area averaged yields
-        assume yields = 0.2 (or use prior mean?) and look at area averaged lifetimes
-    Plot(311) of Aus slope with 5 regions (2 on east coast, one southwest, one north, one middle aus)
-    subplot(323) time series of yields     subplot(324) distr of yields over summer/winter
-    subplot(325) time series of lifetimes  subplot(326) distr of lifetimes over summer/winter
-'''
-
-year=2005
-# read GEOS-Chem midday slopes
-d0=datetime(year,1,1); dN=datetime(year,12,31)
-pname='tmp_slope.png'
-data, attrs = masks.read_smearmask(d0,dN,keys=['slope','smearmasklit'])
-lats=data['lats']
-lons=data['lons']
-dates=data['dates']
-slope=data['slope']
-mask=data['smearmasklit']
-
-# use slope = Y/k to get Y assuming tau = 1/k = 2.5hrs,
-tau=2.5*3600.  # hours -> seconds
-Yield= slope/tau # hcho/ atom C
-Yield[mask>0] = np.NaN # mask applied
-Ylims=[-1,2]
-
-# Want to look at timeseires and densities in these subregions:
-regions=GMAO.__subregions__
-colors=GMAO.__subregions_colors__
-labels=GMAO.__subregions_labels__
-
-# remove ocean squares
-oceanmask       = util.oceanmask(lats,lons)
-oceanmask       = np.repeat(oceanmask[np.newaxis,:,:], len(dates), axis=0)
-slope[oceanmask] = np.NaN
-# k or tau[oceanmask]    = np.NaN
-
-# multi-year monthly averages
-myaS    = util.multi_year_average_regional(slope,dates,lats,lons,grain='monthly',regions=regions)
-#myaEmeg = util.multi_year_average_regional(Emeg,dates,lats,lons,grain='monthly',regions=regions)
-dfS     = myaS['df']
-#dfEmeg  = myaSmeg['df']
-
-x=range(12)
-n=len(dfS)
-f,axes = plt.subplots(n,1,figsize=[16,12], sharex=True,sharey=True)
-for i in range(n):
-    plt.sca(axes[i])
-    mean        = dfS[i].mean().values.squeeze()
-    uq          = dfS[i].quantile(0.75).values.squeeze()
-    lq          = dfS[i].quantile(0.25).values.squeeze()
-    #meanmeg     = dfEmeg[i].mean().values.squeeze()
-    #uqmeg       = dfEmeg[i].quantile(0.75).values.squeeze()
-    #lqmeg       = dfEmeg[i].quantile(0.25).values.squeeze()
-
-    plt.fill_between(x,lq,uq, color=colors[i], alpha=0.5)
-    plt.plot(x, mean, color=colors[i], label='slope')
-    #plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
-    #plt.plot(x, meanmeg, color=colors[i], linestyle='--', label='MEGAN')
-    plt.ylabel(labels[i], color=colors[i], fontsize=24)
-    if i==0:
-        plt.legend(loc='best')
-    if i%2 == 1:
-        axes[i].yaxis.set_label_position("right")
-        axes[i].yaxis.tick_right()
-plt.ylim([0, 6000])
-plt.xlim([-0.5,11.5])
-plt.xticks(x)
-plt.gca().set_xticklabels(['J','F','M','A','M','J','J','A','S','O','N','D'])
-plt.xlabel('month')
-plt.suptitle('estimated slope TODO yield',fontsize=30)
-f.subplots_adjust(hspace=0)
-
-
-## save figure
-plt.savefig(pname)
-print("Saved %s"%pname)
-plt.close()
-
+colors=pp.__subregions_colors__
+colors[0]='grey'
+pp.displaymap(region=np.array(pp.__AUSREGION__) + np.array([-5,-10,5,10]),
+              subregions=pp.__subregions__,labels=pp.__subregions_labels__,
+              colors=colors, linewidths=[3,2,2,2,2,2],
+              fontsize='large'  )
+plt.savefig('Figs/subregions.png')
 
 ###########
 ### Record and time STUJFFS

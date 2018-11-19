@@ -521,8 +521,8 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     print('SAVED ', pname)
 
 
-def MEGAN_vs_E_new(d0=datetime(2006,1,1), d1=datetime(2006,1,31),
-                  key='E_GC_lr',
+def MEGAN_vs_E_new(d0=datetime(2005,1,1), d1=datetime(2005,12,31),
+                  key='E_VCC_PP_lr',
                   region=pp.__AUSREGION__):
     '''
         Plot E_gc, E_new, diff, ratio
@@ -562,19 +562,20 @@ def MEGAN_vs_E_new(d0=datetime(2006,1,1), d1=datetime(2006,1,31),
 
 
     # Compare megan and E_new
-    pname='Figs/Emiss/MEGAN_vs_%s_%s-%s.png'%(key,d0s,d1s)
-    pp.compare_maps([MEGAN, New_isop],[lats,meglats],[lons,meglons], pname=pname,
-                    titles=['MEGAN',key], suptitle='Emissions Averaged from %s to %s'%(d0s,d1s),
+    pp.compare_maps([MEGAN, New_isop],[lats,meglats],[lons,meglons], pname='Figs/Emiss/MEGAN_vs_%s_%s-%s.png'%(key,d0s,d1s),
+                    titles=['$E_{GC}$','$E_{NEW}$'], rmin=-500, rmax=500, suptitle='Emissions Averaged from %s to %s'%(d0s,d1s),
                     clabel=Enew.attributes['E_MEGAN']['units'],
                     lower_resolution=lowres, linear=True,
                     maskocean=True, normalise=False)
+
     # Compare megan and E_new after normalising
-    pname='Figs/Emiss/MEGAN_vs_%s_%s-%s_normalised.png'%(key,d0s,d1s)
-    pp.compare_maps([MEGAN, New_isop],[lats,meglats],[lons,meglons], pname=pname,
-                    titles=['MEGAN',key], suptitle='Emissions Averaged from %s to %s, normalised by means'%(d0s,d1s),
+    pp.compare_maps([MEGAN, New_isop],[lats,meglats],[lons,meglons], pname='Figs/Emiss/MEGAN_vs_%s_%s-%s_normalised.png'%(key,d0s,d1s),
+                    titles=['$E_{GC}$','$E_{NEW}$'], suptitle='Emissions Averaged from %s to %s, normalised by means'%(d0s,d1s),
                     clabel=Enew.attributes['E_MEGAN']['units'],
                     lower_resolution=lowres, linear=True,
                     maskocean=True, normalise=True)
+
+
     #    compare_maps(datas,lats,lons,pname=None,titles=['A','B'], suptitle=None,
     #                 clabel=None, region=__AUSREGION__, vmin=None, vmax=None,
     #                 rmin=-200.0, rmax=200., amin=None, amax=None,
@@ -939,7 +940,7 @@ if __name__=='__main__':
     ## Plot MEGAN vs E_new (key)
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
-    #MEGAN_vs_E_new(d0,de)
+    MEGAN_vs_E_new(d0,dn)
 
     ## Plot showing comparison of different top-down estimates
     ## In Isop chapter results
@@ -949,10 +950,10 @@ if __name__=='__main__':
     ## Plot showing time series within Australia, and Sydney area
     ## In isop chapter results
     ## Ran 7/11/18
-    with np.warnings.catch_warnings():
-        np.warnings.filterwarnings('ignore')
-        for etype in ['gc','omi','pp']:
-            E_regional_multiyear(d0=d0,dn=de, etype=etype)
+    #with np.warnings.catch_warnings():
+        #np.warnings.filterwarnings('ignore')
+        #for etype in ['gc','omi','pp']:
+            #E_regional_multiyear(d0=d0,dn=de, etype=etype)
             #for monthly in [True, False]:
             #    E_regional_time_series(d0,de,etype=etype, force_monthly=monthly,
             #                           force_monthly_func='median')

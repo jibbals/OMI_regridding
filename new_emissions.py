@@ -34,31 +34,51 @@ def make_isoprene_scale_factor(year=2005):
     topd    = Enew.E_VCC_PP_lr
     topd[topd<0] = 0.0
     # calculate monthly averages, don't worry about NaNs
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.warnings.catch_warnings():
+        np.warnings.filterwarnings('ignore')#, r'All-NaN (slice|axis) encountered')
         megan   = util.monthly_averaged(dates, Enew.E_MEGAN, keep_spatial=True)['mean']
         topd    = util.monthly_averaged(dates, Enew.E_VCC_PP_lr, keep_spatial=True)['mean']
 
     # new / megan = scale
     # ...
     alpha   = topd / megan
+    alpha[np.isnan(alpha)] = 1.0
+    alpha[np.isinf(alpha)] = 1.0
 
     # read template isoprene scale mask and modify it for each month
     isop    = xarray.open_dataset('Data/isoprene_scale_mask.nc')
     da      = isop['isop_mask'].data
     lats    = isop['lat'].data
     lons    = isop['lon'].data
-    # match enew lats and mask lats
-    lati    = (lats >= elats[0]) * (lats <= [elats[-1]])
-    loni    = (lons >= elons[0]) * (lons <= [elons[-1]])
+    lons[lons>179] = lons[lons>179] - 360 # make it from -180 -> 180
 
-    #lons[lons>179] = lons[lons>179] - 360 # make it from -180 -> 180
-    #mlons,mlats = np.meshgrid(lons,lats)
-    #ausmap=(mlats > -60) * (mlats < -10) * (mlons > 110) * (mlons < 160)
-    ausmap=np.repeat(ausmap[np.newaxis,:,:],12,axis=0)
+    # match enew lats and mask lats
+    lati    = np.where((lats >= elats[0]) * (lats <= [elats[-1]]))
+    loni    = np.where((lons >= elons[0]) * (lons <= [elons[-1]]))
+    lat0, lat1  = lati[0][0], lati[0][-1]+1
+    lon0, lon1  = loni[0][0], loni[0][-1]+1
 
     # set scale mask over australia
-    da[ausmap] = alpha
+    da[:,lat0:lat1,lon0:lon1] = alpha
+
     # update the xarray
     isop['isop_mask'].data = da
     # save the new scale mask to a netcdf file
     isop.to_netcdf('Data/isoprene_scale_mask_%4d.nc'%year)
+
+    ## test
+    #region=[-60,85,-5,170]
+    #vmin,vmax = 0, 2
+    #import matplotlib.pyplot as plt
+    #from utilities import plotting as pp
+    #f, axes = plt.subplots(2,2,figsize=[15,15])
+    #plt.sca(axes[0,0])
+    #pp.createmap(da[0],lats, lons, linear=True, region=region, title='da[0]',vmin=vmin,vmax=vmax)
+    #plt.sca(axes[0,1])
+    #pp.createmap(alpha[0],elats, elons, linear=True, region=region, title='alpha[0]',vmin=vmin,vmax=vmax)
+    #plt.sca(axes[1,0])
+    #pp.createmap(da[6],lats, lons, linear=True, region=region, title='da[6]',vmin=vmin,vmax=vmax)
+    #plt.sca(axes[1,1])
+    #pp.createmap(alpha[6],elats, elons, linear=True, region=region, title='alpha[6]',vmin=vmin,vmax=vmax)
+    #plt.savefig('alpha_test.png')
+    #plt.close()

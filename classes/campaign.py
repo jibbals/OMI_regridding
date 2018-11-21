@@ -57,7 +57,7 @@ class campaign:
         data=getattr(self,key)[inds]
         return dates,data
 
-    def plot_series(self,title=None,pname=None,dfmt='%Y%m%d'): #'%d %b'):
+    def plot_series(self,title=None,pname=None,dfmt='%Y %b %d'): #'%d %b'):
 
         dates=self.dates
 
@@ -90,6 +90,8 @@ class mumba(campaign):
             Reads MUMBA campaign data isoprene, ozone, and hcho
             Code taken from Jenny's READ_MUMBA method
         '''
+        # set up attributes
+        super(mumba,self).__init__()
 
         # Read files with desired data, resampled to 60 minute means
         isop_df=fio.read_mumba_var('ISOP')
@@ -107,20 +109,21 @@ class mumba(campaign):
 
         self.dates=dates_isop # UTC+10
 
+        # NAMES HAVE PPBV but documentations shows units are ppb
         self.isop                   = np.array(isop_df['C5H8 [ppbv]'])
-        self.attrs['isop']['units'] = 'ppbv'
+        self.attrs['isop']['units'] = 'ppb'
         self.attrs['isop']['DL']    = 0.003
         self.attrs['isop']['DL_full']    = '20121221-20121229: .003, 20122912-20130118: .005, 20130119-20130215: .003'
         #range1=dates_isop <
 
         self.hcho                   = np.array(hcho_df['HCHO [ppbv]'])
-        self.attrs['hcho']['units'] = 'ppbv'
+        self.attrs['hcho']['units'] = 'ppb'
         self.attrs['hcho']['DL']    = 0.105
         self.attrs['hcho']['DL_full']    = '20121221-20121229: .205, 20122912-20130118: .105, 20130119-20130215: .186'
 
         # ignore last 16 o3 measurements as they occur without matching hcho and isop measurements.
         self.ozone                  = np.array(o3_df['O3 [ppbv] (mean of hourly O3 concentration)'])[0:-16]
-        self.attrs['ozone']['units']= 'ppbv'
+        self.attrs['ozone']['units']= 'ppb'
         self.attrs['ozone']['DL']   = 0.5
 
         # Any measurements below detection limits are set to half the DL
@@ -149,6 +152,8 @@ class sps(campaign):
             # Measurements are reported in local time (UTC+10)
             # units are unlisted in the doi
         '''
+        # set up attributes
+        super(sps,self).__init__()
 
         # data
         self.fpath='Data/campaigns/SPS%d/SPS%d_PTRMS.csv'%(number,number)

@@ -14,11 +14,11 @@ __TOA__    = 0.01 # hPa top pressure edge of GEOS-Chem outputs
 __AUSREGION__=[-45, 108.75, -10, 156.25]
 __GLOBALREGION__=[-69, -178.75, 69, 178.75]
 __subregions__ = [__AUSREGION__,  # first zone is container for the rest
-                  [-37,146,-31,153.5], # south eastern aus
-                  [-31,141,-21,151], # north eastern aus
-                  [-29,126,-23,136], # Emptly land
+                  [-37,146,-29,153.5], # south eastern aus
+                  [-29,143.5,-17,153.5], # north eastern aus
+                  [-29,128.5,-23,141], # Emptly land
                   [-35,113.5,-27,123.5], # south western aus
-                  [-23,126,-15,141], # Northern Aus
+                  [-21,123.5,-11,143.5], # Northern Aus
                   ]
 __subregions_colors__ = ['k', 'red', 'green', 'cyan', 'darkred', 'darkblue']
 __subregions_labels__ = ['Aus', 'SE','NE','Mid','SW','N']

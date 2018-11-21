@@ -40,7 +40,7 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'E_MEGAN',      #  {31, 18, 19}
                 'E_VCC_GC',     #  {31, 152, 152}
                 'E_VCC_GC_u',   #  With unfiltered by fire/smoke/anthro
-                'E_VCC_GC_lr',  #  at low resolution
+                'E_VCC_GC_lr',  #  at low resolution: {31,18,19}
                 'E_VCC_OMI',    #  {31, 152, 152}
                 'E_VCC_OMI_u',  #  E_VCC_OMI without any filters applied
                 'E_VCC_OMI_lr', #  E_VCC_OMI at low resolution

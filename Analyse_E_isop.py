@@ -140,12 +140,10 @@ def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2007,12,31)):
 def yearly_cycle_vs_campaigns(d0=datetime(2005,1,1),dn=datetime(2007,12,31)):
     '''
     '''
-    mumba=campaign()
-    mumba.read_mumba()
-    sps1=campaign()
-    sps1.read_sps(1)
-    sps2=campaign()
-    sps2.read_sps(2)
+    mumba = campaign.mumba()
+    sps1  = campaign.sps(1)
+    sps2  = campaign.sps(2)
+
     colors=['m','pink','orange']
 
     Enew=E_new(d0,dn)
@@ -311,9 +309,10 @@ def Emissions_weight():
         Print out emissions in molec/cm2/s and kg/s for each season
     '''
     d0=datetime(2005,1,1)
-    de=datetime(2010,12,31)
+    de=datetime(2007,12,31)
     print('TODO: extend to 2013 when ready')
     Enew=E_new(d0,de)
+    Enew.conversion_to_kg
 
 
 def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),

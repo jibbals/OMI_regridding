@@ -12,9 +12,9 @@ import reprocess
 from utilities import plotting as pp
 from utilities.JesseRegression import RMA
 from utilities import utilities as util
+
+from classes import campaign
 from classes.omhchorp import omhchorp as omrp
-from utilities.utilities import match_bottom_levels
-from classes.GC_class import GC_tavg, GC_sat
 
 # Tests are pulled in from tests/blah.py
 from tests import check_files, test_filters, RSC_tests, test_E_new
@@ -22,12 +22,12 @@ from tests import check_files, test_filters, RSC_tests, test_E_new
 import numpy as np
 from numpy.ma import MaskedArray as ma
 from scipy import stats
-from copy import deepcopy as dcopy
 
 from datetime import datetime#, timedelta
 
-from mpl_toolkits.basemap import Basemap, maskoceans
+from mpl_toolkits.basemap import maskoceans
 import matplotlib.pyplot as plt
+plt.ioff() # fix occasional problem with plotting datetimes
 from matplotlib.colors import LogNorm # for lognormal colour bar
 from matplotlib.ticker import FormatStrFormatter # tick formats
 
@@ -86,20 +86,36 @@ def check_array(array, nonzero=False):
 #############################################################################
 
 def compare_campaigns():
-    mumba=campaign()
-    mumba.read_mumba()
-    sps1=campaign()
-    sps1.read_sps(1)
-    sps2=campaign()
-    sps2.read_sps(2)
+    mumba = campaign.mumba()
+    sps1  = campaign.sps(1)
+    sps2  = campaign.sps(2)
 
     plt.figure()
-    plt.subplot(2,3,1)
+    ax1 = plt.subplot(2,3,1)
     mumba.plot_series(title='MUMBA')
-    plt.subplot(2,3,2)
+    plt.ylim([0,18])
+
+    ax2 = plt.subplot(2,3,2, sharey=ax1)
     sps1.plot_series(title='SPS1')
-    plt.subplot(2,3,3)
+    ax2.set_ylabel('')
+
+    ax3 = plt.subplot(2,3,3, sharey=ax1)
     sps2.plot_series(title='SPS2')
+    ax3.set_ylabel('')
+    plt.legend(fontsize=16, frameon=False)
+
+    for ax in [ax1,ax2,ax3]:
+        plt.sca(ax)
+        plt.tick_params(
+                    axis='both',          # changes apply to the x-axis
+                    which='both',      # both major and minor ticks are affected
+                    right=False,      # ticks along the bottom edge are off
+                    top=False,         # ticks along the top edge are off
+                    )#labelbottom=False) # labels along the
+
+    pp.remove_spines(ax1, left=True, bottom=True)
+    pp.remove_spines(ax2, left=True, bottom=True)
+    pp.remove_spines(ax3, left=True, bottom=True)
 
 
     plt.subplot(2,1,2)
@@ -107,12 +123,12 @@ def compare_campaigns():
     d1,i1=sps1.get_daily_hour(key='isop')
     d2,i2=sps2.get_daily_hour(key='isop')
 
-    pp.plot_yearly_cycle(isop,dates,color='m',label='MUMBA',linewidth=2)
-    pp.plot_yearly_cycle(i1,d1,color='pink',label='SPS1',linewidth=2)
-    pp.plot_yearly_cycle(i2,d2,color='orange',label='SPS2',linewidth=2)
+    pp.plot_yearly_cycle(isop,dates,color='m',label='MUMBA',linewidth=2) # (2012/2013)
+    pp.plot_yearly_cycle(i1,d1,color='pink',label='SPS1',linewidth=2)  # 2011
+    pp.plot_yearly_cycle(i2,d2,color='orange',label='SPS2',linewidth=2) # 2012
 
     plt.legend()
-    plt.title('isoprene yearly cycle')
+    plt.title('isoprene superimposed onto one year')
     plt.tight_layout()
     pname='Figs/campaigns_compared.png'
     plt.savefig(pname)
@@ -462,15 +478,15 @@ def Check_AMF_relevelling():
     xlims=[2,12]
     ylims=[1300,.5]
 
-    p00,p10,a00,a10=match_bottom_levels(p0.copy(),p1.copy(),a0.copy(),a1.copy())
+    p00,p10,a00,a10=util.match_bottom_levels(p0.copy(),p1.copy(),a0.copy(),a1.copy())
     #print((p1,p10,a1,a10))
     assert p1[0]!=p10[0] and a1[0]!=a10[0], 'Err: No change in lowest level!'
     assert (a0 == a00).all() and (p0 == p00).all(), 'Err: Higher levels changed!'
     p1c=p1.copy() # make sure arguments aren't edited?
-    p00,p10,a00,a10=match_bottom_levels(p0,p1c,a0,a1)
+    p00,p10,a00,a10=util.match_bottom_levels(p0,p1c,a0,a1)
     assert (p1c==p1).all(), 'Err: Argument changed!'
-    p11,p21,a11,a21=match_bottom_levels(p1,p2,a1,a2)
-    p12,p32,a12,a32=match_bottom_levels(p1,p3,a1,a3)
+    p11,p21,a11,a21=util.match_bottom_levels(p1,p2,a1,a2)
+    p12,p32,a12,a32=util.match_bottom_levels(p1,p3,a1,a3)
 
     # look at 0vs1, 1vs2, 1vs3
     f,axes=plt.subplots(1,3,sharey=True,sharex=True,squeeze=True)
@@ -1704,6 +1720,7 @@ if __name__ == '__main__':
     de=datetime(2007,12,31)
     #Summary_Single_Profile()
 
+
     #####################
     ### E_new tests
     #####################
@@ -1782,7 +1799,7 @@ if __name__ == '__main__':
     # TODO: Finish this one
     #test_filters.smearing_vs_yield()
     ## smearing binned by NOx levels
-    test_filters.smearing_vs_nox()
+    #test_filters.smearing_vs_nox()
 
     ######
     ### Tests to be sorted into files
@@ -1844,3 +1861,9 @@ if __name__ == '__main__':
 
     # check the ref sector correction is not weird.
     #check_RSC(track_corrections=True)
+
+    ####
+    ## Finished tests
+    ####
+    # campaign summaries
+    #compare_campaigns()

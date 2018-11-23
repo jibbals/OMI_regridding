@@ -65,42 +65,7 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-#testread = GC_class.Hemco_diag(d0,d3)
 
-d0=datetime(2005,1,1)
-de=datetime(2005,1,31)
-
-Enew=E_new(d0,de)
-lats=Enew.lats_lr
-lons=Enew.lons_lr
-dates=Enew.dates
-
-# daylengths are from 14hrs (mid-summer) to 10hrs (mid-winter)
-# daylengths extend change by 20, 40, 60, 60, 40, 20 minutes between peaks
-monthly_daylength_changes = np.array([20, -20, -40, -60, -60, -40, -20, 20, 40, 60, 60, 40])
-monthly_daylengths = 14*60-20 + np.cumsum(monthly_daylength_changes) # in minutes
-
-daily_daylengths = np.array([monthly_daylengths[d.month-1] for d in dates])/60.0 # in hours
-# repeat over lat,lon axes
-daily_daylengths = np.repeat(daily_daylengths[:,np.newaxis], len(lats), axis=1)
-daily_daylengths = np.repeat(daily_daylengths[:,:,np.newaxis], len(lons), axis=2)
-midday_kg = Enew.E_VCC_PP_lr * Enew.conversion_to_kg_lr * 3600 # in kg/hours
-daily_kg = midday_kg * 0.637 *daily_daylengths
-daily_kg_neg = daily_kg.copy()
-midday_kg[midday_kg<0] = 0
-daily_kg = midday_kg * 0.637 *daily_daylengths
-print('with negatives: ',np.nanmean(daily_kg_neg))
-print('without negatives: ',np.nanmean(daily_kg))
-print('diff = ', 100*(np.nanmean(daily_kg)-np.nanmean(daily_kg_neg))/np.nanmean(daily_kg_neg))
-
-
-colors=pp.__subregions_colors__
-colors[0]='grey'
-pp.displaymap(region=np.array(pp.__AUSREGION__) + np.array([-5,-10,5,10]),
-              subregions=pp.__subregions__,labels=pp.__subregions_labels__,
-              colors=colors, linewidths=[3,2,2,2,2,2],
-              fontsize='large'  )
-plt.savefig('Figs/subregions.png')
 
 ###########
 ### Record and time STUJFFS

@@ -446,17 +446,16 @@ class GC_base:
         # cm2/km2 * km2 * kg/isop
         conversion= 1e10 * SA * kg_per_atom
 
-        print(E.shape,conversion.shape, self.area.shape)
-        if len(conversion.shape) > 2:
-            conversion=conversion[0]
-        print(E.shape,conversion.shape)
+        #print(E.shape,conversion.shape, self.area.shape)
+        #if len(conversion.shape) > 2:
+        #    conversion=conversion[0]
+        #print(E.shape,conversion.shape)
 
         if self._has_time_dim:
             self.E_isop_bio_kgs = np.zeros(np.shape(E))
-            for t in range(len(self.dates)):
-                self.E_isop_bio_kgs[t]=E[t] * conversion
-        else:
-            self.E_isop_bio_kgs=E * conversion
+            conversion=np.repeat(conversion[np.newaxis,:,:], len(self.dates), axis=0)
+
+        self.E_isop_bio_kgs=E * conversion
         self.attrs['E_isop_bio_kgs']={'units':'kg/s',}
 
 class GC_tavg(GC_base):

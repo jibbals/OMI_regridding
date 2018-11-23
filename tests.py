@@ -135,6 +135,7 @@ def compare_campaigns():
     plt.close()
     print('SAVED ',pname)
 
+
 def check_HEMCO_restarts():
     '''
         Check how different the hemco restarts are between UCX and tropchem

@@ -966,6 +966,9 @@ def compare_maps(datas, lats, lons, pname=None, titles=['A','B'], suptitle=None,
     args['clabel']="%"
     createmap((A-B)*100.0/B, suptitle=suptitle, **args)
 
+    for ax in [axes[0,0],axes[0,1],axes[1,0],axes[1,1]]:
+        remove_spines(ax)
+
     if pname is not None:
         plt.tight_layout()
         plt.savefig(pname)

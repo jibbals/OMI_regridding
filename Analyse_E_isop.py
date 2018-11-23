@@ -1,4 +1,4 @@
-Ru#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Mon Jul 17 10:25:42 2017
@@ -920,18 +920,106 @@ def Compare_to_daily_cycle(month=datetime(2005,1,1),lat=-33,lon=151):
     pp.plot_time_series(Enewdates,Enew.GC_E_isop[:,lati,loni],color='r')
     plt.savefig('test.png')
 
+def show_subregions():
+    '''
+        Show subregions over which several analyses are perform
+    '''
+    colors=pp.__subregions_colors__
+    colors[0]='grey'
+    pp.displaymap(region=np.array(pp.__AUSREGION__) + np.array([-5,-10,5,10]),
+                  subregions=pp.__subregions__,labels=pp.__subregions_labels__,
+                  colors=colors, linewidths=[3,2,2,2,2,2],
+                  fontsize='large'  )
+    plt.savefig('Figs/subregions.png')
+
+def tga_summary(day0=datetime(2005,1,1), daye=datetime(2007,12,31)):
+    '''
+        calculate, print and plot emissions in Tg/annum from Enew and Egc
+    '''
+    years = util.list_years(day0,daye)
+    omi=[]
+    gc =[]
+    gca=[]
+    for year in years:
+        d0=year
+        de=datetime(d0.year,12,31)
+
+        ## read MEGAN, get tg/a emissions
+        #
+        hemco=GC_class.Hemco_diag(d0,de)
+        hemco._set_E_isop_bio_kgs()
+        E_GC = hemco.E_isop_bio_kgs*3600 # kg/s -> kg/hr
+        # sum over time to get Tg/year  (Tg/kg = 1e-9)
+        E_GC_total = np.sum(E_GC, axis=0) * 1e-9
+        subset = util.lat_lon_subset(hemco.lats,hemco.lons, region= pp.__AUSREGION__, data=[E_GC_total])
+
+        E_GC_aus = subset['data'][0]
+
+        ## Read E_OMI and get tg/a emissions
+        #
+        Enew=E_new(d0,de)
+        lats=Enew.lats_lr
+        lons=Enew.lons_lr
+        dates=Enew.dates
+        assert np.all(lats == subset['lats']), 'lats are wrong!?'
+
+        # daylengths are from 14hrs (mid-summer) to 10hrs (mid-winter)
+        # daylengths extend change by 20, 40, 60, 60, 40, 20 minutes between peaks
+        monthly_daylength_changes = np.array([20, -20, -40, -60, -60, -40, -20, 20, 40, 60, 60, 40])
+        monthly_daylengths = 14*60-20 + np.cumsum(monthly_daylength_changes) # in minutes
+
+        daily_daylengths = np.array([monthly_daylengths[d.month-1] for d in dates])/60.0 # in hours
+        # repeat over lat,lon axes
+        daily_daylengths = np.repeat(daily_daylengths[:,np.newaxis], len(lats), axis=1)
+        daily_daylengths = np.repeat(daily_daylengths[:,:,np.newaxis], len(lons), axis=2)
+        midday_kg = Enew.E_VCC_PP_lr * Enew.conversion_to_kg_lr * 3600 # in kg/hours
+        midday_kg[midday_kg<0] = 0
+        daily_kg = midday_kg * 0.637 *daily_daylengths
+        E_OMI_total = np.nansum(daily_kg,axis=0) * 1e-9 # kg/day -> total Tg
+
+        print ('year: ',year.year)
+        print ('    global MEGAN : ' , np.sum(E_GC_total))
+        print ('    aus MEGAN    : ' , np.sum(E_GC_aus))
+        print ('    aus OMI      : ' , np.nansum(E_OMI_total))
+        # store yearly total (keep spatial dims)
+        omi.append(E_OMI_total)
+        gca.append(E_GC_aus)
+        gc.append(E_GC_total)
+
+    omi = np.array(omi) # should be [year, lats, lons]
+    gc  = np.array(gc)
+    gca = np.array(gca)
+
+    pname='Figs/Emiss/tga_map.png'
+    gca_flat = np.nanmean(gca,axis=0)
+    omi_flat = np.nanmean(omi,axis=0)
+    gca_flat[gca_flat<1e-6] = np.NaN
+    omi_flat[omi_flat<1e-6] = np.NaN # set zeros to NaN for image
+    a,b = pp.compare_maps([gca_flat,omi_flat],[lats,lats],[lons,lons], rmin=-400,rmax=400,
+                          titles=['E$_{GC}$','E$_{OMI}$'], linear=True, pname=pname)
+
+
+    # total over spatial dims
+    omi= np.nansum(omi,axis=(1,2))
+    gc = np.nansum(gc,axis=(1,2))
+    gca= np.nansum(gca,axis=(1,2))
+    print('TOTALS: ',day0.year, ' - ', daye.year)
+    print(' mean(std) global MEGAN:  %.2f (%.2f)'%(np.mean(gc), np.std(gc)))
+    print(' mean(std) aus MEGAN   :  %.2f (%.2f)'%(np.mean(gca), np.std(gca)))
+    print(' mean(std) aus OMI     :  %.2f (%.2f)'%(np.mean(omi), np.std(omi)))
+
 if __name__=='__main__':
 
-    # try running
-    #JennySEA=[-38, 145, -30, 153]
-    #JennySEA_fixed=GMAO.edges_containing_region(JennySEA) # [-37, 143.75,-29, 153.75]
-    SEAus=[-41,138.75,-25,156.25]
-    regions=pp.__AUSREGION__, SEAus#, JennySEA_fixed
 
     d0=datetime(2005,1,1)
     d1=datetime(2005,1,31)
     dn=datetime(2005,12,31)
     de=datetime(2007,12,31)
+
+    ## Tga summary
+    #
+    tga_summary()
+
 
     ## Plot megan daily cycle vs top-down emissions in several zones
     #yearly_megan_cycle(d0,de)

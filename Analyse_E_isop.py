@@ -315,8 +315,8 @@ def Emissions_weight():
     Enew.conversion_to_kg
 
 
-def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
-                           etype='pp', lowres=True,
+def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2007,12,31),
+                           etype='pp', lowres=True, showmaps=False,
                            force_monthly=True, force_monthly_func='median'):
     '''
         Plot the time series of E_new, compare against MEGAN, etc..
@@ -335,7 +335,7 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
     ekey= 'E_VCC_'+etype+lrstr
     mstr=['','_monthly'][force_monthly]
     pname='Figs/Emiss/E_zones_%s%s%s.png'%(etype,mstr,lrstr)
-    vmin=0; vmax=1.5e13
+    vmin=0; vmax=1.2e13
 
     # Read in E_new and E_MEGAN
     Enew  = E_new(d0,dn,[ekey,'E_MEGAN'])
@@ -357,33 +357,39 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
                                          mapvmin=0, mapvmax=5e12,
                                          labelcities=False,labels=labels,
                                          subzones=subzones,colors=colors,
+                                         showmaps=showmaps,
                                          force_monthly=force_monthly, force_monthly_func=force_monthly_func,
-                                         title='E$_{new}$', comparisontitle='E$_{MEGAN}$')
+                                         title='E$_{OMI}$', comparisontitle='E$_{GC}$')
+    axs[0].set_title('E$_{OMI}$',fontsize=30)
+    axs[1].set_title('E$_{GC}$',fontsize=30)
+    axs[0].set_ylabel('molec cm$^{-2}$ s$^{-1}$')
 
     # add row at bottom for differences between Enew and Emeg
     f.subplots_adjust(bottom=0.37)
-    pos2=axs[1].get_position()
-    pos3=axs[3].get_position()
-    for tick in axs[1].get_xticklabels():
+    pos2=axs[0].get_position()
+    pos3=axs[1].get_position()
+    for tick in axs[0].get_xticklabels():
         tick.set_rotation(20)
-    for tick in axs[3].get_xticklabels():
+    for tick in axs[1].get_xticklabels():
         tick.set_rotation(20)
 
     axnew=f.add_axes([pos2.x0, 0.05, pos3.x0 + pos3.width - pos2.x0 , 0.2],) #sharey=axs[3]) # share x axis with time series
+    axs[0].set_ylim([vmin,vmax])
     axs[1].set_ylim([vmin,vmax])
-    axs[3].set_ylim([vmin,vmax])
     plt.sca(axnew)
     # let's plot the difference for each subregion
 
     for i in range(len(series)):
         # plot megan -enew
         lw=[1,3][i==0] # wider black line
-        reldif = 100*(series[i]-series2[i]) / series2[i]
-        plt.plot_date(dates, reldif, fmt='-', color=colors[i], linewidth=lw)
+        absdif = series[i]-series2[i]
+        plt.plot_date(dates, -1*absdif, fmt='-', color=colors[i], linewidth=lw)
+        #reldif = 100*(series[i]-series2[i]) / series2[i]
+        #plt.plot_date(dates, reldif, fmt='-', color=colors[i], linewidth=lw)
 
-    plt.ylim([-101,101])
-    plt.ylabel('%')
-    plt.title('(E$_{new}$-E$_{MEGAN}$) / E$_{MEGAN}$')
+    plt.ylim([-0.3e13, 1e13])
+    plt.ylabel('molec cm$^{-2}$ s$^{-1}$')
+    plt.title('(E$_{GC}$-E$_{OMI}$)')
     plt.plot_date([dates[0],dates[-1]],[0,0],'--k')
 
     f.autofmt_xdate()
@@ -520,7 +526,7 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     print('SAVED ', pname)
 
 
-def MEGAN_vs_E_new(d0=datetime(2005,1,1), d1=datetime(2005,12,31),
+def MEGAN_vs_E_new(d0=datetime(2005,1,1), d1=datetime(2007,12,31),
                   key='E_VCC_PP_lr',
                   region=pp.__AUSREGION__):
     '''
@@ -1018,7 +1024,7 @@ if __name__=='__main__':
 
     ## Tga summary
     #
-    tga_summary()
+    #tga_summary()
 
 
     ## Plot megan daily cycle vs top-down emissions in several zones
@@ -1027,7 +1033,7 @@ if __name__=='__main__':
     ## Plot MEGAN vs E_new (key)
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
-    MEGAN_vs_E_new(d0,dn)
+    #MEGAN_vs_E_new(d0,dn)
 
     ## Plot showing comparison of different top-down estimates
     ## In Isop chapter results
@@ -1037,7 +1043,8 @@ if __name__=='__main__':
     ## Plot showing time series within Australia, and Sydney area
     ## In isop chapter results
     ## Ran 7/11/18
-    #with np.warnings.catch_warnings():
+    with np.warnings.catch_warnings():
+        E_regional_time_series()
         #np.warnings.filterwarnings('ignore')
         #for etype in ['gc','omi','pp']:
             #E_regional_multiyear(d0=d0,dn=de, etype=etype)

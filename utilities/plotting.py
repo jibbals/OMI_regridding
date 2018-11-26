@@ -790,7 +790,7 @@ def subzones(data, dates, lats, lons, comparison=None, subzones=__subzones_AUS__
              maskoceans=True,
              labelcities=True, labels=None,
              force_monthly=False, force_monthly_func='mean',
-             colors=__subzones_colours__, noplot=False):
+             colors=__subzones_colours__, showmaps=True):
     '''
         Look at map of data[time,lats,lons], draw subzones, show time series over map and subzones
         can clear ocean with maskoceans=True (default).
@@ -799,11 +799,13 @@ def subzones(data, dates, lats, lons, comparison=None, subzones=__subzones_AUS__
     '''
     #region=subzones[0]
     j=int(comparison is not None)
+    ncols=j+1
+    nrows=[1,2][showmaps]
+    # we have one or two rows/columns...
 
     axs=[]
     series=[]
     series2=[]
-    axs.append(plt.subplot(2,j+1,1))
     createmapargs={'vmin':mapvmin, 'vmax':mapvmax, 'clabel':clabel,
                  'title':title, 'suptitle':suptitle, 'linear':linear}
 
@@ -819,8 +821,10 @@ def subzones(data, dates, lats, lons, comparison=None, subzones=__subzones_AUS__
     if comparison is not None:
         comparison_mean=np.nanmean(comparison,axis=0)
 
-    subzones_map(data_mean,lats,lons,subzones=subzones,colors=colors, labelcities=labelcities,
-                 **createmapargs)
+    if showmaps:
+        axs.append(plt.subplot(nrows,ncols,1))
+        subzones_map(data_mean,lats,lons,subzones=subzones,colors=colors, labelcities=labelcities,
+                     **createmapargs)
 
     # For each subset here, plot the timeseries
     if force_monthly:
@@ -834,20 +838,23 @@ def subzones(data, dates, lats, lons, comparison=None, subzones=__subzones_AUS__
         # use date list of monthly midpoints
         dates=monthly_data['dates']
 
-    axs.append(plt.subplot(2,j+1,2+j))
+    pnum = [1,3][nrows>1]
+    if (nrows == 2) and (ncols == 1): pnum=2
+    tsax=plt.subplot(nrows,ncols,pnum)
+    axs.append(tsax)
     series=subzones_TS(data, dates, lats, lons, subzones=subzones,colors=colors,
                        labels=labels, ylims=[vmin,vmax])
 
     if comparison is not None:
-
-        axs.append(plt.subplot(2,2,2))
-        createmapargs['title']=comparisontitle
-        createmapargs['suptitle']=None
-        subzones_map(comparison_mean, lats, lons, labelcities=labelcities,
-                     subzones=subzones,colors=colors,
-                     **createmapargs)
-
-        axs.append(plt.subplot(2,2,4, sharey=axs[1]))
+        if showmaps:
+            axs.append(plt.subplot(nrows,ncols,2))
+            createmapargs['title']=comparisontitle
+            createmapargs['suptitle']=None
+            subzones_map(comparison_mean, lats, lons, labelcities=labelcities,
+                         subzones=subzones,colors=colors,
+                         **createmapargs)
+        pnum=[2,4][showmaps]
+        axs.append(plt.subplot(nrows,ncols,pnum, sharey=tsax))
         series2=subzones_TS(comparison, dates, lats, lons,
                             subzones=subzones, colors=colors,
                             ylims=[vmin,vmax])

@@ -130,10 +130,21 @@ def read_smearmask(d0, dN=None, keys=None):
     '''
         Read smearmask (or extra keys) between d0 and dN
     '''
+    datakeys=['smearmask','smearmasklit','smear']
+    dimkeys =['lats','lons','dates']
     years=util.list_years(d0,dN)
     for year in years:
         path= 'Data/smearmask_%d.h5'%year.year
         datay, attrsy = fio.read_hdf5(path)
+       
+        # subset to desired keys
+        # remove arrays in datakeys but not in keys
+        if keys is not None:
+            for key in set(datakeys).difference(set(keys)):
+                removed = data.pop(key)
+                removed = attrs.pop(key)
+        
+        # save yearly data to dict
         if year == years[0]:
             data,attrs=datay,attrsy
         else:
@@ -141,23 +152,16 @@ def read_smearmask(d0, dN=None, keys=None):
                 if k not in ['lats','lons']:
                     data[k] = np.append(datay[k],axis=0)
 
-    # subset to rerquested dates, after converting greg to numpy datetime
+    # converting greg to numpy datetime
     dates = util.date_from_gregorian(data['dates'])
     data['dates'] = np.array(dates)
     attrs['dates']['units'] = 'numpy datetime'
 
-
+    # subset to argument dates
     di = util.date_index( d0, dates, dN)
-    for key in ['smearmask','smearmasklit','smear','yields','tau','slope', 'dates']:
+    for key in datakeys+['dates']:
         data[key]=data[key][di]
 
-
-    # subset to desired keys
-    if keys is not None:
-        for key in ['smearmask','smearmasklit','smear','yields','tau','slope']:
-            if key not in keys:
-                removed = data.pop(key)
-                removed = attrs.pop(key)
     return data, attrs
 
 def get_smear_mask(d0, dN=None, region=None, uselitmask=True):

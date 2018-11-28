@@ -141,8 +141,8 @@ def read_smearmask(d0, dN=None, keys=None):
         # remove arrays in datakeys but not in keys
         if keys is not None:
             for key in set(datakeys).difference(set(keys)):
-                removed = data.pop(key)
-                removed = attrs.pop(key)
+                removed = datay.pop(key)
+                removed = attrsy.pop(key)
         
         # save yearly data to dict
         if year == years[0]:
@@ -159,7 +159,7 @@ def read_smearmask(d0, dN=None, keys=None):
 
     # subset to argument dates
     di = util.date_index( d0, dates, dN)
-    for key in datakeys+['dates']:
+    for key in set (datakeys+['dates']) & set(data.keys()):
         data[key]=data[key][di]
 
     return data, attrs

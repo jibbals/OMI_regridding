@@ -11,6 +11,6 @@ do
     printf -v mm "%02d" $i
     yyyymm=$1$mm
 
-    qsub -N invers${yyyymm} -o logs/inversion_${yyyymm}.log -v MONTH=${yyyymm} run/inversion_month.sh
+    qsub -N invers${yyyymm} -o logs/inversion_${yyyymm} -v MONTH=${yyyymm} run/inversion_month.sh
 done
 

@@ -21,12 +21,11 @@ from tests import utilities_tests
 import reprocess
 
 from classes.E_new import E_new # E_new class
-from classes import GC_class
+from classes import GC_class, campaign
 from classes.omhchorp import omhchorp
 
 from utilities import masks
 
-from classes.campaign import campaign
 import xbpch
 import xarray
 import pandas as pd
@@ -66,6 +65,44 @@ start1=timeit.default_timer()
 ##########
 
 
+
+# Read campaign data 
+mumba = campaign.mumba()
+sps1  = campaign.sps(1)
+sps2  = campaign.sps(2)
+lat,lon = sps1.lat,sps1.lon
+
+colors=['m','pink','orange']
+
+Enew=E_new(d0,dN) # for now just compare to 2005
+lats, lons = Enew.lats_lr, Enew.lons_lr
+
+# index of sites
+yi,xi = util.lat_lon_index(lat,lon,lats,lons)
+
+#plt.figure(figsize=(14,16))
+## create map, with gridsquare of comparison, and dots for campaigns
+#plt.subplot(2,1,1)
+#m=pp.displaymap(region=[-45,130,-14,155])
+#pp.add_grid_to_map(m,)
+## Add dot to map
+#for i,[y,x] in enumerate([[mumba.lat,mumba.lon],[sps1.lat,sps1.lon],[sps2.lat,sps2.lon]]):
+#    mx,my = m(x, y)
+#    m.plot(mx, my, 'o', markersize=3, color=colors[i])
+#
+#plt.subplot(2,1,2)
+#dates,isop=mumba.get_daily_hour(key='isop')
+#d1,i1=sps1.get_daily_hour(key='isop')
+#d2,i2=sps2.get_daily_hour(key='isop')
+#Enew.get_series('isop',)
+#
+#pp.plot_yearly_cycle(isop,dates,color='m',label='MUMBA',linewidth=2)
+#pp.plot_yearly_cycle(i1,d1,color='pink',label='SPS1',linewidth=2)
+#pp.plot_yearly_cycle(i2,d2,color='orange',label='SPS2',linewidth=2)
+#
+#plt.legend()
+#plt.title('isoprene yearly cycle')
+#plt.tight_layout()
 
 ###########
 ### Record and time STUJFFS

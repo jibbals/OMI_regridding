@@ -202,6 +202,36 @@ def add_regression(X,Y,label=None, addlabel=True, exponential=False, **pargs):
     plt.plot(Xspace,Yline,label=label, **pargs)
     return m,b,r,ci1,ci2
 
+def arc_map(region=[-33.7, 149.4, -31.8, 151.8], res=1000, service='World_Topo_Map',epsg=4326,
+            resolution='h',projection='mill'):
+    '''
+    Create and return the thingy
+    Inputs:
+        region:  [bot,left,top,right]
+        service= one of 'World_Imagery', or 'World_Topo_Map'
+            Imagery is more like blue marble, with no site labels
+            Topo has inbuilt site labels, which render based on the resolution -> higher res for more zoomed in image.
+        epsg: tell arcGIS where to pull image from, affects the image orientation
+            Use 4326 for Sydney centric maps
+            Use 3577 for Australia centred view
+    '''
+
+    # set up basemap projection
+    # epsg is used to inform basemap that we will pull an image from ArcGIS servers
+    # epsg=28355 does not work...
+    # 3577 is centred at middle of Australia...
+    # 4326 works for East Australia!
+    m = Basemap(projection=projection, epsg=epsg,
+                resolution=resolution,
+                llcrnrlon=region[1], llcrnrlat=region[0],
+                urcrnrlon=region[3], urcrnrlat=region[2])
+
+    # Download backgroud to basemap's projection.
+    #m.arcgisimage(service='World_Topo_Map', xpixels=res, verbose=True)
+    m.arcgisimage(server='http://server.arcgisonline.com/ArcGIS', service=service,
+                  xpixels=res, verbose=True)
+
+    return m
 
 def basicmap(data, lats, lons, latlon=True,
               aus=False, region=__GLOBALREGION__, linear=False,
@@ -1015,11 +1045,11 @@ def add_grid_to_map(m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=
 
 def displaymap(region=__AUSREGION__,
                subregions=[], labels=[], colors=[], linewidths=[],
-               fontsize='small', bluemarble=True,drawstates=True):
+               fontsize='small', bluemarble=True, drawstates=True):
     '''
         regions are [lat,lon,lat,lon]
     '''
-    m = Basemap(projection='mill', resolution='i',
+    m = Basemap(projection='mill', resolution='f',
         llcrnrlon=region[1], llcrnrlat=region[0],
         urcrnrlon=region[3], urcrnrlat=region[2])
     if bluemarble:

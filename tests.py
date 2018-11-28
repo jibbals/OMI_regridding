@@ -236,6 +236,22 @@ def compare_products(month=datetime(2005,1,1), positiveonly=False,
     print(outfig+" Saved.")
 
 
+def campaign_gridsquare():
+    ''' campaigns of AUS BVOC measurements '''
+    bmap=pp.arc_map(region=[-36,148,-32,152], res=5e4)
+    pp.add_rectangle(bmap,[-35.0, 148.75, -33.0, 151.25],color='red',linewidth=2)
+    
+    # add labels to the sites
+    sites=['Sydney (SPS)','Wollongong (MUMBA)']
+    latlons=[[-33.8688, 151.2093], [-34.3972, 150.8996]]
+    for site, [lat,lon] in zip(sites, latlons):
+        pp.add_point(bmap, lat, lon, label=site, color='r',xlabeloffset=0,ylabeloffset=0)
+        
+    pname='Figs/campaign_grid.png'
+    plt.savefig(pname)
+    print('saved', pname)
+    plt.close()
+
 def check_products(month=datetime(2005,1,1), region=pp.__AUSREGION__):
     '''
     Test a day or 8-day reprocessed HCHO map

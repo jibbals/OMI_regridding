@@ -174,6 +174,20 @@ def yearly_cycle_vs_campaigns(d0=datetime(2005,1,1),dn=datetime(2007,12,31)):
     plt.title('isoprene yearly cycle')
     plt.tight_layout()
 
+def campaign_vs_emissions():
+    '''
+        Compare campaign data to Enew and Egc in that one grid square
+    '''
+    # Read campaign data 
+    mumba = campaign.mumba()
+    sps1  = campaign.sps(1)
+    sps2  = campaign.sps(2)
+    
+    colors=['m','pink','orange']
+    
+    
+    
+
 def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,1,31),region=pp.__AUSREGION__, plotswaths=False):
     '''
         Print out averages and anomalies in time series

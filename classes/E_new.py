@@ -56,14 +56,15 @@ __E_new_keys__=[            # #  # {time, lats, lons}
 #                'E_VCC_PP',     #  {31, 152, 152}
 #                'E_VCC_PP_u',   #  without using filters
 #                'E_VCC_PP_lr',  #  at low resolution
-                'firefilter',   # Fire filter used for e estimates [time,lat,lon]
-                'anthrofilter', # anthro filter
-                'smearfilter',  # smearing filter
+                'firemask',   # Fire filter used for e estimates [time,lat,lon]
+                'anthromask', # anthro filter
+                'smearmask',  # smearing filter
                 'VCC_GC',       # {31, 152, 152}
                 'VCC_OMI',      # {31, 152, 152}
                 'VCC_PP',       # {31, 152, 152}
-                'smearing',     # model resolution monthly smearing
+                #'smearing',     # model resolution monthly smearing
                 'ModelSlope',   # model resolution monthly slope
+                'ModelSlope_sf',# model slope after filtering smearing
                 'pixels',       # OMI pixel count
                 'pixels_u',     # before filtering pixel count
                 'pixels_lr',    # OMI pixel count at low resolution
@@ -125,6 +126,12 @@ class E_new:
         # For each month read the data
         for month in months:
             data,attrs=fio.read_E_new_month(month=month)
+            # remove unwanted data if possible
+            if dkeys is not None:
+                for key in __E_new_keys__:
+                    if (key not in dkeys) and (key not in __E_new_dims__+['dates','time']):
+                        rem=data.pop(key)
+            
             E_new_list.append(data)
         self.attributes=attrs
 

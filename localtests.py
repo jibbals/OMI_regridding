@@ -29,6 +29,7 @@ from utilities import masks
 import xbpch
 import xarray
 import pandas as pd
+import seaborn as sns
 
 import timeit
 
@@ -49,13 +50,14 @@ region=pp.__AUSREGION__
 
 d0=datetime(2005,1,1)
 d1=datetime(2005,3,31)
+summer0 = d0,util.last_day(datetime(2005,2,1))
 dstr=d0.strftime('%Y%m%d')
 mstr=d0.strftime('%Y%m')
 latres=0.25
 lonres=0.3125
 dN=datetime(2005,12,31)
 d3=datetime(2005,3,1)
-dE=datetime(2009,12,31)
+dE=datetime(2007,12,31)
 dates=util.list_days(d0,dE,month=False)
 # start timer
 start1=timeit.default_timer()
@@ -66,6 +68,54 @@ start1=timeit.default_timer()
 
 
 
+## Read Emegan and Enew into dataframe for a region and season
+Enew=E_new(d0,dE, dkeys=['E_MEGAN','E_PP_lr'])
+lats,lons=Enew.lats_lr,Enew.lons_lr
+Em=Enew.E_MEGAN
+Em[Em<1] = np.NaN
+Eo=Enew.E_PP_lr
+Eo[Eo<1] = np.NaN
+dates=Enew.dates
+# summer date indices
+summer= [ d.month in [1,2,12] for d in dates ]
+# winter date indices 
+winter= [ d.month in [6,7,8] for d in dates ]
+
+
+for region,color,label in zip(pp.__subregions__, pp.__subregions_colors__, pp.__subregions_labels__):
+    
+    # pull out region:
+    lati,loni = util.lat_lon_range(lats,lons,region)
+    Emsub=Em[:,lati,:]
+    Emsub=Emsub[:,:,loni]
+    Eosub=Eo[:,lati,:]
+    Eosub=Eosub[:,:,loni]
+    Emsub=Emsub[summer]
+    Eosub=Eosub[summer]
+    
+    # set 95th percentile as axes limits
+    xmax=np.nanpercentile(Eosub,99)
+    ymax=np.nanpercentile(Emsub,99)
+    
+    # lets put summer data into a dataframe for easy plotting
+    subdata=np.array([Emsub.flatten(), Eosub.flatten()]).T
+    df = pd.DataFrame(data=subdata, columns=['MEGAN','OMI'])
+    
+    plt.figure(figsize=[15,15])
+    with sns.axes_style('white'):
+        g = sns.jointplot("OMI", "MEGAN", df, kind='hex',#kind='reg')
+                          dropna=True, xlim=[0,xmax], ylim=[0,ymax], 
+                          color=color,)
+        # halve the x axis limit
+        #g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1]/2.0)
+    plt.suptitle(label,fontsize=20)
+    plt.savefig('%s_summer.png'%label)
+    plt.close()
+
+
+
+
+'''
 # Read campaign data
 mumba = campaign.mumba()
 sps1  = campaign.sps(1)
@@ -116,7 +166,7 @@ plt.legend(handles+newhandles, labels+newlabels,loc='best', fontsize=10,frameon=
 # Time series plots, how displaying each line
 #linewidths  = [2,1,1,1]
 #colours     = ['k','m','orange','red']
-'''
+
 for lowres in [True,False]:
     # Low res or not changes plotname and other stuff
     lrstr=['','_lr'][lowres]
@@ -614,7 +664,10 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
                  clabel='S', pname='Figs/GC/smearing_%s_interp.png'%mstr, title='Smearing %s'%mstr)
     print("Smearing plots saved in Figs/GC/smearing...")
     outdata['smearing'] = smear
-    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), where Delta is the difference between full and half isoprene emission runs from GEOS-Chem for %s, interpolated linearly from 2x2.5 to 0.25x0.3125 resolution'%mstr}
+    outattrs['smearing']= {'desc':'smearing = Delta(HCHO)/Delta(E_isop), '+
+            'where Delta is the difference between full and half isoprene '+
+            'emission runs from GEOS-Chem for %s,'%mstr + 
+            ' interpolated linearly from 2x2.5 to 0.25x0.3125 resolution'}
 
     # TODO: Smearing Filter
     smearfilter = smear > Inversion.__Thresh_Smearing__#5000 # something like this

@@ -38,15 +38,24 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'BG_PP',        #  {31, 152, 152}
                 'BG_VCC',       #  {31, 152, 152}
                 'E_MEGAN',      #  {31, 18, 19}
-                'E_VCC_GC',     #  {31, 152, 152}
-                'E_VCC_GC_u',   #  With unfiltered by fire/smoke/anthro
-                'E_VCC_GC_lr',  #  at low resolution: {31,18,19}
-                'E_VCC_OMI',    #  {31, 152, 152}
-                'E_VCC_OMI_u',  #  E_VCC_OMI without any filters applied
-                'E_VCC_OMI_lr', #  E_VCC_OMI at low resolution
-                'E_VCC_PP',     #  {31, 152, 152}
-                'E_VCC_PP_u',   #  without using filters
-                'E_VCC_PP_lr',  #  at low resolution
+                'E_GC',     #  {31, 152, 152}
+                'E_GC_u',   #  With unfiltered by fire/smoke/anthro
+                'E_GC_lr',  #  at low resolution: {31,18,19}
+                'E_OMI',    #  {31, 152, 152}
+                'E_OMI_u',  #  E_VCC_OMI without any filters applied
+                'E_OMI_lr', #  E_VCC_OMI at low resolution
+                'E_PP',     #  {31, 152, 152}
+                'E_PP_u',   #  without using filters
+                'E_PP_lr',  #  at low resolution
+#                'E_VCC_GC',     #  {31, 152, 152}
+#                'E_VCC_GC_u',   #  With unfiltered by fire/smoke/anthro
+#                'E_VCC_GC_lr',  #  at low resolution: {31,18,19}
+#                'E_VCC_OMI',    #  {31, 152, 152}
+#                'E_VCC_OMI_u',  #  E_VCC_OMI without any filters applied
+#                'E_VCC_OMI_lr', #  E_VCC_OMI at low resolution
+#                'E_VCC_PP',     #  {31, 152, 152}
+#                'E_VCC_PP_u',   #  without using filters
+#                'E_VCC_PP_lr',  #  at low resolution
                 'firefilter',   # Fire filter used for e estimates [time,lat,lon]
                 'anthrofilter', # anthro filter
                 'smearfilter',  # smearing filter
@@ -67,9 +76,12 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 ]
 __E_new_keys_lr__ = [
                      'E_MEGAN',      #  {31, 18, 19}
-                     'E_VCC_GC_lr',  #  at low resolution
-                     'E_VCC_OMI_lr', #  E_VCC_OMI at low resolution
-                     'E_VCC_PP_lr',  #  at low resolution
+                     'E_GC_lr',  #  at low resolution
+                     'E_OMI_lr', #  E_VCC_OMI at low resolution
+                     'E_PP_lr',  #  at low resolution
+#                     'E_VCC_GC_lr',  #  at low resolution
+#                     'E_VCC_OMI_lr', #  E_VCC_OMI at low resolution
+#                     'E_VCC_PP_lr',  #  at low resolution
                      'smearfilter',  # smearing filter
                      'smearing',     # model resolution monthly smearing
                      'ModelSlope',   # model resolution monthly slope

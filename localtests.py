@@ -48,7 +48,7 @@ region=pp.__AUSREGION__
 #####
 
 d0=datetime(2005,1,1)
-d1=datetime(2005,1,31)
+d1=datetime(2005,3,31)
 dstr=d0.strftime('%Y%m%d')
 mstr=d0.strftime('%Y%m')
 latres=0.25
@@ -66,7 +66,7 @@ start1=timeit.default_timer()
 
 
 
-# Read campaign data 
+# Read campaign data
 mumba = campaign.mumba()
 sps1  = campaign.sps(1)
 sps2  = campaign.sps(2)
@@ -74,12 +74,120 @@ lat,lon = sps1.lat,sps1.lon
 
 colors=['m','pink','orange']
 
-Enew=E_new(d0,dN) # for now just compare to 2005
+# Read in emissions from E_new
+enew_keys=['E_PP_lr']
+#allkeys=['E_OMI', 'E_GC', 'E_PP','E_OMI_lr','E_GC_lr','E_PP_lr',
+#         'E_MEGAN', 'pixels','pixels_PP','pixels_lr','pixels_PP_lr']
+Enew  = E_new(d0,d1,enew_keys)
 lats, lons = Enew.lats_lr, Enew.lons_lr
-
-# index of sites
 yi,xi = util.lat_lon_index(lat,lon,lats,lons)
+Eomi = Enew.E_PP_lr[:,yi,xi]
+Eomi[Eomi<0]=0
+dates=Enew.dates
 
+E_meg = GC_class.Hemco_diag(d0,d1)
+meglats,meglons= E_meg.lats, E_meg.lons
+megyi,megxi = util.lat_lon_index(lat,lon,meglats,meglons)
+Emeg_o = E_meg.local_time_offset[megyi,megxi]
+Emeg = E_meg.E_isop_bio[:,megyi,megxi]
+megdates=E_meg.dates
+
+plt.close()
+fig = plt.figure(figsize=[16,8])
+pp.plot_time_series(dates, Eomi, ylabel='molec cm$^{-2}$ s$^{-1}$',
+                    linestyle='--', marker='*', color='b', label='E$_{OMI}$')
+pp.plot_time_series(megdates, Emeg,
+                    linestyle='-', color='k',label='E$_{MEGAN}$')
+ax=plt.gca()
+# new x and y axes (top and right)
+newax = plt.twinx().twiny()
+plt.sca(newax)
+pp.plot_time_series(mumba.dates, mumba.isop, ylabel='ppb',
+                    color=colors[0], label='mumba')
+
+# combine legends from axes and put somewhere
+handles, labels = ax.get_legend_handles_labels()
+newhandles, newlabels= newax.get_legend_handles_labels()
+
+#fig.legend(handles+newhandles, labels+newlabels, loc="best", frameon=True)
+plt.legend(handles+newhandles, labels+newlabels,loc='best', fontsize=10,frameon=False)
+
+#pp.InitMatplotlib() # set up plotting defaults
+# Time series plots, how displaying each line
+#linewidths  = [2,1,1,1]
+#colours     = ['k','m','orange','red']
+'''
+for lowres in [True,False]:
+    # Low res or not changes plotname and other stuff
+    lrstr=['','_lr'][lowres]
+    pname='Figs/Emiss/E_new_series_%s%s.png'%(locname,lrstr)
+    # key names for reading E_new
+    ekeys = [ek+lrstr for ek in ['E_OMI', 'E_GC', 'E_PP']]
+    labels      = ['MEGAN',ekeys[0],ekeys[1],ekeys[2] ]
+    pixels = getattr(Enew, 'pixels'+lrstr)
+    pixelspp = getattr(Enew, 'pixels_PP'+lrstr)
+
+    # Plot four time series
+    f,axs = plt.subplots(1+count,1,figsize=(16,8), sharex=True)
+    ax0=axs
+    if count:
+        ax0=axs[0]
+    # Grab desired E_new data
+    E_omi, E_gc, E_pp = [getattr(Enew,ekeys[i]) for i in range(3)]
+    lats,lons = [ getattr(Enew,s+str.lower(lrstr)) for s in ['lats','lons'] ]
+    enewlati,enewloni = util.lat_lon_index(lat,lon,lats,lons)
+    meglati, megloni  = util.lat_lon_index(lat,lon,Enew.lats_lr,Enew.lons_lr)
+
+    for i,arr in enumerate([E_meg,E_omi,E_gc,E_pp]):
+        dates=Enew.dates
+        lati = [enewlati,meglati][i==0]
+        loni = [enewloni,megloni][i==0]
+        arr = arr[:,lati,loni]
+        pix = [pixels, pixelspp][i==3]
+        pix=pix[:,lati,loni]
+        # plot time series
+        plt.sca(ax0)
+        monthly_data    = util.monthly_averaged(dates,arr)
+        monthly_pix     = util.monthly_averaged(dates,pix)
+        mpix            = monthly_pix['sum']
+        marr            = monthly_data[monthly_func]
+        std             = monthly_data['std']
+        mdates          = monthly_data['middates']
+        pp.plot_time_series(mdates,marr,
+                            linewidth=linewidths[i],
+                            color=colours[i],label=labels[i])
+
+        if i>0:
+            # error points
+            if plot_error:
+
+                pp.plot_time_series(mdates,marr+std,
+                                    color=colours[i],marker='^',linestyle='None',
+                                    markerfacecolor='None',markersize=4, markeredgecolor=colours[i])
+                pp.plot_time_series(mdates,marr-std,
+                                    color=colours[i],marker='v',linestyle='None',
+                                    markerfacecolor='None',markersize=4, markeredgecolor=colours[i])
+            # plot pixel counts
+            if count:
+                plt.sca(axs[1])
+                pp.plot_time_series(mdates,mpix,color=colours[i])
+                #df_m['pix'].plot(color=colours[i])
+                #plt.plot(pix, color=colours[i])
+
+    plt.sca(ax0)
+    if ylims is not None:
+        plt.ylim(ylims)
+    plt.title(locname+ ' [%.2f$^{\circ}$N, %.2f$^{\circ}$E]'%(lat,lon))
+    plt.ylabel(Enew.attributes[ekeys[0]]['units'])
+    plt.legend(loc='best')
+    if count:
+        plt.sca(axs[1])
+        plt.ylabel('pixels (sum)')
+    plt.xlabel('time')
+    plt.savefig(pname)
+    plt.close()
+    print("SAVED ",pname)
+'''
 #plt.figure(figsize=(14,16))
 ## create map, with gridsquare of comparison, and dots for campaigns
 #plt.subplot(2,1,1)

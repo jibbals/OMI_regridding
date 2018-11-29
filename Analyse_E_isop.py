@@ -23,7 +23,7 @@ import utilities.utilities as util
 import utilities.plotting as pp
 from utilities import GMAO
 #from utilities import fio
-from classes import GC_class # GC trac_avg class
+from classes import GC_class, campaign # GC trac_avg class
 from classes.omhchorp import omhchorp # OMI product class
 from classes.E_new import E_new # E_new class
 
@@ -137,34 +137,48 @@ def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2007,12,31)):
     plt.savefig('Figs/Emiss/MEGAN_monthly_daycycle.png')
     plt.close()
 
-def yearly_cycle_vs_campaigns(d0=datetime(2005,1,1),dn=datetime(2007,12,31)):
+
+def multiyear_vs_campaigns(d0=datetime(2005,1,1),dn=datetime(2007,12,31)):
     '''
+        Multiyear average peak emissions per day vs daily peak campaign concentrations
+
     '''
+    pname='yearly_cycle_vs_campaigns.png'
     mumba = campaign.mumba()
     sps1  = campaign.sps(1)
     sps2  = campaign.sps(2)
 
     colors=['m','pink','orange']
 
-    Enew=E_new(d0,dn)
+
+    ## READ E_NEW
+    #
+    Enew  = E_new(d0,d1,enew_keys)
     lats,lons=Enew.lats_lr,Enew.lons_lr
+    yi,xi = util.lat_lon_index(lat,lon,lats,lons)
+    Eomi = Enew.E_PP_lr[:,yi,xi]
+    Eomi[Eomi<0]=0
+    dates=Enew.dates
 
+    ## READ E_MEGAN
+    #
 
-    plt.figure(figsize=(14,16))
+    plt.figure(figsize=(16,8))
     # create map, with gridsquare of comparison, and dots for campaigns
-    plt.subplot(2,1,1)
-    m=pp.displaymap(region=[-45,130,-14,155])
-    pp.add_grid_to_map(m,)
-    # Add dot to map
-    for i,[y,x] in enumerate([[mumba.lat,mumba.lon],[sps1.lat,sps1.lon],[sps2.lat,sps2.lon]]):
-        mx,my = m(x, y)
-        m.plot(mx, my, 'o', markersize=3, color=colors[i])
+    #    plt.subplot(2,1,1)
+    #    m=pp.displaymap(region=[-45,130,-14,155])
+    #    pp.add_grid_to_map(m,)
+    #    # Add dot to map
+    #    for i,[y,x] in enumerate([[mumba.lat,mumba.lon],[sps1.lat,sps1.lon],[sps2.lat,sps2.lon]]):
+    #        mx,my = m(x, y)
+    #        m.plot(mx, my, 'o', markersize=3, color=colors[i])
 
-    plt.subplot(2,1,2)
+    #plt.subplot(2,1,2)
+    ax=plt.gca()
     dates,isop=mumba.get_daily_hour(key='isop')
     d1,i1=sps1.get_daily_hour(key='isop')
     d2,i2=sps2.get_daily_hour(key='isop')
-    Enew.get_series('isop',)
+
 
     pp.plot_yearly_cycle(isop,dates,color='m',label='MUMBA',linewidth=2)
     pp.plot_yearly_cycle(i1,d1,color='pink',label='SPS1',linewidth=2)
@@ -173,20 +187,21 @@ def yearly_cycle_vs_campaigns(d0=datetime(2005,1,1),dn=datetime(2007,12,31)):
     plt.legend()
     plt.title('isoprene yearly cycle')
     plt.tight_layout()
+    plt.savefig(pname)
 
 def campaign_vs_emissions():
     '''
         Compare campaign data to Enew and Egc in that one grid square
     '''
-    # Read campaign data 
+    # Read campaign data
     mumba = campaign.mumba()
     sps1  = campaign.sps(1)
     sps2  = campaign.sps(2)
-    
+
     colors=['m','pink','orange']
-    
-    
-    
+
+
+
 
 def check_E_new(d0=datetime(2005,1,1),dn=datetime(2005,1,31),region=pp.__AUSREGION__, plotswaths=False):
     '''
@@ -235,11 +250,12 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
 
     '''
 
-    # Read in E_VCC_...
-    allkeys=['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP','E_VCC_OMI_lr','E_VCC_GC_lr','E_VCC_PP_lr',
-             'E_MEGAN', 'pixels','pixels_PP','pixels_lr','pixels_PP_lr']
-    Enew  = E_new(d0,dn,allkeys)
-    E_meg = Enew.E_MEGAN
+    # Read in emissions from E_new
+    enew_keys=['E_PP_lr']
+    #allkeys=['E_OMI', 'E_GC', 'E_PP','E_OMI_lr','E_GC_lr','E_PP_lr',
+    #         'E_MEGAN', 'pixels','pixels_PP','pixels_lr','pixels_PP_lr']
+    Enew  = E_new(d0,dn,enew_keys)
+    E_meg = GC_class.Hemco_diag(d0,dn)
 
     pp.InitMatplotlib() # set up plotting defaults
     # Time series plots, how displaying each line
@@ -251,7 +267,7 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
         lrstr=['','_lr'][lowres]
         pname='Figs/Emiss/E_new_series_%s%s.png'%(locname,lrstr)
         # key names for reading E_new
-        ekeys = [ek+lrstr for ek in ['E_VCC_OMI', 'E_VCC_GC', 'E_VCC_PP']]
+        ekeys = [ek+lrstr for ek in ['E_OMI', 'E_GC', 'E_PP']]
         labels      = ['MEGAN',ekeys[0],ekeys[1],ekeys[2] ]
         pixels = getattr(Enew, 'pixels'+lrstr)
         pixelspp = getattr(Enew, 'pixels_PP'+lrstr)
@@ -346,7 +362,7 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2007,12,31),
     # Low res or not changes plotname and other stuff
     lrstr=['','_lr'][lowres]
     etype=str.upper(etype)
-    ekey= 'E_VCC_'+etype+lrstr
+    ekey= 'E_'+etype+lrstr
     mstr=['','_monthly'][force_monthly]
     pname='Figs/Emiss/E_zones_%s%s%s.png'%(etype,mstr,lrstr)
     vmin=0; vmax=1.2e13
@@ -429,7 +445,7 @@ def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
     # Low res or not changes plotname and other stuff
     lrstr=['','_lr'][lowres]
     etype=str.upper(etype)
-    ekey= 'E_VCC_'+etype+lrstr
+    ekey= 'E_'+etype+lrstr
     pname='Figs/Emiss/E_zones_multiyear_%s%s.png'%(etype,lrstr)
     regions=GMAO.__subregions__
     colors=GMAO.__subregions_colors__
@@ -541,7 +557,7 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
 
 
 def MEGAN_vs_E_new(d0=datetime(2005,1,1), d1=datetime(2007,12,31),
-                  key='E_VCC_PP_lr',
+                  key='E_PP_lr',
                   region=pp.__AUSREGION__):
     '''
         Plot E_gc, E_new, diff, ratio
@@ -992,7 +1008,7 @@ def tga_summary(day0=datetime(2005,1,1), daye=datetime(2007,12,31)):
         # repeat over lat,lon axes
         daily_daylengths = np.repeat(daily_daylengths[:,np.newaxis], len(lats), axis=1)
         daily_daylengths = np.repeat(daily_daylengths[:,:,np.newaxis], len(lons), axis=2)
-        midday_kg = Enew.E_VCC_PP_lr * Enew.conversion_to_kg_lr * 3600 # in kg/hours
+        midday_kg = Enew.E_PP_lr * Enew.conversion_to_kg_lr * 3600 # in kg/hours
         midday_kg[midday_kg<0] = 0
         daily_kg = midday_kg * 0.637 *daily_daylengths
         E_OMI_total = np.nansum(daily_kg,axis=0) * 1e-9 # kg/day -> total Tg
@@ -1043,6 +1059,8 @@ if __name__=='__main__':
 
     ## Plot megan daily cycle vs top-down emissions in several zones
     #yearly_megan_cycle(d0,de)
+    # yearly cycle vs campaigns
+    yearly_cycle_vs_campaigns()
 
     ## Plot MEGAN vs E_new (key)
     ## compare megan to a top down estimate, both spatially and temporally

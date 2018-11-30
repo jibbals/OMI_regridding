@@ -68,7 +68,6 @@ start1=timeit.default_timer()
 ##########
 
 
-
 ## Read Emegan and Enew into dataframe for a region and season
 Enew=E_new(d0,dE, dkeys=['E_MEGAN','E_PP_lr'])
 lats,lons=Enew.lats_lr,Enew.lons_lr

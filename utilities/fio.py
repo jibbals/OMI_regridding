@@ -829,9 +829,15 @@ def read_omhchorp(day0,dayn=None,keylist=None,latres=__LATRES__,lonres=__LONRES_
     struct = []
     data={}
     for day in daylist:
-        struct.append(read_omhchorp_day(date=day,
+        try:
+            daystruct=read_omhchorp_day(date=day,
                                         latres=latres, lonres=lonres,
-                                        keylist=keylist))
+                                        keylist=keylist)
+        except Exception as inst:
+            print("WARNING: could not read omhchorp: ", day)
+            print("       : ",inst)
+            continue
+        struct.append(daystruct)
 
     # Set all the data arrays in the same way, [[time],lat,lon]
     ret_keylist=struct[0].keys()

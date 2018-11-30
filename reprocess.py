@@ -46,9 +46,6 @@ __LONRES__ = GMAO.__LONRES__
 
 
 
-
-
-
 def sum_dicts(d1,d2):
     '''
     Add two dictionaries together, only where keys match
@@ -116,7 +113,13 @@ def get_good_pixel_list(date, getExtras=False, maxlat=60, PalmerAMF=True):
         print("%d omhcho files for %s"%(len(files),str(date)))
     for ff in files:
         if __DEBUG__: print("trying to read %s"%ff)
-        omiswath = fio.read_omhcho(ff, maxlat=maxlat)
+        try:
+            omiswath = fio.read_omhcho(ff, maxlat=maxlat)
+        except Exception as inst:
+            print("WARNING: file: %s could not be read"%ff)
+            print("       :", inst)
+            continue
+
         flat,flon = omiswath['lats'], omiswath['lons']
 
         # only looking at good pixels

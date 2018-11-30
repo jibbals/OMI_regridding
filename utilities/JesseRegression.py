@@ -89,6 +89,7 @@ def RMA(Xin, Yin, alpha = 0.05):
 
     CIjm = [[qi,qs],[pi,ps]]
 
+    # Y = vX + u
     return v, u, r, CIr, CIjm
 
 

@@ -504,18 +504,14 @@ def monthly_averaged(dates,data,keep_spatial=False):
     for m in months:
         inds=(allyears==m.year) * (allmonths==m.month)
         mdates.append(m)
-        if keep_spatial:
-            mmedian.append(np.nanmedian(data[inds],axis=0))
-            mmean.append(np.nanmean(data[inds],axis=0))
-            mstd.append(np.nanstd(data[inds],axis=0))
-            mcount.append(np.nansum(inds,axis=0))
-            msum.append(np.nansum(data[inds],axis=0))
-        else:
-            mmedian.append(np.nanmedian(data[inds]))
-            mmean.append(np.nanmean(data[inds]))
-            mstd.append(np.nanstd(data[inds]))
-            mcount.append(np.nansum(inds))
-            msum.append(np.nansum(data[inds]))
+        axis=[None,0][keep_spatial]
+
+        mmedian.append(np.nanmedian(data[inds],axis=axis))
+        mmean.append(np.nanmean(data[inds],axis=axis))
+        mstd.append(np.nanstd(data[inds],axis=axis))
+        mcount.append(np.nansum(inds,axis=axis))
+        msum.append(np.nansum(data[inds],axis=axis))
+
     mmean=np.array(mmean); mstd=np.array(mstd); mcount=np.array(mcount);
     mmedian=np.array(mmedian); msum=np.array(msum)
     mid_dates=[d+timedelta(days=15) for d in mdates]

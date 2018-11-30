@@ -43,6 +43,40 @@ __subregions_labels__ = GMAO.__subregions_labels__
 # [lat,lon,lat,lon]
 __REMOTEPACIFIC__=[-15, -180, 15, -120]
 
+#__MISSING_OMHCHORP_DAY__=fio.read_omhchorp_day(datetime(2005,1,1))
+#print("__MISSING_OMHCHORP_DAY__={")
+#for key,entry in __MISSING_OMHCHORP_DAY__.items():
+#    #print(key, type(entry))
+#    if hasattr(entry, 'shape'):
+#        print("    '%s':np.zeros(%s)+np.NaN,"%(key,entry.shape))
+#    else:
+#        print("    '%s':[],"%(key))
+#print("}")
+__MISSING_OMHCHORP_DAY__={
+    'AMF_PP':np.zeros((721, 1152))+np.NaN,
+    'RSC_latitude':np.zeros((500,))+np.NaN,
+    'RSC_GC':np.zeros((500,))+np.NaN,
+    'AMF_GCz':np.zeros((721, 1152))+np.NaN,
+    'VCC_OMI':np.zeros((721, 1152))+np.NaN,
+    'gridentries':np.zeros((721, 1152))+np.NaN,
+    'col_uncertainty_OMI':np.zeros((721, 1152))+np.NaN,
+    'longitude':np.zeros((1152,))+np.NaN,
+    'VCC_PP':np.zeros((721, 1152))+np.NaN,
+    'VC_OMI':np.zeros((721, 1152))+np.NaN,
+    'VC_PP':np.zeros((721, 1152))+np.NaN,
+    'mod_times':[],
+    'AMF_GC':np.zeros((721, 1152))+np.NaN,
+    'SC':np.zeros((721, 1152))+np.NaN,
+    'RSC_region':np.zeros((4,))+np.NaN,
+    'latitude':np.zeros((721,))+np.NaN,
+    'ppentries':np.zeros((721, 1152))+np.NaN,
+    'RSC':np.zeros((500, 60, 3))+np.NaN,
+    'VCC_OMI_newrsc':np.zeros((721, 1152))+np.NaN,
+    'VCC_GC':np.zeros((721, 1152))+np.NaN,
+    'AMF_OMI':np.zeros((721, 1152))+np.NaN,
+    'VC_GC':np.zeros((721, 1152))+np.NaN,
+}
+
 ###############
 ### METHODS ###
 ###############

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+/#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Thu Oct 12 12:15:43 2017
@@ -51,6 +51,7 @@ region=pp.__AUSREGION__
 
 d0=datetime(2005,1,1)
 d1=datetime(2005,3,31)
+dE=datetime(2007,12,31)
 summer0 = d0,util.last_day(datetime(2005,2,1))
 dstr=d0.strftime('%Y%m%d')
 mstr=d0.strftime('%Y%m')
@@ -58,7 +59,7 @@ latres=0.25
 lonres=0.3125
 dN=datetime(2005,12,31)
 d3=datetime(2005,3,1)
-dE=datetime(2009,12,31)
+
 dates=util.list_days(d0,dE,month=False)
 # start timer
 start1=timeit.default_timer()
@@ -159,13 +160,13 @@ for region,color,label in zip(pp.__subregions__, pp.__subregions_colors__, pp.__
 # paste together the plots
 from PIL import Image
 
-for combined, pnames in zip(['daily_Egressions.png','monthly_Egressions.png'],[pname1, pname2]):
+for combined, pnames in zip(['Figs/Emiss/daily_Egressions.png','Figs/Emiss/monthly_Egressions.png'],[pname1, pname2]):
     images = [Image.open(pname) for pname in pnames]
     width, height = images[0].size
 
     # 3 rows 2 cols
-    total_width = width * 2
-    total_height= height * 3
+    total_width = width * 2 + 50
+    total_height= height * 3 + 50
     #max_height = max(heights)
 
     new_im = Image.new('RGBA', (total_width, total_height))

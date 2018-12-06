@@ -6,6 +6,8 @@ Created on Thu Oct 12 12:15:43 2017
 @author: jesse
 """
 
+import matplotlib
+matplotlib.use('Agg')
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt

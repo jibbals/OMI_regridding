@@ -1382,14 +1382,17 @@ def get_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires__
     lons=data['lons']
     # subset to requested dates, lats and lons
     di = util.date_index(d0,dates,dn=dN)
+    print(d0, dates[0], dates[-1], dN)
+    
     if region is not None:
         subset=util.lat_lon_subset(lats,lons,region=region,data=[firemask],has_time_dim=True)
         firemask=subset['data'][0]
         lats=subset['lats']
         lons=subset['lons']
-
-    firemask=firemask[di]
-    dates=np.array(dates)[di]
+    print(np.shape(firemask))
+    firemask=np.squeeze(firemask[di])
+    print(np.shape(firemask))
+    dates=np.squeeze(np.array(dates)[di])
     return firemask,dates,lats,lons
 
 def get_anthro_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
@@ -1414,7 +1417,7 @@ def get_anthro_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
         lats=subset['lats']
         lons=subset['lons']
 
-    return mask[di],dates[di],lats,lons
+    return np.squeeze(mask[di]),np.squeeze(dates[di]),lats,lons
 
 
 def get_smoke_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
@@ -1436,7 +1439,7 @@ def get_smoke_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
         lats=subset['lats']
         lons=subset['lons']
 
-    return mask[di], dates[di], lats,lons
+    return np.squeeze(mask[di]),np.squeeze(dates[di]), lats,lons
 
 #########################
 ###  READ MUMBA FROM JENNY

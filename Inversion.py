@@ -158,9 +158,14 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     #anthromask            = fio.make_anthro_mask(day0, dayn, region=region)
     firemask,_,_,_        = fio.get_fire_mask(day0,dN=dayn, region=region)
     smokemask,_,_,_       = fio.get_smoke_mask(day0,dN=dayn, region=region)
-    anthromask,_,masklats,masklons               = fio.get_anthro_mask(day0,dN=dayn, region=region)
+    anthromask,_,masklats,masklons  = fio.get_anthro_mask(day0,dN=dayn, region=region)
     smearmask_lr,smeardates,smearlats,smearlons  = masks.get_smear_mask(day0,dN=dayn, region=region)
     smearmask=np.zeros(firemask.shape, np.int8)
+    print("WTF")
+    print(days)
+    for arr in [firemask, smokemask, anthromask, smearmask_lr, days, smeardates]:
+        print(np.shape(arr))
+    
     # smearing is at lower resolution than other ones... map using nearest so they can be used together
     for i in range(len(smeardates)):
         smearmask[i] = util.regrid_to_higher(smearmask_lr[i],smearlats,smearlons,masklats,masklons )
@@ -247,6 +252,10 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
 
     # run with filters
     # apply filters
+    print(firemask.shape)
+    print(anthromask.shape)
+    print(smearmask.shape)
+    print(smokemask.shape)
     allmasks            = (firemask + anthromask + smearmask + smokemask)>0
     # filter the VCC arrays
     VCC_GC              = np.copy(VCC_GC_u)

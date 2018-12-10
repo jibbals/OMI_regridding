@@ -137,6 +137,26 @@ def check_rsc_interp(d0=datetime(2005,1,1)):
     plt.savefig('Figs/GC/interp.png')
     plt.close()
 
+def check_old_vs_new_emission_diags(month=datetime(2005,1,1)):
+    # compare new_emissions hemco output
+    d0=datetime(month.year,month.month,1)
+    d1=util.last_day(d0)
+    old, oldattrs = GC_fio.read_Hemco_diags_hourly(d0,d1, new_emissions=False)
+    new, newattrs = GC_fio.read_Hemco_diags_hourly(d0,d1, new_emissions=True)
+
+    lats=old['lat']
+    lons=old['lon']
+
+    old_isop = np.mean(old['ISOP_BIOG'],axis=0) # hourly -> 1 month avg
+    new_isop = np.mean(new['ISOP_BIOG'],axis=0) # daily -> 1 month avg
+
+    pname=month.strftime('Figs/Emiss/check_old_new_emission_diags_%Y%m.png')
+    pp.compare_maps([old_isop,new_isop], [lats,lats],[lons,lons],linear=True,
+                    rmin=-400,rmax=400, vmin=0,vmax=0.8e-9, titles=['old','new'],
+                    region=pp.__GLOBALREGION__, pname=pname)
+
+
+
 def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,
                  region=SEA,regionlabel='SEA',regionplus=pp.__AUSREGION__):
     '''
@@ -1575,7 +1595,10 @@ if __name__=='__main__':
     ## Look at HCHO lifetime over Australia
     #
     #hcho_lifetime(2005)
-    yield_and_lifetime()
+    #yield_and_lifetime()
+
+    ## new vs old diagnostics
+    check_old_vs_new_emission_diags()
 
     ## UCX VS TROPCHEM AMF
     #

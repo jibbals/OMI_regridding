@@ -147,12 +147,14 @@ def read_bpch(path,keys):
     attrs['modification_times']={'desc':'When was file last modified'}
     return data,attrs
 
-def read_Hemco_diags_hourly(d0,d1=None,month=False):
+def read_Hemco_diags_hourly(d0,d1=None,month=False,new_emissions=False):
     '''
         Read Hemco diag output, one day or month at a time
     '''
     # match all files with YYYYMM[DD] tag
-    fpre='Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog.'
+    folder=['geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog',
+            'new_emissions/diagnostics/emiss_a'][new_emissions]
+    fpre='Data/GC_Output/%s.'%folder
     dlist=util.list_days(d0,d1,month=month)
     # for each day: glob matching files to list
     files=[]
@@ -173,18 +175,6 @@ def read_Hemco_diags_hourly(d0,d1=None,month=False):
     if '0000.nc' in files[0]:
         del files[0]
 
-    #    # Handle if we have too many files
-    #    # split into lists of length 30, to each be read and combined afterwards
-    #    sfiles=util.list_to_lists(files,30)
-    #    datalist=[]
-    #    attrslist=[]
-    #
-    #    for i,filelist in enumerate(sfiles):
-    #        with xarray.open_mfdataset(filelist) as ds:
-    #            datai,attrsi=dataset_to_dicts(ds,['ISOP_BIOG'])
-    #            datalist.append(datai)
-    #            attrslist.append(attrsi)
-    #    # now combine the lists extending the time dimension
     with xarray.open_mfdataset(files) as ds:
         data,attrs=dataset_to_dicts(ds,['ISOP_BIOG'])
 
@@ -196,7 +186,7 @@ def read_Hemco_diags_hourly(d0,d1=None,month=False):
 
     return data,attrs
 
-def read_Hemco_diags(d0,d1=None, month=False):
+def read_Hemco_diags(d0,d1=None, month=False,): #new_emissions=False):
     '''
         Read Hemco diag output, one day or month at a time
     '''
@@ -234,9 +224,9 @@ def read_Hemco_diags(d0,d1=None, month=False):
     data['dates'] = np.squeeze(np.array(dates)[di])
     data['time'] = np.squeeze(data['time'][di])
     attrs['dates'] = {'desc':'python datetime objects converted from np.datetime64 "time" dim'}
-    print('DEBUG: ', np.shape(data['ISOP_BIOG']))
+    #print('DEBUG: ', np.shape(data['ISOP_BIOG']))
     data['ISOP_BIOG'] = np.squeeze(data['ISOP_BIOG'][di])
-    print('DEBUG2: ',np.shape(data['ISOP_BIOG']))
+    #print('DEBUG2: ',np.shape(data['ISOP_BIOG']))
     return data,attrs
 
 

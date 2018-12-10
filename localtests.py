@@ -6,8 +6,8 @@ Created on Thu Oct 12 12:15:43 2017
 @author: jesse
 """
 
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import utilities.utilities as util
 import utilities.plotting as pp
 from utilities.JesseRegression import RMA
-from utilities import GMAO,GC_fio,fio
+from utilities import GMAO,GC_fio,fio, masks
 import Inversion
 import tests
 from tests import utilities_tests
@@ -51,6 +51,7 @@ region=pp.__AUSREGION__
 ## SETUP STUFFS
 #####
 
+jan0,jan1=datetime(2005,1,1),datetime(2005,1,31)
 d0=datetime(2005,1,1)
 d1=datetime(2005,3,31)
 dE=datetime(2007,12,31)
@@ -70,9 +71,7 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-# compare new_emissions hemco output
-
-
+masks.make_smear_mask_file(2005)
 
 
 #dat,att = GC_fio.read_Hemco_diags(d0,d1)

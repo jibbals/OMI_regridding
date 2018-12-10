@@ -226,15 +226,17 @@ def read_Hemco_diags(d0,d1=None, month=False):
     # subset to requested dates
     dates = util.datetimes_from_np_datetime64(data['time'])
     # subtract an hour so that index represents following hour rather than prior hour
-    dates = [d-timedelta(hours=1) for d in dates]
+    dates = np.squeeze([d-timedelta(hours=1) for d in dates])
     di = util.date_index(d0, dates, d1)
     #print(di)
 
     # and store as datetime object
-    data['dates'] = np.array(dates)[di]
-    data['time'] = data['time'][di]
+    data['dates'] = np.squeeze(np.array(dates)[di])
+    data['time'] = np.squeeze(data['time'][di])
     attrs['dates'] = {'desc':'python datetime objects converted from np.datetime64 "time" dim'}
-    data['ISOP_BIOG'] = data['ISOP_BIOG'][di]
+    print('DEBUG: ', np.shape(data['ISOP_BIOG']))
+    data['ISOP_BIOG'] = np.squeeze(data['ISOP_BIOG'][di])
+    print('DEBUG2: ',np.shape(data['ISOP_BIOG']))
     return data,attrs
 
 

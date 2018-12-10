@@ -25,6 +25,9 @@ fi
 if [[ ! -f Data/OMAERUVd/smokemask_${year}.h5 ]]; then
     missing "Yearly smoke mask (from OMAERUVd data)"
 fi
+if [[ ! -f Data/smearmask_${year}.h5 ]]; then
+    missing "Yearly smear mask (uses halfisop and standard GC runs)"
+fi
 
 
 # loop over months (-w adds zero padding)

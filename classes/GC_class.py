@@ -33,7 +33,7 @@ import utilities.GMAO as GMAO
 #####GLOBALS######
 ##################
 
-__VERBOSE__=False # For file-wide print statements
+__VERBOSE__=True # For file-wide print statements
 
 # filepaths:
 rdir='Data/GC_Output/'

@@ -70,6 +70,29 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+# compare new_emissions hemco output
+
+
+
+
+#dat,att = GC_fio.read_Hemco_diags(d0,d1)
+#for key in dat.keys():
+#    print(key, np.shape(dat[key]))
+#    print('    ',att[key])
+
+#print("read month")
+#emiss=GC_class.Hemco_diag(d0,d1)
+
+#print("daily lt average")
+#days,eisop_full = emiss.daily_LT_averaged()
+
+#print("inversion")
+#retvals= Inversion.smearing(d0)
+
+# fails:
+
+
+#hd=GC_class.Hemco_diag(datetime(2011,1,1),datetime(2011,12,31))
 
 
 

@@ -26,7 +26,7 @@ from utilities import GMAO
 ###############
 ### GLOBALS ###
 ###############
-__VERBOSE__=False
+__VERBOSE__=True
 __grams_per_mole__={'isop':60.06+8.08, # C5H8
                     'hcho':30.02598,
                     'carbon':12.01}
@@ -161,21 +161,22 @@ def date_index(date,dates, dn=None):
 
     whr=np.where(np.array(dates) == date) # returns (matches_array,something)
     if len(whr[0])==0:
-        print (date, 'not in', dates)
+        print (date, 'not in', dates[0], '...', dates[-1])
     elif dn is None:
         return whr[0][0] # We just want the match
     else:
         whrn=np.where(np.array(dates) == dn) # returns last date match
         if len(whrn[0])==0: # last date not in dataset
-            print (dn, 'not in', dates)
+            print (dn, 'not in', dates[0], '...', dates[-1])
         return np.arange(whr[0][0],whrn[0][0]+1)
 
 
 def datetimes_from_np_datetime64(times, reverse=False):
     # '2005-01-01T00:00:00.000000000'
+    
     if reverse:
-        return [np.datetime64(d.strftime('%Y-%m-%dT%H:%M:%S.000000000')) for d in times]
-    return [datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in times]
+        return np.squeeze([np.datetime64(d.strftime('%Y-%m-%dT%H:%M:%S.000000000')) for d in times])
+    return np.squeeze([datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in times])
 
 
 def edges_from_mids(x,fix_max=179.99):
@@ -784,8 +785,8 @@ def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
     shp=np.array(data.shape)
     n_dims=len(shp)
 
-    #if __VERBOSE__:
-    #    print("changing shape:",shp,'->',ntimes,nlats,nlons,nlevs)
+    if __VERBOSE__:
+        print("changing shape:",shp,'->',ntimes,nlats,nlons,nlevs)
 
     if ntimes is None:
         ntimes = -1

@@ -173,7 +173,7 @@ def date_index(date,dates, dn=None):
 
 def datetimes_from_np_datetime64(times, reverse=False):
     # '2005-01-01T00:00:00.000000000'
-    
+
     if reverse:
         return np.squeeze([np.datetime64(d.strftime('%Y-%m-%dT%H:%M:%S.000000000')) for d in times])
     return np.squeeze([datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in times])
@@ -514,11 +514,31 @@ def multi_year_average_regional(data,dates,lats,lons, grain='monthly',regions=__
     #rets[key] = data.values.reshape([12,24])
     #assert np.all(rets[key][0,:]==data[0:24]), 'reshape lost consistency'
 
+def multi_year_average_spatial(data,dates):
+    ''' multiyear monthly average over spatial dims '''
 
+    allmonths = np.array([d.month for d in dates])
 
+    # Things that get returned
+    mdates=np.arange(1,13)
+    mmean=[]
+    mmedian=[]
+    mstd=[]
+    mcount=[]
+    msum=[]
+    for month in range(12):
+        inds= allmonths == month+1
 
+        mmedian.append(np.nanmedian(data[inds],axis=0))
+        mmean.append(np.nanmean(data[inds],axis=0))
+        mstd.append(np.nanstd(data[inds],axis=0))
+        mcount.append(np.nansum(inds,axis=0))
+        msum.append(np.nansum(data[inds],axis=0))
 
-
+    mmean=np.array(mmean); mstd=np.array(mstd); mcount=np.array(mcount);
+    mmedian=np.array(mmedian); msum=np.array(msum)
+    return {'dates':mdates, 'mean':mmean, 'median':mmedian, 'sum':msum,
+            'std':mstd,'count':mcount}
 
 def monthly_averaged(dates,data,keep_spatial=False):
     '''
@@ -730,10 +750,9 @@ def regrid(data,lats,lons,newlats,newlons, interp='nearest', groupfunc=np.nanmea
 
     return newdata
 
-def remote_pacific_background(data,lats,lons,
+def remote_pacific_background(data, lats, lons,
                               average_lons=False, average_lats=False,
-                              has_time_dim=False,
-                              pixels=None):
+                              has_time_dim=False, pixels=None):
     '''
         Get remote pacific ocean background from data array
         Can average the lats and lons if desired

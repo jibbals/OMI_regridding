@@ -23,6 +23,7 @@ import tests
 from tests import utilities_tests
 import reprocess
 
+
 from classes.E_new import E_new # E_new class
 from classes import GC_class, campaign
 from classes.omhchorp import omhchorp
@@ -72,36 +73,7 @@ start1=timeit.default_timer()
 ##########
 
 
-day0, dayN = datetime(2012,1,1),datetime(2012,1,31)
-#Inversion.store_emissions_month(day0)
-#smearmask_lr, smeardates, smearlats, smearlons = masks.get_smear_mask(day0, dayN)
 
-#for arr in [smearmask_lr, smeardates, smearlats, smearlons]:
-#    print(np.shape(arr))
-
-alldays=util.list_days(day0, datetime(2012,12,31))
-di=util.date_index(day0, alldays, dayN)
-print(np.shape(di))
-print(di)
-
-
-firemask, firedates, masklats, masklons = fio.get_fire_mask(day0,dN=dayN, region=pp.__AUSREGION__)
-for arr in [firemask, firedates, masklats, masklons]:
-    print(np.shape(arr))
-
-#
-
-#smearmask=np.zeros(firemask.shape, np.int8)
-#for i in range(len(smeardates)):
-#    smearmask[i] = util.regrid_to_higher(smearmask_lr[i],smearlats,smearlons,masklats,masklons)
-
-#dat,att = GC_fio.read_Hemco_diags(d0,d1)
-#for key in dat.keys():
-#    print(key, np.shape(dat[key]))
-#    print('    ',att[key])
-
-#print("read month")
-#emiss=GC_class.Hemco_diag(d0,d1)
 
 #print("daily lt average")
 #days,eisop_full = emiss.daily_LT_averaged()

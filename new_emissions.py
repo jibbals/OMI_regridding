@@ -16,34 +16,7 @@ from utilities import utilities as util
 from classes.E_new import E_new
 
 
-def make_isoprene_scale_factor(year=2005):
-    '''
-        Create isoprene scaling factors monthly over Australia
-          using difference from top-down and MEGAN emissions at midday
-    '''
-    d0 = datetime(year,1,1)
-    dn = datetime(year,12,31)
-
-    # Read new top down, and MEGAN emissions
-    # ...
-    Enew    = E_new(d0,dayn=dn,dkeys=['E_MEGAN','E_VCC_PP_lr'])
-    dates   = Enew.dates
-    elats   = Enew.lats_lr
-    elons   = Enew.lons_lr
-    megan   = Enew.E_MEGAN
-    topd    = Enew.E_VCC_PP_lr
-    topd[topd<0] = 0.0
-    # calculate monthly averages, don't worry about NaNs
-    with np.warnings.catch_warnings():
-        np.warnings.filterwarnings('ignore')#, r'All-NaN (slice|axis) encountered')
-        megan   = util.monthly_averaged(dates, Enew.E_MEGAN, keep_spatial=True)['mean']
-        topd    = util.monthly_averaged(dates, Enew.E_VCC_PP_lr, keep_spatial=True)['mean']
-
-    # new / megan = scale
-    # ...
-    alpha   = topd / megan
-    alpha[np.isnan(alpha)] = 1.0
-    alpha[np.isinf(alpha)] = 1.0
+def save_alpha(alpha, elats, elons, path='Data/isoprene_scale_mask_unnamed.nc'):
 
     # read template isoprene scale mask and modify it for each month
     isop    = xarray.open_dataset('Data/isoprene_scale_mask.nc')
@@ -64,7 +37,39 @@ def make_isoprene_scale_factor(year=2005):
     # update the xarray
     isop['isop_mask'].data = da
     # save the new scale mask to a netcdf file
-    isop.to_netcdf('Data/isoprene_scale_mask_%4d.nc'%year)
+    isop.to_netcdf(path)
+
+def alpha_year(year=2005):
+    '''
+        Create isoprene scaling factors monthly over Australia
+          using difference from top-down and MEGAN emissions at midday
+    '''
+    d0 = datetime(year,1,1)
+    dn = datetime(year,12,31)
+
+    # Read new top down, and MEGAN emissions
+    # ...
+    Enew    = E_new(d0,dayn=dn,dkeys=['E_MEGAN','E_VCC_PP_lr'])
+    dates   = Enew.dates
+    elats   = Enew.lats_lr
+    elons   = Enew.lons_lr
+    megan   = Enew.E_MEGAN
+    topd    = Enew.E_PP_lr
+    topd[topd<0] = np.NaN
+
+    # calculate monthly averages, don't worry about NaNs
+    with np.warnings.catch_warnings():
+        np.warnings.filterwarnings('ignore')#, r'All-NaN (slice|axis) encountered')
+        megan   = util.monthly_averaged(dates, Enew.E_MEGAN, keep_spatial=True)['mean']
+        topd    = util.monthly_averaged(dates, Enew.E_VCC_PP_lr, keep_spatial=True)['mean']
+
+    # new / megan = scale
+    # ...
+    alpha   = topd / megan
+    alpha[np.isnan(alpha)] = 1.0
+    alpha[np.isinf(alpha)] = 1.0
+
+    save_alpha(alpha,elats,elons, path='Data/isoprene_scale_mask_%4d.nc'%year)
 
     ## test
     #region=[-60,85,-5,170]
@@ -82,3 +87,31 @@ def make_isoprene_scale_factor(year=2005):
     #pp.createmap(alpha[6],elats, elons, linear=True, region=region, title='alpha[6]',vmin=vmin,vmax=vmax)
     #plt.savefig('alpha_test.png')
     #plt.close()
+
+def alpha_multiyear():
+    '''
+        take all the E_new dataset and create a multiyear monthly mean alpha
+    '''
+    d0=datetime(2005,1,1)
+    dN=datetime(2012,12,31)
+    Emiss = E_new(d0,dN,dkeys=['E_PP_lr','E_MEGAN'])
+    lats=Emiss.lats
+    lons=Emiss.lons
+    dates=Emiss.dates
+    Enew=Emiss.E_PP_lr
+    Enew[Enew<0.0] = np.NaN # effectively remove where GC slope is negative...
+    Emeg=Emiss.E_MEGAN
+
+    # calculate monthly averages, don't worry about NaNs
+    with np.warnings.catch_warnings():
+        np.warnings.filterwarnings('ignore')#, r'All-NaN (slice|axis) encountered')
+        megan   = util.multi_year_average_spatial(Emeg, dates)['mean']
+        topd    = util.multi_year_average_spatial(Enew, dates)['mean']
+
+    # new / megan = scale
+    # ...
+    alpha   = topd / megan
+    alpha[np.isnan(alpha)] = 1.0
+    alpha[np.isinf(alpha)] = 1.0
+
+    save_alpha(alpha, lats, lons, path='Data/isoprene_scale_mask_mya.nc')

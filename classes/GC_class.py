@@ -223,10 +223,12 @@ class GC_base:
         # molec/cm2 = ppbv * 1e-9 * molec_A / cm3 * H(cm)
         if all([hasattr(self,attr) for attr in ['hcho','N_air','boxH']]):
             n_dims=len(np.shape(self.hcho))
-            print("CHECK:hcho %s, mean = %.2e %s"%(str(np.shape(self.hcho)),np.mean(self.hcho),self.attrs['hcho']['units']))
+            if __VERBOSE__:
+                print("CHECK:hcho %s, mean = %.2e %s"%(str(np.shape(self.hcho)),np.mean(self.hcho),self.attrs['hcho']['units']))
             self.O_hcho = np.sum(self.units_to_molec_cm2(keys=['hcho',])['hcho'],axis=n_dims-1)
             self.attrs['O_hcho']={'units':'molec/cm2','desc':'Total column HCHO'}
-            print("CHECK:O_hcho %s, mean=%.2e %s"%(str(self.O_hcho.shape),np.mean(self.O_hcho),self.attrs['O_hcho']['units']))
+            if __VERBOSE__:
+                print("CHECK:O_hcho %s, mean=%.2e %s"%(str(self.O_hcho.shape),np.mean(self.O_hcho),self.attrs['O_hcho']['units']))
 
 
         # Convert from numpy.datetime64 to datetime

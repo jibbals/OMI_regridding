@@ -68,7 +68,8 @@ def dataset_to_dicts(ds,keys):
     # then read keys
     for key in keys:
         if key not in ds:
-            print("WARNING: %s not in dataset"%key)
+            if __VERBOSE__:
+                print("WARNING: %s not in dataset"%key)
             continue
         data[key]=np.array(ds[key])
         attrs[key]=ds[key].attrs

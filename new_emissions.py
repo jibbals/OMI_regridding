@@ -115,3 +115,18 @@ def alpha_multiyear():
     alpha[np.isinf(alpha)] = 1.0
 
     save_alpha(alpha, lats, lons, path='Data/isoprene_scale_mask_mya.nc')
+
+if __name__=='__main__':
+    
+    import timeit
+
+    start=timeit.default_timer()
+    alpha_multiyear()
+    
+    print("Took %6.2f minutes to run multiyear alpha creation"%((timeit.default_timer()-start)/60.0))
+    
+    start=timeit.default_timer()
+    for year in np.arange(2005,2013):
+        alpha_year(year)
+    
+    print("Took %6.2f minutes to run for 1 day"%((timeit.default_timer()-start)/60.0))

@@ -305,7 +305,7 @@ def lat_lon_index(lat,lon,lats,lons):
     with np.errstate(invalid='ignore'):
         latind=(np.abs(lats-lat)).argmin()
         lonind=(np.abs(lons-lon)).argmin()
-    return(latind,lonind)
+    return latind,lonind
 
 def lat_lon_range(lats,lons,region):
     '''

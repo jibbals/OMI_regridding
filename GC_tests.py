@@ -1518,6 +1518,55 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
     plt.close()
     print("SAVED: ",pname)
 
+def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2006,12,31), latlon=pp.__cities__['Wol']):
+    '''
+    '''
+    # set up plot limits
+    slopemin=1e3
+    slopemax=1e5
+    # plot names
+    dstr=d0.strftime('%Y%m%d')+'-'+dN.strftime('%Y%m%d')
+    pname = 'Figs/GC/slope_series_%s.png'%dstr
+    pname2= 'Figs/GC/slope_series_sf_%s.png'%dstr
+
+    # first read biogenic model month by month and save the slope, and X and Y for wollongong
+    allmonths = util.list_months(d0,dN)
+    alldays   = util.list_days(d0,dN)
+    n_m,n_d   = len(allmonths),len(alldays)
+    lat,lon   = latlon
+
+    # things to store each month
+    s           = np.zeros([n_m])
+    s_sf        = np.zeros([n_m])
+    h, h_sf     = np.zeros([n_d]), np.zeros([n_d])  # HCHO
+    e, e_sf     = np.zeros([n_d]), np.zeros([n_d]) # e_isop
+    r, r_sf     = np.zeros([n_m]), np.zeros([n_m]) # regression coeff
+    ci, ci_sf   = np.zeros([n_m,2]), np.zeros([n_m,2]) # confidence interval for slope
+
+    # lat,lon will always be the same:
+    lati,loni = util.lat_lon_index(lat,lon,GMAO.GMAO_lats(2), GMAO.GMAO_lons(2.5))
+
+    for i,month in enumerate(allmonths):
+        # Retrieve data
+        dates= util.list_days(month,month=True)
+        GC=GC_class.GC_biogenic(month)
+
+        # Get slope and stuff we want to plot
+        model    = GC.model_slope(return_X_and_Y=True)
+        di       = util.date_index(d0,dates,dN)
+
+        h[di]    = model['hcho'][:,lati,loni]
+        h_sf[di] = model['hchosf'][:,lati,loni]
+        e[di]    = model['isop'][:,lati,loni]
+        e_sf[di] = model['isopsf'][:,lati,loni]
+
+        # Y=slope*X+b with regression coeff r
+        r[i]     = model['r'][lati,loni]
+        r_sf[i]  = model['rsf'][lati,loni]
+        ci[i]    = model['err'][lati,loni]
+        ci_sf[i] = model['errsf'][lati,loni]
+        s[i]     = model['slope'][lati,loni]
+        s_sf[i]  = model['slopesf'][lati,loni]
 
 
 def E_isop_series(gc, aus=False, region=None):

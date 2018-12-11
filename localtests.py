@@ -75,13 +75,16 @@ start1=timeit.default_timer()
 
 #def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2006,12,31), latlon=pp.__cities__['Wol']):
 d0=datetime(2005,1,1)
-dN=datetime(2009,12,31)
+#dN=datetime(2006,12,31)
+dN=datetime(2005,5,31)
 latlon=pp.__cities__['Wol']
 '''
 '''
 # set up plot limits
 slopemin=500
 slopemax=6000
+nmin, nmax = 10, 31
+
 # plot names
 dstr=d0.strftime('%Y%m%d')+'-'+dN.strftime('%Y%m%d')
 pname = 'Figs/GC/slope_series_%s.png'%dstr
@@ -116,7 +119,7 @@ for i,month in enumerate(allmonths):
     h_sf[di] = model['hchosf'][:,lati,loni]
     e[di]    = model['isop'][:,lati,loni]
     e_sf[di] = model['isopsf'][:,lati,loni]
-    
+
     # Y=slope*X+b with regression coeff r
     r[i]     = model['r'][lati,loni]
     r_sf[i]  = model['rsf'][lati,loni]
@@ -134,68 +137,107 @@ ci_mya, ci_sf_mya = np.zeros([12,2]),np.zeros([12,2])
 s_mya, s_sf_mya   = np.zeros([12]),np.zeros([12])
 r_mya, r_sf_mya   = np.zeros([12]),np.zeros([12])
 for month in range(12):
-    mi = [d.month == month+1 for d in allmonths]
-    di = [d.month == month+1 for d in alldays]
+    mi = np.array([d.month == month+1 for d in allmonths])
+    di = np.array([d.month == month+1 for d in alldays])
     X = e[di]
     Y = h[di]
     X_sf = e_sf[di]
     Y_sf = h_sf[di]
     n_mya[month] = np.sum(~np.isnan(X*Y))
-    n_sf_mya[month] = np.sum(~np.isnan(X_sf*Y_sf)) 
+    n_sf_mya[month] = np.sum(~np.isnan(X_sf*Y_sf))
     s_mya[month], _, r_mya[month], ci_mya_tmp, _ = RMA(X,Y)
     ci_mya[month] = ci_mya_tmp[0] # slope ci
     s_sf_mya[month], _, r_sf_mya[month], ci_sf_mya_tmp, _ = RMA(X_sf,Y_sf)
-    ci_sf_mya[month]=ci_sf_mya[0]
+    ci_sf_mya[month]=ci_sf_mya_tmp[0]
 
 
-print('  normal   ,    sf    ,     mya,       sf_mya    ')  
+print('  normal   ,    sf    ,     mya,       sf_mya    ')
 for arrs in [[s,s_sf, s_mya, s_sf_mya],[r,r_sf,r_mya, r_sf_mya], [ci,ci_sf, ci_mya, ci_sf_mya], [n,n_sf, n_mya, n_sf_mya]]:
-    for i in range(np.shape(arrs)[0]):
+    for i in range(np.shape(arrs[0])[0]):
         print(arrs[0][i],arrs[1][i],arrs[2][i], arrs[3][i])
     #print(arrs[0]-arrs[1])
 
-    
 
-#
-# save monthly rows of data into pandas dataframe
-f,axes=plt.subplots(4,1,figsize=(14,18))
-plt.sca(axes[0])
-
-
+f = plt.subplots(figsize=(18,18))
+ax11=plt.subplot(4,2,1)
 # first plot slope as time series, +- confidence interval
 plt.plot_date(allmonths,s, '-', linewidth=3)
 plt.fill_between(allmonths, ci[:,0], ci[:,1], alpha=.6)
 plt.ylim(slopemin,slopemax)
 plt.ylabel('slope [s]')
+plt.title('unfiltered slope calculation',fontsize=24)
+
+# also do sf version
+ax12=plt.subplot(4,2,2, sharex=ax11, sharey=ax11)
+plt.plot_date(allmonths,s_sf, '-', linewidth=3)
+plt.fill_between(allmonths, ci_sf[:,0], ci_sf[:,1], alpha=.6)
+plt.ylim(slopemin,slopemax)
+ax12.yaxis.set_label_position("right")
+ax12.yaxis.tick_right()
+plt.title('smear filtered slope calculation',fontsize=24)
+# Now set the ticks and labels
+for ax in [ax11,ax12]:
+    plt.setp(ax.get_xticklabels(), visible=False)
 
 # then plot r and count
-plt.sca(axes[1])
-plt.plot_date(allmonths,r, color='r')
+ax21=plt.subplot(4,2,3, sharex=ax11)
+plt.plot_date(allmonths,r, '-', color='r')
 plt.ylabel('r',color='r')
-nax1 = plt.twinx()
-plt.sca(nax1)
-plt.plot_date(allmonths,n, color='m')
+plt.sca(plt.twinx())
+plt.plot_date(allmonths,n, '-', color='m')
 plt.ylabel('n',color='m')
+plt.ylim(nmin,nmax)
+
+# also for sf
+ax22=plt.subplot(4,2,4, sharex=ax21, sharey=ax21)
+plt.plot_date(allmonths,r_sf, '-', color='r')
+plt.ylabel('r',color='r')
+plt.sca(plt.twinx())
+plt.plot_date(allmonths,n_sf, '-', color='m')
+plt.ylabel('n',color='m')
+plt.ylim(nmin,nmax)
+# now we do xlabels
+for ax in [ax21,ax22]:
+    ax.set_xticks(allmonths)
+    ax.set_xticklabels([ i.strftime("%Y%m") for i in allmonths], rotation=20)
 
 # plot mya version of slopes...
-plt.sca(axes[2])
-plt.plot(range(12),s_mya)
+ax31 = plt.subplot(4,2,5)
+plt.plot(range(12),s_mya, linewidth=3)
 plt.fill_between(range(12), ci_mya[:,0], ci_mya[:,1], alpha=.6)
+plt.ylim(slopemin,slopemax)
+
+# plot mya sf
+ax32 = plt.subplot(4,2,6, sharex=ax31, sharey=ax31)
+plt.plot(range(12),s_sf_mya, linewidth=3)
+plt.fill_between(range(12), ci_sf_mya[:,0], ci_sf_mya[:,1], alpha=.6)
+# Now set the ticks and labels
+for ax in [ax31,ax32]:
+    plt.setp(ax.get_xticklabels(), visible=False)
+
 
 # then plot r and count
-plt.sca(axes[3])
-plt.plot(range(12),r_mya, color='r')
-nax1 = plt.twinx()
-plt.sca(nax1)
-plt.plot_date(range(12), n_mya, color='m')
+ax41 = plt.subplot(4,2,7,sharex=ax32)
+plt.plot(range(12),r_mya, 'r-')
+plt.sca(plt.twinx())
+plt.plot_date(range(12), n_mya, 'm-')
+plt.ylim(nmin,nmax)
+
+# also for sf
+ax42 = plt.subplot(4, 2, 8, sharex=ax41)
+plt.plot(range(12),r_sf_mya, 'r-')
+plt.sca(plt.twinx())
+plt.plot_date(range(12), n_sf_mya, 'm-')
+plt.ylim(nmin,nmax)
+# Now set the ticks and labels
+for ax in [ax41,ax42]:
+    ax.set_xticks(range(12))
+    ax.set_xticklabels([ 'j','f','m','a','m','j','j','a','s','o','n','d' ])
 
 # finally save figure
 plt.savefig(pname)
 print('saved ',pname)
 plt.close()
-
-# now do the same plot but with the smear filtered stuff
-
 
 
 '''

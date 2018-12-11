@@ -75,7 +75,7 @@ start1=timeit.default_timer()
 
 #def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2006,12,31), latlon=pp.__cities__['Wol']):
 d0=datetime(2005,1,1)
-dN=datetime(2005,3,31)
+dN=datetime(2009,12,31)
 latlon=pp.__cities__['Wol']
 '''
 '''
@@ -150,7 +150,8 @@ for month in range(12):
 
 print('  normal   ,    sf    ,     mya,       sf_mya    ')  
 for arrs in [[s,s_sf, s_mya, s_sf_mya],[r,r_sf,r_mya, r_sf_mya], [ci,ci_sf, ci_mya, ci_sf_mya], [n,n_sf, n_mya, n_sf_mya]]:
-    print(arrs[0],arrs[1],arrs[2], arrs[3])
+    for i in range(np.shape(arrs)[0]):
+        print(arrs[0][i],arrs[1][i],arrs[2][i], arrs[3][i])
     #print(arrs[0]-arrs[1])
 
     

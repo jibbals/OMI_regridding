@@ -6,8 +6,9 @@ Created on Thu Oct 12 12:15:43 2017
 @author: jesse
 """
 
-#import matplotlib
-#matplotlib.use('Agg')
+import matplotlib
+matplotlib.use('Agg')
+#matplotlib.ioff()
 from datetime import datetime
 import numpy as np
 import matplotlib.pyplot as plt
@@ -79,8 +80,8 @@ latlon=pp.__cities__['Wol']
 '''
 '''
 # set up plot limits
-slopemin=1e3
-slopemax=1e5
+slopemin=500
+slopemax=6000
 # plot names
 dstr=d0.strftime('%Y%m%d')+'-'+dN.strftime('%Y%m%d')
 pname = 'Figs/GC/slope_series_%s.png'%dstr
@@ -99,6 +100,7 @@ h, h_sf     = np.zeros([n_d]), np.zeros([n_d])  # HCHO
 e, e_sf     = np.zeros([n_d]), np.zeros([n_d]) # e_isop
 r, r_sf     = np.zeros([n_m]), np.zeros([n_m]) # regression coeff
 ci, ci_sf   = np.zeros([n_m,2]), np.zeros([n_m,2]) # confidence interval for slope
+n, n_sf     = np.zeros([n_m]), np.zeros([n_m]) # number of entries making slope
 
 for i,month in enumerate(allmonths):
     # Retrieve data
@@ -114,7 +116,7 @@ for i,month in enumerate(allmonths):
     h_sf[di] = model['hchosf'][:,lati,loni]
     e[di]    = model['isop'][:,lati,loni]
     e_sf[di] = model['isopsf'][:,lati,loni]
-
+    
     # Y=slope*X+b with regression coeff r
     r[i]     = model['r'][lati,loni]
     r_sf[i]  = model['rsf'][lati,loni]
@@ -122,11 +124,77 @@ for i,month in enumerate(allmonths):
     ci_sf[i] = model['errsf'][lati,loni]
     s[i]     = model['slope'][lati,loni]
     s_sf[i]  = model['slopesf'][lati,loni]
+    n[i]     = np.sum(~np.isnan(h[di]*e[di]))
+    n_sf[i]  = np.sum(~np.isnan(h_sf[di]*e_sf[di]))
 
-for arrs in [[s,s_sf],[r,r_sf], [ci,ci_sf]]:
-    print(arrs[0])
-    print(arrs[1])
+
+# group into months and find slope on all januarys, ...
+n_mya, n_sf_mya   = np.zeros([12]),np.zeros([12])
+ci_mya, ci_sf_mya = np.zeros([12,2]),np.zeros([12,2])
+s_mya, s_sf_mya   = np.zeros([12]),np.zeros([12])
+r_mya, r_sf_mya   = np.zeros([12]),np.zeros([12])
+for month in range(12):
+    mi = [d.month == month+1 for d in allmonths]
+    di = [d.month == month+1 for d in alldays]
+    X = e[di]
+    Y = h[di]
+    X_sf = e_sf[di]
+    Y_sf = h_sf[di]
+    n_mya[month] = np.sum(~np.isnan(X*Y))
+    n_sf_mya[month] = np.sum(~np.isnan(X_sf*Y_sf)) 
+    s_mya[month], _, r_mya[month], ci_mya_tmp, _ = RMA(X,Y)
+    ci_mya[month] = ci_mya_tmp[0] # slope ci
+    s_sf_mya[month], _, r_sf_mya[month], ci_sf_mya_tmp, _ = RMA(X_sf,Y_sf)
+    ci_sf_mya[month]=ci_sf_mya[0]
+
+
+print('  normal   ,    sf    ,     mya,       sf_mya    ')  
+for arrs in [[s,s_sf, s_mya, s_sf_mya],[r,r_sf,r_mya, r_sf_mya], [ci,ci_sf, ci_mya, ci_sf_mya], [n,n_sf, n_mya, n_sf_mya]]:
+    print(arrs[0],arrs[1],arrs[2], arrs[3])
     #print(arrs[0]-arrs[1])
+
+    
+
+#
+# save monthly rows of data into pandas dataframe
+f,axes=plt.subplots(4,1,figsize=(14,18))
+plt.sca(axes[0])
+
+
+# first plot slope as time series, +- confidence interval
+plt.plot_date(allmonths,s, '-', linewidth=3)
+plt.fill_between(allmonths, ci[:,0], ci[:,1], alpha=.6)
+plt.ylim(slopemin,slopemax)
+plt.ylabel('slope [s]')
+
+# then plot r and count
+plt.sca(axes[1])
+plt.plot_date(allmonths,r, color='r')
+plt.ylabel('r',color='r')
+nax1 = plt.twinx()
+plt.sca(nax1)
+plt.plot_date(allmonths,n, color='m')
+plt.ylabel('n',color='m')
+
+# plot mya version of slopes...
+plt.sca(axes[2])
+plt.plot(range(12),s_mya)
+plt.fill_between(range(12), ci_mya[:,0], ci_mya[:,1], alpha=.6)
+
+# then plot r and count
+plt.sca(axes[3])
+plt.plot(range(12),r_mya, color='r')
+nax1 = plt.twinx()
+plt.sca(nax1)
+plt.plot_date(range(12), n_mya, color='m')
+
+# finally save figure
+plt.savefig(pname)
+print('saved ',pname)
+plt.close()
+
+# now do the same plot but with the smear filtered stuff
+
 
 
 '''

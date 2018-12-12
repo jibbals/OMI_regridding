@@ -20,6 +20,8 @@ currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentfram
 sys.path.insert(0,os.path.dirname(currentdir))
 
 import utilities.utilities as util
+from utilities import GMAO
+
 #from classes.GC_class import __coords__ as GC_coords
 GC_coords = ['lev','lon','lat','time']
 sys.path.pop(0)
@@ -229,6 +231,8 @@ def read_Hemco_diags(d0,d1=None, month=False,): #new_emissions=False):
     data['ISOP_BIOG'] = np.squeeze(data['ISOP_BIOG'][di])
     #print('DEBUG2: ',np.shape(data['ISOP_BIOG']))
     return data,attrs
+
+
 
 
 def determine_trop_column(ppbv, N_air, boxH, tplev):

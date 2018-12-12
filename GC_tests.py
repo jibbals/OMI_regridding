@@ -1776,8 +1776,9 @@ if __name__=='__main__':
     # Checking units:
 
     ## Check slope
-    for latlon in [pp.__cities__['Syd'], pp.__cities__['Mel'], [-16,135]]:
-        model_slope_series(latlon=latlon)
+    #for latlon in [pp.__cities__['Syd'], pp.__cities__['Mel'], [-16,135]]:
+    model_slope_series(latlon=pp.__cities__['Syd'])
+
     #Examine_Model_Slope() # unfinished 30/5/18
     #Examine_Model_Slope(use_smear_filter=True) # unfinished 30/5/18
     #check_rsc_interp()   # last run 29/5/18

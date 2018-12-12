@@ -21,7 +21,7 @@ from scipy.constants import N_A as N_Avogadro
 #from glob import glob
 
 # 'local' modules
-from utilities import GC_fio, masks
+from utilities import GC_fio, masks, fio
 import utilities.utilities as util
 from utilities import plotting as pp
 from utilities.plotting import __AUSREGION__
@@ -1148,22 +1148,10 @@ class GC_biogenic:
             print("  nanmean E_isop = %.2e %s"%(np.nanmean(isop),'atom C/cm2/s'))
             print("  nanmean trop_hcho = %.2e %s"%(np.nanmean(hcho),'molec/cm2'))
 
-        # arrays to hold the month's slope, background, and regression coeff
-        n_x = len(loni)
-        n_y = len(lati)
-        slope  = np.zeros([n_y,n_x]) + np.NaN
-        bg     = np.zeros([n_y,n_x]) + np.NaN
-        reg    = np.zeros([n_y,n_x]) + np.NaN
-        err    = np.zeros([n_y,n_x,2]) + np.NaN
+        # calculate slope etc
+        slope, bg, reg, err = slope_calc(isop,hcho,sublats,sublons)
 
-        # similar arrays for smear filtered versions
-        slopesf  = np.zeros([n_y,n_x]) + np.NaN
-        bgsf     = np.zeros([n_y,n_x]) + np.NaN
-        regsf    = np.zeros([n_y,n_x]) + np.NaN
-        errsf    = np.zeros([n_y,n_x,2]) + np.NaN
-        isopsf   = np.zeros([n_y,n_x]) + np.NaN
-        hchosf   = np.zeros([n_y,n_x]) + np.NaN
-
+        # again for smear filtered
         # Read smearing mask from file
         d0,dN = self.dates[0], self.dates[-1]
         smearmask, smeardates, smearlats, smearlons = masks.get_smear_mask(d0,dN,region=region)
@@ -1175,36 +1163,9 @@ class GC_biogenic:
         hchosf = np.copy(hcho)
         hchosf[smearmask] = np.NaN
 
+        # calculate slope etc
+        slopesf, bgsf, regsf, errsf = slope_calc(isopsf,hchosf,sublats,sublons)
 
-        # regression for each lat/lon gives us slope
-        for xi in range(n_x):
-            for yi in range(n_y):
-                # Y = m X + B
-                X=isop[:, yi, xi]
-                Y=hcho[:, yi, xi]
-
-                # Skip ocean or no emissions squares:
-                # potential problem: When using kgC/cm2/s, we are always close to zero (1e-11 order)
-                # however we are using molec/cm2/s
-                if np.isclose(np.mean(X), 0.0): continue
-
-                # get regression
-                m, b, r, CI1, CI2=RMA(X, Y)
-                slope[yi, xi] = m
-                bg[yi, xi] = b
-                reg[yi, xi] = r
-                err[yi,xi] = CI1[0] # slope limits (CI: ricker method)
-
-                # now all the same but using smear filtered version
-                Xsf=isopsf[:,yi,xi]
-                Ysf=hchosf[:,yi,xi]
-
-                if np.all(np.isnan(Xsf)) : continue
-                msf, bsf, rsf, CI1sf, CI2sf=RMA(Xsf, Ysf)
-                slopesf[yi, xi] = msf
-                bgsf[yi, xi] = bsf
-                regsf[yi, xi] = rsf
-                errsf[yi, xi] = CI1sf[0] # slope limits
 
         if __VERBOSE__:
             print('GC_tavg.model_yield() calculates avg. slope of %.2e'%np.nanmean(slope))
@@ -1227,6 +1188,36 @@ class GC_biogenic:
 ################
 ###FUNCTIONS####
 ################
+
+def slope_calc(isop,hcho,lats,lons):
+    # arrays to hold the month's slope, background, and regression coeff
+    n_x = len(lons)
+    n_y = len(lats)
+    slope  = np.zeros([n_y,n_x]) + np.NaN
+    bg     = np.zeros([n_y,n_x]) + np.NaN
+    reg    = np.zeros([n_y,n_x]) + np.NaN
+    err    = np.zeros([n_y,n_x,2]) + np.NaN
+    # regression for each lat/lon gives us slope
+    for xi in range(n_x):
+        for yi in range(n_y):
+            # Y = m X + B
+            X=isop[:, yi, xi]
+            Y=hcho[:, yi, xi]
+
+            # Skip ocean or no emissions squares:
+            # potential problem: When using kgC/cm2/s, we are always close to zero (1e-11 order)
+            # however we are using molec/cm2/s
+            if np.isclose(np.mean(X), 0.0): continue
+            if np.all(np.isnan(X)) : continue
+
+            # get regression
+            m, b, r, CI1, CI2=RMA(X, Y)
+            slope[yi, xi] = m
+            bg[yi, xi] = b
+            reg[yi, xi] = r
+            err[yi,xi] = CI1[0] # slope limits (CI: ricker method)
+
+    return slope, bg, reg, err
 
 def check_units(d=datetime(2005,1,1)):
     '''
@@ -1282,6 +1273,109 @@ def check_diag(d=datetime(2005,1,1)):
     print(E_isop_hourly.shape())
     E_isop=gc.get_daily_E_isop()
     print(E_isop.shape())
+
+
+def create_slope_file(d0=datetime(2005,1,1),dN=datetime(2012,12,31), region=pp.__AUSREGION__):
+    '''
+        Store slope before/after mya and smear filter is applied
+    '''
+    dN=datetime(2006,1,31)
+    # date range as string
+    dstr=d0.strftime('%Y%m%d')+'-'+dN.strftime('%Y%m%d')
+    outfilename='Data/GC_Output/slopes.h5'
+    # first read biogenic model month by month and save the slope, and X and Y for wollongong
+    allmonths = util.list_months(d0,dN)
+    alldays   = util.list_days(d0,dN)
+
+    # things to store each month
+    s           = []
+    s_sf        = []
+    h, h_sf     = [], []  # HCHO
+    e, e_sf     = [], [] # e_isop
+    r, r_sf     = [], [] # regression coeff
+    ci, ci_sf   = [], [] # confidence interval for slope
+    n, n_sf     = [], [] # number of entries making slope
+
+    for i,month in enumerate(allmonths):
+        # Retrieve data
+        GC=GC_biogenic(month)
+
+        # Get slope and stuff we want to plot
+        model    = GC.model_slope(return_X_and_Y=True, region=region)
+        #di       = util.date_index(dates[0],alldays,dates[-1])
+        #lati,loni = util.lat_lon_index(lat,lon, model['lats'],model['lons'])
+        outlat,outlon = model['lats'], model['lons']
+
+        h.append(model['hcho'])
+        h_sf.append(['hchosf'])
+        e.append(model['isop'])
+        e_sf.append(model['isopsf'])
+
+        # Y=slope*X+b with regression coeff r
+        r.append(model['r'])
+        r_sf.append(model['rsf'])
+        ci.append(model['err'])
+        ci_sf.append(model['errsf'])
+        s.append(model['slope'])
+        s_sf.append(model['slopesf'])
+        n.append(np.sum(~np.isnan(h[-1]*e[-1]),axis=0))
+        n_sf.append(np.sum(~np.isnan(h_sf[-1]*e_sf[-1]),axis=0))
+        print("CHECK: Shapes ",month)
+        for arr in h,e,r,ci,n:
+            print(np.shape(arr))
+
+    # combine into array with time dim
+    e       = np.stack(e,axis=0)
+    e_sf    = np.stack(e_sf,axis=0)
+    h       = np.stack(h,axis=0)
+    h_sf    = np.stack(h_sf,axis=0)
+    r       = np.stack(r,axis=0)
+    r_sf    = np.stack(r_sf,axis=0)
+    ci      = np.stack(ci,axis=0)
+    ci_sf   = np.stack(ci_sf,axis=0)
+    n       = np.stack(n,axis=0)
+    n_sf    = np.stack(n_sf,axis=0)
+
+    print("CHECK: FINAL Shapes ",month)
+    for arr in h,e,r,ci,n:
+        print(np.shape(arr))
+
+    # group into months and find slope on all januarys, ...
+    shape=[12,len(outlat),len(outlon)]
+    shapeci=[12,len(outlat),len(outlon),2]
+    n_mya, n_sf_mya   = np.zeros(shape),np.zeros(shape)
+    ci_mya, ci_sf_mya = np.zeros(shapeci),np.zeros(shapeci)
+    s_mya, s_sf_mya   = np.zeros(shape),np.zeros(shape)
+    r_mya, r_sf_mya   = np.zeros(shape),np.zeros(shape)
+
+    for month in range(12):
+        #mi = np.array([d.month == month+1 for d in allmonths])
+        di = np.array([d.month == month+1 for d in alldays])
+        X = e[di]
+        Y = h[di]
+        X_sf = e_sf[di]
+        Y_sf = h_sf[di]
+        n_mya[month] = np.sum(~np.isnan(X*Y),axis=0)
+        n_sf_mya[month] = np.sum(~np.isnan(X_sf*Y_sf),axis=0)
+
+        s_mya[month], bg, r_mya[month], ci_mya[month] = slope_calc(X,Y,outlat,outlon)
+        s_sf_mya[month], bg, r_sf_mya[month], ci_sf_mya[month] = slope_calc(X_sf,Y_sf,outlat,outlon)
+
+        #        s_mya[month], _, r_mya[month], ci_mya_tmp, _ = RMA(X,Y)
+        #        ci_mya[month] = ci_mya_tmp[0] # slope ci
+        #        s_sf_mya[month], _, r_sf_mya[month], ci_sf_mya_tmp, _ = RMA(X_sf,Y_sf)
+        #        ci_sf_mya[month]=ci_sf_mya_tmp[0]
+
+    # finally save file
+    arraydict={'slope':s, 'slope_sf':s_sf, 'slope_mya':s_mya, 'slope_sf_mya':s_sf_mya,
+               'r':r, 'r_sf':r_sf, 'r_mya':r_mya, 'r_sf_mya':r_sf_mya,
+               'ci':ci, 'ci_sf':ci_sf, 'ci_mya':ci_mya, 'ci_sf_mya':ci_sf_mya,
+               'n':n, 'n_sf':n_sf, 'n_mya':n_mya, 'n_sf_mya':n_sf_mya,
+               dates=util.}
+    attrdict=
+    fio.save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
+                 attrdicts={}, fattrs={},
+                 verbose=False):
 
 
 if __name__=='__main__':

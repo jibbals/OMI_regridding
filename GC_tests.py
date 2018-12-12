@@ -1534,6 +1534,7 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
     # first read biogenic model month by month and save the slope, and X and Y for wollongong
     allmonths = util.list_months(d0,dN)
     alldays   = util.list_days(d0,dN)
+    allyears  = util.list_years(d0,dN)
     n_m,n_d   = len(allmonths),len(alldays)
     lat,lon   = latlon
 
@@ -1640,8 +1641,8 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
     plt.ylim(nmin,nmax)
     # now we do xlabels
     for ax in [ax21,ax22]:
-        ax.set_xticks(allmonths)
-        ax.set_xticklabels([ i.strftime("%Y%m") for i in allmonths], rotation=20)
+        ax.set_xticks(allyears)
+        ax.set_xticklabels([ i.strftime("%Y") for i in allyears], rotation=20)
 
     # plot mya version of slopes...
     ax31 = plt.subplot(4,2,5)
@@ -1678,7 +1679,7 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
         ax.set_xlim(-0.5,11.5)
 
     # finally save figure
-    latlonstr="%.3f,.3f"%(outlat,outlon)
+    latlonstr="%.3f,%.3f"%(outlat,outlon)
     pname=pname%latlonstr
     plt.savefig(pname)
     print('saved ',pname)

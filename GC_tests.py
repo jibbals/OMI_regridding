@@ -6,8 +6,8 @@ Check the ncfiles created by bpch2coards
 Run from main project directory or else imports will not work
 '''
 ## Modules
-#import matplotlib
-#matplotlib.use('Agg') # don't actually display any plots, just create them
+import matplotlib
+matplotlib.use('Agg') # don't actually display any plots, just create them
 from matplotlib import gridspec
 import matplotlib
 
@@ -1595,7 +1595,7 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
 
     print('  normal   ,    sf    ,     mya,       sf_mya    ')
     for arrs in [[s,s_sf, s_mya, s_sf_mya],[r,r_sf,r_mya, r_sf_mya], [ci,ci_sf, ci_mya, ci_sf_mya], [n,n_sf, n_mya, n_sf_mya]]:
-        for i in range(np.shape(arrs[0])[0]):
+        for i in range(min(np.shape(arrs[0])[0],12)): # up to 12 thingies
             print(arrs[0][i],arrs[1][i],arrs[2][i], arrs[3][i])
         #print(arrs[0]-arrs[1])
 

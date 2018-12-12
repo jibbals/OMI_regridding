@@ -15,6 +15,8 @@ from datetime import datetime
 from utilities import utilities as util
 from classes.E_new import E_new
 
+__VERBOSE__=False
+
 
 def save_alpha(alpha, elats, elons, path='Data/isoprene_scale_mask_unnamed.nc'):
 
@@ -30,10 +32,9 @@ def save_alpha(alpha, elats, elons, path='Data/isoprene_scale_mask_unnamed.nc'):
     loni    = np.where((lons >= elons[0]) * (lons <= [elons[-1]]))
     lat0, lat1  = lati[0][0], lati[0][-1]+1
     lon0, lon1  = loni[0][0], loni[0][-1]+1
-
+    
     # set scale mask over australia
     da[:,lat0:lat1,lon0:lon1] = alpha
-
     # update the xarray
     isop['isop_mask'].data = da
     # save the new scale mask to a netcdf file
@@ -94,19 +95,27 @@ def alpha_multiyear():
     '''
     d0=datetime(2005,1,1)
     dN=datetime(2012,12,31)
+    if __VERBOSE__:
+        print('reading Enew')
+    start = timeit.default_timer()
     Emiss = E_new(d0,dN,dkeys=['E_PP_lr','E_MEGAN'])
-    lats=Emiss.lats
-    lons=Emiss.lons
+    if __VERBOSE__:
+        print("Took %6.2f minutes to read all the Enew"%((timeit.default_timer()-start)/60.0))
+    lats=Emiss.lats_lr
+    lons=Emiss.lons_lr
     dates=Emiss.dates
     Enew=Emiss.E_PP_lr
     Enew[Enew<0.0] = np.NaN # effectively remove where GC slope is negative...
     Emeg=Emiss.E_MEGAN
 
     # calculate monthly averages, don't worry about NaNs
+    start = timeit.default_timer()
     with np.warnings.catch_warnings():
         np.warnings.filterwarnings('ignore')#, r'All-NaN (slice|axis) encountered')
         megan   = util.multi_year_average_spatial(Emeg, dates)['mean']
         topd    = util.multi_year_average_spatial(Enew, dates)['mean']
+    if __VERBOSE__:
+        print("Took %6.2f minutes to get mya"%((timeit.default_timer()-start)/60.0))
 
     # new / megan = scale
     # ...
@@ -114,7 +123,11 @@ def alpha_multiyear():
     alpha[np.isnan(alpha)] = 1.0
     alpha[np.isinf(alpha)] = 1.0
 
+    
+    start = timeit.default_timer()
     save_alpha(alpha, lats, lons, path='Data/isoprene_scale_mask_mya.nc')
+    if __VERBOSE__:
+        print("Took %6.2f minutes to save the alpha"%((timeit.default_timer()-start)/60.0))
 
 if __name__=='__main__':
     
@@ -126,7 +139,7 @@ if __name__=='__main__':
     print("Took %6.2f minutes to run multiyear alpha creation"%((timeit.default_timer()-start)/60.0))
     
     start=timeit.default_timer()
-    for year in np.arange(2005,2013):
+    for year in np.arange(2005,2012):
         alpha_year(year)
     
     print("Took %6.2f minutes to run for 1 day"%((timeit.default_timer()-start)/60.0))

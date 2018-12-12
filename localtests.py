@@ -23,7 +23,7 @@ import Inversion
 import tests
 from tests import utilities_tests
 import reprocess
-
+from new_emissions import save_alpha
 
 from classes.E_new import E_new # E_new class
 from classes import GC_class, campaign
@@ -72,6 +72,65 @@ start1=timeit.default_timer()
 ##########
 ### DO STUFFS
 ##########
+
+
+
+
+
+d0=datetime(2005,1,1)
+dN=datetime(2008,12,31)
+print('reading Enew')
+start = timeit.default_timer()
+Emiss = E_new(d0,dN,dkeys=['E_PP_lr','E_MEGAN'])
+print("Took %6.2f minutes to read all the Enew"%((timeit.default_timer()-start)/60.0))
+lats=Emiss.lats_lr
+lons=Emiss.lons_lr
+dates=Emiss.dates
+Enew=Emiss.E_PP_lr
+Enew[Enew<0.0] = np.NaN # effectively remove where GC slope is negative...
+Emeg=Emiss.E_MEGAN
+
+print('overall avg E_PP_lr:',np.nanmean(Enew))
+print(' shape: ',np.shape(Enew))
+
+print('overall avg E_MEGAN:',np.nanmean(Emeg))
+print(' shape: ',np.shape(Emeg))
+# calculate monthly averages, don't worry about NaNs
+start = timeit.default_timer()
+with np.warnings.catch_warnings():
+    np.warnings.filterwarnings('ignore')#, r'All-NaN (slice|axis) encountered')
+    megan   = util.multi_year_average_spatial(Emeg, dates)['mean']
+    topd    = util.multi_year_average_spatial(Enew, dates)['mean']
+print("Took %6.2f minutes to get mya"%((timeit.default_timer()-start)/60.0))
+
+print('overall avg E_PP_lr:',np.nanmean(topd))
+print(' shape: ',np.shape(topd))
+
+print('overall avg E_MEGAN:',np.nanmean(megan))
+print(' shape: ',np.shape(megan))
+
+# new / megan = scale
+# ...
+alpha   = topd / megan
+alpha[np.isnan(alpha)] = 1.0
+alpha[np.isinf(alpha)] = 1.0
+
+print(np.nanmean(alpha,axis=(1,2)))
+
+start = timeit.default_timer()
+save_alpha(alpha, lats, lons, path='Data/isoprene_scale_mask_mya.nc')
+print("Took %6.2f minutes to save the alpha"%((timeit.default_timer()-start)/60.0))
+
+
+
+
+
+
+############
+### To send into other scripts
+##########
+
+
 
 
 '''

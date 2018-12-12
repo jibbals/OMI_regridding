@@ -1529,7 +1529,7 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
 
     # plot names
     dstr=d0.strftime('%Y%m%d')+'-'+dN.strftime('%Y%m%d')
-    pname = 'Figs/GC/slope_series_%s.png'%dstr
+    pname = 'Figs/GC/slope_series_%%s_%s.png'%dstr
 
     # first read biogenic model month by month and save the slope, and X and Y for wollongong
     allmonths = util.list_months(d0,dN)
@@ -1555,6 +1555,7 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
         model    = GC.model_slope(return_X_and_Y=True)
         di       = util.date_index(dates[0],alldays,dates[-1])
         lati,loni = util.lat_lon_index(lat,lon, model['lats'],model['lons'])
+        outlat,outlon = model['lats'][lati], model['lons'][loni]
 
         h[di]    = model['hcho'][:,lati,loni]
         h_sf[di] = model['hchosf'][:,lati,loni]
@@ -1677,6 +1678,8 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
         ax.set_xlim(-0.5,11.5)
 
     # finally save figure
+    latlonstr="%.3f,.3f"%(outlat,outlon)
+    pname=pname%latlonstr
     plt.savefig(pname)
     print('saved ',pname)
     plt.close()
@@ -1760,7 +1763,7 @@ if __name__=='__main__':
     #yield_and_lifetime()
 
     ## new vs old diagnostics
-    check_old_vs_new_emission_diags()
+    #check_old_vs_new_emission_diags()
 
     ## UCX VS TROPCHEM AMF
     #
@@ -1773,7 +1776,8 @@ if __name__=='__main__':
     # Checking units:
 
     ## Check slope
-    model_slope_series()
+    for latlon in [pp.__cities__['Syd'], pp.__cities__['Mel'], [-16,135]]:
+        model_slope_series(latlon=latlon)
     #Examine_Model_Slope() # unfinished 30/5/18
     #Examine_Model_Slope(use_smear_filter=True) # unfinished 30/5/18
     #check_rsc_interp()   # last run 29/5/18

@@ -1054,8 +1054,23 @@ def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1)
 #
 #    return no2,newlats,newlons
 
-
-
+def read_slopes(d0=datetime(2005,1,1),dN=datetime(2012,12,31),month=False):
+    '''
+    '''
+    # keys which can be date subsetted
+    dkeys=['ci','ci_sf','n','n_sf','dates','r','r_sf','slope','slope_sf']
+    if month:
+        d0=util.first_day(d0)
+        dN=util.last_day(d0)
+    data,attrs=read_hdf5('Data/GC_Output/slopes.h5')
+    dates=util.date_from_gregorian(data['dates'])
+    data['dates']=dates
+    di=util.date_index(d0,dates,dN)
+    if len(di) != data['dates']:
+        #subset to requested date(s)
+        for key in dkeys:
+            data[key] = data[key][di]
+    return data, attrs
 def filter_high_latitudes(array, lats, has_time_dim=False, highest_lat=60.0):
     '''
     Read an array, assuming globally gridded at latres/lonres, set the values polewards of 60 degrees
@@ -1383,7 +1398,7 @@ def get_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires__
     # subset to requested dates, lats and lons
     di = util.date_index(d0,dates,dn=dN)
     print(d0, dates[0], dates[-1], dN)
-    
+
     if region is not None:
         subset=util.lat_lon_subset(lats,lons,region=region,data=[firemask],has_time_dim=True)
         firemask=subset['data'][0]

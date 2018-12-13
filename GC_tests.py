@@ -1531,6 +1531,9 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
     dstr=d0.strftime('%Y%m%d')+'-'+dN.strftime('%Y%m%d')
     pname = 'Figs/GC/slope_series_%%s_%s.png'%dstr
 
+    # read all the slopes:
+
+
     # first read biogenic model month by month and save the slope, and X and Y for wollongong
     allmonths = util.list_months(d0,dN)
     alldays   = util.list_days(d0,dN)

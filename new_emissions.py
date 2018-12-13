@@ -32,7 +32,7 @@ def save_alpha(alpha, elats, elons, path='Data/isoprene_scale_mask_unnamed.nc'):
     loni    = np.where((lons >= elons[0]) * (lons <= [elons[-1]]))
     lat0, lat1  = lati[0][0], lati[0][-1]+1
     lon0, lon1  = loni[0][0], loni[0][-1]+1
-    
+
     # set scale mask over australia
     da[:,lat0:lat1,lon0:lon1] = alpha
     # update the xarray
@@ -108,6 +108,7 @@ def alpha_multiyear():
     Enew[Enew<0.0] = np.NaN # effectively remove where GC slope is negative...
     Emeg=Emiss.E_MEGAN
 
+
     # calculate monthly averages, don't worry about NaNs
     start = timeit.default_timer()
     with np.warnings.catch_warnings():
@@ -117,29 +118,29 @@ def alpha_multiyear():
     if __VERBOSE__:
         print("Took %6.2f minutes to get mya"%((timeit.default_timer()-start)/60.0))
 
+
     # new / megan = scale
     # ...
     alpha   = topd / megan
     alpha[np.isnan(alpha)] = 1.0
     alpha[np.isinf(alpha)] = 1.0
 
-    
     start = timeit.default_timer()
     save_alpha(alpha, lats, lons, path='Data/isoprene_scale_mask_mya.nc')
     if __VERBOSE__:
         print("Took %6.2f minutes to save the alpha"%((timeit.default_timer()-start)/60.0))
 
 if __name__=='__main__':
-    
+
     import timeit
 
     start=timeit.default_timer()
     alpha_multiyear()
-    
+
     print("Took %6.2f minutes to run multiyear alpha creation"%((timeit.default_timer()-start)/60.0))
-    
+
     start=timeit.default_timer()
     for year in np.arange(2005,2012):
         alpha_year(year)
-    
+
     print("Took %6.2f minutes to run for 1 day"%((timeit.default_timer()-start)/60.0))

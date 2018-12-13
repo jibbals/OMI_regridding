@@ -1279,10 +1279,10 @@ def create_slope_file(d0=datetime(2005,1,1),dN=datetime(2012,12,31), region=pp._
     '''
         Store slope before/after mya and smear filter is applied
     '''
-    dN=datetime(2006,1,31)
     # date range as string
     dstr=d0.strftime('%Y%m%d')+'-'+dN.strftime('%Y%m%d')
     outfilename='Data/GC_Output/slopes.h5'
+
     # first read biogenic model month by month and save the slope, and X and Y for wollongong
     allmonths = util.list_months(d0,dN)
     alldays   = util.list_days(d0,dN)
@@ -1290,7 +1290,7 @@ def create_slope_file(d0=datetime(2005,1,1),dN=datetime(2012,12,31), region=pp._
     # things to store each month
     s           = []
     s_sf        = []
-    h, h_sf     = [], []  # HCHO
+    h, h_sf     = [], [] # HCHO
     e, e_sf     = [], [] # e_isop
     r, r_sf     = [], [] # regression coeff
     ci, ci_sf   = [], [] # confidence interval for slope
@@ -1301,15 +1301,19 @@ def create_slope_file(d0=datetime(2005,1,1),dN=datetime(2012,12,31), region=pp._
         GC=GC_biogenic(month)
 
         # Get slope and stuff we want to plot
-        model    = GC.model_slope(return_X_and_Y=True, region=region)
+        model = GC.model_slope(return_X_and_Y=True, region=region)
         #di       = util.date_index(dates[0],alldays,dates[-1])
         #lati,loni = util.lat_lon_index(lat,lon, model['lats'],model['lons'])
         outlat,outlon = model['lats'], model['lons']
 
         h.append(model['hcho'])
-        h_sf.append(['hchosf'])
+        h_sf.append(model['hchosf'])
         e.append(model['isop'])
         e_sf.append(model['isopsf'])
+        #print(type(model['hchosf']))
+        #print(type(h_sf[-1]))
+        #print(np.shape(h_sf[-1]))
+
 
         # Y=slope*X+b with regression coeff r
         r.append(model['r'])
@@ -1318,17 +1322,30 @@ def create_slope_file(d0=datetime(2005,1,1),dN=datetime(2012,12,31), region=pp._
         ci_sf.append(model['errsf'])
         s.append(model['slope'])
         s_sf.append(model['slopesf'])
-        n.append(np.sum(~np.isnan(h[-1]*e[-1]),axis=0))
-        n_sf.append(np.sum(~np.isnan(h_sf[-1]*e_sf[-1]),axis=0))
+        nan     = np.isnan(h[-1]) + np.isnan(e[-1])
+        nansf   = np.isnan(h_sf[-1]) + np.isnan(e_sf[-1])
+        n.append(np.sum(~nan, axis = 0))
+        n_sf.append(np.sum(~nansf, axis = 0))
         print("CHECK: Shapes ",month)
         for arr in h,e,r,ci,n:
-            print(np.shape(arr))
+            print('  ',type(arr), np.shape(arr))
+            print('    ',type(arr[-1]), np.shape(arr[-1]))
 
-    # combine into array with time dim
-    e       = np.stack(e,axis=0)
-    e_sf    = np.stack(e_sf,axis=0)
-    h       = np.stack(h,axis=0)
-    h_sf    = np.stack(h_sf,axis=0)
+    # combine into arrays with time dim
+    isop   = e[0]
+    isopsf = e_sf[0]
+    hcho   = h[0]
+    hchosf = h_sf[0]
+    for arr in e[1:]:
+        isop = np.append(isop,arr,axis=0)
+    for arr in e_sf[1:]:
+        isopsf=np.append(isopsf,arr,axis=0)
+    for arr in h[1:]:
+        hcho=np.append(hcho,arr,axis=0)
+    for arr in h_sf[1:]:
+        hchosf=np.append(hchosf,arr,axis=0)
+
+    # monthly metrics are easier to combine
     r       = np.stack(r,axis=0)
     r_sf    = np.stack(r_sf,axis=0)
     ci      = np.stack(ci,axis=0)
@@ -1337,7 +1354,7 @@ def create_slope_file(d0=datetime(2005,1,1),dN=datetime(2012,12,31), region=pp._
     n_sf    = np.stack(n_sf,axis=0)
 
     print("CHECK: FINAL Shapes ",month)
-    for arr in h,e,r,ci,n:
+    for arr in hcho,isop,r,ci,n:
         print(np.shape(arr))
 
     # group into months and find slope on all januarys, ...
@@ -1351,31 +1368,41 @@ def create_slope_file(d0=datetime(2005,1,1),dN=datetime(2012,12,31), region=pp._
     for month in range(12):
         #mi = np.array([d.month == month+1 for d in allmonths])
         di = np.array([d.month == month+1 for d in alldays])
-        X = e[di]
-        Y = h[di]
-        X_sf = e_sf[di]
-        Y_sf = h_sf[di]
+        X = isop[di]
+        Y = hcho[di]
+        X_sf = isopsf[di]
+        Y_sf = hchosf[di]
         n_mya[month] = np.sum(~np.isnan(X*Y),axis=0)
         n_sf_mya[month] = np.sum(~np.isnan(X_sf*Y_sf),axis=0)
 
         s_mya[month], bg, r_mya[month], ci_mya[month] = slope_calc(X,Y,outlat,outlon)
         s_sf_mya[month], bg, r_sf_mya[month], ci_sf_mya[month] = slope_calc(X_sf,Y_sf,outlat,outlon)
 
-        #        s_mya[month], _, r_mya[month], ci_mya_tmp, _ = RMA(X,Y)
-        #        ci_mya[month] = ci_mya_tmp[0] # slope ci
-        #        s_sf_mya[month], _, r_sf_mya[month], ci_sf_mya_tmp, _ = RMA(X_sf,Y_sf)
-        #        ci_sf_mya[month]=ci_sf_mya_tmp[0]
+    print("CHECK: FINAL Shapes ")
+    for arr in s_mya,s_sf_mya,r_mya,ci_mya,n_mya:
+        print(np.shape(arr))
 
     # finally save file
     arraydict={'slope':s, 'slope_sf':s_sf, 'slope_mya':s_mya, 'slope_sf_mya':s_sf_mya,
                'r':r, 'r_sf':r_sf, 'r_mya':r_mya, 'r_sf_mya':r_sf_mya,
                'ci':ci, 'ci_sf':ci_sf, 'ci_mya':ci_mya, 'ci_sf_mya':ci_sf_mya,
                'n':n, 'n_sf':n_sf, 'n_mya':n_mya, 'n_sf_mya':n_sf_mya,
-               dates=util.}
-    attrdict=
+               'dates':util.gregorian_from_dates(allmonths),
+               'lats':outlat, 'lons':outlon}
+    attrdict={'slope':{'units':'s', 'desc':'slope between biogenic emissions and HCHO from GEOS chem'},
+              'r':{'desc':'RMA regression coefficient of slope'},
+              'ci':{'desc':'95% CI for slope'},
+              'n':{'desc':'entries making up slope'},
+              'dates':{'desc':'gregorian dates, hours since 1985,1,1,0,0'},
+              'lats':{'desc':'lat midpoints'},
+              'lons':{'desc':'lon midpoints'},
+              }
+
     fio.save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
-                 attrdicts={}, fattrs={},
-                 verbose=False):
+                 attrdicts=attrdict, fattrs={'date coverage':dstr},
+                 verbose=__VERBOSE__)
+
+
 
 
 if __name__=='__main__':

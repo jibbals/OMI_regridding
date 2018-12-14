@@ -73,10 +73,8 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-slope,dates,lats,lons = fio.get_slope(d0)
-print(slope.shape)
-pp.createmap(slope,lats,lons,region=pp.__AUSREGION__)
 
+Inversion.store_emissions_month()
 
 ############
 ### To send into other scripts

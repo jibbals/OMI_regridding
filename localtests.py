@@ -6,8 +6,8 @@ Created on Thu Oct 12 12:15:43 2017
 @author: jesse
 """
 
-import matplotlib
-matplotlib.use('Agg')
+#import matplotlib
+#matplotlib.use('Agg')
 #matplotlib.ioff()
 from datetime import datetime
 import numpy as np
@@ -73,7 +73,9 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-GC_class.create_slope_file()
+slope,dates,lats,lons = fio.get_slope(d0)
+print(slope.shape)
+pp.createmap(slope,lats,lons,region=pp.__AUSREGION__)
 
 
 ############

@@ -1054,23 +1054,95 @@ def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1)
 #
 #    return no2,newlats,newlons
 
-def read_slopes(d0=datetime(2005,1,1),dN=datetime(2012,12,31),month=False):
+def read_slopes(d0=datetime(2005,1,1),dN=datetime(2012,12,1)):
     '''
     '''
     # keys which can be date subsetted
-    dkeys=['ci','ci_sf','n','n_sf','dates','r','r_sf','slope','slope_sf']
-    if month:
-        d0=util.first_day(d0)
-        dN=util.last_day(d0)
+    dkeys=['ci','ci_sf','n','n_sf','r','r_sf','slope','slope_sf']
+
+    # slope is monthly, using first day of month
+    d0=util.first_day(d0)
+    if dN is not None:
+        dN = util.first_day(dN)
+
     data,attrs=read_hdf5('Data/GC_Output/slopes.h5')
     dates=util.date_from_gregorian(data['dates'])
     data['dates']=dates
     di=util.date_index(d0,dates,dN)
-    if len(di) != data['dates']:
+
+    if len(di) != len(data['dates']):
         #subset to requested date(s)
         for key in dkeys:
-            data[key] = data[key][di]
+            data[key] = np.squeeze(data[key][di])
+        data['dates'] = data['dates'][di] # don't squeeze dates, arr len of 1 is good
     return data, attrs
+
+def get_slope(month,monthN=None):
+    '''
+        Read GC biogenic slope H=SE+b
+        for month or multiple months
+        use smear filtered slope
+            if r<0.4 or n<10 use multiyearaverage
+    '''
+    sloped,slopea=read_slopes(month,monthN)
+
+    # smear filtered slope:
+    slope=sloped['slope_sf']
+    lats=sloped['lats']
+    lons=sloped['lons']
+    dates=sloped['dates']
+    print(type(dates),dates)
+    r=sloped['r_sf']
+    rmya=sloped['r_sf_mya']
+    mya=sloped['slope_sf_mya']
+
+    # remove negatives from mya
+    mya[mya<0] = np.NaN
+    # if r for mya is < 0.4, set to NaN
+    mya[rmya<0.4] = np.NaN
+
+    n=sloped['n_sf']
+
+    if len(dates) == 1:
+        # use multiyear avg where r is too low
+        myai = dates[0].month
+        print('check', slope.shape, mya.shape, myai)
+        test=np.copy(slope)
+        slope[r<0.4] = mya[myai][r<0.4]
+        nans=np.isnan(test*slope)
+        assert any(test[~nans] != slope[~nans]), 'no changes!'
+
+        # also where count is too low
+        slope[n<10] = mya[myai][n<10]
+
+        # replace negatives with mya also
+        slope[slope<0] = mya[myai][slope<0]
+
+    # if we have multiple months then do it monthly
+    else:
+        for i,m in enumerate(dates):
+            myai = m.month-1 # month index for mya
+            nm = n[i] # this months counts
+            rm = r[i] # this months regression coefficients
+            sm = slope[i]
+
+            # use multiyear avg where r is too low
+            print('check', slope.shape, slope[i].shape, rm.shape, mya.shape, myai)
+            test=np.copy(slope[i])
+            sm[rm<0.4] = mya[myai][rm<0.4]
+            nans=np.isnan(test*slope[i])
+            assert any(test[~nans] != slope[i][~nans]), 'no changes!'
+
+            # also where count is too low
+            sm[nm<10] = mya[myai][nm<10]
+
+            # replace negatives with mya also
+            sm[sm<0] = mya[myai][sm<0]
+
+
+    return slope,dates,lats,lons
+
+
 def filter_high_latitudes(array, lats, has_time_dim=False, highest_lat=60.0):
     '''
     Read an array, assuming globally gridded at latres/lonres, set the values polewards of 60 degrees

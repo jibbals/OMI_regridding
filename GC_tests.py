@@ -1524,82 +1524,47 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
     '''
     # set up plot limits
     slopemin=500
-    slopemax=6000
-    nmin, nmax = 10, 31
+    slopemax=9100
+    nmin, nmax = 0, 31
+    rmin, rmax = -0.1,1.1
+    rfilt, nfilt = 0.4, 10
+    smearmin = masks.__smearminlit__
+    smearmax = masks.__smearmaxlit__
 
     # plot names
     dstr=d0.strftime('%Y%m%d')+'-'+dN.strftime('%Y%m%d')
     pname = 'Figs/GC/slope_series_%%s_%s.png'%dstr
 
-    # read all the slopes:
-
-
     # first read biogenic model month by month and save the slope, and X and Y for wollongong
+    slopedata, slopeattrs = fio.read_slopes(d0,dN)
     allmonths = util.list_months(d0,dN)
-    alldays   = util.list_days(d0,dN)
     allyears  = util.list_years(d0,dN)
-    n_m,n_d   = len(allmonths),len(alldays)
+
     lat,lon   = latlon
+    lats,lons = slopedata['lats'],slopedata['lons']
+    lati,loni = util.lat_lon_index(lat,lon,lats,lons)
+    # update lat,lon to match square centre
+    lat, lon  = lats[lati], lons[loni]
 
-    # things to store each month
-    s           = np.zeros([n_m])
-    s_sf        = np.zeros([n_m])
-    h, h_sf     = np.zeros([n_d]), np.zeros([n_d])  # HCHO
-    e, e_sf     = np.zeros([n_d]), np.zeros([n_d]) # e_isop
-    r, r_sf     = np.zeros([n_m]), np.zeros([n_m]) # regression coeff
-    ci, ci_sf   = np.zeros([n_m,2]), np.zeros([n_m,2]) # confidence interval for slope
-    n, n_sf     = np.zeros([n_m]), np.zeros([n_m]) # number of entries making slope
+    # Y=slope*X+b with regression coeff r
+    r     = slopedata['r'][:,lati,loni]
+    r_sf  = slopedata['r_sf'][:,lati,loni]
+    ci    = slopedata['ci'][:,lati,loni]
+    ci_sf = slopedata['ci_sf'][:,lati,loni]
+    s     = slopedata['slope'][:,lati,loni]
+    s_sf  = slopedata['slope_sf'][:,lati,loni]
+    n     = slopedata['n'][:,lati,loni]
+    n_sf  = slopedata['n_sf'][:,lati,loni]
 
-    for i,month in enumerate(allmonths):
-        # Retrieve data
-        dates= util.list_days(month,month=True)
-        GC=GC_class.GC_biogenic(month)
-
-        # Get slope and stuff we want to plot
-        model    = GC.model_slope(return_X_and_Y=True)
-        di       = util.date_index(dates[0],alldays,dates[-1])
-        lati,loni = util.lat_lon_index(lat,lon, model['lats'],model['lons'])
-        outlat,outlon = model['lats'][lati], model['lons'][loni]
-
-        h[di]    = model['hcho'][:,lati,loni]
-        h_sf[di] = model['hchosf'][:,lati,loni]
-        e[di]    = model['isop'][:,lati,loni]
-        e_sf[di] = model['isopsf'][:,lati,loni]
-
-        # Y=slope*X+b with regression coeff r
-        r[i]     = model['r'][lati,loni]
-        r_sf[i]  = model['rsf'][lati,loni]
-        ci[i]    = model['err'][lati,loni]
-        ci_sf[i] = model['errsf'][lati,loni]
-        s[i]     = model['slope'][lati,loni]
-        s_sf[i]  = model['slopesf'][lati,loni]
-        n[i]     = np.sum(~np.isnan(h[di]*e[di]))
-        n_sf[i]  = np.sum(~np.isnan(h_sf[di]*e_sf[di]))
-
-
-    # group into months and find slope on all januarys, ...
-    n_mya, n_sf_mya   = np.zeros([12]),np.zeros([12])
-    ci_mya, ci_sf_mya = np.zeros([12,2]),np.zeros([12,2])
-    s_mya, s_sf_mya   = np.zeros([12]),np.zeros([12])
-    r_mya, r_sf_mya   = np.zeros([12]),np.zeros([12])
-    for month in range(12):
-        #mi = np.array([d.month == month+1 for d in allmonths])
-        di = np.array([d.month == month+1 for d in alldays])
-        X = e[di]
-        Y = h[di]
-        X_sf = e_sf[di]
-        Y_sf = h_sf[di]
-        n_mya[month] = np.sum(~np.isnan(X*Y))
-        n_sf_mya[month] = np.sum(~np.isnan(X_sf*Y_sf))
-        s_mya[month], _, r_mya[month], ci_mya_tmp, _ = RMA(X,Y)
-        ci_mya[month] = ci_mya_tmp[0] # slope ci
-        s_sf_mya[month], _, r_sf_mya[month], ci_sf_mya_tmp, _ = RMA(X_sf,Y_sf)
-        ci_sf_mya[month]=ci_sf_mya_tmp[0]
-
+    # multiyear averaged:
+    n_mya, n_sf_mya   = slopedata['n_mya'][:,lati,loni],slopedata['n_sf_mya'][:,lati,loni]
+    ci_mya, ci_sf_mya = slopedata['ci_mya'][:,lati,loni],slopedata['ci_sf_mya'][:,lati,loni]
+    s_mya, s_sf_mya   = slopedata['slope_mya'][:,lati,loni],slopedata['slope_sf_mya'][:,lati,loni]
+    r_mya, r_sf_mya   = slopedata['r_mya'][:,lati,loni],slopedata['r_sf_mya'][:,lati,loni]
 
     print('  normal   ,    sf    ,     mya,       sf_mya    ')
     for arrs in [[s,s_sf, s_mya, s_sf_mya],[r,r_sf,r_mya, r_sf_mya], [ci,ci_sf, ci_mya, ci_sf_mya], [n,n_sf, n_mya, n_sf_mya]]:
-        for i in range(min(np.shape(arrs[0])[0],12)): # up to 12 thingies
+        for i in range(min(np.shape(arrs[0])[0],5)): # up to 5 thingies
             print(arrs[0][i],arrs[1][i],arrs[2][i], arrs[3][i])
         #print(arrs[0]-arrs[1])
 
@@ -1607,41 +1572,49 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
     plt.subplots(figsize=(18,18))
     ax11=plt.subplot(4,2,1)
     # first plot slope as time series, +- confidence interval
-    plt.plot_date(allmonths,s, '-', linewidth=3)
+    plt.plot_date(allmonths,s, 'b-', linewidth=3)
     plt.fill_between(allmonths, ci[:,0], ci[:,1], alpha=.6)
     plt.ylim(slopemin,slopemax)
     plt.ylabel('slope [s]')
-    plt.title('unfiltered slope calculation',fontsize=24)
+    plt.title('unfiltered',fontsize=24)
+
 
     # also do sf version
     ax12=plt.subplot(4,2,2, sharex=ax11, sharey=ax11)
     plt.plot_date(allmonths,s_sf, '-', linewidth=3)
     plt.fill_between(allmonths, ci_sf[:,0], ci_sf[:,1], alpha=.6)
     plt.ylim(slopemin,slopemax)
+    plt.plot([allmonths[0], allmonths[-1]], [smearmin,smearmin], 'b--')
+    plt.plot([allmonths[0], allmonths[-1]], [smearmax,smearmax], 'b--')
     ax12.yaxis.set_label_position("right")
     ax12.yaxis.tick_right()
-    plt.title('smear filtered slope calculation',fontsize=24)
+    plt.title('smear filtered',fontsize=24)
     # Now set the ticks and labels
     for ax in [ax11,ax12]:
         plt.setp(ax.get_xticklabels(), visible=False)
 
     # then plot r and count
     ax21=plt.subplot(4,2,3, sharex=ax11)
-    plt.plot_date(allmonths,r, '-', color='r')
+    plt.plot_date(allmonths,r, '-', color='r',linewidth=2)
     plt.ylabel('r',color='r')
+    plt.ylim(rmin,rmax)
     plt.sca(plt.twinx())
     plt.plot_date(allmonths,n, '-', color='m')
-    plt.ylabel('n',color='m')
     plt.ylim(nmin,nmax)
+    plt.setp(plt.gca().get_yticklabels(),visible=False)
 
     # also for sf
     ax22=plt.subplot(4,2,4, sharex=ax21, sharey=ax21)
-    plt.plot_date(allmonths,r_sf, '-', color='r')
-    plt.ylabel('r',color='r')
+    plt.plot_date(allmonths,r_sf, '-', color='r',linewidth=2)
+    plt.plot([allmonths[0], allmonths[-1]], [rfilt,rfilt], 'r--')
+    plt.setp(ax22.get_yticklabels(),visible=False)
+    plt.ylim(rmin,rmax)
     plt.sca(plt.twinx())
     plt.plot_date(allmonths,n_sf, '-', color='m')
+    plt.plot([allmonths[0], allmonths[-1]], [nfilt,nfilt], 'm--')
     plt.ylabel('n',color='m')
     plt.ylim(nmin,nmax)
+
     # now we do xlabels
     for ax in [ax21,ax22]:
         ax.set_xticks(allyears)
@@ -1649,32 +1622,44 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
 
     # plot mya version of slopes...
     ax31 = plt.subplot(4,2,5)
-    plt.plot(range(12),s_mya, linewidth=3)
+    plt.plot(range(12),s_mya, linewidth=3,color='b')
     plt.fill_between(range(12), ci_mya[:,0], ci_mya[:,1], alpha=.6)
     plt.ylim(slopemin,slopemax)
 
     # plot mya sf
     ax32 = plt.subplot(4,2,6, sharex=ax31, sharey=ax31)
-    plt.plot(range(12),s_sf_mya, linewidth=3)
+    plt.plot(range(12),s_sf_mya, linewidth=3, color='b')
     plt.fill_between(range(12), ci_sf_mya[:,0], ci_sf_mya[:,1], alpha=.6)
+    plt.plot([0, 11], [smearmin,smearmin], 'b--')
+    plt.plot([0, 11], [smearmax,smearmax], 'b--')
+    plt.ylabel('slope [s]')
     # Now set the ticks and labels
+    ax32.yaxis.set_label_position("right")
+    ax32.yaxis.tick_right()
     for ax in [ax31,ax32]:
         plt.setp(ax.get_xticklabels(), visible=False)
 
 
     # then plot r and count
     ax41 = plt.subplot(4,2,7,sharex=ax32)
-    plt.plot(range(12),r_mya, 'r-')
+    plt.plot(range(12),r_mya, 'r-',linewidth=2)
+    plt.ylim(rmin,rmax)
+    plt.ylabel('r',color='r')
     plt.sca(plt.twinx())
     plt.plot_date(range(12), n_mya, 'm-')
-    plt.ylim(nmin,nmax)
+    plt.ylim(100,300)
+    plt.setp(plt.gca().get_yticklabels(),visible=False)
 
     # also for sf
     ax42 = plt.subplot(4, 2, 8, sharex=ax41)
-    plt.plot(range(12),r_sf_mya, 'r-')
+    plt.plot(range(12),r_sf_mya, 'r-',linewidth=2)
+    plt.plot([0, 11], [rfilt,rfilt], 'r--')
+    plt.ylim(rmin,rmax)
+    plt.setp(plt.gca().get_yticklabels(),visible=False)
     plt.sca(plt.twinx())
     plt.plot_date(range(12), n_sf_mya, 'm-')
-    plt.ylim(nmin,nmax)
+    plt.ylim(100,300)
+    plt.ylabel('n',color='m')
     # Now set the ticks and labels
     for ax in [ax41,ax42]:
         ax.set_xticks(range(12))
@@ -1682,8 +1667,10 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
         ax.set_xlim(-0.5,11.5)
 
     # finally save figure
-    latlonstr="%.3f,%.3f"%(outlat,outlon)
+    latlonstr="%.3f,%.3f"%(lat, lon)
     pname=pname%latlonstr
+    plt.suptitle('Model Slope %s'%latlonstr,fontsize=28)
+    plt.subplots_adjust(wspace=0.01)
     plt.savefig(pname)
     print('saved ',pname)
     plt.close()
@@ -1780,8 +1767,8 @@ if __name__=='__main__':
     # Checking units:
 
     ## Check slope
-    #for latlon in [pp.__cities__['Syd'], pp.__cities__['Mel'], [-16,135]]:
-    model_slope_series(latlon=pp.__cities__['Syd'])
+    for latlon in [pp.__cities__['Syd'], pp.__cities__['Mel'], [-16,135]]:
+        model_slope_series(latlon=latlon)
 
     #Examine_Model_Slope() # unfinished 30/5/18
     #Examine_Model_Slope(use_smear_filter=True) # unfinished 30/5/18

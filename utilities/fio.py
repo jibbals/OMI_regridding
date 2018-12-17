@@ -1096,27 +1096,34 @@ def get_slope(month,monthN=None):
     rmya=sloped['r_sf_mya']
     mya=sloped['slope_sf_mya']
 
-    # remove negatives from mya
-    mya[mya<0] = np.NaN
-    # if r for mya is < 0.4, set to NaN
-    mya[rmya<0.4] = np.NaN
+    
+    # ignore warning from comparing NaNs to number
+    with np.errstate(invalid='ignore'):
+        # remove negatives from mya
+        mya[mya<0] = np.NaN
+        # if r for mya is < 0.4, set to NaN
+        mya[rmya<0.4] = np.NaN
 
     n=sloped['n_sf']
 
     if len(dates) == 1:
         # use multiyear avg where r is too low
-        myai = dates[0].month
-        print('check', slope.shape, mya.shape, myai)
+        myai = dates[0].month -1 
+        if __VERBOSE__:
+            print('check single month slope creation', slope.shape, mya.shape, myai)
         test=np.copy(slope)
-        slope[r<0.4] = mya[myai][r<0.4]
-        nans=np.isnan(test*slope)
-        assert any(test[~nans] != slope[~nans]), 'no changes!'
+        # ignore warning from comparing NaNs to number
+        with np.errstate(invalid='ignore'):
+            slope[r<0.4] = mya[myai][r<0.4]
+        
+            nans=np.isnan(test*slope)
+            assert any(test[~nans] != slope[~nans]), 'no changes!'
 
-        # also where count is too low
-        slope[n<10] = mya[myai][n<10]
+            # also where count is too low
+            slope[n<10] = mya[myai][n<10]
 
-        # replace negatives with mya also
-        slope[slope<0] = mya[myai][slope<0]
+            # replace negatives with mya also
+            slope[slope<0] = mya[myai][slope<0]
 
     # if we have multiple months then do it monthly
     else:
@@ -1127,17 +1134,20 @@ def get_slope(month,monthN=None):
             sm = slope[i]
 
             # use multiyear avg where r is too low
-            print('check', slope.shape, slope[i].shape, rm.shape, mya.shape, myai)
+            if __VERBOSE__:
+                print('check multimonth slope creation', slope.shape, slope[i].shape, rm.shape, mya.shape, myai)
             test=np.copy(slope[i])
-            sm[rm<0.4] = mya[myai][rm<0.4]
-            nans=np.isnan(test*slope[i])
-            assert any(test[~nans] != slope[i][~nans]), 'no changes!'
+            
+            with np.errstate(invalid='ignore'):
+                sm[rm<0.4] = mya[myai][rm<0.4]
+                nans=np.isnan(test*slope[i])
+                assert any(test[~nans] != slope[i][~nans]), 'no changes!'
 
-            # also where count is too low
-            sm[nm<10] = mya[myai][nm<10]
+                # also where count is too low
+                sm[nm<10] = mya[myai][nm<10]
 
-            # replace negatives with mya also
-            sm[sm<0] = mya[myai][sm<0]
+                # replace negatives with mya also
+                sm[sm<0] = mya[myai][sm<0]
 
 
     return slope,dates,lats,lons

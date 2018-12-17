@@ -23,7 +23,7 @@ import Inversion
 import tests
 from tests import utilities_tests
 import reprocess
-from new_emissions import save_alpha
+import new_emissions 
 
 from classes.E_new import E_new # E_new class
 from classes import GC_class, campaign
@@ -73,14 +73,22 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+for year in range(2005,2013):
+    new_emissions.alpha_year(year,test=True)
 
-Inversion.store_emissions_month()
+
+
+###########
+### Record and time STUJFFS
+###########
+
+end=timeit.default_timer()
+print("TIME: %6.2f minutes for stuff"%((end-start1)/60.0))
+
 
 ############
 ### To send into other scripts
 ##########
-
-
 
 
 '''
@@ -229,13 +237,6 @@ for lowres in [True,False]:
 #plt.legend()
 #plt.title('isoprene yearly cycle')
 #plt.tight_layout()
-
-###########
-### Record and time STUJFFS
-###########
-
-end=timeit.default_timer()
-print("TIME: %6.2f minutes for stuff"%((end-start1)/60.0))
 
 
 ### Things to be finished

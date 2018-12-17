@@ -161,10 +161,6 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     anthromask,_,masklats,masklons  = fio.get_anthro_mask(day0,dN=dayn, region=region)
     smearmask_lr,smeardates,smearlats,smearlons  = masks.get_smear_mask(day0,dN=dayn, region=region)
     smearmask=np.zeros(firemask.shape, np.int8)
-    print("WTF")
-    print(days)
-    for arr in [firemask, smokemask, anthromask, smearmask_lr, days, smeardates]:
-        print(np.shape(arr))
     
     # smearing is at lower resolution than other ones... map using nearest so they can be used together
     for i in range(len(smeardates)):
@@ -321,7 +317,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
 
 
     elapsed = timeit.default_timer() - time_emiss_calc
-    print ("TIMEIT: Took %6.2f seconds to calculate backgrounds and estimate emissions()"%elapsed)
+    if __VERBOSE__:
+        print ("TIMEIT: Took %6.2f seconds to calculate backgrounds and estimate emissions()"%elapsed)
     # should take < 1 second
 
     # Lets save the daily amounts

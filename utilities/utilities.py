@@ -780,10 +780,11 @@ def remote_pacific_background(data, lats, lons,
     if pixels is not None:
         subpix=subset['data'][1]
         rp = rp*subpix
-        if average_lons:
-            rp=np.nansum(rp,axis=1+htd) / np.nansum(subpix,axis=1+htd)
-        if average_lats:
-            rp=np.nansum(rp,axis=0+htd) / np.nansum(subpix,axis=0+htd)
+        with np.errstate(invalid='ignore'): # ignore divide by zero
+            if average_lons:
+                rp=np.nansum(rp,axis=1+htd) / np.nansum(subpix,axis=1+htd)
+            if average_lats:
+                rp=np.nansum(rp,axis=0+htd) / np.nansum(subpix,axis=0+htd)
     else:
         if average_lons:
             rp=np.nanmean(rp,axis=1+htd)

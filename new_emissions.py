@@ -40,7 +40,7 @@ def save_alpha(alpha, elats, elons, path='Data/isoprene_scale_mask_unnamed.nc'):
     # save the new scale mask to a netcdf file
     isop.to_netcdf(path)
 
-def alpha_year(year=2005):
+def alpha_year(year=2005, test=True):
     '''
         Create isoprene scaling factors monthly over Australia
           using difference from top-down and MEGAN emissions at midday
@@ -50,44 +50,59 @@ def alpha_year(year=2005):
 
     # Read new top down, and MEGAN emissions
     # ...
-    Enew    = E_new(d0,dayn=dn,dkeys=['E_MEGAN','E_VCC_PP_lr'])
+    Enew    = E_new(d0,dayn=dn,dkeys=['E_MEGAN','E_PP_lr'])
     dates   = Enew.dates
     elats   = Enew.lats_lr
     elons   = Enew.lons_lr
     megan   = Enew.E_MEGAN
     topd    = Enew.E_PP_lr
     topd[topd<0] = np.NaN
+    print(len(dates), np.shape(megan), np.shape(topd))
 
     # calculate monthly averages, don't worry about NaNs
     with np.warnings.catch_warnings():
         np.warnings.filterwarnings('ignore')#, r'All-NaN (slice|axis) encountered')
-        megan   = util.monthly_averaged(dates, Enew.E_MEGAN, keep_spatial=True)['mean']
-        topd    = util.monthly_averaged(dates, Enew.E_VCC_PP_lr, keep_spatial=True)['mean']
+        meganmya   = util.monthly_averaged(dates, Enew.E_MEGAN, keep_spatial=True)['mean']
+        topdmya    = util.monthly_averaged(dates, Enew.E_PP_lr, keep_spatial=True)['mean']
 
     # new / megan = scale
     # ...
-    alpha   = topd / megan
+    alpha   = topdmya / meganmya
     alpha[np.isnan(alpha)] = 1.0
     alpha[np.isinf(alpha)] = 1.0
-
-    save_alpha(alpha,elats,elons, path='Data/isoprene_scale_mask_%4d.nc'%year)
-
-    ## test
-    #region=[-60,85,-5,170]
-    #vmin,vmax = 0, 2
-    #import matplotlib.pyplot as plt
-    #from utilities import plotting as pp
-    #f, axes = plt.subplots(2,2,figsize=[15,15])
-    #plt.sca(axes[0,0])
-    #pp.createmap(da[0],lats, lons, linear=True, region=region, title='da[0]',vmin=vmin,vmax=vmax)
-    #plt.sca(axes[0,1])
-    #pp.createmap(alpha[0],elats, elons, linear=True, region=region, title='alpha[0]',vmin=vmin,vmax=vmax)
-    #plt.sca(axes[1,0])
-    #pp.createmap(da[6],lats, lons, linear=True, region=region, title='da[6]',vmin=vmin,vmax=vmax)
-    #plt.sca(axes[1,1])
-    #pp.createmap(alpha[6],elats, elons, linear=True, region=region, title='alpha[6]',vmin=vmin,vmax=vmax)
-    #plt.savefig('alpha_test.png')
-    #plt.close()
+    
+    if not test:
+        save_alpha(alpha,elats,elons, path='Data/isoprene_scale_mask_%4d.nc'%year)
+    else:
+        # test
+        region=[-55,100,-7,165]
+        vmin,vmax = 0, 2
+        from utilities import plotting as pp
+        import matplotlib.pyplot as plt
+        sydlat,sydlon = pp.__cities__['Syd']
+        months=util.list_months(d0,dn)
+        lati,loni = util.lat_lon_index(sydlat,sydlon,elats,elons)
+        
+        f = plt.figure(figsize=[15,15])
+        # first plot alpha in jan, then alpha in 
+        plt.subplot(221)
+        pp.createmap(alpha[0],elats, elons, linear=True, region=region, title='alpha[0]',vmin=vmin,vmax=vmax)
+        # then plot alpha in June
+        plt.subplot(222)
+        pp.createmap(alpha[6],elats, elons, linear=True, region=region, title='alpha[6]',vmin=vmin,vmax=vmax)
+        #finally plot time series at sydney of alpha, megan, and topdown emissions
+        plt.subplot(212)
+        plt.plot_date(dates, megan[:,lati,loni], 'm-', label='megan')
+        plt.plot_date(dates, topd[:,lati,loni], '-', label='Enew', color='cyan')
+        plt.ylim(1e11,2e13)
+        plt.ylabel('Emissions')
+        plt.legend()
+        plt.sca(plt.twinx())
+        plt.plot_date(months, alpha[:,lati,loni], 'k-', linewidth=3, label='alpha')
+        plt.ylabel('Alpha')
+        plt.suptitle('Alpha for %4d'%year)
+        plt.savefig('alpha_test_%4d.png'%year)
+        plt.close()
 
 def alpha_multiyear():
     '''
@@ -124,11 +139,13 @@ def alpha_multiyear():
     alpha   = topd / megan
     alpha[np.isnan(alpha)] = 1.0
     alpha[np.isinf(alpha)] = 1.0
-
+    
+    
     start = timeit.default_timer()
     save_alpha(alpha, lats, lons, path='Data/isoprene_scale_mask_mya.nc')
     if __VERBOSE__:
         print("Took %6.2f minutes to save the alpha"%((timeit.default_timer()-start)/60.0))
+    
 
 if __name__=='__main__':
 

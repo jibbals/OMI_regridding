@@ -125,9 +125,11 @@ class E_new:
 
         # For each month read the data
         for month in months:
-            print('reading month ',month)
+            if __VERBOSE__:
+                print('reading month ',month)
             data,attrs=fio.read_E_new_month(month=month)
-            print(data.keys())
+            if __VERBOSE__:
+                print(data.keys())
             # remove unwanted data if possible
             if dkeys is not None:
                 for key in __E_new_keys__:
@@ -135,8 +137,9 @@ class E_new:
                         rem=data.pop(key)
             
             E_new_list.append(data)
-            print('keys after pruning')
-            print(data.keys())
+            if __VERBOSE__:
+                print('keys after pruning')
+                print(data.keys())
         self.attributes=attrs
 
         # Combine the data

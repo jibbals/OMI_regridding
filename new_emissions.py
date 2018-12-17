@@ -75,7 +75,7 @@ def alpha_year(year=2005, test=True):
         save_alpha(alpha,elats,elons, path='Data/isoprene_scale_mask_%4d.nc'%year)
     else:
         # test
-        region=[-55,100,-7,165]
+        region=[-50,105,-7,155]
         vmin,vmax = 0, 2
         from utilities import plotting as pp
         import matplotlib.pyplot as plt
@@ -83,7 +83,7 @@ def alpha_year(year=2005, test=True):
         months=util.list_months(d0,dn)
         lati,loni = util.lat_lon_index(sydlat,sydlon,elats,elons)
         
-        f = plt.figure(figsize=[15,15])
+        f = plt.figure(figsize=[15,13])
         # first plot alpha in jan, then alpha in 
         plt.subplot(221)
         pp.createmap(alpha[0],elats, elons, linear=True, region=region, title='alpha[0]',vmin=vmin,vmax=vmax)

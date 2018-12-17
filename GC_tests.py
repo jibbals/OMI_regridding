@@ -1518,7 +1518,7 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
     plt.close()
     print("SAVED: ",pname)
 
-def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.__cities__['Wol']):
+def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.__cities__['Syd'], loclabel='Syd'):
     '''
         look at slope before/after SF and using MYA for each month
     '''
@@ -1533,7 +1533,7 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
 
     # plot names
     dstr=d0.strftime('%Y%m%d')+'-'+dN.strftime('%Y%m%d')
-    pname = 'Figs/GC/slope_series_%%s_%s.png'%dstr
+    pname = 'Figs/GC/slope_series_%s_%s.png'%(loclabel, dstr)
 
     # first read biogenic model month by month and save the slope, and X and Y for wollongong
     slopedata, slopeattrs = fio.read_slopes(d0,dN)
@@ -1668,7 +1668,6 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
 
     # finally save figure
     latlonstr="%.3f,%.3f"%(lat, lon)
-    pname=pname%latlonstr
     plt.suptitle('Model Slope %s'%latlonstr,fontsize=28)
     plt.subplots_adjust(wspace=0.01)
     plt.savefig(pname)
@@ -1767,8 +1766,8 @@ if __name__=='__main__':
     # Checking units:
 
     ## Check slope
-    for latlon in [pp.__cities__['Syd'], pp.__cities__['Mel'], [-16,135]]:
-        model_slope_series(latlon=latlon)
+    for latlon, label in zip([pp.__cities__['Syd'], pp.__cities__['Mel'], [-16,135]],['Syd','Mel','Nowhere']):
+        model_slope_series(latlon=latlon, loclabel=label)
 
     #Examine_Model_Slope() # unfinished 30/5/18
     #Examine_Model_Slope(use_smear_filter=True) # unfinished 30/5/18

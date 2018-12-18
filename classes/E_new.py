@@ -31,7 +31,7 @@ from utilities import plotting as pp
 ### GLOBALS ###
 ###############
 
-__VERBOSE__=False
+__VERBOSE__=True
 __DEBUG__=False
 __E_new_keys__=[            # #  # {time, lats, lons}
                 'BG_OMI',       #  {31, 152, 152}
@@ -98,6 +98,16 @@ __E_new_dims__=['lats',         # 0.25x0.3125 resolution
                 'SA',           # Surface area [lats,lons] km2
                 'SA_lr',        # low res
                 ]
+__E_new_topd__=['E_GC',     #  {31, 152, 152}
+                'E_GC_u',   #  With unfiltered by fire/smoke/anthro
+                'E_GC_lr',  #  at low resolution: {31,18,19}
+                'E_OMI',    #  {31, 152, 152}
+                'E_OMI_u',  #  E_VCC_OMI without any filters applied
+                'E_OMI_lr', #  E_VCC_OMI at low resolution
+                'E_PP',     #  {31, 152, 152}
+                'E_PP_u',   #  without using filters
+                'E_PP_lr',  #  at low resolution
+                ]
 
 
 # Remote pacific as defined in De Smedt 2015 [-15, 180, 15, 240]
@@ -135,7 +145,7 @@ class E_new:
                 for key in __E_new_keys__:
                     if (key not in dkeys) and (key not in __E_new_dims__+['dates','time']):
                         rem=data.pop(key)
-            
+
             E_new_list.append(data)
             if __VERBOSE__:
                 print('keys after pruning')
@@ -213,6 +223,17 @@ class E_new:
         conversion_lr = 1./5.0 * 1e10 * self.SA_lr * kg_per_atom
         self.conversion_to_kg    = np.repeat(conversion[np.newaxis,:,:],len(self.dates),axis=0)
         self.conversion_to_kg_lr = np.repeat(conversion_lr[np.newaxis,:,:],len(self.dates),axis=0)
+
+        # HANDLE NEGATIVE EMISSIONS ESTIMATIONS
+        for key in __E_new_topd__:
+            if hasattr(self,key):
+                topd = getattr(self,key)
+                avg=np.nanmean(topd)
+                topd[topd<0] = 0
+                if __VERBOSE__:
+                    print("Removing negatives from ",key)
+                    print('%.2e -> %.2e'%(avg, np.nanmean(topd)))
+                setattr(self,key,topd)
 
     def get_monthly_multiyear(self, key, region, maskocean=True):
         '''

@@ -373,7 +373,7 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2007,12,31),
     # Read in E_new and E_MEGAN
     Enew  = E_new(d0,dn,[ekey,'E_MEGAN'])
     E = getattr(Enew,ekey)
-    E[E<0] = np.NaN # remove negative emissions.
+    E[E<0] = 0 # remove negative emissions.
     Emeg= Enew.E_MEGAN
     lats,lons = [ getattr(Enew,s+str.lower(lrstr)) for s in ['lats','lons'] ]
     dates=Enew.dates
@@ -513,7 +513,7 @@ def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
 def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,31)):
     '''
     '''
-    
+
     ## Read Emegan and Enew into dataframe for a region and season
     Enew=E_new(d0,dE, dkeys=['E_MEGAN','E_PP_lr'])
     lats,lons=Enew.lats_lr,Enew.lons_lr
@@ -526,22 +526,22 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
     summer= [ d.month in [1,2,12] for d in dates ]
     # winter date indices
     winter= [ d.month in [6,7,8] for d in dates ]
-    
+
     # also work on monthly datasets
     monthlym = util.monthly_averaged(dates, Em.copy(), keep_spatial=True)
     Em_m = monthlym['mean']
     dates_m = monthlym['dates']
-    
+
     monthlyo = util.monthly_averaged(dates, Eo.copy(), keep_spatial=True)
     Eo_m = monthlyo['mean']
-    
+
     summer_m = [d.month in [1,2,12] for d in dates_m]
     winter_m = [d.month in [6,7,8] for d in dates_m]
-    
+
     pname1=[]
     pname2=[]
     for region,color,label in zip(pp.__subregions__, pp.__subregions_colors__, pp.__subregions_labels__):
-    
+
         # pull out region:
         lati,loni = util.lat_lon_range(lats,lons,region)
         Emsub=Em[:,lati,:]
@@ -557,20 +557,20 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
         Eosub_m=Eosub_m[:,:,loni]
         Emsub_m=Emsub_m[summer_m]
         Eosub_m=Eosub_m[summer_m]
-    
+
         # set 95th percentile as axes limits
         xmax=np.nanpercentile(Eosub,99)
         ymax=np.nanpercentile(Emsub,99)
-    
+
         # lets put summer data into a dataframe for easy plotting
         subdata=np.array([Emsub.flatten(), Eosub.flatten()]).T
         subdata_m=np.array([Emsub_m.flatten(), Eosub_m.flatten()]).T
         slope,intercept,reg,ci1,ci2 = RMA(subdata_m[:,1],subdata_m[:,0])
         legend = "y={0:.1f}x+{1:.1e}: r={2:.2f}".format(slope,intercept,reg)
-    
+
         df = pd.DataFrame(data=subdata, columns=['MEGAN','OMI'])
         df_m = pd.DataFrame(data=subdata_m, columns=['MEGAN','OMI'])
-    
+
         plt.figure(figsize=[15,15])
         with sns.axes_style('white'):
             g = sns.jointplot("OMI", "MEGAN", df, kind='hex',#kind='reg')
@@ -583,7 +583,7 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
         plt.savefig(pname1[-1])
         print('SAVED ',pname1[-1])
         plt.close()
-    
+
         plt.figure(figsize=[15,15])
         with sns.axes_style('white'):
             g = sns.jointplot("OMI", "MEGAN", df_m, kind='reg',
@@ -592,8 +592,8 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
                               label=legend,
                               )
             g.ax_joint.legend(handlelength=0, handletextpad=0, frameon=False,)
-    
-    
+
+
             # halve the x axis limit
             #g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1]/2.0)
         plt.suptitle(label,fontsize=20)
@@ -601,19 +601,19 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
         plt.savefig(pname2[-1])
         print('SAVED ',pname2[-1])
         plt.close()
-    
-    
+
+
     for combined, pnames in zip(['Figs/Emiss/daily_Egressions.png','Figs/Emiss/monthly_Egressions.png'],[pname1, pname2]):
         images = [Image.open(pname) for pname in pnames]
         width, height = images[0].size
-    
+
         # 3 rows 2 cols
         total_width = width * 2 + 50
         total_height= height * 3 + 50
         #max_height = max(heights)
-    
+
         new_im = Image.new('RGBA', (total_width, total_height))
-    
+
         for i,im in enumerate(images):
             x_offset = width*(i%2)
             y_offset = height*(i//2)

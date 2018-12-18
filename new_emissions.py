@@ -17,6 +17,48 @@ from classes.E_new import E_new
 
 __VERBOSE__=False
 
+def calculate_alpha(year=2005, mya=False):
+    '''
+        take Enew top down / Emegan to create monthly alpha
+    '''
+    if mya:
+        d0 = datetime(2005,1,1)
+        dn = datetime(2012,12,1)
+    else:
+        d0 = datetime(year,1,1)
+        dn = datetime(year,12,31)
+    months=util.list_months(d0,dn)
+
+    # Read new top down, and MEGAN emissions
+    # ...
+    Enew    = E_new(d0,dayn=dn,dkeys=['E_MEGAN','E_PP_lr'])
+    dates   = Enew.dates
+    elats   = Enew.lats_lr
+    elons   = Enew.lons_lr
+    megan   = Enew.E_MEGAN
+    topd    = Enew.E_PP_lr
+    with np.errstate(invalid='ignore'):
+        topd[topd<0] = 0 # no longer np.NaN
+
+    if __VERBOSE__:
+        print(' calculating alpha for this many dates ')
+        print(len(dates), np.shape(megan), np.shape(topd))
+
+    # calculate monthly averages, don't worry about NaNs
+    with np.warnings.catch_warnings():
+        np.warnings.filterwarnings('ignore')#, r'All-NaN (slice|axis) encountered')
+        meganmya   = util.multi_year_average_spatial(megan,dates)['mean']
+        topdmya    = util.multi_year_average_spatial(topd,dates)['mean']
+
+    # new / megan = scale
+    # ...
+    alpha   = topdmya / meganmya
+    alpha[np.isnan(alpha)] = 1.0
+    alpha[np.isinf(alpha)] = 1.0
+
+    return {'alpha':alpha, 'lats':elats, 'lons':elons,
+            'dates':dates, 'months':months, 'Enew':topd, 'Emeg':megan,
+            'Enewm':topdmya, 'Emegm':meganmya}
 
 def save_alpha(alpha, elats, elons, path='Data/isoprene_scale_mask_unnamed.nc'):
 
@@ -40,124 +82,36 @@ def save_alpha(alpha, elats, elons, path='Data/isoprene_scale_mask_unnamed.nc'):
     # save the new scale mask to a netcdf file
     isop.to_netcdf(path)
 
-def alpha_year(year=2005, test=True):
+def create_alpha_file(year=2005, mya=False):
     '''
-        Create isoprene scaling factors monthly over Australia
-          using difference from top-down and MEGAN emissions at midday
+        take the E_new dataset and create a monthly mean alpha
+        can do one year or take the multiyearavg (mya=True)
     '''
-    d0 = datetime(year,1,1)
-    dn = datetime(year,12,31)
+    dat = calculate_alpha(year,mya=mya)
+    alpha=dat['alpha']
+    lats=dat['lats']
+    lons=dat['lons']
+    #dates=dat['dates']
+    #months=dat['months']
 
-    # Read new top down, and MEGAN emissions
-    # ...
-    Enew    = E_new(d0,dayn=dn,dkeys=['E_MEGAN','E_PP_lr'])
-    dates   = Enew.dates
-    elats   = Enew.lats_lr
-    elons   = Enew.lons_lr
-    megan   = Enew.E_MEGAN
-    topd    = Enew.E_PP_lr
-    topd[topd<0] = np.NaN
-    print(len(dates), np.shape(megan), np.shape(topd))
+    path='Data/isoprene_scale_mask_%4d.nc'%year
+    if mya:
+        path='Data/isoprene_scale_mask_mya.nc'
 
-    # calculate monthly averages, don't worry about NaNs
-    with np.warnings.catch_warnings():
-        np.warnings.filterwarnings('ignore')#, r'All-NaN (slice|axis) encountered')
-        meganmya   = util.monthly_averaged(dates, Enew.E_MEGAN, keep_spatial=True)['mean']
-        topdmya    = util.monthly_averaged(dates, Enew.E_PP_lr, keep_spatial=True)['mean']
+    save_alpha(alpha, lats, lons, path=path)
 
-    # new / megan = scale
-    # ...
-    alpha   = topdmya / meganmya
-    alpha[np.isnan(alpha)] = 1.0
-    alpha[np.isinf(alpha)] = 1.0
-    
-    if not test:
-        save_alpha(alpha,elats,elons, path='Data/isoprene_scale_mask_%4d.nc'%year)
-    else:
-        # test
-        region=[-50,105,-7,155]
-        vmin,vmax = 0, 2
-        from utilities import plotting as pp
-        import matplotlib.pyplot as plt
-        sydlat,sydlon = pp.__cities__['Syd']
-        months=util.list_months(d0,dn)
-        lati,loni = util.lat_lon_index(sydlat,sydlon,elats,elons)
-        
-        f = plt.figure(figsize=[15,13])
-        # first plot alpha in jan, then alpha in 
-        plt.subplot(221)
-        pp.createmap(alpha[0],elats, elons, linear=True, region=region, title='alpha[0]',vmin=vmin,vmax=vmax)
-        # then plot alpha in June
-        plt.subplot(222)
-        pp.createmap(alpha[6],elats, elons, linear=True, region=region, title='alpha[6]',vmin=vmin,vmax=vmax)
-        #finally plot time series at sydney of alpha, megan, and topdown emissions
-        plt.subplot(212)
-        plt.plot_date(dates, megan[:,lati,loni], 'm-', label='megan')
-        plt.plot_date(dates, topd[:,lati,loni], '-', label='Enew', color='cyan')
-        plt.ylim(1e11,2e13)
-        plt.ylabel('Emissions')
-        plt.legend()
-        plt.sca(plt.twinx())
-        plt.plot_date(months, alpha[:,lati,loni], 'k-', linewidth=3, label='alpha')
-        plt.ylabel('Alpha')
-        plt.suptitle('Alpha for %4d'%year)
-        plt.savefig('alpha_test_%4d.png'%year)
-        plt.close()
-
-def alpha_multiyear():
-    '''
-        take all the E_new dataset and create a multiyear monthly mean alpha
-    '''
-    d0=datetime(2005,1,1)
-    dN=datetime(2012,12,31)
-    if __VERBOSE__:
-        print('reading Enew')
-    start = timeit.default_timer()
-    Emiss = E_new(d0,dN,dkeys=['E_PP_lr','E_MEGAN'])
-    if __VERBOSE__:
-        print("Took %6.2f minutes to read all the Enew"%((timeit.default_timer()-start)/60.0))
-    lats=Emiss.lats_lr
-    lons=Emiss.lons_lr
-    dates=Emiss.dates
-    Enew=Emiss.E_PP_lr
-    Enew[Enew<0.0] = np.NaN # effectively remove where GC slope is negative...
-    Emeg=Emiss.E_MEGAN
-
-
-    # calculate monthly averages, don't worry about NaNs
-    start = timeit.default_timer()
-    with np.warnings.catch_warnings():
-        np.warnings.filterwarnings('ignore')#, r'All-NaN (slice|axis) encountered')
-        megan   = util.multi_year_average_spatial(Emeg, dates)['mean']
-        topd    = util.multi_year_average_spatial(Enew, dates)['mean']
-    if __VERBOSE__:
-        print("Took %6.2f minutes to get mya"%((timeit.default_timer()-start)/60.0))
-
-
-    # new / megan = scale
-    # ...
-    alpha   = topd / megan
-    alpha[np.isnan(alpha)] = 1.0
-    alpha[np.isinf(alpha)] = 1.0
-    
-    
-    start = timeit.default_timer()
-    save_alpha(alpha, lats, lons, path='Data/isoprene_scale_mask_mya.nc')
-    if __VERBOSE__:
-        print("Took %6.2f minutes to save the alpha"%((timeit.default_timer()-start)/60.0))
-    
 
 if __name__=='__main__':
 
     import timeit
 
     start=timeit.default_timer()
-    alpha_multiyear()
+    create_alpha_file(mya=True)
 
     print("Took %6.2f minutes to run multiyear alpha creation"%((timeit.default_timer()-start)/60.0))
 
     start=timeit.default_timer()
     for year in np.arange(2005,2012):
-        alpha_year(year)
+        create_alpha_file(year=year, mya=False)
 
     print("Took %6.2f minutes to run for 1 day"%((timeit.default_timer()-start)/60.0))

@@ -21,9 +21,9 @@ from utilities.JesseRegression import RMA
 from utilities import GMAO,GC_fio,fio, masks
 import Inversion
 import tests
-from tests import utilities_tests
+from tests import utilities_tests, test_new_emissions
 import reprocess
-import new_emissions 
+import new_emissions
 
 from classes.E_new import E_new # E_new class
 from classes import GC_class, campaign
@@ -73,9 +73,13 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-for year in range(2005,2013):
-    new_emissions.alpha_year(year,test=True)
+#test_new_emissions.alpha_creation()
+new_emissions.create_alpha_file(mya=True)
 
+print("Took %6.2f minutes to run multiyear alpha creation"%((timeit.default_timer()-start1)/60.0))
+
+for year in np.arange(2005,2012):
+    new_emissions.create_alpha_file(year=year, mya=False)
 
 
 ###########

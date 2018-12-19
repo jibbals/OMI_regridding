@@ -7,7 +7,7 @@ Created on Tue Dec 18 10:33:05 2018
 """
 
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 import timeit
 
 import new_emissions
@@ -34,8 +34,11 @@ def alpha_creation():
         Create isoprene scaling factors monthly over Australia
           using difference from top-down and MEGAN emissions at midday
 
-        Create yearly plots and compare with multiyear avg version
+        Create yearly plots and compare with multi-year avg version
     '''
+    label_meg='$E_{GC}$'
+    label_topd='$E_{OMI}$'
+
     yearly_alphas=[]
     yearly_megan=[]
     yearly_topd=[]
@@ -52,7 +55,7 @@ def alpha_creation():
         lons=dat['lons']
         dates=dat['dates']
         months=dat['months']
-
+        months=[m+timedelta(days=15) for m in months]
         region=[-50,105,-7,155]
         vmin,vmax = 0, 2
         sydlat,sydlon = pp.__cities__['Syd']
@@ -62,17 +65,17 @@ def alpha_creation():
         plt.figure(figsize=[15,13])
         # first plot alpha in jan, then alpha in
         plt.subplot(221)
-        pp.createmap(alpha[0],lats, lons, linear=True, region=region, title='alpha[0]',vmin=vmin,vmax=vmax)
+        pp.createmap(alpha[0],lats, lons, linear=True, region=region, title='Jan. alpha',vmin=vmin,vmax=vmax)
         # then plot alpha in June
         plt.subplot(222)
-        pp.createmap(alpha[6],lats, lons, linear=True, region=region, title='alpha[6]',vmin=vmin,vmax=vmax)
+        pp.createmap(alpha[6],lats, lons, linear=True, region=region, title='Jul alpha',vmin=vmin,vmax=vmax)
         #finally plot time series at sydney of alpha, megan, and topdown emissions
         plt.subplot(212)
         plt.title('examine Sydney')
-        plt.plot_date(dates, megan[:,lati,loni], 'm-', label='megan')
-        plt.plot_date(dates, topd[:,lati,loni], '-', label='Enew', color='cyan')
+        plt.plot_date(dates, megan[:,lati,loni], 'm-', label=label_meg)
+        plt.plot_date(dates, topd[:,lati,loni], '-', label=label_topd, color='cyan')
         plt.ylim(1e11,2e13)
-        plt.ylabel('Emissions')
+        plt.ylabel('Emissions [atom C cm$^{-2}$ s$^{-1}$]')
         plt.legend()
         plt.sca(plt.twinx())
         plt.plot_date(months, alpha[:,lati,loni], 'k-', linewidth=3, label='alpha')
@@ -95,10 +98,11 @@ def alpha_creation():
     lons=dat['lons']
     dates=dat['dates']
     months=dat['months']
+    months=[m+timedelta(days=15) for m in months]
     allmonths=util.list_months(dates[0],dates[-1])
     print(np.shape(allmonths), np.shape(allalpha), np.shape(megan))
 
-    region=[-50,105,-7,155]
+    region=[-45,110,-10,155]
     vmin,vmax = 0, 2
     sydlat,sydlon = pp.__cities__['Syd']
 
@@ -109,21 +113,22 @@ def alpha_creation():
     plt.subplot(321)
     fixed=np.copy(alpha)
     fixed[fixed == 1] =np.NaN
-    pp.createmap(fixed[0],lats, lons, linear=True, region=region, title='alpha[0]',vmin=vmin,vmax=vmax)
+    pp.createmap(fixed[0],lats, lons, linear=True, region=region, title='January alpha',vmin=vmin,vmax=vmax)
     # then plot alpha in June
     plt.subplot(322)
-    pp.createmap(fixed[6],lats, lons, linear=True, region=region, title='alpha[6]',vmin=vmin,vmax=vmax)
+    pp.createmap(fixed[6],lats, lons, linear=True, region=region, title='July alpha',vmin=vmin,vmax=vmax)
     #finally plot time series at sydney of alpha, megan, and topdown emissions
     plt.subplot(312)
     X=range(12)
-    plt.plot(X, megan[:,lati,loni], 'm-', label='megan')
-    plt.plot(X, topd[:,lati,loni], '-', label='Enew', color='cyan')
+    plt.plot(X, megan[:,lati,loni], 'm-', label=label_meg)
+    plt.plot(X, topd[:,lati,loni], '-', label=label_topd, color='cyan')
     plt.ylim(1e11,2e13)
-    plt.ylabel('Emissions')
+    plt.ylabel('Emissions [atom C cm$^{-2}$ s$^{-1}$]')
     plt.legend()
     plt.title('examine Sydney')
     plt.sca(plt.twinx())
     plt.plot(X, alpha[:,lati,loni], 'k-', linewidth=3, label='alpha')
+    plt.plot([X[0],X[-1]], [1,1], 'k--', linewidth=1) # dotted line
     plt.xlim(-0.5,11.5)
     plt.xticks(X)
     plt.gca().set_xticklabels(['J','F','M','A','M','J','J','A','S','O','N','D'])
@@ -132,18 +137,19 @@ def alpha_creation():
     plt.ylabel('Alpha')
 
     plt.subplot(313)
-    plt.plot_date(allmonths, allmegan[:,lati,loni], 'm-', label='megan')
-    plt.plot_date(allmonths, alltopd[:,lati,loni], '-', label='Enew', color='cyan')
+    plt.plot_date(allmonths, allmegan[:,lati,loni], 'm-', label=label_meg)
+    plt.plot_date(allmonths, alltopd[:,lati,loni], '-', label=label_topd, color='cyan')
     plt.ylim(1e11,2e13)
-    plt.ylabel('Emissions')
+    plt.ylabel('Emissions [atom C cm$^{-2}$ s$^{-1}$]')
     plt.legend()
     plt.title('monthly average')
     plt.sca(plt.twinx())
     plt.plot_date(allmonths,allalpha[:,lati,loni], 'k-', linewidth=3)
+    plt.plot_date([allmonths[0],allmonths[-1]], [1,1], 'k--',linewidth=1) # dotted line
     plt.ylabel('alpha')
     plt.ylim(vmin,vmax)
 
-    plt.suptitle('Alpha for multiyear average 2005-2012')
+    plt.suptitle('Alpha for multi-year average 2005-2012')
     plt.savefig('Figs/new_emiss/alpha_mya.png')
     plt.close()
 

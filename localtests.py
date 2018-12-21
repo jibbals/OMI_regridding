@@ -24,6 +24,7 @@ import tests
 from tests import utilities_tests, test_new_emissions
 import reprocess
 import new_emissions
+import Analyse_E_isop
 
 from classes.E_new import E_new # E_new class
 from classes import GC_class, campaign
@@ -73,8 +74,7 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-test_new_emissions.alpha_creation()
-
+Analyse_E_isop.yearly_megan_cycle()
 
 ###########
 ### Record and time STUJFFS

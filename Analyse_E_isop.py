@@ -48,7 +48,7 @@ colours = ['chartreuse','magenta','aqua']
 ### Methods ###
 ###############
 
-def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2007,12,31)):
+def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2009,12,31)):
     '''
     '''
     # Read megan
@@ -56,32 +56,44 @@ def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2007,12,31)):
     data=MEGAN.E_isop_bio # hours, lats, lons
     dates=np.array(MEGAN.dates)
 
+    Enew = E_new(d0,dn,dkeys=['E_PP_lr'])
+    
     # average over some regions
     regions=pp.__subregions__
     region_colours=pp.__subregions_colors__
     region_labels=pp.__subregions_labels__
     region_means=[]
     region_stds=[]
+    topd_means=[]
+    topd_stds=[]
     # UTC offsets for x axis
     # region_offsets=[11,10,10,11,12,11]
     offset=10 # utc + 10
 
     for region in regions:
+        # subset MEGAN data and serialise
         subset=util.lat_lon_subset(MEGAN.lats, MEGAN.lons, region, [data], has_time_dim=True)
         series=np.nanmean(subset['data'][0],axis=(1,2))
+        
+        # subset topd data
+        topdsub=util.lat_lon_subset(Enew.lats_lr, Enew.lons_lr, region, [Enew.E_PP_lr], has_time_dim=True)
+        topdser=np.nanmean(topdsub['data'][0],axis=(1,2))
+        
         # group by month, and hour to get the multi-year monthly averaged diurnal cycle
-        monthly_hours=util.multi_year_average(dates,series,grain='hourly')
+        monthly_hours=util.multi_year_average(series,dates,grain='hourly')
+        monthly_topd=util.multi_year_average(topdser, Enew.dates, grain='monthly')
         # save mean and std into [month, hour] array
         region_means.append(monthly_hours.mean().squeeze().values.reshape([12,24]))
         region_stds.append(monthly_hours.std().squeeze().values.reshape([12,24]))
-
+        topd_means.append(monthly_topd.mean().squeeze().values)
+        topd_stds.append(monthly_topd.std().squeeze().values)
 
 
     ## set up the plots
     # monthly day cycles : 4 rows 3 columns with shared axes
     f, axes = plt.subplots(4,3, sharex=True, sharey=True, figsize=(16,16))
     axes[3,1].set_xlabel('Hour (UTC+%d)'%offset)
-    xlim=[0,23]
+    xlim=[6,22]
     axes[3,1].set_xlim(xlim)
     axes[1,0].set_ylabel('Emission (molec/cm2/s)')
     ylim=[1e10,1e14]
@@ -92,6 +104,8 @@ def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2007,12,31)):
     for r,region in enumerate(regions):
         means = region_means[r]
         stds  = region_stds[r]
+        topdm = topd_means[r]
+        topds = topd_stds[r]
         #offset= region_offsets[r]
 
         # plot the daily cycle and std range
@@ -102,10 +116,13 @@ def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2007,12,31)):
                 # grab month (map i,j onto (0-11)*24)
                 #mi=i*3*24 + j*24
                 mi=i*3+j #month index
-                # grab mean and std from dataset
-                mdata = means[(mi+1)%12,:].squeeze()
-                mstd  = stds[(mi+1)%12,:].squeeze()
-
+                mip=(mi+1)%12
+                # grab mean and std from dataset for this month in this region
+                mdata = means[mip,:].squeeze()
+                mstd  = stds[mip,:].squeeze()
+                mtopd = topdm[mip].squeeze()
+                mtopds= topds[mip].squeeze()
+                
                 # roll over x axis to get local time midday in the middle
                 #high  = np.roll(data+std, offset)
                 #low   = np.roll(data-std, offset)
@@ -125,19 +142,27 @@ def yearly_megan_cycle(d0=datetime(2005,1,1), dn=datetime(2007,12,31)):
                     bottom=ii==3)
 
                 # first highlight the 1300-1400 time window with soft grey
-                plt.fill_betweenx(ylim,[13,13],[14,14], color='grey', alpha=0.2)
-                plt.plot([13,13], ylim, color='grey',alpha=0.7)
-                plt.plot([14,14], ylim, color='grey',alpha=0.7)
+                #plt.fill_betweenx(ylim,[13,13],[14,14], color='grey', alpha=0.2)
+                plt.plot([13,13], ylim, color='grey',alpha=0.5)
+                plt.plot([14,14], ylim, color='grey',alpha=0.5)
+                
 
                 #plt.fill_between(np.arange(24), high, low, color='k')
                 plt.plot(np.arange(24), mdata, color=region_colours[r])
                 plt.title(titles[ii,jj])
+        
+                # also plot topd from 1300-1400
+                plt.plot([12,15], [mtopd, mtopd], color=region_colours[r], linewidth=2)
+                plt.plot([12,15], [mtopd+mtopds, mtopd+mtopds], color=region_colours[r], linewidth=1)
+                plt.plot([12,15], [mtopd-mtopds, mtopd-mtopds], color=region_colours[r], linewidth=1)
 
 
 
     # remove gaps between plots
     f.subplots_adjust(wspace=0, hspace=0.1)
-    plt.savefig('Figs/Emiss/MEGAN_monthly_daycycle.png')
+    pname='Figs/Emiss/MEGAN_monthly_daycycle.png'
+    plt.savefig(pname)
+    print('SAVED FIGURE ',pname)
     plt.close()
 
 

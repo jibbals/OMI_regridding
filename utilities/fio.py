@@ -1012,6 +1012,41 @@ def read_omno2d(day0,dayN=None,latres=__LATRES__,lonres=__LONRES__, max_procs=1)
     ret={'tropno2':no2,'lats':lats,'lons':lons,'lats_e':lats_e,'lons_e':lons_e,'dates':dates}
     return ret,attrs
 
+def read_omno2d_year(year=2005, d0=None, d1=None, region=None):
+    '''
+        Read anthromask_year.h5 file
+            can subset to d0-d1, and/or region
+        return no2, dates, lats, lons
+    '''
+    # read file for anthro mask:
+    path=__dir_anthro__ + 'anthromask_%4d.h5'%year
+    assert isfile(path), 'NEED TO RUN make_anthro_mask_file(datetime(%4d,1,1))'%year
+    data,attrs=read_hdf5(path)
+    no2=data['no2']
+    lats=data['lats']
+    lons=data['lons']
+    if np.all(data['dates']==0):
+        dates = np.array(util.list_days(datetime(d0.year,1,1),datetime(d0.year,12,31)))
+    else:
+        dates = util.date_from_gregorian(data['dates'])
+
+
+    # subset to desired time/area
+    di = np.ones(len(dates)).astype(bool)
+    if (d0 is not None):
+        di=util.date_index(d0,dates,d1) # indices of dates from d0 to dN
+    if region is not None:
+        subset=util.lat_lon_subset(lats,lons,region=region,data=[no2],has_time_dim=True)
+        no2=subset['data'][0]
+        lats=subset['lats']
+        lons=subset['lons']
+
+    print(di, dates, len(di),len(dates))
+    print(type(di),type(no2),no2.shape, type(dates))
+    return np.squeeze(no2[di,:,:]),np.squeeze(dates[di]),lats,lons
+
+
+
 #def yearly_anthro_avg(date,latres=__LATRES__,lonres=__LONRES__,region=None,max_procs=4):
 #    '''
 #        Read and save the yearly avg no2 product at natural resolution unless it is already saved
@@ -1096,7 +1131,7 @@ def get_slope(month,monthN=None):
     rmya=sloped['r_sf_mya']
     mya=sloped['slope_sf_mya']
 
-    
+
     # ignore warning from comparing NaNs to number
     with np.errstate(invalid='ignore'):
         # remove negatives from mya
@@ -1108,14 +1143,14 @@ def get_slope(month,monthN=None):
 
     if len(dates) == 1:
         # use multiyear avg where r is too low
-        myai = dates[0].month -1 
+        myai = dates[0].month -1
         if __VERBOSE__:
             print('check single month slope creation', slope.shape, mya.shape, myai)
         test=np.copy(slope)
         # ignore warning from comparing NaNs to number
         with np.errstate(invalid='ignore'):
             slope[r<0.4] = mya[myai][r<0.4]
-        
+
             nans=np.isnan(test*slope)
             assert any(test[~nans] != slope[~nans]), 'no changes!'
 
@@ -1137,7 +1172,7 @@ def get_slope(month,monthN=None):
             if __VERBOSE__:
                 print('check multimonth slope creation', slope.shape, slope[i].shape, rm.shape, mya.shape, myai)
             test=np.copy(slope[i])
-            
+
             with np.errstate(invalid='ignore'):
                 sm[rm<0.4] = mya[myai][rm<0.4]
                 nans=np.isnan(test*slope[i])
@@ -1504,7 +1539,11 @@ def get_anthro_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
     mask=data['anthromask'].astype(bool)
     lats=data['lats']
     lons=data['lons']
-    dates=util.date_from_gregorian(data['dates'])
+    if np.all(data['dates']==0):
+        dates = util.list_days(datetime(d0.year,1,1),datetime(d0.year,12,31))
+    else:
+        dates = util.date_from_gregorian(data['dates'])
+
 
     # subset to desired time/area
     di=util.date_index(d0,dates,dN) # indices of dates from d0 to dN

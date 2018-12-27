@@ -37,6 +37,7 @@ import xarray
 import pandas as pd
 import seaborn as sns
 
+import warnings
 import timeit
 
 
@@ -74,7 +75,208 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-Analyse_E_isop.yearly_megan_cycle()
+#Analyse_E_isop.yearly_megan_cycle()
+
+
+#def GCe_vs_OMNO2d(d0=datetime(2005,1,1), d1=None,
+#             region=pp.__AUSREGION__, regionlabel='AUS',
+#             soil=True, dstr_lab=None,
+#             map_cmap='PuRd' ,reg_cmap='YlOrRd',dmap_cmap='RdBu_r'):
+
+# FIG 1: 4rows 3cols
+f,axes = plt.subplots(4,3,figsize=(15,17))
+print("hello")
+
+year=2005
+# loop over seasons in year
+d0=datetime(2005,1,1)
+d1=datetime(2005,2,28)
+region=pp.__AUSREGION__
+regionlabel='AUS'
+map_cmap='PuRd'
+reg_cmap='YlOrRd'
+dmap_cmap='RdBu_r'
+'''
+    for each season:
+        Fig 1: Plot OMIno2, GCno2, and bias
+        Fig 2: Plot Emissions of NO (anthro and soil) from GC
+        Fig 3: Plot GC vs OMI, Eanth vs BIAS, Esoil vs BIAS
+'''
+
+## Read GC NO2 and OMI NO2 data:
+
+# Read omno2d
+
+OM_tropno2, OM_dates, OM_lats, OM_lons=fio.read_omno2d_year(year=d0.year,d0=d0,d1=d1)
+print('read OMNO2d',OM_tropno2.shape)
+
+# Read satellite output from GC troprun
+# Keys needed for satellite tropNO2
+keys=['IJ-AVG-$_NO2','BXHGHT-$_BXHEIGHT','TIME-SER_AIRDEN','TR-PAUSE_TPLEV',]
+GC=GC_class.GC_sat(d0,dayN=d1,keys=keys)
+GC_tropno2=GC.get_trop_columns(['NO2'])['NO2']
+GC_lats,GC_lons=GC.lats,GC.lons
+
+# Read emissions from GC:
+GC_tavg=GC_class.GC_tavg(d0,d1,keys=['NO-SOIL_NO','ANTHSRCE_NO',], run='nochem')
+anthrono=GC_tavg.ANTHSRCE_NO
+soilno=GC_tavg.NO_soil
+
+# remove near zero emissions squares
+for arr in [anthrono, soilno]:
+    arr[arr < 1]=np.NaN
+
+# average over time, ignore warnings
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore", category=RuntimeWarning)
+    [anthrono, soilno ,GC_tropno2, OM_tropno2] = [ np.nanmean(arr,axis=0) for arr in [anthrono, soilno ,GC_tropno2, OM_tropno2] ]
+OM_tropno2_low=util.regrid_to_lower(OM_tropno2,OM_lats,OM_lons,GC.lats,GC.lons)
+assert OM_tropno2_low.shape == GC_tropno2.shape, 'Reduced OMI Grid should match GC'
+## PLOTTING
+##
+
+# plot scale limits
+rmin,rmax   = -50, 50           # limits for percent relative difference in plots
+amin,amax   = -1e15, 1e15       # limits for absolute diffs
+vmin,vmax   =  1e14, 14e14      # limits for molec/cm2 plots
+linear      = True              # linear or logarithmic scale
+
+
+# FIG 1: OMI    |    GC    |  OMI - GC
+#
+
+f,axes = plt.subplots(4,3,figsize=(15,17))
+# First plot GC map
+plt.sca(axes[0,0])
+m,cs,cb = pp.createmap(GC_tropno2,GC_lats,GC_lons,
+             title='GC $\Omega_{NO2}$', colorbar=False,
+             linear=linear, vmin=vmin, vmax=vmax,
+             cmapname=map_cmap, region=region)
+
+# Add colorbar to the right:
+#from mpl_toolkits.axes_grid1 import make_axes_locatable
+#divider = make_axes_locatable(axes[0,0])
+#cax = divider.append_axes('right', size='5%', pad=0.05)
+#f.colorbar(cs,cax=cax, orientation='vertical')
+
+# Plot the omi map
+plt.sca(axes[0,1])
+pp.createmap(OM_tropno2_low, GC_lats, GC_lons,
+             title='OMI $\Omega_{NO2}$', colorbar=False,
+             linear=linear, vmin=vmin, vmax=vmax,
+             cmapname=map_cmap, region=region)
+
+# Plot differences and corellation
+# first abs diff
+reldiff = False
+plt.sca(axes[0,2])
+if reldiff:
+    m, cs2, cb2 = pp.createmap(100*(GC_tropno2-OM_tropno2_low)/OM_tropno2_low, GC_lats, GC_lons,
+                 title='100(GC - OMI)/OMI', colorbar=False, clabel='%',
+                 linear=True, vmin=rmin, vmax=rmax,
+                 cmapname=dmap_cmap, region=region)
+    ticks=np.floor(np.linspace(rmin,rmax,5))
+else:
+    m, cs2, cb2 = pp.createmap(GC_tropno2-OM_tropno2_low, GC_lats, GC_lons,
+                 title='GC - OMI', colorbar=False, clabel='molec/cm2',
+                 linear=True, vmin=amin, vmax=amax,
+                 cmapname=dmap_cmap, region=region)
+    ticks=np.floor(np.linspace(amin,amax,5))
+
+plt.subplots_adjust(hspace=0)
+# add colourbars at bottom
+f.subplots_adjust(top=0.95)
+f.subplots_adjust(right=0.9)
+f.subplots_adjust(bottom=0.125)
+cbar_ax1 = f.add_axes([0.15, 0.05, 0.4, 0.03])
+cb=f.colorbar(cs,cax=cbar_ax1, orientation='horizontal')
+cb.set_label('$\Omega$ [NO cm$^{-2}$]')
+cbar_ax2 = f.add_axes([0.675, 0.05, 0.2, 0.03])
+cb2=f.colorbar(cs2,cax=cbar_ax2, orientation='horizontal')
+cb2.set_label('Difference [NO cm$^{-2}$]')
+cb2.set_ticks(ticks)
+plt.savefig('Fig1_test.png')
+print('saved Fig1_test.png')
+plt.close()
+
+## FIG 2: Emissions maps per season
+
+elinear     = [False,True][soil] # for emissions
+soilmin,soilmax = 1e10,6e10 # limits for soil no emissions
+anthmin,anthmax = 1e5,1.5e11 # limits for anthro emiss
+emiss       = [anthrono,soilno][soil]
+emimin, emimax = [[anthmin,anthmax],[soilmin,soilmax]][soil]
+emisstitle = ['$E_{NO}$ (anthro)','$E_{NO}$ (soil)'][soil]
+regression_dot_size=30
+# plot the emissions:
+plt.sca(axes[2])
+pp.createmap(emiss, GC_lats, GC_lons,
+             title=emisstitle, colorbar=True,
+             linear=elinear, vmin=emimin, vmax=emimax,
+             cmapname=reg_cmap, region=region)
+
+
+
+
+# now we must pull out the land data for corellations:
+
+subsets=util.lat_lon_subset(GC_lats,GC_lons,region,data=[GC_tropno2,OM_tropno2_low, emiss])
+lati,loni=subsets['lati'],subsets['loni']
+lats,lons=subsets['lats'],subsets['lons'] # GC_lats[lati],GC_lons[loni]
+[GC_tropno2,OM_tropno2_low, emiss]=subsets['data']
+
+# Lets mask the oceans at this point:
+oceanmask=util.get_mask(GC_tropno2, lats=lats,lons=lons,maskocean=True)
+for arr in [GC_tropno2,OM_tropno2_low, emiss]:
+    arr[oceanmask] = np.NaN
+
+# bias between GC and OMI
+bias= (GC_tropno2 - OM_tropno2_low)
+
+# then corellations
+plt.sca(axes[5])
+colours = emiss
+clabel = 'molec/cm2/s'
+pp.plot_regression(OM_tropno2_low.flatten(),GC_tropno2.flatten(),
+                   limsx=[vmin,vmax], limsy=[vmin,vmax],
+                   logscale=False, legendfont=12, size=regression_dot_size,
+                   showcbar=True, colours=colours.flatten(), clabel=clabel,
+                   cmap=reg_cmap)
+plt.title('GC vs OMI')
+plt.ylabel('GC')
+plt.xlabel('OMI')
+
+#emiss vs GC
+plt.sca(axes[6])
+pp.plot_regression(emiss.flatten(), GC_tropno2.flatten(),
+                   logscale=False, legendfont=12, diag=False,
+                   cmap=reg_cmap, showcbar=False,
+                   colours=colours.flatten(),
+                   size=regression_dot_size)
+
+plt.title('GEOS-Chem $E_{NO}$ vs $\Omega_{NO2}$')
+plt.xlabel(['anthro','soil'][soil])
+plt.ylabel('GC')
+
+#emiss vs bias
+plt.sca(axes[7])
+pp.plot_regression(emiss.flatten(), bias.flatten(),
+                   logscale=False, legendfont=12, diag=False,
+                   cmap=reg_cmap, showcbar=False,
+                   colours=colours.flatten(),
+                   size=regression_dot_size)
+
+plt.title('$E_{NO}$ vs (GC-OMI)')
+plt.xlabel('emissions')
+plt.ylabel('GC-OMI')
+
+emisstype=['anthro','soil'][soil]
+pname='Figs/GC/GC%s_vs_OMNO2_%s_%s.png'%(emisstype,regionlabel,dstr)
+plt.suptitle('GEOS-Chem vs OMINO2d %s'%dstr_lab, fontsize=32)
+plt.savefig(pname)
+print('Saved ',pname)
+plt.close()
+
 
 ###########
 ### Record and time STUJFFS

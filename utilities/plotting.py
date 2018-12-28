@@ -600,12 +600,13 @@ def plot_regression(X,Y, limsx=None, limsy=None, logscale=True,
                      legend=True, legendfont=22,
                      colour='k',linecolour='r', diag=True, oceanmask=None,
                      colours=None,size=None, cmap='rainbow', showcbar=True,
-                     clabel=''):
+                     clabel='', drawregression=True):
     '''
         Regression between X and Y
         Optional to colour by some third list of equal length by setting colours
         Can alternatively split by oceanmask.
     '''
+    sc=None; cb=None
     X=np.array(X)
     Y=np.array(Y)
     nans=np.isnan(X) + np.isnan(Y)
@@ -628,7 +629,8 @@ def plot_regression(X,Y, limsx=None, limsy=None, logscale=True,
                 cb=plt.colorbar(sc)
                 cb.set_label(clabel)
         m,b,r,CI1,CI2=RMA(X[~nans], Y[~nans]) # get regression
-        plt.plot(limsx, m*np.array(limsx)+b,color=linecolour,
+        if drawregression:
+            plt.plot(limsx, m*np.array(limsx)+b,color=linecolour,
                  label='Y = %.1eX + %.2e\n r=%.5f, n=%d'%(m,b,r,np.sum(~nans)))
     else:
         omask=~(nans+~oceanmask ) # true where not nan or land
@@ -647,10 +649,11 @@ def plot_regression(X,Y, limsx=None, limsy=None, logscale=True,
             limsx[0] = -lx0/lm + 100
 
         #plot lobf and label
-        plt.plot( limsx, lm*limsx+lx0, color='k', linewidth=2,
-                label='Land: Y = %.1eX + %.2e; r=%.5f'%(lm,lx0,lr))
-        plt.plot( limsx, m*limsx+x0, color='blue',
-                label='Ocean: Y = %.1eX + %.2e, r=%.5f'%(m,x0,r))
+        if drawregression:
+            plt.plot( limsx, lm*limsx+lx0, color='k', linewidth=2,
+                    label='Land: Y = %.1eX + %.2e; r=%.5f'%(lm,lx0,lr))
+            plt.plot( limsx, m*limsx+x0, color='blue',
+                    label='Ocean: Y = %.1eX + %.2e, r=%.5f'%(m,x0,r))
 
         print('Land: Y = %.5fX + %.2e; r=%.5f'%(lm,lx0,lr))
         print('with CI ranges of slope %2.5f, %2.5f'%(lci1[0][0],lci1[0][1]))
@@ -658,13 +661,15 @@ def plot_regression(X,Y, limsx=None, limsy=None, logscale=True,
         print('min, max land X: %.3e,%.3e'%(np.min(X[lmask]),np.max(X[lmask])) )
         print('min, max land Y: %.3e,%.3e'%(np.min(Y[lmask]),np.max(Y[lmask])) )
 
-    if legend:
+    if legend and drawregression:
         plt.legend(loc=2,scatterpoints=1, fontsize=legendfont,frameon=False)
     if logscale:
         plt.yscale('log'); plt.xscale('log')
     plt.ylim(limsy); plt.xlim(limsx0)
     if diag:
         plt.plot(limsx0,limsx0,'--',color='k',label='1-1') # plot the 1-1 line for comparison
+
+    return sc, cb
 
 def plot_time_series(datetimes,values,
                      ylabel=None,xlabel=None, pname=None, legend=False, title=None,

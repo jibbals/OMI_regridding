@@ -1018,6 +1018,13 @@ def read_omno2d_year(year=2005, d0=None, d1=None, region=None):
             can subset to d0-d1, and/or region
         return no2, dates, lats, lons
     '''
+    subsettime=True
+    if d0 is None:
+        d0=datetime(year,1,1)
+        d1=datetime(year,12,31)
+        subsettime=False
+
+
     # read file for anthro mask:
     path=__dir_anthro__ + 'anthromask_%4d.h5'%year
     assert isfile(path), 'NEED TO RUN make_anthro_mask_file(datetime(%4d,1,1))'%year
@@ -1033,7 +1040,7 @@ def read_omno2d_year(year=2005, d0=None, d1=None, region=None):
 
     # subset to desired time/area
     di = np.ones(len(dates)).astype(bool)
-    if (d0 is not None):
+    if subsettime:
         di=util.date_index(d0,dates,d1) # indices of dates from d0 to dN
     if region is not None:
         subset=util.lat_lon_subset(lats,lons,region=region,data=[no2],has_time_dim=True)
@@ -1041,8 +1048,8 @@ def read_omno2d_year(year=2005, d0=None, d1=None, region=None):
         lats=subset['lats']
         lons=subset['lons']
 
-    print(di, dates, len(di),len(dates))
-    print(type(di),type(no2),no2.shape, type(dates))
+    #print(di, dates, len(di),len(dates))
+    #print(type(di),type(no2),no2.shape, type(dates))
     return np.squeeze(no2[di,:,:]),np.squeeze(dates[di]),lats,lons
 
 

@@ -83,6 +83,18 @@ start1=timeit.default_timer()
 #             soil=True, dstr_lab=None,
 #             map_cmap='PuRd' ,reg_cmap='YlOrRd',dmap_cmap='RdBu_r'):
 
+year=2005
+#first december should be prior year
+seasons = [[datetime(year,1,1),datetime(year,2,28)],
+           [datetime(year,3,1),datetime(year,5,31)],
+           [datetime(year,6,1),datetime(year,8,31)],
+           [datetime(year,9,1),datetime(year,11,30)]]
+
+pname1='Figs/GC/NO_maps_%4d.png'%year
+pname2='Figs/GC/NO_emiss_maps_%4d.png'%year
+pname3='Figs/GC/NO_regressions_%4d.png'%year
+
+
 region=pp.__AUSREGION__
 regionlabel='AUS'
 map_cmap='PuRd'
@@ -95,12 +107,6 @@ dmap_cmap='RdBu_r'
         Fig 3: Plot GC vs OMI, Eanth vs BIAS, Esoil vs BIAS
 '''
 
-
-year=2005
-seasons = [[datetime(2005,1,1),datetime(2005,2,28)],
-           [datetime(2005,3,1),datetime(2005,5,31)],
-           [datetime(2005,6,1),datetime(2005,8,31)],
-           [datetime(2005,9,1),datetime(2005,11,30)]]
 seasonlabels=['Summer (JF)',
               'Autumn (MAM)',
               'Winter (JJA)',
@@ -108,7 +114,7 @@ seasonlabels=['Summer (JF)',
 
 
 # Read omno2d
-OM_tropno2_all, OM_dates_all, OM_lats, OM_lons = fio.read_omno2d_year(year=d0.year)
+OM_tropno2_all, OM_dates_all, OM_lats, OM_lons = fio.read_omno2d_year(year=year)
 
 
 # FIG 1: 4rows 3cols
@@ -129,19 +135,17 @@ anthtitle = 'anthropogenic NO'
 soiltitle = 'soil NO'
 
 # FIG 3: 4 rows, 3 cols
-f3, axes3 = plt.subplots(4,4,figsize=(15,17))
+f3, axes3 = plt.subplots(4,3,figsize=(15,17))
 
 # dot size
 regression_dot_size=30
 # font sizes
 tf, sf, lf  = 26, 22, 20
 
-
-
 # loop over seasons in year
 for i, [[d0,d1], seasonlabel] in enumerate(zip(seasons,seasonlabels)):
     #print(i, d0, d1, seasonlabel)
-    if i ==1 : break
+
     # pull out season subset
     di = util.date_index(d0,OM_dates_all,d1)
     OM_tropno2 = np.copy(OM_tropno2_all[di])
@@ -172,7 +176,7 @@ for i, [[d0,d1], seasonlabel] in enumerate(zip(seasons,seasonlabels)):
              linear=linear, vmin=vmin, vmax=vmax,
                  cmapname=map_cmap, region=region)
     if i == 0:
-        plt.title('GC $\Omega_{NO2}$', fontsize=tf)
+        plt.title('GC $\Omega_{NO_2}$', fontsize=tf)
     plt.ylabel(seasonlabel, fontsize=sf)
 
     # Plot the omi map
@@ -182,7 +186,7 @@ for i, [[d0,d1], seasonlabel] in enumerate(zip(seasons,seasonlabels)):
                  linear=linear, vmin=vmin, vmax=vmax,
                  cmapname=map_cmap, region=region)
     if i == 0:
-        plt.title('OMI $\Omega_{NO2}$',fontsize=tf)
+        plt.title('OMI $\Omega_{NO_2}$',fontsize=tf)
     # Plot differences and corellation
     # first abs diff
     reldiff = False
@@ -239,7 +243,7 @@ for i, [[d0,d1], seasonlabel] in enumerate(zip(seasons,seasonlabels)):
         plt.title(soiltitle, fontsize=tf)
 
 
-    # FIG 3:
+    # FIG 3: GC vs OMI, coloured by soil nox, then anthro and soil vs bias
     # now we must pull out the land data for corellations:
     subsets=util.lat_lon_subset(GC_lats,GC_lons,region,data=[GC_tropno2,OM_tropno2_low, anthrono, soilno])
     lati,loni=subsets['lati'],subsets['loni']
@@ -253,60 +257,63 @@ for i, [[d0,d1], seasonlabel] in enumerate(zip(seasons,seasonlabels)):
 
     # bias between GC and OMI
     bias= (GC_tropno2 - OM_tropno2_low)
-
-    # then corellations
+    colouring = (anthrono + soilno).flatten()
+    clabel='emissions NO'
     # first coloured by anthro, then by soil
     plt.sca(axes3[i,0])
-    anthroclabel = 'anthro NO'
     cs5,cb = pp.plot_regression(OM_tropno2_low.flatten(),GC_tropno2.flatten(),
                        limsx=[vmin,vmax], limsy=[vmin,vmax],
                        logscale=False, legendfont=12, size=regression_dot_size,
-                       showcbar=False, colours=anthrono.flatten(), clabel=anthroclabel,
+                       showcbar=False, colours=colouring, clabel=clabel,
                        cmap=reg_cmap)
-    #if i==0:
-    #    plt.title('GC vs OMI', fontsize=tf)
-    plt.ylabel('GC', fontsize=lf)
+    if i==0:
+        plt.title('$\Omega_{NO_2}$', fontsize=tf)
+    plt.ylabel(seasonlabel+' \n GC', fontsize=lf)
     if i==3:
         plt.xlabel('OMI', fontsize=lf)
 
     # Then show regression with bias
-    plt.sca(axes3[i,1])
-    soilclabel = 'soil NO'
-    cs6, cb = pp.plot_regression(OM_tropno2_low.flatten(),GC_tropno2.flatten(),
-                       limsx=[vmin,vmax], limsy=[vmin,vmax],
-                       logscale=False, legendfont=12, size=regression_dot_size,
-                       showcbar=False, colours=soilno.flatten(), clabel=soilclabel,
-                       cmap=reg_cmap)
+    #plt.sca(axes3[i,1])
+    #soilclabel = 'soil NO'
+    #cs6, cb = pp.plot_regression(OM_tropno2_low.flatten(),GC_tropno2.flatten(),
+    #                   limsx=[vmin,vmax], limsy=[vmin,vmax],
+    #                   logscale=False, legendfont=12, size=regression_dot_size,
+    #                   showcbar=False, colours=soilno.flatten(), clabel=soilclabel,
+    #                   cmap=reg_cmap)
     #if i==0:
     #    plt.title('', fontsize=tf)
-    if i==3:
-        plt.xlabel('OMI', fontsize=lf)
+    #if i==3:
+    #    plt.xlabel('OMI', fontsize=lf)
 
     #emiss vs GC
-    plt.sca(axes3[i,2])
+    plt.sca(axes3[i,1])
     pp.plot_regression(anthrono.flatten(), bias.flatten(),
                        logscale=False, diag=False,
                        legend=False, drawregression=False,
                        cmap=reg_cmap, showcbar=False,
-                       colours=anthrono.flatten(),
+                       colours=colouring,
                        size=regression_dot_size)
     if i == 0:
-        plt.title('anthro')
+        plt.title('anthropogenic', fontsize=tf)
     if i == 3:
-        plt.xlabel('emissions')
-    plt.ylabel('GC-OMI')
+        plt.xlabel('emissions', fontsize=lf)
 
-    plt.sca(axes3[i,3])
+    plt.sca(axes3[i,2])
     pp.plot_regression(soilno.flatten(), bias.flatten(),
                        logscale=False, diag=False,
-                       legend=True, legendfont=12, drawregression=True,
+                       legend=False, legendfont=12, drawregression=False,
                        cmap=reg_cmap, showcbar=False,
-                       colours=soilno.flatten(),
+                       colours=colouring,
                        size=regression_dot_size)
     if i == 0:
-        plt.title('soil')
+        plt.title('soil', fontsize=tf)
     if i == 3:
-        plt.xlabel('emissions')
+        plt.xlabel('emissions', fontsize=lf)
+
+    plt.ylabel('GC - OMI',fontsize=lf)
+    axes3[i,1].yaxis.tick_right()
+    axes3[i,2].yaxis.tick_right()
+    axes3[i,2].yaxis.set_label_position("right")
 
 # FIG 1 Prettify
 # fix up plot spacing and colour bars
@@ -323,8 +330,9 @@ cbar_ax2 = f1.add_axes([0.675, 0.05, 0.2, 0.03])
 cb2=f1.colorbar(cs2,cax=cbar_ax2, orientation='horizontal')
 cb2.set_label('Difference [NO cm$^{-2}$]', fontsize=lf)
 cb2.set_ticks(ticks)
-plt.savefig('Fig1_test.png')
-print('saved Fig1_test.png')
+
+plt.savefig(pname1)
+print('saved ',pname1)
 plt.close(f1)
 
 # FIG 2 PRETTIFY
@@ -337,30 +345,28 @@ f2.subplots_adjust(right=0.9)
 f2.subplots_adjust(bottom=0.125)
 cbar_ax1 = f2.add_axes([0.125, 0.05, 0.35, 0.03])
 cb3=f2.colorbar(cs3,cax=cbar_ax1, orientation='horizontal')
-cb3.set_label('NO cm$^{-2}$ s$^{-1}$', fontsize=lf)
+cb3.set_label('Emission NO cm$^{-2}$ s$^{-1}$', fontsize=lf)
 cbar_ax2 = f2.add_axes([0.525, 0.05, 0.35, 0.03])
 cb4=f2.colorbar(cs4,cax=cbar_ax2, orientation='horizontal')
-cb4.set_label('NO cm$^{-2}$ s$^{-1}$', fontsize=lf)
+cb4.set_label('Emission NO cm$^{-2}$ s$^{-1}$', fontsize=lf)
 #cb2.set_ticks(ticks)
-plt.savefig('Fig2_test.png')
-print('saved Fig2_test.png')
+
+plt.savefig(pname2)
+print('saved ', pname2)
 plt.close(f2)
 
 # FIG 3 PRETTIFY
 plt.sca(axes3[0,0])
 # add colourbars at bottom
 
-f3.subplots_adjust(bottom=0.1)
-cbar_ax1 = f3.add_axes([0.1, 0.05, 0.175, 0.02])
+f3.subplots_adjust(bottom=0.125)
+plt.subplots_adjust(hspace=.05, wspace=.02) # remove space between maps
+cbar_ax1 = f3.add_axes([0.3, 0.05, 0.4, 0.03])
 cb5=f2.colorbar(cs5,cax=cbar_ax1, orientation='horizontal')
-cb5.set_label(anthroclabel, fontsize=lf)
-cbar_ax2 = f3.add_axes([0.3, 0.05, 0.175, 0.02])
-cb6=f2.colorbar(cs6,cax=cbar_ax2, orientation='horizontal')
-cb6.set_label(soilclabel, fontsize=lf)
+cb5.set_label(clabel, fontsize=lf)
 
-pname='Fig3_test.png'
-plt.savefig(pname)
-print('Saved ',pname)
+plt.savefig(pname3)
+print('Saved ',pname3)
 plt.close(f3)
 
 

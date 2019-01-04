@@ -1120,10 +1120,14 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
            'isop'       :(-70,70),
            'O3'         :(-20,20), }
 
-    dlims={'hcho'       :(-1e13,1e13),
-           'OH'         :(-2e10,2e10),
-           'isop'       :(-1e15,1e15),
-           'O3'         :(-1e18,1e18),}
+    dlims={ 'hcho'      :(-1e13,1e13),
+            'hcho_tc'   :(-1e14,1e14),
+            'OH'        :(-2e10,2e10),
+            'OH_tc'     :(-2e11,2e11),
+            'isop'      :(-1e15,1e15),
+            'isop_tc'   :(-1e16,1e16),
+            'O3'        :(-5e15,5e15),
+            'O3_tc'     :(-1e18,1e18),}
 
     vlims={'hcho'       :(1e13, 1e15), # surface (looks good summer 07)
            'hcho_tc'    :(5e14, 5e16), # total column
@@ -1133,10 +1137,11 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
            'isop_tc'    :(1e14, 5e16),
            'O3'         :(1e15, 5e16),
            'O3_tc'      :(5e18, 1e19), }
+    
     ticks ={'hcho_tc'   :[5e14, 1e15, 1e16, 5e16],
             'isop_tc'   :[5e14, 1e15, 1e16, 5e16],
             'O3'        :[1e15,1e16,5e16],
-            'O3_tc'     :[5e18,1e19]}
+            'O3_tc'     :[5e18,6e18,7e18,8e18,9e18,1e19]}
 
     # satellite outputs to compare
     tot_satu=satu.get_total_columns(satkeys)
@@ -1159,7 +1164,7 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
     matplotlib.rcParams["ytick.labelsize"]  = 20        #
 
     for key in satkeys:
-        print(key)
+        print('making plot for ', key)
         # compare surface and troposphere
         # First do total column
 
@@ -1170,7 +1175,7 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
                         vmin=vlims[key+'_tc'][0], vmax=vlims[key+'_tc'][1], # total column has own scale
                         ticks=ticks.get(key+'_tc',None),
                         rmin=rlims[key][0], rmax=rlims[key][1],
-                        amin=dlims[key][0]*10, amax=dlims[key][1]*10, # total column diffs are 10 times higher (summed over vert)
+                        amin=dlims[key+'_tc'][0], amax=dlims[key+'_tc'][1], 
                         linear=False, region=region,
                         suptitle='%s total column (middays %s) [%s]'%(key,dstr,'molec cm$^{-2}$'))
 
@@ -1184,7 +1189,7 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
                         rmin=rlims[key][0], rmax=rlims[key][1],
                         amin=dlims[key][0], amax=dlims[key][1],
                         linear=False, region=region,
-                        suptitle='%s surface (middays %s) [%s]'%(key,dstr,units[key]))
+                        suptitle='%s surface (middays %s) [%s]'%(str.upper(key),dstr,units[key]))
 
     for key in trackeys:
         print(key)
@@ -1200,9 +1205,9 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
                         vmin=vlims[key+'_tc'][0], vmax=vlims[key+'_tc'][1],
                         ticks=ticks.get(key+'_tc',None),
                         rmin=rlims[key][0], rmax=rlims[key][1],
-                        amin=dlims[key][0]*10, amax=dlims[key][1]*10,
+                        amin=dlims[key+'_tc'][0], amax=dlims[key+'_tc'][1],
                         linear=False, region=region,
-                        suptitle='%s Total column (full day avgs %s) [%s]'%(key,dstr,'molec cm$^{-2}$'))
+                        suptitle='%s Total column (daily mean %s) [%s]'%(str.upper(key),dstr,'molec cm$^{-2}$'))
 
         # then do surface molec/cm2
         d2 = surf_tracu[key]
@@ -1217,7 +1222,7 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
                         rmin=rlims[key][0], rmax=rlims[key][1],
                         amin=dlims[key][0], amax=dlims[key][1],
                         linear=False, region=region,
-                        suptitle='%s surface amounts (full day avgs %s) [%s]'%(key,dstr,units[key]))
+                        suptitle='%s surface amounts (daily mean %s) [%s]'%(str.upper(key),dstr,units[key]))
 
 def AMF_comparison_tc_ucx(month=datetime(2005,1,1),max_procs=14):
     '''
@@ -1288,115 +1293,115 @@ def AMF_comparison_tc_ucx(month=datetime(2005,1,1),max_procs=14):
 
     return
 
-def OLD_compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
-    '''
-        Check UCX vs Tropchem
-        set Extra to true to look at E_isop_biog and OH (uses specific output file 20050101
-        set fnames=[tropchem.nc,ucx.nc] outputs to test specific files
-    '''
-    ymstr=date.strftime("%Y%m")
-    region=pp.__GLOBALREGION__
-
-    # Read the netcdf files (output specified for this test)
-    # UCX FILE:
-    #ucx=GC_output(date,UCX=True, fname='UCX_trac_avg_20050101.nc')
-    if fnames is None:
-        ucx=GC_output(date,UCX=True)
-        trp=GC_output(date,UCX=False,monthavg=True)
-    else:
-        trp_fname,ucx_fname=fnames#
-        trp=GC_output(date,UCX=False, monthavg=True, fname=trp_fname)
-        ucx=GC_output(date,UCX=True, fname=ucx_fname)
-
-    lats_all=ucx.lats
-    lons_all=ucx.lons
-
-    all_keys=['hcho','isop','E_isop_bio','OH','O3','NO2']
-    keys=[]
-    for key in all_keys:
-        if hasattr(ucx,key) and hasattr(trp,key): # look at fields in both outputs
-            keys.append(key)
-            print('%s will be compared at surface '%(key))
-    #keys=['hcho','isop']
-    units={ 'hcho'      :'ppbv',        #r'molec cm$^{-2}$',
-            'E_isop_bio':r'atom C cm$^{-2}$ s$^{-1}$',
-            'OH'        :r'molec cm$^{-3}$',
-            'isop'      :r'ppbv',
-            'O3'        :r'ppbv',
-            'NO2'       :r'ppbv',}
-    cbarfmt={}; cbarxtickrot={}
-    rlims={'hcho'       :(-20,20),
-           'E_isop_bio' :(-50,50),
-           'OH'         :(-50,50),
-           'isop'       :(-70,70),
-           'O3'         :(-50,50),
-           'NO2'        :(-50,50),}
-    dlims={'hcho'       :(-.5,.5),
-           'E_isop_bio' :(-1e12,1e12),
-           'OH'         :(-8e5,8e5),
-           'isop'       :(-6,6),
-           'O3'         :(-40,40),
-           'NO2'        :(-100,100),}
-    alims={'hcho'       :(None,None),
-           'E_isop_bio' :(None,None),
-           'OH'         :(1e6,4e6),
-           'isop'       :(None,None),
-           'O3'         :(None,None),
-           'NO2'        :(None,None),}
-    for key in keys:
-        cbarfmt[key]=None; cbarxtickrot[key]=None
-    cbarfmt['OH']="%.1e"; cbarxtickrot['OH']=30
-
-    ucx_data=ucx.get_field(keys=keys,region=region)
-    trp_data=trp.get_field(keys=keys,region=region)
-    lats=ucx_data['lats'];lons=ucx_data['lons']
-
-    print("Region: ",region)
-    for key in keys:
-        print(key)
-        dats=[ucx_data[key], trp_data[key]]
-        for di,dat in enumerate(dats):
-            pre=['UCX  ','trop '][di]
-            print(pre+"%s shape: %s"%(key,str(np.shape(dat))))
-            print("    min/mean/max: %.1e/ %.1e /%.1e"%(np.min(dat),np.mean(dat),np.max(dat)))
-            # Just look at surface from here
-            if len(dat.shape)==3:
-                dat=dat[0]
-                print("    at surface  : %.1e/ %.1e /%.1e"%(np.min(dat),np.mean(dat),np.max(dat)))
-                dats[di]=dat
-
-        # whole tropospheric column
-        #data['tc']  = tc.get_trop_columns(keys=keys)
-        #data['ucx'] = ucx.get_trop_columns(keys=keys)
-
-        # Plot values and differences for each key
-        suffix=[suffix,''][suffix is None]
-        pname='Figs/GC/UCX_vs_trp_glob_%s_%s%s.png'%(trp.dstr,key,suffix)
-        u=dats[0];t=dats[1]
-        amin,amax = alims[key]
-        rmin,rmax = rlims[key]
-        dmin,dmax = dlims[key]
-        args={'region':region,'clabel':units[key], 'vmin':amin, 'vmax':amax,
-              'linear':True, 'cmapname':'PuRd', 'cbarfmt':cbarfmt[key],
-              'cbarxtickrot':cbarxtickrot[key]}
-
-        f,axes=plt.subplots(2,2,figsize=(16,14))
-
-        plt.sca(axes[0,0])
-        pp.createmap(u,lats,lons, title="%s UCX"%key, **args)
-
-        plt.sca(axes[0,1])
-        pp.createmap(t,lats,lons, title="%s tropchem"%key, **args)
-
-        plt.sca(axes[1,0])
-        args['vmin']=dmin; args['vmax']=dmax
-        args['cmapname']='coolwarm'
-        pp.createmap(u-t,lats,lons,title="UCX - tropchem", **args)
-
-        plt.sca(axes[1,1])
-        args['vmin']=rmin; args['vmax']=rmax; args['clabel']='%'
-        pp.createmap((u-t)*100.0/u, lats, lons, title="100*(UCX-tc)/UCX",
-                     suptitle='%s %s %s'%('surface', key, trp.dstr), pname=pname, **args)
+#def OLD_compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
+#    '''
+#        Check UCX vs Tropchem
+#        set Extra to true to look at E_isop_biog and OH (uses specific output file 20050101
+#        set fnames=[tropchem.nc,ucx.nc] outputs to test specific files
+#    '''
+#    ymstr=date.strftime("%Y%m")
+#    region=pp.__GLOBALREGION__
+#
+#    # Read the netcdf files (output specified for this test)
+#    # UCX FILE:
+#    #ucx=GC_output(date,UCX=True, fname='UCX_trac_avg_20050101.nc')
+#    if fnames is None:
+#        ucx=GC_output(date,UCX=True)
+#        trp=GC_output(date,UCX=False,monthavg=True)
+#    else:
+#        trp_fname,ucx_fname=fnames#
+#        trp=GC_output(date,UCX=False, monthavg=True, fname=trp_fname)
+#        ucx=GC_output(date,UCX=True, fname=ucx_fname)
+#
+#    lats_all=ucx.lats
+#    lons_all=ucx.lons
+#
+#    all_keys=['hcho','isop','E_isop_bio','OH','O3','NO2']
+#    keys=[]
+#    for key in all_keys:
+#        if hasattr(ucx,key) and hasattr(trp,key): # look at fields in both outputs
+#            keys.append(key)
+#            print('%s will be compared at surface '%(key))
+#    #keys=['hcho','isop']
+#    units={ 'hcho'      :'ppbv',        #r'molec cm$^{-2}$',
+#            'E_isop_bio':r'atom C cm$^{-2}$ s$^{-1}$',
+#            'OH'        :r'molec cm$^{-3}$',
+#            'isop'      :r'ppbv',
+#            'O3'        :r'ppbv',
+#            'NO2'       :r'ppbv',}
+#    cbarfmt={}; cbarxtickrot={}
+#    rlims={'hcho'       :(-20,20),
+#           'E_isop_bio' :(-50,50),
+#           'OH'         :(-50,50),
+#           'isop'       :(-70,70),
+#           'O3'         :(-50,50),
+#           'NO2'        :(-50,50),}
+#    dlims={'hcho'       :(-.5,.5),
+#           'E_isop_bio' :(-1e12,1e12),
+#           'OH'         :(-8e5,8e5),
+#           'isop'       :(-6,6),
+#           'O3'         :(-40,40),
+#           'NO2'        :(-100,100),}
+#    alims={'hcho'       :(None,None),
+#           'E_isop_bio' :(None,None),
+#           'OH'         :(1e6,4e6),
+#           'isop'       :(None,None),
+#           'O3'         :(None,None),
+#           'NO2'        :(None,None),}
+#    for key in keys:
+#        cbarfmt[key]=None; cbarxtickrot[key]=None
+#    cbarfmt['OH']="%.1e"; cbarxtickrot['OH']=30
+#
+#    ucx_data=ucx.get_field(keys=keys,region=region)
+#    trp_data=trp.get_field(keys=keys,region=region)
+#    lats=ucx_data['lats'];lons=ucx_data['lons']
+#
+#    print("Region: ",region)
+#    for key in keys:
+#        print(key)
+#        dats=[ucx_data[key], trp_data[key]]
+#        for di,dat in enumerate(dats):
+#            pre=['UCX  ','trop '][di]
+#            print(pre+"%s shape: %s"%(key,str(np.shape(dat))))
+#            print("    min/mean/max: %.1e/ %.1e /%.1e"%(np.min(dat),np.mean(dat),np.max(dat)))
+#            # Just look at surface from here
+#            if len(dat.shape)==3:
+#                dat=dat[0]
+#                print("    at surface  : %.1e/ %.1e /%.1e"%(np.min(dat),np.mean(dat),np.max(dat)))
+#                dats[di]=dat
+#
+#        # whole tropospheric column
+#        #data['tc']  = tc.get_trop_columns(keys=keys)
+#        #data['ucx'] = ucx.get_trop_columns(keys=keys)
+#
+#        # Plot values and differences for each key
+#        suffix=[suffix,''][suffix is None]
+#        pname='Figs/GC/UCX_vs_trp_glob_%s_%s%s.png'%(trp.dstr,key,suffix)
+#        u=dats[0];t=dats[1]
+#        amin,amax = alims[key]
+#        rmin,rmax = rlims[key]
+#        dmin,dmax = dlims[key]
+#        args={'region':region,'clabel':units[key], 'vmin':amin, 'vmax':amax,
+#              'linear':True, 'cmapname':'PuRd', 'cbarfmt':cbarfmt[key],
+#              'cbarxtickrot':cbarxtickrot[key]}
+#
+#        f,axes=plt.subplots(2,2,figsize=(16,14))
+#
+#        plt.sca(axes[0,0])
+#        pp.createmap(u,lats,lons, title="%s UCX"%key, **args)
+#
+#        plt.sca(axes[0,1])
+#        pp.createmap(t,lats,lons, title="%s tropchem"%key, **args)
+#
+#        plt.sca(axes[1,0])
+#        args['vmin']=dmin; args['vmax']=dmax
+#        args['cmapname']='coolwarm'
+#        pp.createmap(u-t,lats,lons,title="UCX - tropchem", **args)
+#
+#        plt.sca(axes[1,1])
+#        args['vmin']=rmin; args['vmax']=rmax; args['clabel']='%'
+#        pp.createmap((u-t)*100.0/u, lats, lons, title="100*(UCX-tc)/UCX",
+#                     suptitle='%s %s %s'%('surface', key, trp.dstr), pname=pname, **args)
 
 
 
@@ -1761,13 +1766,13 @@ if __name__=='__main__':
 
     ## tropchem vs UCX plots
     # Look at 2007 summer since I have OH for daily avg files from then.
-    #compare_tc_ucx(datetime(2007,1,1),util.last_day(datetime(2007,2,1)))
+    compare_tc_ucx(datetime(2007,1,1),util.last_day(datetime(2007,2,1)))
 
     # Checking units:
 
     ## Check slope
-    for latlon, label in zip([pp.__cities__['Syd'], pp.__cities__['Mel'], [-16,135]],['Syd','Mel','Nowhere']):
-        model_slope_series(latlon=latlon, loclabel=label)
+    #for latlon, label in zip([pp.__cities__['Syd'], pp.__cities__['Mel'], [-16,135]],['Syd','Mel','Nowhere']):
+    #    model_slope_series(latlon=latlon, loclabel=label)
 
     #Examine_Model_Slope() # unfinished 30/5/18
     #Examine_Model_Slope(use_smear_filter=True) # unfinished 30/5/18

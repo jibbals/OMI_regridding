@@ -48,7 +48,7 @@ tavg_path = {'tropchem':rdir+'geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_t
              'noisop':rdir+'geos5_2x25_tropchem_noisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'UCX':rdir+'UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s',
              'nochem':rdir+'nochem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
-             'new_emissions':rdir+'new_emissions/trac_avg/trac_avg.geos5_2x25_tropchem.%s.bpch',}
+             'new_emissions':rdir+'new_emissions/trac_avg/trac_avg.geos5_2x25_tropchem_altered.%s',}
 
 # GC OUTPUT NAMES:
 __coords__ = ['lev','lon','lat','time']

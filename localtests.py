@@ -91,6 +91,59 @@ print('new emissions tavg read 200501')
 #new_tavg.isop.shape
 #(31, 91, 144, 47)
 
+#def check_old_vs_new_emission_diags(month=datetime(2005,1,1)):
+month=jan0
+    # compare new_emissions hemco output
+d0=datetime(month.year,month.month,1)
+d1=util.last_day(d0)
+
+# old emissions are hourly
+old, oldattrs = GC_fio.read_Hemco_diags(d0,d1, new_emissions=False)
+# new emissions are daily
+new, newattrs = GC_fio.read_Hemco_diags(d0,d1, new_emissions=True)
+
+lats=old['lat']
+lons=old['lon']
+
+old_isop = np.mean(old['ISOP_BIOG'],axis=0) # hourly -> 1 month avg
+new_isop = np.mean(new['ISOP_BIOG'],axis=0) # daily -> 1 month avg
+
+pname=month.strftime('Figs/Emiss/check_old_new_emission_diags_%Y%m.png')
+pp.compare_maps([old_isop,new_isop], [lats,lats],[lons,lons],linear=True,
+                rmin=-400,rmax=400, vmin=0,vmax=0.8e-9, titles=['old','new'],
+                region=pp.__GLOBALREGION__, pname=pname)
+
+# Read whole year and do time series for both
+old, oldattrs = GC_fio.read_Hemco_diags(d0,None, new_emissions=False)
+new, newattrs = GC_fio.read_Hemco_diags(d0,None, new_emissions=True)
+old_isop = old['ISOP_BIOG']
+new_isop = new['ISOP_BIOG']
+old_dates= old['dates']
+new_dates= new['dates']
+
+# pull out regions and compare time series
+r_olds, r_lats, r_lons = util.pull_out_subregions(old_isop,
+                                                 lats, lons,
+                                                 subregions=GMAO.__subregions__)
+r_news, r_lats, r_lons = util.pull_out_subregions(new_isop,
+                                                 lats, lons,
+                                                 subregions=GMAO.__subregions__)
+f,axes = plt.subplots(6, figsize=(14,16), sharex=True, sharey=True)
+for i, [label, color] in enumerate(zip(GMAO.__subregions_labels__, GMAO.__subregions_colors__)):
+    # set current axis
+    plt.sca(axes[i])
+
+    # plot time series for each subregion
+    r_old = np.nanmean(r_olds[i],axis=(1,2)) # hourly regional avg
+    r_new = np.nanmean(r_news[i],axis=(1,2)) # daily
+    pp.plot_time_series(old_dates,r_old, linestyle='--', color=color)
+    pp.plot_time_series(new_dates,r_new,title=label, linestyle='-', color=color)
+
+plt.ylabel('kgC m$^{-2}$ s$^{-1}$')
+pname = 'Figs/new_emiss/E_isop_series_2005.png'
+plt.savefig(pname)
+print('SAVED FIGURE ',pname)
+plt.close(f)
 ###########
 ### Record and time STUJFFS
 ###########

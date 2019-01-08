@@ -609,6 +609,31 @@ def ppbv_to_molecs_per_cm2(ppbv, pedges):
             out[:,x,y] = t*ppbv[:,x,y]
     return out
 
+def pull_out_subregions(data, lats, lons, subregions=GMAO.__subregions__):
+    ''' pull out subregions from data: returns list of data subsets, list of lats, list of lons '''
+
+    has_time_dim = len(np.shape(data)) == 3
+    outdata=[]
+    outlats=[]
+    outlons=[]
+
+    for region in subregions:
+
+        # pull out region:
+        lati,loni = lat_lon_range(lats,lons,region)
+
+        if has_time_dim:
+            sub=data[:,lati,:]
+            sub=sub[:,:,loni]
+        else:
+            sub=data[lati,:]
+            sub=sub[:,loni]
+
+        outdata.append(np.copy(sub))
+        outlats.append(np.copy(lats[lati]))
+        outlons.append(np.copy(lons[loni]))
+    return outdata, outlats, outlons
+
 def regrid_to_higher(data,lats,lons,newlats,newlons,interp='nearest',fill_value=np.NaN):
     '''
         regrid data[lats,lons] to data[newlats,newlnos] using interp method

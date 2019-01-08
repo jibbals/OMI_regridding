@@ -189,15 +189,19 @@ def read_Hemco_diags_hourly(d0,d1=None,month=False,new_emissions=False):
 
     return data,attrs
 
-def read_Hemco_diags(d0,d1=None, month=False,): #new_emissions=False):
+def read_Hemco_diags(d0,d1=None, month=False, new_emissions=False):
     '''
         Read Hemco diag output, one day or month at a time
     '''
+    if d1 is None:
+        d1 = datetime(d0.year,12,31)
     if month:
         d1 = util.last_day(d0)
 
     # maybe want more than 1 year of data
     fpre='Data/GC_Output/geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_'
+    if new_emissions:
+        fpre='Data/GC_Output/new_emissions/diagnostics/emiss_a_'
     ylist=util.list_years(d0,d1)
     # for each day: glob matching files to list
     files=[]
@@ -220,6 +224,7 @@ def read_Hemco_diags(d0,d1=None, month=False,): #new_emissions=False):
     dates = util.datetimes_from_np_datetime64(data['time'])
     # subtract an hour so that index represents following hour rather than prior hour
     dates = np.squeeze([d-timedelta(hours=1) for d in dates])
+
     di = util.date_index(d0, dates, d1)
     #print(di)
 

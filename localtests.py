@@ -55,19 +55,14 @@ region=pp.__AUSREGION__
 ## SETUP STUFFS
 #####
 
-jan0,jan1=datetime(2005,1,1),datetime(2005,1,31)
+jan1,jan31=datetime(2005,1,1),datetime(2005,1,31)
+dec31 = datetime(2005,12,31)
 d0=datetime(2005,1,1)
 d1=datetime(2005,3,31)
-dE=datetime(2007,12,31)
 summer0 = d0,util.last_day(datetime(2005,2,1))
-dstr=d0.strftime('%Y%m%d')
-mstr=d0.strftime('%Y%m')
 latres=0.25
 lonres=0.3125
-dN=datetime(2005,12,31)
-d3=datetime(2005,3,1)
 
-dates=util.list_days(d0,dE,month=False)
 # start timer
 start1=timeit.default_timer()
 
@@ -77,70 +72,74 @@ start1=timeit.default_timer()
 
 #Analyse_E_isop.yearly_megan_cycle()
 
-new_sat = GC_class.GC_sat(day0=jan0,dayN=jan1, run='new_emissions')
-print('new emissions satellite output read 200501')
-#>>> new_sat.hcho.shape
-#(31, 91, 144, 47)
-#>>> new_sat.isop.shape
-#(31, 91, 144, 47)
-
-new_tavg = GC_class.GC_tavg(day0=jan0,dayN=jan1, run='new_emissions')
-print('new emissions tavg read 200501')
+#new_tavg = GC_class.GC_tavg(day0=jan0,dayN=jan1, run='new_emissions')
+#print('new emissions tavg read 200501')
 #new_tavg.hcho.shape
 #(31, 91, 144, 47)
 #new_tavg.isop.shape
 #(31, 91, 144, 47)
 
-#def check_old_vs_new_emission_diags(month=datetime(2005,1,1)):
-month=jan0
-    # compare new_emissions hemco output
-d0=datetime(month.year,month.month,1)
-d1=util.last_day(d0)
+## Read new_emission hcho, ozone, etc...
+new_sat = GC_class.GC_sat(day0=jan1,dayN=jan31, run='new_emissions')
+print('new emissions satellite output read 2005')
 
-# old emissions are hourly
-old, oldattrs = GC_fio.read_Hemco_diags(d0,d1, new_emissions=False)
-# new emissions are daily
-new, newattrs = GC_fio.read_Hemco_diags(d0,d1, new_emissions=True)
+#>>> new_sat.hcho.shape
+#(31, 91, 144, 47)
+#>>> new_sat.isop.shape
+#(31, 91, 144, 47)
+lats=new_sat.lats
+lons=new_sat.lons
+dates=new_sat.dates
 
-lats=old['lat']
-lons=old['lon']
+## read old satellite hcho columns...
+# OMI total columns, PP corrected total columns
+Enew = E_new(jan1, jan31, dkeys=['VCC_OMI','VCC_PP'])
 
-old_isop = np.mean(old['ISOP_BIOG'],axis=0) # hourly -> 1 month avg
-new_isop = np.mean(new['ISOP_BIOG'],axis=0) # daily -> 1 month avg
-
-pname=month.strftime('Figs/Emiss/check_old_new_emission_diags_%Y%m.png')
-pp.compare_maps([old_isop,new_isop], [lats,lats],[lons,lons],linear=True,
-                rmin=-400,rmax=400, vmin=0,vmax=0.8e-9, titles=['old','new'],
-                region=pp.__GLOBALREGION__, pname=pname)
-
-# Read whole year and do time series for both
-old, oldattrs = GC_fio.read_Hemco_diags(d0,None, new_emissions=False)
-new, newattrs = GC_fio.read_Hemco_diags(d0,None, new_emissions=True)
-old_isop = old['ISOP_BIOG']
-new_isop = new['ISOP_BIOG']
-old_dates= old['dates']
-new_dates= new['dates']
+# trop column HCHO
+new_sat_tc  = new_sat.get_total_columns(keys=['hcho','isop'])
+new_hcho_tc = new_sat_tc['hcho']
+vcc_omi     = Enew.VCC_OMI
+vcc_pp      = Enew.VCC_PP
+lats2, lons2= Enew.lats, Enew.lons
+assert np.all(lats == lats2), "lats don't match between runs"
 
 # pull out regions and compare time series
-r_olds, r_lats, r_lons = util.pull_out_subregions(old_isop,
-                                                 lats, lons,
-                                                 subregions=GMAO.__subregions__)
-r_news, r_lats, r_lons = util.pull_out_subregions(new_isop,
-                                                 lats, lons,
-                                                 subregions=GMAO.__subregions__)
-f,axes = plt.subplots(6, figsize=(14,16), sharex=True, sharey=True)
-for i, [label, color] in enumerate(zip(GMAO.__subregions_labels__, GMAO.__subregions_colors__)):
+new_sat_hchos, r_lats, r_lons = util.pull_out_subregions(new_hcho_tc,
+                                                     lats, lons,
+                                                     subregions=pp.__subregions__)
+
+vcc_omis, r_lats2, r_lons2 = util.pull_out_subregions(vcc_omi,
+                                                     lats2, lons2,
+                                                     subregions=pp.__subregions__)
+
+vcc_pps, r_lats3, r_lons3 = util.pull_out_subregions(vcc_pp,
+                                                     lats2, lons2,
+                                                     subregions=pp.__subregions__)
+
+f,axes = plt.subplots(6, figsize=(14,16), sharex=True)
+for i, [label, color] in enumerate(zip(pp.__subregions_labels__, pp.__subregions_colors__)):
     # set current axis
     plt.sca(axes[i])
 
     # plot time series for each subregion
-    r_old = np.nanmean(r_olds[i],axis=(1,2)) # hourly regional avg
-    r_new = np.nanmean(r_news[i],axis=(1,2)) # daily
-    pp.plot_time_series(old_dates,r_old, linestyle='--', color=color)
-    pp.plot_time_series(new_dates,r_new,title=label, linestyle='-', color=color)
+    hcho_new_emiss = np.nanmean(new_sat_hchos[i], axis=(1,2)) # daily?
+    # change hourly into daily time series
+    #r_old = np.array(pd.Series(r_old_hourly,index=old_dates).resample('D').mean())
+    hcho_omi = np.nanmean(vcc_omis[i],axis=(1,2)) # daily
+    hcho_pp  = np.nanmean(vcc_pps[i],axis=(1,2))
 
-plt.ylabel('kgC m$^{-2}$ s$^{-1}$')
-pname = 'Figs/new_emiss/E_isop_series_2005.png'
+    pp.plot_time_series(dates,hcho_new_emiss, label='scaled isoprene', linestyle='-', color=color, linewidth=2)
+    pp.plot_time_series(dates,hcho_omi, label='OMI', linestyle='--', color=color, linewidth=2)
+    pp.plot_time_series(dates,hcho_pp, label='OMI recalculated', linestyle='..', color=color, linewidth=2)
+    plt.title(label,fontsize=20)
+    if i==0:
+        plt.ylabel('HCHO cm$^{-2}$')
+        plt.legend(loc='best')
+
+pname = 'Figs/new_emiss/HCHO_total_columns_2005.png'
+plt.ylabel('HCHO cm$^{-2}$')
+plt.suptitle('Daily mean \Omega_{HCHO}',fontsize=26)
+
 plt.savefig(pname)
 print('SAVED FIGURE ',pname)
 plt.close(f)

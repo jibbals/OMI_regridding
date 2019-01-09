@@ -876,6 +876,20 @@ def reshape_time_lat_lon_lev(data,ntimes,nlats,nlons,nlevs):
 
     return arr
 
+def resample(data,dates, bins='M', **resampleargs):
+    '''
+        Resample time series using pandas
+        bin examples: 'M' = monthly, 'D'= daily, '3T'= 3 minutes, '30S' = 30 seconds,
+        other args:
+            closed='right'  : closed intervals
+            label='left'    : bin labels (default left)
+            loffset='5s'    : bin label offset
+
+    '''
+    series = pd.Series(data,index=dates)
+    return (series.resample(bins, **resampleargs))
+
+
 def set_adjacent_to_true(mask):
     nx,ny=mask.shape
     mask=mask.astype(bool) # zero is false, nonzero is true

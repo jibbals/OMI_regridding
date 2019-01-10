@@ -68,7 +68,7 @@ __other__  = ['PEDGE-$_PSURF',      # pressure at surface of each gridbox (hPa)
               'BXHGHT-$_BXHEIGHT',  # box height (?)
               'BXHGHT-$_AD',        # Air density (kg)
               'BXHGHT-$_AVGW',      # water ??
-              'BXHGHT-$_N(AIR)',    # air density (?)
+              'BXHGHT-$_N(AIR)',    # number density of air (?)
               'DXYP_DXYP',          # gridbox horizontal area (m?)
               'PORL-L=$_LHCHO',     # HCHO loss in mol/cm3/s
               'PORL-L=$_LISO',      # isoprene loss in mol/cm3/s
@@ -76,8 +76,19 @@ __other__  = ['PEDGE-$_PSURF',      # pressure at surface of each gridbox (hPa)
               'TR-PAUSE_TPLEV',    # Added satellite output for ppamf
               'DAO-3D-$_TMPU',      # Temperature field (Kelvin)
               'DAO-FLDS_TS', ]      # Surf Temp (Kelvin)
+
+
 __gc_allkeys__ = __ijavg__ + __emiss__ + __other__
 
+__gc_tropcolumn_keys__ = ['TIME-SER_AIRDEN',    # air density for tracavg output
+                          'PEDGE-$_PSURF',      # pressure at surface of each gridbox (hPa)
+                          'BXHGHT-$_BXHEIGHT',  # box height (?)
+                          'BXHGHT-$_AD',        # Air density (kg)
+                          'BXHGHT-$_AVGW',      # water ??
+                          'BXHGHT-$_N(AIR)',    # number density of air (?)
+                          'DXYP_DXYP',          # gridbox horizontal area (m?)
+                          'TR-PAUSE_TP-LEVEL',  #
+                          'TR-PAUSE_TPLEV',]    # Added satellite output for ppamf
 
 # MAP GC output to nicer names:
 _ija='IJ-AVG-$_'

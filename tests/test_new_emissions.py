@@ -14,6 +14,7 @@ import timeit
 import new_emissions
 from utilities import utilities as util
 from classes.E_new import E_new
+from classes import GC_class
 from utilities import GC_fio
 
 # plotting
@@ -224,6 +225,121 @@ def isop_biog_time_series(d0=datetime(2005,1,1), d1=None):
     print('SAVED FIGURE ',pname)
     plt.close(f)
 
+def hcho_ozone_timeseries(d0,d1):
+    '''
+    '''
+    suptitle_prefix='Daily'
+    dstr = d0.strftime("%Y%m%d_") + d1.strftime("%Y%m%d")
+    satkeys = ['IJ-AVG-$_ISOP', 'IJ-AVG-$_CH2O', 'IJ-AVG-$_NO2',     # NO2 in ppbv
+               'IJ-AVG-$_O3', ] + GC_class.__gc_tropcolumn_keys__
+    new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
+    tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
+    print('GEOS-Chem satellite outputs read 2005')
+    # new_sat.hcho.shape #(31, 91, 144, 47)
+    # new_sat.isop.shape #(31, 91, 144, 47)
+    # trop column HCHO
+    new_sat_tc  = new_sat.get_total_columns(keys=['hcho','isop'])
+    new_hcho_tc = new_sat_tc['hcho']
+    tropchem_sat_tc  = tropchem_sat.get_total_columns(keys=['hcho','isop'])
+    tropchem_hcho_tc = tropchem_sat_tc['hcho']
+
+    # dims for GEOS-Chem outputs
+    lats=new_sat.lats
+    lons=new_sat.lons
+    dates=new_sat.dates
+
+    ## read old satellite hcho columns...
+    # OMI total columns, PP corrected total columns
+    Enew = E_new(d0, d1, dkeys=['VCC_OMI','VCC_PP'])
+
+    # grab total columns
+    vcc_omi     = Enew.VCC_OMI
+    vcc_pp      = Enew.VCC_PP
+    lats2, lons2= Enew.lats, Enew.lons
+    # Enew lats,lons are in high resolution
+
+    # pull out regions and compare time series
+    new_sat_hchos, r_lats, r_lons = util.pull_out_subregions(new_hcho_tc,
+                                                         lats, lons,
+                                                         subregions=pp.__subregions__)
+    tropchem_sat_hchos, r_lats, r_lons = util.pull_out_subregions(tropchem_hcho_tc,
+                                                         lats, lons,
+                                                         subregions=pp.__subregions__)
+
+    vcc_omis, r_lats2, r_lons2 = util.pull_out_subregions(vcc_omi,
+                                                         lats2, lons2,
+                                                         subregions=pp.__subregions__)
+
+    vcc_pps, r_lats3, r_lons3 = util.pull_out_subregions(vcc_pp,
+                                                         lats2, lons2,
+                                                         subregions=pp.__subregions__)
+
+    # for plotting we may want daily, weekly, or monthly averages
+    def baseresample(datain, bins='M'):
+        return pd.Series(datain, index=dates).resample(bins)
+
+    # by default do nothing
+    resample = lambda datain : datain
+    newdates = dates
+    suptitle_prefix = 'Daily'
+
+    if (d1-d0).days > 100: # after 100 days switch to weekly averages
+        suptitle_prefix='Weekly'
+        bins='7D'
+        if (d1-d0).days > 500: # use monthly for > 500 days
+            suptitle_prefix='Monthly'
+            bins='M'
+        resample = lambda datain: np.array(baseresample(datain, bins).mean())
+        newdates = baseresample(np.arange(len(dates)), bins).mean().index.to_pydatetime()
+
+
+    # will be printing mean difference between estimates
+    print('area,   new_emiss hcho,   tropchem hcho,   OMI hcho,       OMI$_{PP}$ hcho')
+
+
+    f,axes = plt.subplots(6, figsize=(14,16), sharex=True, sharey=True)
+    for i, [label, color] in enumerate(zip(pp.__subregions_labels__, pp.__subregions_colors__)):
+        # set current axis
+        plt.sca(axes[i])
+
+        # plot time series for each subregion
+        hcho_new_emiss = np.nanmean(new_sat_hchos[i], axis=(1,2)) # daily
+        hcho_tropchem = np.nanmean(tropchem_sat_hchos[i],axis=(1,2))
+
+        # change hourly into daily time series
+        #r_old = np.array(pd.Series(r_old_hourly,index=old_dates).resample('D').mean())
+        hcho_omi = np.nanmean(vcc_omis[i],axis=(1,2)) # daily
+        hcho_pp  = np.nanmean(vcc_pps[i],axis=(1,2)) # daily
+
+        # resample daily into something else:
+        hcho_new_emiss = resample(hcho_new_emiss)
+        hcho_tropchem = resample(hcho_tropchem)
+        hcho_omi = resample(hcho_omi)
+        hcho_pp = resample(hcho_pp)
+
+
+        pp.plot_time_series(newdates,hcho_new_emiss, label='new_emiss run', linestyle='-.', color=color, linewidth=2)
+        pp.plot_time_series(newdates,hcho_tropchem, label='tropchem run', linestyle='--', color=color, linewidth=2)
+
+        arr = np.array([np.nanmean(hcho_new_emiss), np.nanmean(hcho_tropchem), np.nanmean(hcho_omi), np.nanmean(hcho_pp)])
+        print(label, arr[0], arr[1], arr[2], arr[3])
+        print('   ,', 100*(arr - arr[2])/arr[2]  ) # difference from OMI orig
+        print('   ,', 100*(arr - arr[3])/arr[3]  ) # difference from OMI PP
+
+        pp.plot_time_series(newdates,hcho_omi, dfmt='%Y%m%d', label='OMI', linestyle='-', color=color, linewidth=2)
+        #pp.plot_time_series(newdates,hcho_pp, label='OMI recalculated', linestyle=':', color=color, linewidth=2)
+        plt.title(label,fontsize=20)
+        if i==0:
+            plt.ylabel('HCHO cm$^{-2}$')
+            plt.legend(loc='best')
+
+    pname = 'Figs/new_emiss/HCHO_total_columns_%s.png'%dstr
+    plt.ylabel('HCHO cm$^{-2}$')
+    plt.suptitle('%s mean $\Omega_{HCHO}$'%suptitle_prefix, fontsize=26)
+
+    plt.savefig(pname)
+    print('SAVED FIGURE ',pname)
+    plt.close(f)
 
 if __name__ == '__main__':
 

@@ -611,7 +611,8 @@ def ppbv_to_molecs_per_cm2(ppbv, pedges):
 
 def pull_out_subregions(data, lats, lons, subregions=GMAO.__subregions__):
     ''' pull out subregions from data: returns list of data subsets, list of lats, list of lons '''
-
+    
+    # assume time dim if three dimensions 
     has_time_dim = len(np.shape(data)) == 3
     outdata=[]
     outlats=[]
@@ -621,7 +622,8 @@ def pull_out_subregions(data, lats, lons, subregions=GMAO.__subregions__):
 
         # pull out region:
         lati,loni = lat_lon_range(lats,lons,region)
-
+        
+        # my time dim is always the first one
         if has_time_dim:
             sub=data[:,lati,:]
             sub=sub[:,:,loni]

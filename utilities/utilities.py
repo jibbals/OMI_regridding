@@ -609,10 +609,11 @@ def ppbv_to_molecs_per_cm2(ppbv, pedges):
             out[:,x,y] = t*ppbv[:,x,y]
     return out
 
+
 def pull_out_subregions(data, lats, lons, subregions=GMAO.__subregions__):
     ''' pull out subregions from data: returns list of data subsets, list of lats, list of lons '''
-    
-    # assume time dim if three dimensions 
+
+    # assume time dim if three dimensions
     has_time_dim = len(np.shape(data)) == 3
     outdata=[]
     outlats=[]
@@ -622,7 +623,7 @@ def pull_out_subregions(data, lats, lons, subregions=GMAO.__subregions__):
 
         # pull out region:
         lati,loni = lat_lon_range(lats,lons,region)
-        
+
         # my time dim is always the first one
         if has_time_dim:
             sub=data[:,lati,:]
@@ -891,6 +892,41 @@ def resample(data,dates, bins='M', **resampleargs):
     series = pd.Series(data,index=dates)
     return (series.resample(bins, **resampleargs))
 
+def satellite_mean(data,pixels, spatial=True, temporal=False):
+    '''
+        Take satellite mean and pixel count and get average of all pixels
+            can be spatial and or temporal average
+    '''
+    out = np.copy(data)
+    total = out * pixels
+
+    # only want to average over spatial dimensions
+    has_time_dim = len(out.shape) > 2
+    spatial_dims = [(0,1),(1,2)][has_time_dim]
+    temporal_dims= [None, 0][has_time_dim]
+
+    out[pixels<1] = np.NaN
+
+    # which dims do we want to average over?
+    axes=None
+    # maybe just want spatial average
+    if spatial and (not temporal):
+        axes=spatial_dims
+    # maybe want just temporal
+    elif temporal and (not spatial):
+        assert has_time_dim, 'Averaging temporally array with no time dim'
+        axes=temporal_dims
+    elif (not spatial) and (not temporal):
+        assert False, 'Don\'t call averaging function with all false flags'
+
+
+    # ignore division by nan, or zero
+    with np.errstate(invalid='ignore'):
+        count = np.nansum(pixels,axis=axes)
+        out = np.nansum(total, axis=axes) / count
+        out[np.isinf(out)] = np.NaN
+
+    return out, count
 
 def set_adjacent_to_true(mask):
     nx,ny=mask.shape

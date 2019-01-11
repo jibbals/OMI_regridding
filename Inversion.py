@@ -161,7 +161,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     anthromask,_,masklats,masklons  = fio.get_anthro_mask(day0,dN=dayn, region=region)
     smearmask_lr,smeardates,smearlats,smearlons  = masks.get_smear_mask(day0,dN=dayn, region=region)
     smearmask=np.zeros(firemask.shape, np.int8)
-    
+
     # smearing is at lower resolution than other ones... map using nearest so they can be used together
     for i in range(len(smeardates)):
         smearmask[i] = util.regrid_to_higher(smearmask_lr[i],smearlats,smearlons,masklats,masklons )
@@ -336,6 +336,14 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['VCC_GC']       = VCC_GC_u
     outdata['VCC_PP']       = VCC_PP_u
     outdata['VCC_OMI']      = VCC_OMI_u
+    outattrs['VCC_GC']      = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, unmasked by fires/anthro'}
+    outattrs['VCC_PP']      = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code, unmasked by fires/anthro'}
+    outattrs['VCC_OMI']     = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column, unmasked by fires,anthro'}
+
+    # Save the Vertical columns, as well as units/descriptions
+    outdata['VCC_GC_lr']       = VCC_GC_lr
+    outdata['VCC_PP_lr']       = VCC_PP_lr
+    outdata['VCC_OMI_lr']      = VCC_OMI_lr
     outattrs['VCC_GC']      = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, unmasked by fires/anthro'}
     outattrs['VCC_PP']      = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code, unmasked by fires/anthro'}
     outattrs['VCC_OMI']     = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column, unmasked by fires,anthro'}

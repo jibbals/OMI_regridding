@@ -232,28 +232,29 @@ def hcho_ozone_timeseries(d0,d1):
     dstr = d0.strftime("%Y%m%d_") + d1.strftime("%Y%m%d")
     pname1 = 'Figs/new_emiss/HCHO_total_columns_%s.png'%dstr
     pname2 = 'Figs/new_emiss/O3_trop_columns_%s.png'%dstr
-    
-    satkeys = ['IJ-AVG-$_ISOP', 'IJ-AVG-$_CH2O', 'IJ-AVG-$_NO2',     # NO2 in ppbv
+
+    satkeys = ['IJ-AVG-$_ISOP', 'IJ-AVG-$_CH2O',
+               #'IJ-AVG-$_NO2',     # NO2 in ppbv
                'IJ-AVG-$_O3', ] + GC_class.__gc_tropcolumn_keys__
     new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
     tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
     print('GEOS-Chem satellite outputs read 2005')
     # new_sat.hcho.shape #(31, 91, 144, 47)
     # new_sat.isop.shape #(31, 91, 144, 47)
-    
+
     new_sat_tc  = new_sat.get_total_columns(keys=['hcho'])
     tropchem_sat_tc  = tropchem_sat.get_total_columns(keys=['hcho'])
     # TOTAL column HCHO
     new_hcho_tc = new_sat_tc['hcho']
     tropchem_hcho_tc = tropchem_sat_tc['hcho']
-    
+
     new_sat_tropc  = new_sat.get_trop_columns(keys=['O3'])
     tropchem_sat_tropc  = tropchem_sat.get_trop_columns(keys=['O3'])
     # trop column O3
     new_o3_tropc = new_sat_tropc['O3']
     tropchem_o3_tropc = tropchem_sat_tropc['O3']
-    
-    
+
+
     # dims for GEOS-Chem outputs
     lats=new_sat.lats
     lons=new_sat.lons
@@ -262,7 +263,7 @@ def hcho_ozone_timeseries(d0,d1):
     ## read old satellite hcho columns...
     # OMI total columns, PP corrected total columns
     Enew = E_new(d0, d1, dkeys=['VCC_OMI','VCC_PP'])
-    
+
     # grab total columns
     vcc_omi     = Enew.VCC_OMI
     vcc_pp      = Enew.VCC_PP
@@ -280,11 +281,11 @@ def hcho_ozone_timeseries(d0,d1):
     new_sat_hchos, r_lats, r_lons = util.pull_out_subregions(new_hcho_tc,
                                                          lats, lons,
                                                          subregions=pp.__subregions__)
-    
+
     tropchem_sat_hchos, r_lats, r_lons = util.pull_out_subregions(tropchem_hcho_tc,
                                                          lats, lons,
                                                          subregions=pp.__subregions__)
-    
+
     vcc_omis, r_lats2, r_lons2 = util.pull_out_subregions(vcc_omi,
                                                          lats2, lons2,
                                                          subregions=pp.__subregions__)
@@ -319,20 +320,20 @@ def hcho_ozone_timeseries(d0,d1):
     f1,axes1 = plt.subplots(6, figsize=(14,16), sharex=True, sharey=True)
     f2,axes2 = plt.subplots(6, figsize=(14,16), sharex=True, sharey=True)
     for i, [label, color] in enumerate(zip(pp.__subregions_labels__, pp.__subregions_colors__)):
-        
+
         # plot time series for each subregion
         hcho_new_emiss = np.nanmean(new_sat_hchos[i], axis=(1,2)) # daily
         hcho_tropchem = np.nanmean(tropchem_sat_hchos[i],axis=(1,2))
         o3_new_emiss = np.nanmean(new_sat_o3s[i], axis=(1,2))
         o3_tropchem = np.nanmean(tropchem_sat_o3s[i], axis=(1,2))
-        
-        
+
+
         # change hourly into daily time series
         #r_old = np.array(pd.Series(r_old_hourly,index=old_dates).resample('D').mean())
         hcho_omi = np.nanmean(vcc_omis[i],axis=(1,2)) # daily
         hcho_pp  = np.nanmean(vcc_pps[i],axis=(1,2)) # daily
-        
-        
+
+
         # resample daily into something else:
         hcho_new_emiss = resample(hcho_new_emiss)
         hcho_tropchem = resample(hcho_tropchem)
@@ -340,12 +341,12 @@ def hcho_ozone_timeseries(d0,d1):
         hcho_pp = resample(hcho_pp)
         o3_new_emiss = resample(o3_new_emiss)
         o3_tropchem = resample(o3_tropchem)
-        
+
         arr = np.array([np.nanmean(hcho_new_emiss), np.nanmean(hcho_tropchem), np.nanmean(hcho_omi), np.nanmean(hcho_pp)])
         print(label, arr[0], arr[1], arr[2], arr[3])
         print('   ,', 100*(arr - arr[2])/arr[2]  ) # difference from OMI orig
         print('   ,', 100*(arr - arr[3])/arr[3]  ) # difference from OMI PP
-        
+
         # Fig1: HCHO time series
         plt.sca(axes1[i])
         pp.plot_time_series(newdates,hcho_new_emiss, label='new_emiss run', linestyle='-.', color=color, linewidth=2)
@@ -356,7 +357,7 @@ def hcho_ozone_timeseries(d0,d1):
         if i==0:
             plt.ylabel('HCHO cm$^{-2}$')
             plt.legend(loc='best')
-        
+
         # Fig2: Ozone timeseries
         plt.sca(axes2[i])
         pp.plot_time_series(newdates,o3_new_emiss, label='new_emiss run', linestyle='-.', color=color, linewidth=2)
@@ -376,7 +377,7 @@ def hcho_ozone_timeseries(d0,d1):
     plt.savefig(pname1)
     print('SAVED FIGURE ',pnam1)
     plt.close(f1)
-    
+
     # final touches figure 1
     plt.sca(axes2[i])
     plt.ylabel('O$_3$ cm$^{-2}$')

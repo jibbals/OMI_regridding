@@ -118,7 +118,7 @@ for i in range(vcc_pp.shape[0]):
     vcc_pp_lr[i]    = util.regrid_to_lower(vcc_pp[i],lats2,lons2,lats_lr,lons_lr,pixels=pixels_pp[i])
     pixels_pp_lr[i] = util.regrid_to_lower(pixels_pp[i],lats2,lons2,lats_lr,lons_lr,func=np.nansum)
 
-omi_pp_map  = util.satellite_mean(vcc_pp_lr, pixels_pp_lr, spatial=False, temporal=True)
+omi_pp_map, omi_pp_map_pixels  = util.satellite_mean(vcc_pp_lr, pixels_pp_lr, spatial=False, temporal=True)
 
 # plot some test maps
 vmin=1e15; vmax=1.8e16

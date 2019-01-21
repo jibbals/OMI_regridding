@@ -68,7 +68,7 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-test_new_emissions.hcho_ozone_timeseries(jan1,jan31)
+test_new_emissions.hcho_ozone_timeseries(jan1,dec31)
 
 #Analyse_E_isop.yearly_megan_cycle()
 

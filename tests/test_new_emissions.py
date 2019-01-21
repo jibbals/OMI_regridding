@@ -374,7 +374,7 @@ def hcho_ozone_timeseries(d0,d1):
     plt.suptitle('%s mean $\Omega_{HCHO}$'%suptitle_prefix, fontsize=26)
 
     plt.savefig(pname1)
-    print('SAVED FIGURE ',pnam1)
+    print('SAVED FIGURE ',pname1)
     plt.close(f1)
     
     # final touches figure 1

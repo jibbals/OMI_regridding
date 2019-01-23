@@ -231,7 +231,7 @@ def hcho_ozone_timeseries(d0,d1):
     suptitle_prefix='Daily'
     dstr = d0.strftime("%Y%m%d_") + d1.strftime("%Y%m%d")
     pname1 = 'Figs/new_emiss/HCHO_total_columns_%s.png'%dstr
-    pname2 = 'Figs/new_emiss/O3_trop_columns_%s.png'%dstr
+    pname2 = 'Figs/new_emiss/O3_surface_%s.png'%dstr
 
     satkeys = ['IJ-AVG-$_ISOP', 'IJ-AVG-$_CH2O',
                #'IJ-AVG-$_NO2',     # NO2 in ppbv
@@ -248,11 +248,9 @@ def hcho_ozone_timeseries(d0,d1):
     new_hcho_tc = new_sat_tc['hcho']
     tropchem_hcho_tc = tropchem_sat_tc['hcho']
 
-    new_sat_tropc  = new_sat.get_trop_columns(keys=['O3'])
-    tropchem_sat_tropc  = tropchem_sat.get_trop_columns(keys=['O3'])
-    # trop column O3
-    new_o3_tropc = new_sat_tropc['O3']
-    tropchem_o3_tropc = tropchem_sat_tropc['O3']
+    # Surface O3 in ppb
+    new_o3_surf = new_sat.O3[:,:,:,0]
+    tropchem_o3_surf = tropchem_sat.O3[:,:,:,0]
 
 
     # dims for GEOS-Chem outputs
@@ -271,10 +269,10 @@ def hcho_ozone_timeseries(d0,d1):
     # Enew lats,lons are in high resolution
 
     # pull out regions and compare time series
-    new_sat_o3s, r_lats, r_lons = util.pull_out_subregions(new_o3_tropc,
+    new_sat_o3s, r_lats, r_lons = util.pull_out_subregions(new_o3_surf,
                                                            lats, lons,
                                                            subregions=pp.__subregions__)
-    tropchem_sat_o3s, r_lats, r_lons = util.pull_out_subregions(tropchem_o3_tropc,
+    tropchem_sat_o3s, r_lats, r_lons = util.pull_out_subregions(tropchem_o3_surf,
                                                                 lats, lons,
                                                                 subregions=pp.__subregions__)
 
@@ -314,7 +312,7 @@ def hcho_ozone_timeseries(d0,d1):
 
 
     # will be printing mean difference between estimates
-    print('area,   new_emiss hcho,   tropchem hcho,   OMI hcho,       OMI$_{PP}$ hcho')
+    print('area,   new_emiss hcho,   tropchem hcho,   OMI hcho,       OMI$_{PP}$ hcho, new_emiss O3, tropchem O3')
 
 
     f1,axes1 = plt.subplots(6, figsize=(14,16), sharex=True, sharey=True)
@@ -343,7 +341,7 @@ def hcho_ozone_timeseries(d0,d1):
         o3_tropchem = resample(o3_tropchem)
 
         arr = np.array([np.nanmean(hcho_new_emiss), np.nanmean(hcho_tropchem), np.nanmean(hcho_omi), np.nanmean(hcho_pp)])
-        print(label, arr[0], arr[1], arr[2], arr[3])
+        print(label, arr[0], arr[1], arr[2], arr[3], np.nanmean(o3_new_emiss), np.nanmean(o3_tropchem))
         print('   ,', 100*(arr - arr[2])/arr[2]  ) # difference from OMI orig
         print('   ,', 100*(arr - arr[3])/arr[3]  ) # difference from OMI PP
 
@@ -360,18 +358,19 @@ def hcho_ozone_timeseries(d0,d1):
 
         # Fig2: Ozone timeseries
         plt.sca(axes2[i])
-        pp.plot_time_series(newdates,o3_new_emiss, label='new_emiss run', linestyle='-.', color=color, linewidth=2)
+        pp.plot_time_series(newdates,o3_new_emiss, label='new_emiss run', linestyle=':', color=color, linewidth=2)
         pp.plot_time_series(newdates,o3_tropchem, label='tropchem run', linestyle='--', color=color, linewidth=2)
         #pp.plot_time_series(newdates,hcho_omi, dfmt='%Y%m%d', label='OMI', linestyle='-', color=color, linewidth=2)
         #pp.plot_time_series(newdates,hcho_pp, label='OMI recalculated', linestyle=':', color=color, linewidth=2)
         plt.title(label,fontsize=20)
-        if i==0:
-            plt.ylabel('HCHO cm$^{-2}$')
-            plt.legend(loc='best')
+  
+
 
     # final touches figure 1
-    plt.sca(axes1[i])
-    plt.ylabel('HCHO cm$^{-2}$')
+    plt.legend(loc='best')
+    for ii in [0,i]:
+        plt.sca(axes1[ii])
+        plt.ylabel('HCHO cm$^{-2}$')
     plt.suptitle('%s mean $\Omega_{HCHO}$'%suptitle_prefix, fontsize=26)
 
     plt.savefig(pname1)
@@ -379,16 +378,135 @@ def hcho_ozone_timeseries(d0,d1):
     plt.close(f1)
 
     # final touches figure 1
-    plt.sca(axes2[i])
-    plt.ylabel('O$_3$ cm$^{-2}$')
+    for ii in [0,i]:
+        plt.sca(axes2[ii])
+        plt.ylabel('O$_3$ ppb')
     plt.suptitle('%s mean O$_3$ tropospheric column'%suptitle_prefix, fontsize=26)
 
     plt.savefig(pname2)
     print('SAVED FIGURE ',pname2)
     plt.close(f2)
 
+def spatial_comparisons(d0, d1, dlabel):
+    ''' Compare HCHO, O3, NO columns between runs over Australia averaged over input dates '''
+
+    #dstr = d0.strftime("%Y%m%d")
+    pname1 = 'Figs/new_emiss/HCHO_total_columns_map_%s.png'%dlabel
+    pname2 = 'Figs/new_emiss/O3_surf_map_%s.png'%dlabel
+    pname3 = 'Figs/new_emiss/NO_trop_columns_map_%s.png'%dlabel
+
+    satkeys = ['IJ-AVG-$_ISOP', 'IJ-AVG-$_CH2O',
+               'IJ-AVG-$_NO2',     # NO2 in ppbv
+               'IJ-AVG-$_O3', ] + GC_class.__gc_tropcolumn_keys__
+
+    GCnew = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
+    GCtrop = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
+    print('GEOS-Chem satellite outputs read 2005')
+    lats=GCnew.lats
+    lons=GCnew.lons
+    # new_sat.hcho.shape #(31, 91, 144, 47)
+    # new_sat.isop.shape #(31, 91, 144, 47)
+
+    # TOTAL column HCHO
+    new_hcho  = GCnew.get_total_columns(keys=['hcho'])['hcho']
+    trop_hcho  = GCtrop.get_total_columns(keys=['hcho'])['hcho']
+    # Average temporally
+    new_hcho_map = np.nanmean(new_hcho,axis=0)
+    trop_hcho_map = np.nanmean(trop_hcho,axis=0)
+
+    # surface O3 in ppb
+    new_o3 = GCnew.O3[:,:,:,0]
+    trop_o3 = GCtrop.O3[:,:,:,0]
+    new_o3_map = np.nanmean(new_o3, axis=0)
+    trop_o3_map = np.nanmean(trop_o3, axis=0)
+    
+    print(GCnew.attrs['NO2'])
+    new_NO2 = GCnew.NO2[:,:,:,0]
+    trop_NO2 = GCtrop.NO2[:,:,:,0]
+    new_NO2_map = np.nanmean(new_NO2, axis=0)
+    trop_NO2_map = np.nanmean(trop_NO2, axis=0)
+    
+    
+    ## read old satellite hcho columns...
+    # OMI total columns, PP corrected total columns
+    Enew = E_new(d0, d1, dkeys=['VCC_OMI','VCC_PP','pixels_PP_u']) # unfiltered pixel counts
+
+    # grab total columns
+    vcc_omi     = Enew.VCC_OMI
+    vcc_pp      = Enew.VCC_PP
+    pixels_pp   = Enew.pixels_PP_u
+    lats2, lons2= Enew.lats, Enew.lons
+    lats_lr     = Enew.lats_lr
+    lons_lr     = Enew.lons_lr
+
+    # Get VCC in lower resolution
+    vcc_pp_lr=np.zeros([len(Enew.dates), len(lats_lr), len(lons_lr)])+np.NaN
+    pixels_pp_lr=np.zeros([len(Enew.dates), len(lats_lr), len(lons_lr)])
+    for i in range(vcc_pp.shape[0]):
+        vcc_pp_lr[i]    = util.regrid_to_lower(vcc_pp[i],lats2,lons2,lats_lr,lons_lr,pixels=pixels_pp[i])
+        pixels_pp_lr[i] = util.regrid_to_lower(pixels_pp[i],lats2,lons2,lats_lr,lons_lr,func=np.nansum)
+
+    omi_pp_map, omi_pp_map_pixels  = util.satellite_mean(vcc_pp_lr, pixels_pp_lr, spatial=False, temporal=True)
+
+    # plot some test maps
+    # one plot for hcho trop columns, similar for surface O3, and then for NO
+    # order: hcho, O3, NO
+    vmins = [1e15, 10, 0]
+    vmaxs = [1.8e16, 40, 10]
+    units = ['molec cm$^{-2}$', 'ppb', 'ppb']
+    comparison_plots = [ omi_pp_map, None, None ]
+    comparison_titles= ['OMI recalculated (PP)', '', '']
+    comparison_lats  = [lats_lr, None, None]
+    comparison_lons  = [lons_lr, None, None]
+    first_maps       = [new_hcho_map, new_o3_map, new_NO2_map]
+    second_maps      = [trop_hcho_map, trop_o3_map, trop_NO2_map]
+    pnames = [pname1,pname2,pname3]
+    stitles = ['GEOS-Chem midday $\Omega$ %s'%dlabel,
+                'GEOS-Chem surface ozone %s'%dlabel,
+                'GEOS-Chem surface NO$_2$ %s'%dlabel]
+
+    for i in range(3):
+        vmin=vmins[i]; vmax=vmaxs[i]; unit=units[i]; pname=pnames[i]
+        f=plt.figure(figsize=[14,14])
+
+        plt.subplot(2,2,1)
+        pp.createmap(first_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit)
+        plt.title('scaled run')
+
+        plt.subplot(2,2,2)
+        pp.createmap(second_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit)
+        plt.title('tropchem run')
+        
+        if comparison_plots[i] is not None:
+            plt.subplot(2,2,3)
+            pp.createmap(comparison_plots[i], comparison_lats[i], comparison_lons[i], aus=True, vmin=vmin,vmax=vmax, clabel=unit)
+            plt.title(comparison_titles[i])
+        
+            plt.subplot(2,2,4)
+        else:
+            plt.subplot(2,1,2)
+        # three way regression if possible
+        subsets = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,[first_maps[i],second_maps[i]],has_time_dim=False)
+        X=subsets['data'][0].flatten() # new hcho map
+        Y=subsets['data'][1].flatten() # trop hcho map
+        #Z= scatter coloured by value of OMI PP 
+        plt.scatter(X,Y)
+        plt.plot([vmin,vmax],[vmin,vmax], 'k--')# black dotted 1-1 line
+        plt.xlim(vmin,vmax)
+        plt.ylim(vmin,vmax)
+        plt.title('spatial scatter')
+        plt.xlabel('scaled run [%s]'%unit)
+        plt.ylabel('tropchem run [%s]'%unit)
+        #pp.createmap(new_hcho_map,lats,lons,aus=True,title='scaled run', vmin=vmin,vmax=vmax)
+
+        plt.suptitle(stitles[i])
+        plt.savefig(pname)
+        print('Saved ', pname)
+        plt.close(f)
+    
 if __name__ == '__main__':
 
+    
     print("Testing alpha creation")
 
     start=timeit.default_timer()

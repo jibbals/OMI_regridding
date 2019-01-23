@@ -1098,6 +1098,8 @@ def read_omno2d_year(year=2005, d0=None, d1=None, region=None):
 
 def read_slopes(d0=datetime(2005,1,1),dN=datetime(2012,12,1)):
     '''
+        Monthly slopes are calculated and saved to slopes.h5, 
+            These can be read by this function
     '''
     # keys which can be date subsetted
     dkeys=['ci','ci_sf','n','n_sf','r','r_sf','slope','slope_sf']

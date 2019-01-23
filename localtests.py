@@ -55,8 +55,9 @@ region=pp.__AUSREGION__
 ## SETUP STUFFS
 #####
 
-jan1,jan31=datetime(2005,1,1),datetime(2005,1,31)
-dec31 = datetime(2005,12,31)
+jan1,jan31 = datetime(2005,1,1), datetime(2005,1,31)
+dec1,dec31 = datetime(2005,12,1), datetime(2005,12,31)
+jun1,jun30 = datetime(2005,6,1), datetime(2005,6,30)
 
 latres=0.25
 lonres=0.3125
@@ -72,96 +73,8 @@ start1=timeit.default_timer()
 #test_new_emissions.hcho_ozone_timeseries(jan1,dec31)
 
 # Test maps between old/new runs
-
-d0=jan1; d1=jan31
-dlabel='Jan'
-#dstr = d0.strftime("%Y%m%d")
-pname1 = 'Figs/new_emiss/HCHO_total_columns_map_%s.png'%dlabel
-pname2 = 'Figs/new_emiss/O3_trop_columns_map_%s.png'%dlabel
-
-satkeys = ['IJ-AVG-$_ISOP', 'IJ-AVG-$_CH2O',
-           #'IJ-AVG-$_NO2',     # NO2 in ppbv
-           'IJ-AVG-$_O3', ] + GC_class.__gc_tropcolumn_keys__
-
-GCnew = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
-GCtrop = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
-print('GEOS-Chem satellite outputs read 2005')
-lats=GCnew.lats
-lons=GCnew.lons
-# new_sat.hcho.shape #(31, 91, 144, 47)
-# new_sat.isop.shape #(31, 91, 144, 47)
-
-# TOTAL column HCHO
-new_hcho  = GCnew.get_total_columns(keys=['hcho'])['hcho']
-trop_hcho  = GCtrop.get_total_columns(keys=['hcho'])['hcho']
-# Average temporally
-new_hcho_map = np.nanmean(new_hcho,axis=0)
-trop_hcho_map = np.nanmean(trop_hcho,axis=0)
-
-# trop column O3
-new_o3  = GCnew.get_trop_columns(keys=['O3'])['O3']
-trop_o3 = GCtrop.get_trop_columns(keys=['O3'])['O3']
-new_o3_map = np.nanmean(new_o3,axis=0)
-trop_o3_map = np.nanmean(trop_o3,axis=0)
-
-## read old satellite hcho columns...
-# OMI total columns, PP corrected total columns
-Enew = E_new(d0, d1, dkeys=['VCC_OMI','VCC_PP','pixels_PP_u']) # unfiltered pixel counts
-
-# grab total columns
-vcc_omi     = Enew.VCC_OMI
-vcc_pp      = Enew.VCC_PP
-pixels_pp   = Enew.pixels_PP_u
-lats2, lons2= Enew.lats, Enew.lons
-lats_lr     = Enew.lats_lr
-lons_lr     = Enew.lons_lr
-
-# Get VCC in lower resolution
-vcc_pp_lr=np.zeros([len(Enew.dates), len(lats_lr), len(lons_lr)])+np.NaN
-pixels_pp_lr=np.zeros([len(Enew.dates), len(lats_lr), len(lons_lr)])
-for i in range(vcc_pp.shape[0]):
-    vcc_pp_lr[i]    = util.regrid_to_lower(vcc_pp[i],lats2,lons2,lats_lr,lons_lr,pixels=pixels_pp[i])
-    pixels_pp_lr[i] = util.regrid_to_lower(pixels_pp[i],lats2,lons2,lats_lr,lons_lr,func=np.nansum)
-
-omi_pp_map, omi_pp_map_pixels  = util.satellite_mean(vcc_pp_lr, pixels_pp_lr, spatial=False, temporal=True)
-
-# plot some test maps
-vmin=1e15; vmax=1.8e16
-
-f=plt.figure(figsize=[14,14])
-
-plt.subplot(2,2,1)
-pp.createmap(new_hcho_map,lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel='molec cm$^{-2}$')
-plt.title('scaled run')
-
-plt.subplot(2,2,2)
-pp.createmap(trop_hcho_map,lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel='molec cm$^{-2}$')
-plt.title('tropchem run')
-
-plt.subplot(2,2,3)
-pp.createmap(omi_pp_map, lats_lr, lons_lr,aus=True, vmin=vmin,vmax=vmax, clabel='molec cm$^{-2}$')
-plt.title('OMI recalculated (PP)')
-
-plt.subplot(2,2,4)
-# three way regression if possible
-subsets = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,[new_hcho_map,trop_hcho_map],has_time_dim=False)
-X=subsets['data'][0].flatten() # new hcho map
-Y=subsets['data'][1].flatten() # trop hcho map
-plt.scatter(X,Y)
-plt.plot([1e13,1e18],[1e13,1e18], 'k--')# black dotted 1-1 line
-plt.xlim(vmin,vmax)
-plt.ylim(vmin,vmax)
-plt.title('spatial scatter')
-plt.xlabel('scaled run [molec cm$^{-2}$]')
-plt.ylabel('tropchem run [molec cm$^{-2}$]')
-#pp.createmap(new_hcho_map,lats,lons,aus=True,title='scaled run', vmin=vmin,vmax=vmax)
-
-
-
-plt.suptitle('GEOS-Chem midday $\Omega$ %s %4d'%(dlabel,d0.year))
-plt.savefig('hcho.png')
-print('Saved hcho.png')
-plt.close(f)
+test_new_emissions.spatial_comparisons(jan1,jan31,'Jan05')
+test_new_emissions.spatial_comparisons(jun1,jun30,'Jun05')
 
 ###########
 ### Record and time STUJFFS

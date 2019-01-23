@@ -96,7 +96,7 @@ _bxh='BXHGHT-$_'
 _GC_names_to_nice = { 'time':'time','lev':'press','lat':'lats','lon':'lons',
     # IJ_AVGs: in ppbv, except isop (ppbC)
     _ija+'NO':'NO', _ija+'O3':'O3', _ija+'MVK':'MVK', _ija+'MACR':'MACR',
-    _ija+'ISOPN':'isopn', _ija+'IEPOX':'iepox', _ija+'NO2':'NO2', _ija+'NO3':'NO3',
+    _ija+'ISOPN':'isopn', _ija+'IEPOX':'iepox', _ija+'NO3':'NO3',
     _ija+'NO2':'NO2', _ija+'ISOP':'isop', _ija+'CH2O':'hcho',
     # Biogenic sources:
     'BIOGSRCE_ISOP':'E_isop_bio', # atoms C/cm2/s

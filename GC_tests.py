@@ -1216,15 +1216,15 @@ def biogenic_vs_tavg():
     print('Saved figure ',pname)
 
 
-def yield_and_lifetime(d0=datetime(2005,1,1), dN=datetime(2005,12,31)):
+def hcho_lifetime_from_slope(d0=datetime(2005,1,1), dN=datetime(2005,12,31)):
     '''
         Read midday slope:
-            assume yields = 0.4 and look at area averaged lifetimes
-            Use those lifetimes and monthly area averaged slopes to check yields
-        multi-year avg time series - one for each subregion
+            assume yields range from 0.2 to 0.4 and look at area averaged lifetimes
+        
+        return: multi-year avg time series - one for each subregion
     '''
     # read GEOS-Chem midday slopes
-    pname='Figs/GC/Yield_lifetime_monthly.png'
+    pname='Figs/GC/HCHO_lifetime.png'
     data, attrs = masks.read_smearmask(d0,dN,keys=['slope','smearmasklit'])
     lats=data['lats']
     lons=data['lons']
@@ -1232,76 +1232,64 @@ def yield_and_lifetime(d0=datetime(2005,1,1), dN=datetime(2005,12,31)):
     slope=data['slope']
     mask=data['smearmasklit']
 
-    # use slope = Y/k to get Y assuming tau = 1/k = 2.5hrs,
-    tau_const       = 2.5*3600.  # hours -> seconds
-    Yield_const     = 0.4
-    tau             = slope/Yield_const / 3600. # seconds -> hours
-    tau[mask>0]     = np.NaN
-    tau[tau<0]      = np.NaN
-    Yield           = slope/tau_const # hcho/ atom C
-    Yield[mask>0]   = np.NaN # mask applied
-    Yield[Yield<0]  = np.NaN # remove negatives...
+    yield_min       = 0.2 # minimum expected yield
+    yield_max       = 0.4 # ...
+    Yield_const     = [yield_min, yield_max]
+    tau             = []
+    # remove ocean squares
+    oceanmask       = util.oceanmask(lats,lons)
+    oceanmask       = np.repeat(oceanmask[np.newaxis,:,:], len(dates), axis=0)
+    for i in range(2):
+        tau.append( slope/Yield_const[i] / 3600.) # seconds -> hours
+        tau[i][mask>0]  = np.NaN
+        tau[i][tau[i]<0]   = np.NaN
+        tau[i][oceanmask]  = np.NaN
+    
     slope[mask>0]   = np.NaN # mask applied
     slope[slope<=0]  = np.NaN # remove negatives...
     slope[slope>10000] = np.NaN # extra mask..
 
-    Ylims           = [0,.6]   # yield
-    Yticks          = [0.2, 0.3, 0.4, 0.5]
-    tlims           = [1, 10] # hours
-    tticks          = [1,3,5,7,9]
+    Ylims           = [0,18]   # hours
+    Yticks          = [3,7,11,15]
 
     # Want to look at timeseires and densities in these subregions:
     regions=__subregions__
     colors=__subregions_colors__
     labels=__subregions_labels__
 
-    # remove ocean squares
-    oceanmask       = util.oceanmask(lats,lons)
-    oceanmask       = np.repeat(oceanmask[np.newaxis,:,:], len(dates), axis=0)
-    Yield[oceanmask] = np.NaN
-    tau[oceanmask]  = np.NaN
     # k or tau[oceanmask]    = np.NaN
 
     # multi-year monthly averages
-    myat    = util.multi_year_average_regional(tau,dates,lats,lons,grain='monthly',regions=regions)
-    myaY    = util.multi_year_average_regional(Yield,dates,lats,lons,grain='monthly',regions=regions)
+    myat    = [ util.multi_year_average_regional(taui,dates,lats,lons,grain='monthly',regions=regions) for taui in tau ]
     myaS    = util.multi_year_average_regional(slope,dates,lats,lons,grain='monthly',regions=regions)
-
-    dfY     = myaY['df']
-    dft     = myat['df']
+    
+    # pull out dataframe list (one for each region)
+    dft     = [ myati['df'] for myati in myat ]
     dfS     = myaS['df']
 
     x=range(12)
-    n=len(dfY)
+    n=len(dft[0])
     f,axes = plt.subplots(n,1,figsize=[16,12], sharex=True,sharey=True)
     for i in range(n):
         ax=axes[i]
         plt.sca(ax)
-        meanS       = dfS[i].mean().values.squeeze()
-        uqS         = dfS[i].quantile(0.75).values.squeeze()
-        lqS         = dfS[i].quantile(0.25).values.squeeze()
-        meant       = dft[i].mean().values.squeeze()
-        uqt         = dft[i].quantile(0.75).values.squeeze()
-        lqt         = dft[i].quantile(0.25).values.squeeze()
-
-        meanY       = meanS/(meant * 3600.) # S = Y*t # tau is in hours
-        uqY         = uqS/(meant * 3600.)
-        lqY         = lqS/(meant * 3600.)
-
-        plt.fill_between(x,lqY,uqY, color=colors[i], alpha=0.5)
-        plt.plot(x, meanY, color=colors[i], label='Yield')
+        # two data frame lines to draw
+        print("TEST")
+        print( type(myat[0]['df']), type(myat[0]['df'][0]))
+        meant       = [ dfti[i].mean().values.squeeze() for dfti in dft ]
+        # upper and lower quartiles now based on lower,higher yields
+        uqt         = dft[0][i].quantile(0.75).values.squeeze()
+        lqt         = dft[1][i].quantile(0.25).values.squeeze()
+        
         if i == 2:
-            plt.ylabel('Yield', fontsize=22)
+            plt.ylabel('lifetime [h]', fontsize=22)
 
-        # tau on other axis
-        ax2=ax.twinx()
-        plt.sca(ax2)
-        plt.fill_between(x, lqt,uqt, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
-        plt.plot(x, meant, color=colors[i], linestyle='--')
-        plt.ylim(tlims)
-        plt.yticks(tticks)
-        if i == 2:
-            plt.ylabel('t [hrs] (dashed)', fontsize=22)
+        plt.fill_between(x, lqt,uqt, color=colors[i], alpha=0.5, facecolor=colors[i], linewidth=0)
+        for meantau in meant:
+            plt.plot(x, meantau, color=colors[i], linestyle='-',linewidth=2)
+        plt.ylim(Ylims)
+        plt.yticks(Yticks)
+        plt.title(labels[i], color=colors[i], fontsize=24)
 
         #if i==0:
         #    plt.legend(loc='best')
@@ -1315,8 +1303,8 @@ def yield_and_lifetime(d0=datetime(2005,1,1), dN=datetime(2005,12,31)):
     plt.xticks(x)
     plt.gca().set_xticklabels(['J','F','M','A','M','J','J','A','S','O','N','D'])
     plt.xlabel('month')
-    plt.suptitle('estimated yield and lifetime',fontsize=30)
-    f.subplots_adjust(hspace=0)
+    plt.suptitle('estimated HCHO lifetime',fontsize=30)
+    f.subplots_adjust(hspace=.3)
 
 
     ## save figure
@@ -2043,7 +2031,7 @@ if __name__=='__main__':
     ## Look at HCHO lifetime over Australia
     #
     #hcho_lifetime(2005)
-    #yield_and_lifetime()
+    hcho_lifetime_from_slope()
 
     ## new vs old diagnostics
     #check_old_vs_new_emission_diags()

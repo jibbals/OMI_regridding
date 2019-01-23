@@ -17,7 +17,7 @@ from classes import campaign
 from classes.omhchorp import omhchorp as omrp
 
 # Tests are pulled in from tests/blah.py
-from tests import check_files, test_filters, RSC_tests, test_E_new
+from tests import check_files, test_filters, RSC_tests, test_E_new, test_new_emissions
 
 import numpy as np
 from numpy.ma import MaskedArray as ma
@@ -1739,6 +1739,18 @@ if __name__ == '__main__':
 
 
     #####################
+    ### new emissions tests
+    #####################
+    #print("hcho_ozone_timeseries")
+    # high ram test
+    #start=timeit.default_timer()
+    #test_new_emissions.hcho_ozone_timeseries(datetime(2005,1,1),datetime(2005,12,31))
+    test_new_emissions.spatial_comparisons(datetime(2005,1,1),datetime(2005,2,31), dlabel='Summer_05')
+    #end=timeit.default_timer()
+    #print("TIME: %6.2f minutes for time series analysis"%((end-start)/60.0))
+    
+    
+    #####################
     ### E_new tests
     #####################
 
@@ -1758,6 +1770,7 @@ if __name__ == '__main__':
     #check_files.write_GC_units() # last run: 25/5/18
     # are fires read in and interpolated OK?
     #check_files.test_fires_fio() #
+    #check_files.read_multiple_years()
 
 
     #####################

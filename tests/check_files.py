@@ -136,3 +136,27 @@ def test_fires_fio():
     plt.tight_layout()
     plt.savefig('Figs/AQUA2005001.png')
     plt.close()
+
+def read_multiple_years():
+    '''
+        Test reading of multiple years of data
+    '''
+    
+    jan1_05 = datetime(2005,1,1)
+    dec1_05 = datetime(2005,12,1)
+    dec31_05 = datetime(2005,12,31)
+    jan1_06 = datetime(2006,1,1)
+    dec31_06 = datetime(2006,12,31)
+    
+    # Works for new_emissions, something up with tropchem output!?
+    for run in ['tropchem',]: #['new_emissions','tropchem']:
+        # can read span over 05/06?
+        print("READING: %s run dec05->jan06"%run)
+        tropchem_sat = GC_class.GC_sat(dec31_05,dayN=jan1_06,run=run)
+        print("WORKED: %s run dec05->jan06"%run)
+        # can read multiple years?
+        print("READING: %s run jan05->dec06"%run)
+        tropchem_sat = GC_class.GC_sat(jan1_05,dayN=dec31_06,run=run)
+        print("WORKED: %s run jan05->dec06"%run)
+
+    

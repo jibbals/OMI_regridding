@@ -393,7 +393,7 @@ def spatial_comparisons(d0, d1, dlabel):
     #dstr = d0.strftime("%Y%m%d")
     pname1 = 'Figs/new_emiss/HCHO_total_columns_map_%s.png'%dlabel
     pname2 = 'Figs/new_emiss/O3_surf_map_%s.png'%dlabel
-    pname3 = 'Figs/new_emiss/NO_trop_columns_map_%s.png'%dlabel
+    pname3 = 'Figs/new_emiss/NO_surf_map_%s.png'%dlabel
 
     satkeys = ['IJ-AVG-$_ISOP', 'IJ-AVG-$_CH2O',
                'IJ-AVG-$_NO2',     # NO2 in ppbv
@@ -452,8 +452,9 @@ def spatial_comparisons(d0, d1, dlabel):
     # one plot for hcho trop columns, similar for surface O3, and then for NO
     # order: hcho, O3, NO
     vmins = [1e15, 10, 0]
-    vmaxs = [1.8e16, 40, 10]
+    vmaxs = [1.8e16, 40, 1.8]
     units = ['molec cm$^{-2}$', 'ppb', 'ppb']
+    linears= [False,True,True]
     comparison_plots = [ omi_pp_map, None, None ]
     comparison_titles= ['OMI recalculated (PP)', '', '']
     comparison_lats  = [lats_lr, None, None]
@@ -467,19 +468,20 @@ def spatial_comparisons(d0, d1, dlabel):
 
     for i in range(3):
         vmin=vmins[i]; vmax=vmaxs[i]; unit=units[i]; pname=pnames[i]
+        linear=linears[i]
         f=plt.figure(figsize=[14,14])
 
         plt.subplot(2,2,1)
-        pp.createmap(first_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit)
+        pp.createmap(first_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
         plt.title('scaled run')
 
         plt.subplot(2,2,2)
-        pp.createmap(second_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit)
+        pp.createmap(second_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
         plt.title('tropchem run')
         
         if comparison_plots[i] is not None:
             plt.subplot(2,2,3)
-            pp.createmap(comparison_plots[i], comparison_lats[i], comparison_lons[i], aus=True, vmin=vmin,vmax=vmax, clabel=unit)
+            pp.createmap(comparison_plots[i], comparison_lats[i], comparison_lons[i], aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
             plt.title(comparison_titles[i])
         
             plt.subplot(2,2,4)
@@ -491,10 +493,13 @@ def spatial_comparisons(d0, d1, dlabel):
         Y=subsets['data'][1].flatten() # trop hcho map
         #Z= scatter coloured by value of OMI PP 
         plt.scatter(X,Y)
+        pp.add_regression(X,Y)
+        plt.legend(loc='best',fontsize=18)
+        
         plt.plot([vmin,vmax],[vmin,vmax], 'k--')# black dotted 1-1 line
         plt.xlim(vmin,vmax)
         plt.ylim(vmin,vmax)
-        plt.title('spatial scatter')
+        plt.title('Surface O$_3$')
         plt.xlabel('scaled run [%s]'%unit)
         plt.ylabel('tropchem run [%s]'%unit)
         #pp.createmap(new_hcho_map,lats,lons,aus=True,title='scaled run', vmin=vmin,vmax=vmax)

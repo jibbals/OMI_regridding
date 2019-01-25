@@ -148,6 +148,10 @@ def read_multiple_years():
     jan1_06 = datetime(2006,1,1)
     dec31_06 = datetime(2006,12,31)
     
+    sat1 = GC_class.GC_sat(dec1_05,dayN=None,run='tropchem')
+    sat2 = GC_class.GC_sat(jan1_06,dayN=None,run='tropchem')
+    print(sat1.attrs)
+    print(sat2.attrs)
     # Works for new_emissions, something up with tropchem output!?
     for run in ['tropchem',]: #['new_emissions','tropchem']:
         # can read span over 05/06?
@@ -160,3 +164,5 @@ def read_multiple_years():
         print("WORKED: %s run jan05->dec06"%run)
 
     
+if __name__ == '__main__':
+    read_multiple_years()

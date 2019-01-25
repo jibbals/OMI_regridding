@@ -140,7 +140,16 @@ class GC_base:
         '''
         self.ntimes=1
         if 'time' in data:
-            self.ntimes=len(data['time'])
+            if isinstance(data['time'], list):
+                self.ntimes=len(data['time'])
+            elif isinstance(data['time'], np.ndarray):
+                self.ntimes = data['time'].size
+            if __VERBOSE__:
+                print( "CHECK data['time']:")
+                print(type(data['time']))
+                print(np.shape(data['time']))
+                print(data['time'])
+            
         self.nlats=91
         self.nlons=144
         self.nlevs=nlevs
@@ -581,12 +590,11 @@ class GC_sat(GC_base):
         data,attrs = GC_fio.read_bpch(paths,keys=keys)
 
         # may need to handle missing time dim...
-        if not 'time' in data:
-            #tmp=data['IJ-AVG-$_CH2O']
-            times=util.datetimes_from_np_datetime64(dates,reverse=True)
-
-            data['time']=np.array(times)
-            attrs['time']={'desc':'Overpass date (np.datetime64)'}
+        #if not 'time' in data:
+        #tmp=data['IJ-AVG-$_CH2O']
+        times=util.datetimes_from_np_datetime64(dates,reverse=True)
+        data['time']=np.array(times)
+        attrs['time']={'desc':'Overpass date (np.datetime64)'}
 
         attrs['init_date']=day0
         super(GC_sat,self).__init__(data,attrs,nlevs=nlevs)

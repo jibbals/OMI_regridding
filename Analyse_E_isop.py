@@ -373,7 +373,7 @@ def Emissions_weight():
     Enew.conversion_to_kg
 
 
-def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2007,12,31),
+def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2012,12,31),
                            etype='pp', lowres=True, showmaps=False,
                            force_monthly=True, force_monthly_func='median'):
     '''
@@ -383,7 +383,7 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2007,12,31),
 
         currently can't compare high-res E_new to low res E_MEGAN
 
-        Plot:    MAP ENEW    |    MAP MEGAN
+        Plot:    MAP apriori    |    MAP apostiori
                  time series |    time series
                  differences one row per region
     '''
@@ -410,16 +410,16 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2007,12,31),
     subzones=pp.__subregions__
     colors=pp.__subregions_colors__
     labels=pp.__subregions_labels__
-    axs,series,series2,dates=pp.subzones(E,dates,lats,lons, comparison=Emeg, linear=True,
+    axs,series,series2,dates=pp.subzones(Emeg,dates,lats,lons, comparison=E, linear=True,
                                          vmin=vmin, vmax=vmax, maskoceans=True,
                                          mapvmin=0, mapvmax=5e12,
                                          labelcities=False,labels=labels,
                                          subzones=subzones,colors=colors,
                                          showmaps=showmaps,
                                          force_monthly=force_monthly, force_monthly_func=force_monthly_func,
-                                         title='E$_{OMI}$', comparisontitle='E$_{GC}$')
-    axs[0].set_title('E$_{OMI}$',fontsize=30)
-    axs[1].set_title('E$_{GC}$',fontsize=30)
+                                         title='a priori', comparisontitle='a postiori')
+    axs[0].set_title('a priori',fontsize=28)
+    axs[1].set_title('a postiori',fontsize=28)
     axs[0].set_ylabel('molec cm$^{-2}$ s$^{-1}$')
 
     # add row at bottom for differences between Enew and Emeg
@@ -441,13 +441,13 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2007,12,31),
         # plot megan -enew
         lw=[1,3][i==0] # wider black line
         absdif = series[i]-series2[i]
-        plt.plot_date(dates, -1*absdif, fmt='-', color=colors[i], linewidth=lw)
+        plt.plot_date(dates, absdif, fmt='-', color=colors[i], linewidth=lw)
         #reldif = 100*(series[i]-series2[i]) / series2[i]
         #plt.plot_date(dates, reldif, fmt='-', color=colors[i], linewidth=lw)
 
     plt.ylim([-0.3e13, 1e13])
     plt.ylabel('molec cm$^{-2}$ s$^{-1}$')
-    plt.title('(E$_{GC}$-E$_{OMI}$)')
+    plt.title('difference')
     plt.plot_date([dates[0],dates[-1]],[0,0],'--k')
 
     f.autofmt_xdate()
@@ -1199,7 +1199,7 @@ if __name__=='__main__':
     ## Plot megan daily cycle vs top-down emissions in several zones
     #yearly_megan_cycle(d0,de)
     # yearly cycle vs campaigns
-    yearly_cycle_vs_campaigns()
+    #yearly_cycle_vs_campaigns()
 
     ## Plot MEGAN vs E_new (key)
     ## compare megan to a top down estimate, both spatially and temporally
@@ -1215,7 +1215,12 @@ if __name__=='__main__':
     ## In isop chapter results
     ## Ran 7/11/18
     with np.warnings.catch_warnings():
+        # run for one year using daily values:
+        E_regional_time_series(d0,dn,force_monthly=False)
+        
+        # Run for all years, monthly medians for time series
         E_regional_time_series()
+        
         #np.warnings.filterwarnings('ignore')
         #for etype in ['gc','omi','pp']:
             #E_regional_multiyear(d0=d0,dn=de, etype=etype)

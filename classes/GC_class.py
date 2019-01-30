@@ -58,7 +58,7 @@ __ijavg__  = ['IJ-AVG-$_ISOP',
               'IJ-AVG-$_O3',        # O3 in ppbv
               'TIME-SER_AIRDEN',    # Named differently in satellite output
               'CHEM-L=$_OH',]       # OH concentrations?
-__emiss__  = ['BIOGSRCE_ISOP',      # biogenic source of isoprene () []
+__emiss__  = [#'BIOGSRCE_ISOP',      # biogenic source of isoprene () []
               'BIOBSRCE_CH20',      # biomass burning hcho source () []
               'ANTHSRCE_NO',        # anthro source of NO (molec/cm2/s) [t,lat,lon,1]
               'NO-SOIL_NO',         # soil emissions of NO (molec/cm2/s) [t,lat,lon,1]
@@ -585,18 +585,23 @@ class GC_sat(GC_base):
         dates=util.list_days(day0,dayN)
         dstrs=util.list_days_strings(day0,dayN)
         paths= [ sat_path[run]%dstr for dstr in dstrs ]
-
-        # read data/attrs and initialise class:
-        data,attrs = GC_fio.read_bpch(paths,keys=keys)
-
-        # may need to handle missing time dim...
-        #if not 'time' in data:
-        #tmp=data['IJ-AVG-$_CH2O']
+        
         times=util.datetimes_from_np_datetime64(dates,reverse=True)
         data['time']=np.array(times)
         attrs['time']={'desc':'Overpass date (np.datetime64)'}
 
         attrs['init_date']=day0
+        
+        # need to handle reading of multiple years specially
+        years=util.list_years(day0,dayN)
+        if len(years) >1:
+            # read data and attrs from bigger file created specially for this:
+            data, attrs = GC_fio.read_overpass(day0,dayN,keys=keys)
+        else:
+            # read data/attrs and initialise class:
+            data,attrs = GC_fio.read_bpch(paths,keys=keys)
+
+        # may need to handle missing time dim...
         super(GC_sat,self).__init__(data,attrs,nlevs=nlevs)
 
         # fix dates:

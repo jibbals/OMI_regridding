@@ -340,10 +340,12 @@ def hcho_ozone_timeseries(d0,d1):
         o3_new_emiss = resample(o3_new_emiss)
         o3_tropchem = resample(o3_tropchem)
 
-        arr = np.array([np.nanmean(hcho_new_emiss), np.nanmean(hcho_tropchem), np.nanmean(hcho_omi), np.nanmean(hcho_pp)])
-        print(label, arr[0], arr[1], arr[2], arr[3], np.nanmean(o3_new_emiss), np.nanmean(o3_tropchem))
-        print('   ,', 100*(arr - arr[2])/arr[2]  ) # difference from OMI orig
-        print('   ,', 100*(arr - arr[3])/arr[3]  ) # difference from OMI PP
+        arr1 = np.array([np.nanmean(hcho_new_emiss), np.nanmean(hcho_tropchem), np.nanmean(hcho_omi), np.nanmean(hcho_pp)])
+        print(label, arr1[0], arr1[1], arr1[2], arr1[3])
+        print('   ,', 100*(arr1 - arr1[2])/arr1[2], 'difference from OMI orig')
+        print('   ,', 100*(arr1 - arr1[3])/arr1[3], ' difference from OMI PP')
+        
+        print( 'Ozone: new, old, rel-diff', np.nanmean(o3_new_emiss), np.nanmean(o3_tropchem), (np.nanmean(o3_new_emiss)-np.nanmean(o3_tropchem))*100/np.nanmean(o3_tropchem))
 
         # Fig1: HCHO time series
         plt.sca(axes1[i])
@@ -459,8 +461,10 @@ def spatial_comparisons(d0, d1, dlabel):
     comparison_titles= ['OMI recalculated (PP)', '', '']
     comparison_lats  = [lats_lr, None, None]
     comparison_lons  = [lons_lr, None, None]
-    first_maps       = [new_hcho_map, new_o3_map, new_NO2_map]
-    second_maps      = [trop_hcho_map, trop_o3_map, trop_NO2_map]
+    first_maps      = [trop_hcho_map, trop_o3_map, trop_NO2_map]
+    first_title     ='tropchem run' 
+    second_maps       = [new_hcho_map, new_o3_map, new_NO2_map]
+    seecond_title   = 'scaled run'
     pnames = [pname1,pname2,pname3]
     stitles = ['GEOS-Chem midday $\Omega$ %s'%dlabel,
                 'GEOS-Chem surface ozone %s'%dlabel,
@@ -473,11 +477,11 @@ def spatial_comparisons(d0, d1, dlabel):
 
         plt.subplot(2,2,1)
         pp.createmap(first_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
-        plt.title('scaled run')
+        plt.title(first_title)
 
         plt.subplot(2,2,2)
         pp.createmap(second_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
-        plt.title('tropchem run')
+        plt.title(second_title)
         
         if comparison_plots[i] is not None:
             plt.subplot(2,2,3)
@@ -500,8 +504,8 @@ def spatial_comparisons(d0, d1, dlabel):
         plt.xlim(vmin,vmax)
         plt.ylim(vmin,vmax)
         plt.title('Surface O$_3$')
-        plt.xlabel('scaled run [%s]'%unit)
-        plt.ylabel('tropchem run [%s]'%unit)
+        plt.ylabel('scaled run [%s]'%unit)
+        plt.xlabel('tropchem run [%s]'%unit)
         #pp.createmap(new_hcho_map,lats,lons,aus=True,title='scaled run', vmin=vmin,vmax=vmax)
 
         plt.suptitle(stitles[i])

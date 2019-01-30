@@ -150,6 +150,81 @@ def read_bpch(path,keys):
     attrs['modification_times']={'desc':'When was file last modified'}
     return data,attrs
 
+def make_overpass_output_files():
+    '''
+        Read GEOS-Chem satellite output for tropchem and new_emissions runs
+            create one he5 with all the data from 2005-201305
+    '''
+    #for folder in 
+    # match all files with YYYYMM[DD] tag
+    #folder=['geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog',
+    #        'new_emissions/diagnostics/emiss_a'][new_emissions]
+    keys_to_keep=[  'IJ-AVG-$NO', #    ppbv   144  91  47
+                    'IJ-AVG-$O3', #    ppbv   144  91  47
+   3 : IJ-AVG-$   20     ISOP      6            ppbC 175536.25 2005011000  144  91  47
+   4 : IJ-AVG-$   20     CH2O     20            ppbv 175536.25 2005011000  144  91  47
+   5 : IJ-AVG-$   20      NO2     64            ppbv 175536.25 2005011000  144  91  47
+   6 :  PEDGE-$   20    PSURF  10001             hPa 175536.25 2005011000  144  91  47
+   7 : DAO-FLDS   20    PARDF  11020            W/m2 175536.25 2005011000  144  91  47
+   8 : DAO-FLDS   20    PARDR  11021            W/m2 175536.25 2005011000  144  91  47
+   9 : DAO-FLDS   20       TS  11005               K 175536.25 2005011000  144  91  47
+  10 : DAO-3D-$   20     TMPU  12003               K 175536.25 2005011000  144  91  47
+  11 : OD-MAP-$   20    OPSO4  14006        unitless 175536.25 2005011000  144  91  47
+  12 : OD-MAP-$   20     OPBC  14009        unitless 175536.25 2005011000  144  91  47
+  13 : OD-MAP-$   20     OPOC  14012        unitless 175536.25 2005011000  144  91  47
+  14 : OD-MAP-$   20    OPSSa  14015        unitless 175536.25 2005011000  144  91  47
+  15 : OD-MAP-$   20    OPSSc  14018        unitless 175536.25 2005011000  144  91  47
+  16 : OD-MAP-$   20      OPD  14004        unitless 175536.25 2005011000  144  91  47
+  17 : OD-MAP-$   20     OPD1  14021        unitless 175536.25 2005011000  144  91  47
+  18 : OD-MAP-$   20     OPD2  14022        unitless 175536.25 2005011000  144  91  47
+  19 : OD-MAP-$   20     OPD3  14023        unitless 175536.25 2005011000  144  91  47
+  20 : OD-MAP-$   20     OPD4  14024        unitless 175536.25 2005011000  144  91  47
+  21 : OD-MAP-$   20     OPD5  14025        unitless 175536.25 2005011000  144  91  47
+  22 : OD-MAP-$   20     OPD6  14026        unitless 175536.25 2005011000  144  91  47
+  23 : OD-MAP-$   20     OPD7  14027        unitless 175536.25 2005011000  144  91  47
+  24 : CHEM-L=$   20       OH  16001       molec/cm3 175536.25 2005011000  144  91  47
+  25 : TIME-SER   20           19002       UNDEFINED 175536.25 2005011000  144  91  47
+  26 : TIME-SER   20           19007       molec/cm3 175536.25 2005011000  144  91  47
+  27 : TIME-SER   20           19009           m2/m2 175536.25 2005011000  144  91  47
+  28 : BIOGSRCE   20     ISOP  21001     atomC/cm2/s 175536.25 2005011000  144  91  47
+  29 : BXHGHT-$   20 BXHEIGHT  24001               m 175536.25 2005011000  144  91  47
+  30 : TR-PAUSE   20           26015           level 175536.25 2005011000  144  91  47
+    bpch = 'new_emissions/diagnostics/satellite_output/ts_satellite_altered.%s.bpch'
+    fpre='Data/GC_Output/%s.'%bpch
+    # FOR TESTING JUST DO 2005,2006
+    years=util.list_years(datetime(2005,1,1),datetime(2006,2,2))
+    yearly_data=[]
+    for year in years:
+        d0=datetime(year.year,1,1)
+        d1=datetime(year.year,12,31)
+        if year.year==2013:
+            d1=datetime(2013,5,31) # special case in 2013
+        dlist=util.list_days(d0,d1)
+        
+        # file names have date strings in name
+        files=[]
+        for day in dlist:
+            fend=day.strftime("%Y%m%d")
+            files.extend(glob(fpre%fend))
+
+        files.sort() # make sure they're sorted or the data gets read in poorly
+    
+        print('check overpass files being read (show 1 in 24):', files[::24])
+        
+        # now read the data from all those files
+        with xarray.open_mfdataset(files) as ds:
+            data,attrs=dataset_to_dicts(ds,['ISOP_BIOG'])
+
+    mod_times=[]
+    for p in files:
+        mod_times.append(time.ctime(os.path.getmtime(p)))
+    data['modification_times']=np.array(mod_times)
+    attrs['modification_times']={'desc':'When was file last modified'}
+
+    return data,attrs
+
+
+
 def read_Hemco_diags_hourly(d0,d1=None,month=False,new_emissions=False):
     '''
         Read Hemco diag output, one day or month at a time

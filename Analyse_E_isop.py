@@ -24,7 +24,7 @@ from PIL import Image # paste together some plots
 # local modules
 import utilities.utilities as util
 import utilities.plotting as pp
-from utilities import GMAO
+from utilities import GMAO, JesseRegression
 #from utilities import fio
 from classes import GC_class, campaign # GC trac_avg class
 from classes.omhchorp import omhchorp # OMI product class
@@ -460,15 +460,10 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2012,12,31),
 def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
                          etype='pp', lowres=True):
     '''
-    Plot the time series of E_new, compare against MEGAN, using multi-year averages monthly averages and std's at midday
-    Look at E_OMI, E_GC, and E_PP
-    Averaged within some regions
+    Plot the time series of E_new, compare against MEGAN, using multi-year monthly average and IQR
+    megan is apriori, postiori is E_PP or other depending on etype argument
+    Averaged within subregions
 
-    currently can't compare high-res E_new to low res E_MEGAN
-
-    Plot:    MAP ENEW    |    MAP MEGAN
-             time series |    time series
-             differences one row per region
     '''
     # Low res or not changes plotname and other stuff
     lrstr=['','_lr'][lowres]
@@ -511,10 +506,10 @@ def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
         uqmeg       = dfEmeg[i].quantile(0.75).values.squeeze()
         lqmeg       = dfEmeg[i].quantile(0.25).values.squeeze()
 
-        plt.fill_between(x,lq,uq, color=colors[i], alpha=0.5)
-        plt.plot(x, mean, color=colors[i], label='top-down')
+        plt.fill_between(x,lq,uq, color=colors[i], alpha=0.4)
+        plt.plot(x, mean, color=colors[i], label='a postiori', linewidth=3)
         plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
-        plt.plot(x, meanmeg, color=colors[i], linestyle='--', label='MEGAN')
+        plt.plot(x, meanmeg, color=colors[i], linestyle='--', label='a priori',linewidth=3)
         plt.ylabel(labels[i], color=colors[i], fontsize=24)
         if i==0:
             plt.legend(loc='best')
@@ -525,8 +520,8 @@ def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
     plt.xlim([-0.5,11.5])
     plt.xticks(x)
     plt.gca().set_xticklabels(['J','F','M','A','M','J','J','A','S','O','N','D'])
-    plt.xlabel('month')
-    plt.suptitle('E$_{GC}$ vs E$_{OMI}$; mean and IQR',fontsize=30)
+    plt.xlabel('month', fontsize=24)
+    plt.suptitle('a priori vs a postiori; mean and IQR\n [molec cm$^{-2}$ s$^{-1}$]',fontsize=30)
     f.subplots_adjust(hspace=0)
 
 
@@ -540,6 +535,7 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
     '''
 
     ## Read Emegan and Enew into dataframe for a region and season
+    # a priori and a postiori
     Enew=E_new(d0,dE, dkeys=['E_MEGAN','E_PP_lr'])
     lats,lons=Enew.lats_lr,Enew.lons_lr
     Em=Enew.E_MEGAN
@@ -590,19 +586,21 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
         # lets put summer data into a dataframe for easy plotting
         subdata=np.array([Emsub.flatten(), Eosub.flatten()]).T
         subdata_m=np.array([Emsub_m.flatten(), Eosub_m.flatten()]).T
-        slope,intercept,reg,ci1,ci2 = RMA(subdata_m[:,1],subdata_m[:,0])
+        slope,intercept,reg,ci1,ci2 = JesseRegression.RMA(subdata_m[:,1],subdata_m[:,0])
         legend = "y={0:.1f}x+{1:.1e}: r={2:.2f}".format(slope,intercept,reg)
 
-        df = pd.DataFrame(data=subdata, columns=['MEGAN','OMI'])
-        df_m = pd.DataFrame(data=subdata_m, columns=['MEGAN','OMI'])
+        df = pd.DataFrame(data=subdata, columns=['a priori','a postiori'])
+        df_m = pd.DataFrame(data=subdata_m, columns=['a priori','a postiori'])
 
         plt.figure(figsize=[15,15])
         with sns.axes_style('white'):
-            g = sns.jointplot("OMI", "MEGAN", df, kind='hex',#kind='reg')
+            g = sns.jointplot("a postiori", "a priori", df, kind='hex',#kind='reg')
                               dropna=True, xlim=[0,xmax], ylim=[0,ymax],
                               color=color,)
-            # halve the x axis limit
-            #g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1]/2.0)
+            # Add units as inset text
+            plt.gca().annotate('molec cm$^{-2}$ s$^{-1}$', xy=(.75,.05))
+            # make sure minimum value on axes is zero
+            #g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1])
         plt.suptitle(label,fontsize=20)
         pname1.append('%s_summer_daily.png'%label)
         plt.savefig(pname1[-1])
@@ -611,14 +609,17 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
 
         plt.figure(figsize=[15,15])
         with sns.axes_style('white'):
-            g = sns.jointplot("OMI", "MEGAN", df_m, kind='reg',
+            g = sns.jointplot("a postiori", "a priori", df_m, kind='reg',
                               dropna=True, #xlim=[0,xmax], ylim=[0,ymax],
                               color=color,
                               label=legend,
                               )
-            g.ax_joint.legend(handlelength=0, handletextpad=0, frameon=False,)
-
-
+            # make sure minimum value on axes is zero
+            g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1])
+            g.ax_marg_y.set_ylim(0,g.ax_marg_y.get_ylim()[1])
+            g.ax_joint.legend(handlelength=0, handletextpad=0, frameon=False, numpoints=0)
+            # Annotate the units
+            plt.gca().annotate('molec cm$^{-2}$ s$^{-1}$', xy=(.75,.05))
             # halve the x axis limit
             #g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1]/2.0)
         plt.suptitle(label,fontsize=20)
@@ -1190,7 +1191,7 @@ if __name__=='__main__':
     d1=datetime(2005,1,31)
     dn=datetime(2005,12,31)
     de=datetime(2007,12,31)
-
+    df=datetime(2012,12,31)
     ## Tga summary
     #
     #tga_summary()
@@ -1205,7 +1206,8 @@ if __name__=='__main__':
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
     #MEGAN_vs_E_new(d0,dn)
-
+    distributions_comparison_regional()
+    
     ## Plot showing comparison of different top-down estimates
     ## In Isop chapter results
     ## Ran 17/7/18 for jan06 check for Jenny
@@ -1216,11 +1218,11 @@ if __name__=='__main__':
     ## Ran 7/11/18
     with np.warnings.catch_warnings():
         # run for one year using daily values:
-        E_regional_time_series(d0,dn,force_monthly=False)
-        
+        for force_monthly in [True, False]:
+            E_regional_time_series(d0,dn,force_monthly=force_monthly)
         # Run for all years, monthly medians for time series
-        E_regional_time_series()
         
+        E_regional_multiyear(d0=d0,dn=df, etype='pp')
         #np.warnings.filterwarnings('ignore')
         #for etype in ['gc','omi','pp']:
             #E_regional_multiyear(d0=d0,dn=de, etype=etype)

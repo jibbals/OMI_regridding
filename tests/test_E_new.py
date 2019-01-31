@@ -92,6 +92,76 @@ def Summary_E_new(month=datetime(2005,1,1)):
         pp.subzones(arr, dates,lats,lons, pname=pnames[i], title=titles[i],
                     clabel='molec/cm2', vmin=vmin,vmax=vmax,linear=False)
 
+def location_timeseries(d0=datetime(2005,1,1), d1=datetime(2012,12,31), 
+                        latlon=pp.__cities__['Syd'],
+                        loclabel='Wollongong',
+                        title = 'Wollongong midday emissions',
+                        ylabel = 'atom C cm$^{-2}$ s$^{-1}$',
+                        keys=['E_MEGAN','E_PP_lr'],
+                        labels=['a priori','a postiori'],
+                        linewidths=[3,2], colors=['k','m'],
+                        lr=True,
+                        show_iqr=False,
+                        median=True):
+    '''
+        Show time series for a particular location 
+    '''
+    
+    months=util.list_months(d0,d1)
+    years=util.list_years(d0,d1)
+    
+    #   
+    # read E_new keys
+    enew = E_new(d0,d1,dkeys=keys)
+    units=enew.attributes[keys[0]]['units']
+    lats=[enew.lats, enew.lats_lr][lr]
+    lons=[enew.lons, enew.lons_lr][lr]
+    lati,loni = util.lat_lon_index(latlon[0],latlon[1],lats,lons)
+    lat,lon = lats[lati],lons[loni]
+    dates=enew.dates
+    
+    
+    ## MAKE AND SAVE FIGURE:
+    f=plt.figure(figsize=[12,8])
+    for key,label,color,linewidth in zip(keys,labels,colors,linewidths):
+        arr = getattr(enew,key)[:,lati,loni]
+        
+        # data is a list or 1d array of data, index is the datetimes of that same data
+        df=pd.DataFrame(data=arr, index=dates)
+        # monthly averages
+        ind = [df.index.year, df.index.month]
+        arr_monthly=df.groupby(ind)
+        print(arr_monthly.mean())
+        
+        mean = np.array(arr_monthly.mean()).squeeze()
+        if median:
+            mean=np.array(arr_monthly.median()).squeeze()
+        uq = np.array(arr_monthly.quantile(.75)).squeeze()
+        lq = np.array(arr_monthly.quantile(.25)).squeeze()
+    
+        pp.plot_time_series(months,mean, label=label, color=color, linewidth=linewidth)
+        if show_iqr:
+            plt.fill_between(months, lq, uq, color=color, alpha=0.4)
+        
+        plt.xticks(ticks=years)
+    
+    if title is None:
+        title=loclabel
+    if ylabel is None:
+        ylabel=units
+    
+    plt.title(title,fontsize=20)
+    plt.ylabel(units)
+    plt.legend(loc='best', fontsize=14)
+    
+    pname = 'series_%s.png'%loclabel
+    plt.savefig(pname)
+    print('SAVED FIGURE ',pname)
+    plt.close()
+    
+    
+    
+
 def VCC_check(month=datetime(2005,1,1),region=pp.__AUSREGION__):
     '''
         Look at VCC vs each type in seperate plots

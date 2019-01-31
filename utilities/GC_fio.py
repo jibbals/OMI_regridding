@@ -161,34 +161,22 @@ def make_overpass_output_files():
     #        'new_emissions/diagnostics/emiss_a'][new_emissions]
     keys_to_keep=[  'IJ-AVG-$NO', #    ppbv   144  91  47
                     'IJ-AVG-$O3', #    ppbv   144  91  47
-   3 : IJ-AVG-$   20     ISOP      6            ppbC 175536.25 2005011000  144  91  47
-   4 : IJ-AVG-$   20     CH2O     20            ppbv 175536.25 2005011000  144  91  47
-   5 : IJ-AVG-$   20      NO2     64            ppbv 175536.25 2005011000  144  91  47
-   6 :  PEDGE-$   20    PSURF  10001             hPa 175536.25 2005011000  144  91  47
-   7 : DAO-FLDS   20    PARDF  11020            W/m2 175536.25 2005011000  144  91  47
-   8 : DAO-FLDS   20    PARDR  11021            W/m2 175536.25 2005011000  144  91  47
-   9 : DAO-FLDS   20       TS  11005               K 175536.25 2005011000  144  91  47
-  10 : DAO-3D-$   20     TMPU  12003               K 175536.25 2005011000  144  91  47
-  11 : OD-MAP-$   20    OPSO4  14006        unitless 175536.25 2005011000  144  91  47
-  12 : OD-MAP-$   20     OPBC  14009        unitless 175536.25 2005011000  144  91  47
-  13 : OD-MAP-$   20     OPOC  14012        unitless 175536.25 2005011000  144  91  47
-  14 : OD-MAP-$   20    OPSSa  14015        unitless 175536.25 2005011000  144  91  47
-  15 : OD-MAP-$   20    OPSSc  14018        unitless 175536.25 2005011000  144  91  47
-  16 : OD-MAP-$   20      OPD  14004        unitless 175536.25 2005011000  144  91  47
-  17 : OD-MAP-$   20     OPD1  14021        unitless 175536.25 2005011000  144  91  47
-  18 : OD-MAP-$   20     OPD2  14022        unitless 175536.25 2005011000  144  91  47
-  19 : OD-MAP-$   20     OPD3  14023        unitless 175536.25 2005011000  144  91  47
-  20 : OD-MAP-$   20     OPD4  14024        unitless 175536.25 2005011000  144  91  47
-  21 : OD-MAP-$   20     OPD5  14025        unitless 175536.25 2005011000  144  91  47
-  22 : OD-MAP-$   20     OPD6  14026        unitless 175536.25 2005011000  144  91  47
-  23 : OD-MAP-$   20     OPD7  14027        unitless 175536.25 2005011000  144  91  47
-  24 : CHEM-L=$   20       OH  16001       molec/cm3 175536.25 2005011000  144  91  47
-  25 : TIME-SER   20           19002       UNDEFINED 175536.25 2005011000  144  91  47
-  26 : TIME-SER   20           19007       molec/cm3 175536.25 2005011000  144  91  47
-  27 : TIME-SER   20           19009           m2/m2 175536.25 2005011000  144  91  47
-  28 : BIOGSRCE   20     ISOP  21001     atomC/cm2/s 175536.25 2005011000  144  91  47
-  29 : BXHGHT-$   20 BXHEIGHT  24001               m 175536.25 2005011000  144  91  47
-  30 : TR-PAUSE   20           26015           level 175536.25 2005011000  144  91  47
+                    'IJ-AVG-$ISOP', #  ppbC   144  91  47
+                    'IJ-AVG-$CH2O',  #           ppbv   144  91  47
+                    'IJ-AVG-$NO2',  #           ppbv   144  91  47
+                    'PEDGE-$PSURF',   #            hPa   144  91  47
+                    #DAO-FLDS   20    PARDF   #           W/m2   144  91  47
+                    #DAO-FLDS   20    PARDR   #           W/m2   144  91  47
+                    'DAO-FLDS_TS',   #              K   144  91  47
+                    'DAO-3D-$TMPU',   #              K   144  91  47
+                    #CHEM-L=$   20  #     OH  16001       molec/cm3 175536.25 2005011000  144  91  47
+                    #TIME-SER   20            #      UNDEFINED 1  144  91  47
+                    #TIME-SER   20            #      molec/cm3   144  91  47
+                    #TIME-SER   20            #          m2/m2   144  91  47
+                    #BIOGSRCE   20     ISOP   #    atomC/cm2/s   144  91  47
+                    'BXHGHT-$BXHEIGHT',   #              m   144  91  47
+                    'TR-PAUSE', #          level   144  91  47
+                    ]
     bpch = 'new_emissions/diagnostics/satellite_output/ts_satellite_altered.%s.bpch'
     fpre='Data/GC_Output/%s.'%bpch
     # FOR TESTING JUST DO 2005,2006

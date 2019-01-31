@@ -55,13 +55,13 @@ region=pp.__AUSREGION__
 ## SETUP STUFFS
 #####
 
-jan1,jan31 = datetime(2005,1,1), datetime(2005,1,31)
-feb1 = datetime(2005,2,1)
-febn = util.last_day(feb1)
-dec1,dec31 = datetime(2005,12,1), datetime(2005,12,31)
-dec061,dec0631 = datetime(2006,12,1), datetime(2006,12,31)
-jun1,jun30 = datetime(2005,6,1), datetime(2005,6,30)
-jul1,jul31 = datetime(2005,7,1), datetime(2005,7,31)
+#jan1,jan31 = datetime(2005,1,1), datetime(2005,1,31)
+#feb1 = datetime(2005,2,1)
+#febn = util.last_day(feb1)
+#dec1,dec31 = datetime(2005,12,1), datetime(2005,12,31)
+#dec061,dec0631 = datetime(2006,12,1), datetime(2006,12,31)
+#jun1,jun30 = datetime(2005,6,1), datetime(2005,6,30)
+#jul1,jul31 = datetime(2005,7,1), datetime(2005,7,31)
 
 # start timer
 start1=timeit.default_timer()
@@ -70,12 +70,7 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-# Test time series between old/new runs
-test_new_emissions.hcho_ozone_timeseries(jan1,dec31)
 
-# Test maps between old/new runs
-#test_new_emissions.spatial_comparisons(jan1,jan31,'JanFeb05')
-#test_new_emissions.spatial_comparisons(jun1,jun30,'JunJul05')
 
 ###########
 ### Record and time STUJFFS

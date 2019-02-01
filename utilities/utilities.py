@@ -464,10 +464,11 @@ def match_bottom_levels(p1i, p2i, arr1i, arr2i):
 
     return p1,p2,arr1,arr2
 
-def multi_year_average(data,dates, grain='hourly'):
+def multi_year_average(data,dates, grain='monthly'):
     '''
         Use pandas dataframes to get average for each month of the year
         grain = { 'hourly' | 'daily' | 'monthly' }
+        ONLY WORKS ON 1D DATA ARRAY (time dim)
     '''
 
     # data is a list or 1d array of data, index is the datetimes of that same data
@@ -610,7 +611,7 @@ def ppbv_to_molecs_per_cm2(ppbv, pedges):
     return out
 
 
-def pull_out_subregions(data, lats, lons, subregions=GMAO.__subregions__):
+def pull_out_subregions(data, lats, lons, subregions=__subregions__):
     ''' pull out subregions from data: returns list of data subsets, list of lats, list of lons '''
 
     # assume time dim if three dimensions
@@ -890,7 +891,12 @@ def resample(data,dates, bins='M', **resampleargs):
 
     '''
     series = pd.Series(data,index=dates)
-    return (series.resample(bins, **resampleargs))
+    resampled = series.resample(bins, **resampleargs)
+    #newdates = resampled.mean().index.to_pydatetime()
+    #mean=resampled.mean()
+    #median=resampled.median()
+    return resampled
+     
 
 def satellite_mean(data,pixels, spatial=True, temporal=False):
     '''

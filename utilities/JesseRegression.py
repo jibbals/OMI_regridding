@@ -19,6 +19,12 @@ def OLS(X, Y):
     Assumes Y may have error, while X does not
     uses scipy.stats.linregress
     returns slope, intercept, r, p, sterr
+        
+        #pvalue : float
+        #two-sided p-value for a hypothesis test whose null hypothesis is
+        #that the slope is zero, using Wald Test with t-distribution of
+        #the test statistic.
+    
     '''
     return stats.linregress(X,Y)
 

@@ -17,7 +17,7 @@ plt.ioff()
 # local modules
 import utilities.utilities as util
 import utilities.plotting as pp
-from utilities.JesseRegression import RMA
+from utilities.JesseRegression import RMA, OLS
 from utilities import GMAO,GC_fio,fio, masks
 import Inversion
 import tests
@@ -70,6 +70,48 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+def trend(data,dates,resample_monthly=True, remove_mya=True, remove_outliers=False):
+    '''
+        Take a time series, remove the multi year monthly average, determine trend
+            Also test significance of trend using students t test
+        
+    '''
+    monthly=np.copy(data)
+    months=util.list_months(dates[0],dates[-1])
+    
+    # resample if necessary    
+    if resample_monthly:
+        monthly = np.array(util.resample(monthly,dates,bins='M').mean()).squeeze()
+    
+    # first detrend if necessary
+    mya=None
+    anomaly=np.copy(monthly)
+    if remove_mya:
+        # use original data to get multi-year average
+        mya_df = util.multi_year_average(data, dates, grain='monthly')
+        mya = np.squeeze(np.array(mya_df.mean()))
+        anomaly = np.array([ monthly[i] - mya[i%12] for i in range(len(months)) ])
+    
+    outliers=None
+    X=np.arange(len(months))
+    Y=monthly
+    if remove_outliers:
+        
+        std=np.nanstd(anomaly)
+        mean=np.nanmean(anomaly)
+        outliers = ( anomaly > mean + 3 * std ) + ( anomaly < mean - 3*std )
+        X=X[~outliers]
+        Y=Y[~outliers]
+    # USE OLS FOR NOW....
+    slope, intercept, r, p, sterr = OLS(X,Y) #JesseRegression.OLS
+    
+    # TEST REGRESSION WAS SIGNIFICANT
+    
+    return {'anomaly':anomaly, 'monthly':monthly, 
+            'mya':mya, 'outliers':outliers,
+            'slope':slope, 'intercept':intercept,
+            'r':r, 'p':p, 'sterr':sterr}
+
 # TREND TESTS
 d0 = datetime(2005,1,1); d1=datetime(2012,12,31) # two years for now
 
@@ -77,6 +119,7 @@ d0 = datetime(2005,1,1); d1=datetime(2012,12,31) # two years for now
 regions=util.__subregions__
 colors = util.__subregions_colors__
 labels = util.__subregions_labels__
+n_regions = len(regions)
 
 # read apriori and postiori emissions
 enew = E_new(d0,d1,dkeys=['E_MEGAN','E_PP_lr'])
@@ -97,35 +140,61 @@ titles=['isoprene a priori anomaly', 'isoprene a postiori anomaly']
 unitss=['atom C cm$^{-2}$ s$^{-1}$','atom C cm$^{-2}$ s$^{-1}$']
 for j, (arr,title,units) in enumerate(zip([apri, apos],titles,unitss)):
     mya_df = util.multi_year_average_regional(arr, dates, lats, lons, grain='monthly', regions=regions)
-    mya = [np.squeeze(np.array(mya_df['df'][i].mean())) for i in range(len(regions))]
+    mya = [np.squeeze(np.array(mya_df['df'][i].mean())) for i in range(n_regions)]
+    # pull out subregions, keeping lats and lons
     regional, lats_regional, lons_regional = util.pull_out_subregions(arr,lats,lons,subregions=regions)
-    monthly = [ np.array(util.resample(np.nanmean(regional[i],axis=(1,2)),dates,bins='M').mean()).squeeze() for i in range(len(regions))]
-    anomaly = [ np.array([ monthly[k][i] - mya[k][i%12] for i in range(len(months)) ]) for k in range(len(regions)) ]
+    
+    # average spatial dims into monthly time series
+    regional_ts = [ np.nanmean(regional[i], axis=(1,2)) for i in range(n_regions) ]
+    
+    # get trend
+    trends = [ trend(regional_ts[i], dates, remove_mya=True, resample_monthly=True, remove_outliers=True) for i in range(n_regions) ]
+    
+    #anomaly = [ trends[i]['anomaly'] for i in range(n_regions) ]
+    #monthly = [ trends[i]['monthly'] for i in range(n_regions) ]
+    
+    #monthly = [ np.array(util.resample(np.nanmean(regional[i],axis=(1,2)),dates,bins='M').mean()).squeeze() for i in range(len(regions))]
+    #anomaly = [ np.array([ old_monthly[k][i] - mya[k][i%12] for i in range(len(months)) ]) for k in range(len(regions)) ]
     
     plt.sca(axes[j])
     print(title)
-    print('region, slope bounds')
-    for monthly_anomaly, monthly_data, color, label in zip(anomaly, monthly, colors, labels):
-        #print(color, label)
+    print('region, [ slope, regression coeff, p value for slope non zero]')
+    for i in range(n_regions):
+    #for monthly_anomaly, monthly_data, color, label in zip(anomaly, monthly, colors, labels):
+        color=colors[i]; label=labels[i]
+        
+        trendi=trends[i]
+        anomaly = trendi['anomaly']
+        monthly = trendi['monthly']
 
-        # Calculate with all data (for interest)        
-        m, b, r, cir, cijm = RMA(np.arange(len(months)), monthly_anomaly)
-        print("%s (has outliers) &  [ %.2e,  %.2e ]   & \\"%(label,cir[0][0], cir[0][1]))
+        # Calculate with all data (for interest)
+        #m, b, r, cir, cijm = RMA(np.arange(len(months)), monthly_anomaly)
+        #print("%s (has outliers) &  [ %.2e,  %.2e ]   & \\"%(label,cir[0][0], cir[0][1]))
+        
+        # Y = mX+b
+        m=trendi['slope']
+        b=trendi['intercept']
+        r=trendi['r']
+        p=trendi['p'] # two sided p value against slope being zero as H0
+        outliers=trendi['outliers']
+        
+        print("%s &  [ m=%.2e,  r=%.3f, p=%.3f ]   & \\"%(label,m, r, p))
         
         # once more with outliers removed
-        std=np.nanstd(monthly_anomaly)
-        mean=np.nanmean(monthly_anomaly)
-        outliers = ( monthly_anomaly > mean + 3 * std ) + ( monthly_anomaly < mean - 3*std )
-        Xin = np.arange(len(months))[~outliers]
-        Yin = monthly_anomaly[~outliers]
+        #std=np.nanstd(monthly_anomaly)
+        #mean=np.nanmean(monthly_anomaly)
+        #outliers = ( monthly_anomaly > mean + 3 * std ) + ( monthly_anomaly < mean - 3*std )
+        #Xin = np.arange(len(months))[~outliers]
+        #Yin = monthly_anomaly[~outliers]
         
-        m, b, r, cir, cijm = RMA(Xin, Yin)
-        print("%s (no outliers)  &  [ %.2e,  %.2e ]   & \\"%(label,cir[0][0], cir[0][1]))
-        print(m/np.nanmean(monthly_data) * 12)
-        if cir[0][0] * cir[0][1] > 0: # if slope doesn't surround zero then we plot line
+        #m, b, r, cir, cijm = RMA(Xin, Yin)
+        #print("%s (no outliers)  &  [ %.2e,  %.2e ]   & \\"%(label,cir[0][0], cir[0][1]))
+        #print(m/np.nanmean(monthly_data) * 12)
+        #if cir[0][0] * cir[0][1] > 0: # if slope doesn't surround zero then we plot line
+        if p < 0.05:
             pp.plot_time_series( [months[0], months[-1]], [b, m*(len(months)-1)], alpha=0.5, color=color ) # regression line
-        pp.plot_time_series( months, monthly_anomaly, color=color, label=label, marker='.', markersize=6, linewidth=0) # regression line
-        pp.plot_time_series( np.array(months)[outliers], monthly_anomaly[outliers], color=color, marker='x', markersize=8, linewidth=0)
+        pp.plot_time_series( months, anomaly, color=color, label=label, marker='.', markersize=6, linewidth=0) # regression line
+        pp.plot_time_series( np.array(months)[outliers], anomaly[outliers], color=color, marker='x', markersize=8, linewidth=0)
     plt.title(title,fontsize=24)
     plt.ylabel(units)
     plt.xticks(util.list_years(d0,d1))

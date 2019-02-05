@@ -16,8 +16,10 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')# don't plot on screen, send straight to file
 import matplotlib.pyplot as plt
-plt.ioff()
+plt.ioff() # fix problem with ploting datetimes (don't know why this works)
 
+import pandas as pd
+import seaborn as sns
 from PIL import Image # paste together some plots
 
 

@@ -551,11 +551,14 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
     winter= [ d.month in [6,7,8] for d in dates ]
 
     # also work on monthly datasets
-    monthlym = util.monthly_averaged(dates, Em.copy(), keep_spatial=True)
+    # ignore warnings from taking mean of nans
+    with np.warnings.catch_warnings():
+        monthlym = util.monthly_averaged(dates, Em.copy(), keep_spatial=True)
     Em_m = monthlym['mean']
     dates_m = monthlym['dates']
 
-    monthlyo = util.monthly_averaged(dates, Eo.copy(), keep_spatial=True)
+    with np.warnings.catch_warnings():
+        monthlyo = util.monthly_averaged(dates, Eo.copy(), keep_spatial=True)
     Eo_m = monthlyo['mean']
 
     summer_m = [d.month in [1,2,12] for d in dates_m]
@@ -619,7 +622,7 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
             # make sure minimum value on axes is zero
             g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1])
             g.ax_marg_y.set_ylim(0,g.ax_marg_y.get_ylim()[1])
-            g.ax_joint.legend(handlelength=0, handletextpad=0, frameon=False, numpoints=0)
+            g.ax_joint.legend(handlelength=0, handletextpad=0, frameon=False)
             # Annotate the units
             plt.gca().annotate('molec cm$^{-2}$ s$^{-1}$', xy=(.75,.05))
             # halve the x axis limit
@@ -1208,8 +1211,9 @@ if __name__=='__main__':
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
     #MEGAN_vs_E_new(d0,dn)
-    distributions_comparison_regional()
-    
+    #distributions_comparison_regional()
+    # TODO: need to fix or manually combine the images made in this one...
+
     ## Plot showing comparison of different top-down estimates
     ## In Isop chapter results
     ## Ran 17/7/18 for jan06 check for Jenny

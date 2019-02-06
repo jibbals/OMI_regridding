@@ -32,7 +32,7 @@ GC_coords = ['lev','lon','lat','time']
 #####GLOBALS######
 ##################
 
-__VERBOSE__=True
+__VERBOSE__=False
 
 run_number={"tropchem":0,"UCX":1,"halfisop":2,"zeroisop":3,"nochem":4}
 runs=["geos5_2x25_tropchem","UCX_geos5_2x25",
@@ -230,7 +230,7 @@ def make_overpass_output_files(run='tropchem'):
         bpch = 'geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s.bpch'
     else:
         assert False, 'run type not handled yet:'+run
-    fpre='Data/GC_Output/%s.'%bpch
+    fpre='Data/GC_Output/%s'%bpch
     # FOR TESTING JUST DO 2005,2006
     firstday=datetime(2005,1,1)
     lastday = datetime(2006,2,2)
@@ -268,7 +268,8 @@ def make_overpass_output_files(run='tropchem'):
         if year.year==2013:
             d1=datetime(2013,5,31) # special case in 2013
         dlist=util.list_days(d0,d1)
-        
+        print(dlist)
+        print(d0,d1)
         # file names have date strings in name
         files=[]
         for day in dlist:
@@ -280,8 +281,7 @@ def make_overpass_output_files(run='tropchem'):
         print('check overpass files being read (show 1 in 24):', files[::24])
         
         # now read the data from all those files
-        with xarray.open_mfdataset(files) as ds:
-            data,attrs=dataset_to_dicts(ds,keys_to_keep)
+        data,attrs=read_bpch(files,keys_to_keep)
         
         if year.year == years[0].year:
             all_data = data

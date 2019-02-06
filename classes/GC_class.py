@@ -586,12 +586,6 @@ class GC_sat(GC_base):
         dstrs=util.list_days_strings(day0,dayN)
         paths= [ sat_path[run]%dstr for dstr in dstrs ]
         
-        times=util.datetimes_from_np_datetime64(dates,reverse=True)
-        data['time']=np.array(times)
-        attrs['time']={'desc':'Overpass date (np.datetime64)'}
-
-        attrs['init_date']=day0
-        
         # need to handle reading of multiple years specially
         years=util.list_years(day0,dayN)
         if len(years) >1:
@@ -600,7 +594,13 @@ class GC_sat(GC_base):
         else:
             # read data/attrs and initialise class:
             data,attrs = GC_fio.read_bpch(paths,keys=keys)
+            
+        times=util.datetimes_from_np_datetime64(dates,reverse=True)
+        data['time']=np.array(times)
+        attrs['time']={'desc':'Overpass date (np.datetime64)'}
 
+        attrs['init_date']=day0
+        
         # may need to handle missing time dim...
         super(GC_sat,self).__init__(data,attrs,nlevs=nlevs)
 

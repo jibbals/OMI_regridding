@@ -9,22 +9,23 @@ Reading from GEOS-Chem methods are defined here
 from xbpch import open_bpchdataset, open_mfbpchdataset
 import xarray # for xarray reading of netcdf (hemco diags)
 import numpy as np
+import h5py
 from datetime import datetime, timedelta
 from pathlib import Path
 from glob import glob
 import os.path, time # for file modification time
 
 # Add parent folder to path
-import os,sys,inspect
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-sys.path.insert(0,os.path.dirname(currentdir))
+#import os,sys,inspect
+#currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+#sys.path.insert(0,os.path.dirname(currentdir))
 
 import utilities.utilities as util
 from utilities import GMAO
 
 #from classes.GC_class import __coords__ as GC_coords
 GC_coords = ['lev','lon','lat','time']
-sys.path.pop(0)
+#sys.path.pop(0)
 
 
 ##################
@@ -81,6 +82,71 @@ def dataset_to_dicts(ds,keys):
                 print("%s scaled by %.2e"%(key,float(attrs[key]['scale'])))
 
     return data,attrs
+
+# COPIED FROM fio.py 6/2/19
+def save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN,
+                 attrdicts={}, fattrs={},
+                 verbose=False):
+    '''
+        Takes a bunch of arrays, named in the arraydict parameter, and saves
+        to outfilename as hdf5 using h5py (with fillvalue specified), and gzip compression
+
+        INPUTS:
+            outfilename: name of file to save
+            arraydict: named arrays of data to save using given fillvalue and attributes
+            attrdicts is an optional dictionary of dictionaries,
+                keys should match arraydict, values should be dicts of attributes
+            fattrs: extra file level attributes
+    '''
+    print("saving "+outfilename)
+    with h5py.File(outfilename,"w") as f:
+        if verbose:
+            print("Inside fio.save_to_hdf5()")
+            print(arraydict.keys())
+
+        # attribute creation
+        # give the HDF5 root some more attributes
+        f.attrs['Filename']        = outfilename.split('/')[-1]
+        f.attrs['creator']          = 'fio.py, Jesse Greenslade'
+        f.attrs['HDF5_Version']     = h5py.version.hdf5_version
+        f.attrs['h5py_version']     = h5py.version.version
+        f.attrs['Fill_Value']       = fillvalue
+        # optional extra file attributes from argument
+        for key in fattrs.keys():
+            if verbose:
+                print(key,fattrs[key], type(fattrs[key]))
+            f.attrs[key] = fattrs[key]
+
+
+        for name in arraydict.keys():
+            # create dataset, using arraydict values
+            darr=np.array(arraydict[name])
+            if verbose:
+                print((name, darr.shape, darr.dtype))
+
+            # handle datetime type and boolean types
+            # turn boolean into int8
+            if darr.dtype == np.dtype('bool'):
+                darr=np.int8(darr)
+                attrdicts={}
+                if not name in attrdicts:
+                    attrdicts[name]={}
+                attrdicts[name]['conversion']={'from':'boolean','to':'int8','by':'fio.save_to_hdf5()'}
+            # harder to test for datetime type...
+
+            # Fill array using darr,
+            #
+            dset=f.create_dataset(name,fillvalue=fillvalue,
+                                  data=darr, compression_opts=9,
+                                  chunks=True, compression="gzip")
+            # for VC items and RSC, note the units in the file.
+            if name in attrdicts:
+                for attrk, attrv in attrdicts[name].items():
+                    dset.attrs[attrk]=attrv
+
+        # force h5py to flush buffers to disk
+        f.flush()
+    print("Saved "+outfilename)
 
 def read_bpch(path,keys):
     '''
@@ -150,11 +216,26 @@ def read_bpch(path,keys):
     attrs['modification_times']={'desc':'When was file last modified'}
     return data,attrs
 
-def make_overpass_output_files():
+def make_overpass_output_files(run='tropchem'):
     '''
         Read GEOS-Chem satellite output for tropchem and new_emissions runs
             create one he5 with all the data from 2005-201305
+        runs: 'tropchem' | 'new_emissions'
     '''
+    print("Making overpass file for ",run)
+    outfilename='Data/GC_Output/overpass_%s.h5'%run
+    if run=='new_emissions':
+        bpch = 'new_emissions/satellite_output/ts_satellite_altered.%s.bpch'
+    elif run=='tropchem':
+        bpch = 'geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s.bpch'
+    else:
+        assert False, 'run type not handled yet:'+run
+    fpre='Data/GC_Output/%s.'%bpch
+    # FOR TESTING JUST DO 2005,2006
+    firstday=datetime(2005,1,1)
+    lastday = datetime(2006,2,2)
+    years=util.list_years(firstday,lastday)
+    
     #for folder in 
     # match all files with YYYYMM[DD] tag
     #folder=['geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog',
@@ -177,12 +258,11 @@ def make_overpass_output_files():
                     'BXHGHT-$BXHEIGHT',   #              m   144  91  47
                     'TR-PAUSE', #          level   144  91  47
                     ]
-    bpch = 'new_emissions/diagnostics/satellite_output/ts_satellite_altered.%s.bpch'
-    fpre='Data/GC_Output/%s.'%bpch
-    # FOR TESTING JUST DO 2005,2006
-    years=util.list_years(datetime(2005,1,1),datetime(2006,2,2))
-    yearly_data=[]
+    
+    
+    all_data={}
     for year in years:
+        print("Reading year ",year.year)
         d0=datetime(year.year,1,1)
         d1=datetime(year.year,12,31)
         if year.year==2013:
@@ -201,16 +281,22 @@ def make_overpass_output_files():
         
         # now read the data from all those files
         with xarray.open_mfdataset(files) as ds:
-            data,attrs=dataset_to_dicts(ds,['ISOP_BIOG'])
-
-    mod_times=[]
-    for p in files:
-        mod_times.append(time.ctime(os.path.getmtime(p)))
-    data['modification_times']=np.array(mod_times)
-    attrs['modification_times']={'desc':'When was file last modified'}
-
-    return data,attrs
-
+            data,attrs=dataset_to_dicts(ds,keys_to_keep)
+        
+        if year.year == years[0].year:
+            all_data = data
+        else:
+            for key in keys_to_keep:
+                print('appending all_data[%s] '%key,np.shape(all_data[key]), ' with data[%s] '%key, np.shape(data[key]))
+                all_data[key] = np.append(all_data[key], data[key], axis=0)
+                print('    -> ',np.shape(all_data[key]))
+    
+    all_data['dates'] = util.gregorian_from_dates(util.list_days(firstday,lastday))
+    attrs['dates'] = {'desc':'gregorian dates: hours since 1985,1,1,0,0'}
+    
+    save_to_hdf5(outfilename, all_data, fillvalue=np.NaN,
+                 attrdicts=attrs, fattrs={}, verbose=True)
+    
 
 
 def read_Hemco_diags_hourly(d0,d1=None,month=False,new_emissions=False):
@@ -359,5 +445,5 @@ if __name__=='__main__':
     tracinf=sat_fold+'tracerinfo.dat'
     diaginf=sat_fold+'diaginfo.dat'
 
-    ds=xbpch.open_bpchdataset(sat_file,tracerinfo_file=tracinf,diaginfo_file=diaginf)
+    ds=open_bpchdataset(sat_file,tracerinfo_file=tracinf,diaginfo_file=diaginf)
     ds.keys()

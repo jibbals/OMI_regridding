@@ -21,7 +21,7 @@ import timeit
 import concurrent.futures # parallelism
 import pandas as pd # for daily cycles grouping
 
-from utilities import GMAO
+from utilities import GMAO, JesseRegression
 
 ###############
 ### GLOBALS ###
@@ -964,6 +964,49 @@ def set_adjacent_to_true(mask):
             mask_copy[-1,y]  += mask[-2,y+1]+ mask[-1,y+1]
 
     return mask_copy
+
+def trend(data,dates,resample_monthly=True, remove_mya=True, remove_outliers=False):
+    '''
+        Take a time series, remove the multi year monthly average, determine trend
+            Also test significance of trend using students t test
+        
+    '''
+    monthly=np.copy(data)
+    months=list_months(dates[0],dates[-1])
+    
+    # resample if necessary    
+    if resample_monthly:
+        monthly = np.array(resample(monthly,dates,bins='M').mean()).squeeze()
+    
+    # first detrend if necessary
+    mya=None
+    anomaly=np.copy(monthly)
+    if remove_mya:
+        # use original data to get multi-year average
+        mya_df = multi_year_average(data, dates, grain='monthly')
+        mya = np.squeeze(np.array(mya_df.mean()))
+        anomaly = np.array([ monthly[i] - mya[i%12] for i in range(len(months)) ])
+    
+    outliers=None
+    X=np.arange(len(months))
+    Y=monthly
+    if remove_outliers:
+        
+        std=np.nanstd(anomaly)
+        mean=np.nanmean(anomaly)
+        outliers = ( anomaly > mean + 3 * std ) + ( anomaly < mean - 3*std )
+        X=X[~outliers]
+        Y=Y[~outliers]
+    # USE OLS FOR NOW....
+    slope, intercept, r, p, sterr = JesseRegression.OLS(X,Y)
+    
+    # TEST REGRESSION WAS SIGNIFICANT
+    
+    return {'anomaly':anomaly, 'monthly':monthly, 
+            'mya':mya, 'outliers':outliers,
+            'slope':slope, 'intercept':intercept,
+            'r':r, 'p':p, 'sterr':sterr}
+
 
 def utc_to_local(utc_dt):
     '''

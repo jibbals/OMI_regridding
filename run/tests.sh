@@ -23,7 +23,7 @@ if [ $# -lt 1 ]; then
 else
     echo "submitting:  qsub -v fname=$1 $0"
     echo "  will run: python3 ${1} &> logs/${1%.*}.log"
-    qsub -N $1 -o logs/${1%.*}_qsub.log -v fname=$1 $0
+    qsub -N $1 -o logs/qsub_${1%.*}.log -v fname=$1 $0
     exit 0
 fi
 

@@ -230,33 +230,36 @@ def make_overpass_output_files(run='tropchem'):
         bpch = 'geos5_2x25_tropchem/satellite_output/ts_satellite_omi.%s.bpch'
     else:
         assert False, 'run type not handled yet:'+run
+    
+    # subset to a latitudinal band
+    maxlat=-5
+    minlat=-60
+    lats, lat_edges = GMAO.GMAO_lats(GMAO.__LATRES_GC__)
+    lons, lon_edges = GMAO.GMAO_lons(GMAO.__LONRES_GC__)
+    latrange, lonrange = util.lat_lon_range(lats,lons,[minlat,-170,maxlat,175])
+    lats = lats[latrange]
+    
     fpre='Data/GC_Output/%s'%bpch
     # FOR TESTING JUST DO 2005,2006
     firstday=datetime(2005,1,1)
-    lastday = datetime(2006,2,2)
+    lastday = datetime(2013,12,31)
     years=util.list_years(firstday,lastday)
     
     #for folder in 
     # match all files with YYYYMM[DD] tag
     #folder=['geos5_2x25_tropchem_biogenic/Hemco_diags/E_isop_biog',
     #        'new_emissions/diagnostics/emiss_a'][new_emissions]
-    keys_to_keep=[  'IJ-AVG-$NO', #    ppbv   144  91  47
-                    'IJ-AVG-$O3', #    ppbv   144  91  47
-                    'IJ-AVG-$ISOP', #  ppbC   144  91  47
-                    'IJ-AVG-$CH2O',  #           ppbv   144  91  47
-                    'IJ-AVG-$NO2',  #           ppbv   144  91  47
-                    'PEDGE-$PSURF',   #            hPa   144  91  47
-                    #DAO-FLDS   20    PARDF   #           W/m2   144  91  47
-                    #DAO-FLDS   20    PARDR   #           W/m2   144  91  47
-                    'DAO-FLDS_TS',   #              K   144  91  47
-                    'DAO-3D-$TMPU',   #              K   144  91  47
-                    #CHEM-L=$   20  #     OH  16001       molec/cm3 175536.25 2005011000  144  91  47
-                    #TIME-SER   20            #      UNDEFINED 1  144  91  47
-                    #TIME-SER   20            #      molec/cm3   144  91  47
-                    #TIME-SER   20            #          m2/m2   144  91  47
-                    #BIOGSRCE   20     ISOP   #    atomC/cm2/s   144  91  47
-                    'BXHGHT-$BXHEIGHT',   #              m   144  91  47
-                    'TR-PAUSE', #          level   144  91  47
+    keys_to_keep=[  'IJ-AVG-$_NO', #    ppbv   144  91  47
+                    'IJ-AVG-$_O3', #    ppbv   144  91  47
+                    'IJ-AVG-$_ISOP', #  ppbC   144  91  47
+                    'IJ-AVG-$_CH2O',  #           ppbv   144  91  47
+                    'IJ-AVG-$_NO2',  #           ppbv   144  91  47
+                    'PEDGE-$_PSURF',   #            hPa   144  91  47
+                    'DAO-FLDS_TS',   #   surface temp   K   144  91  47
+                    'TIME-SER_AIRDEN',    #           molec/cm3 144 91 47
+                    'CHEM-L=$_OH',       # OH concentrations?  molec/cm3 144 91 47
+                    'BXHGHT-$_BXHEIGHT',   #              m   144  91  47
+                    'TR-PAUSE_TPLEV', #          level   144  91  47
                     ]
     
     
@@ -266,10 +269,9 @@ def make_overpass_output_files(run='tropchem'):
         d0=datetime(year.year,1,1)
         d1=datetime(year.year,12,31)
         if year.year==2013:
-            d1=datetime(2013,5,31) # special case in 2013
+            d1=datetime(2013,4,30) # special case in 2013
         dlist=util.list_days(d0,d1)
-        print(dlist)
-        print(d0,d1)
+        
         # file names have date strings in name
         files=[]
         for day in dlist:
@@ -278,26 +280,115 @@ def make_overpass_output_files(run='tropchem'):
 
         files.sort() # make sure they're sorted or the data gets read in poorly
     
-        print('check overpass files being read (show 1 in 24):', files[::24])
-        
         # now read the data from all those files
         data,attrs=read_bpch(files,keys_to_keep)
         
+        # lets subset to useful lats:
+        for key in keys_to_keep:
+            data[key] = data[key][:,:,latrange,:] # time, lon, lat, level
+            # switch lat and lon dim to match my other stuff
+            data[key] = np.transpose(data[key], [0,2,1,3]) # time, lat, lon, level
+        
+        print('DATA KEYS ', data.keys())
         if year.year == years[0].year:
             all_data = data
+            # remove keys we don't want to keep
+            keys_to_remove = set(all_data.keys()) - set(keys_to_keep)
+            for key in keys_to_remove:
+                print("Removing key ",key)
+                all_data.pop(key,None)
         else:
             for key in keys_to_keep:
                 print('appending all_data[%s] '%key,np.shape(all_data[key]), ' with data[%s] '%key, np.shape(data[key]))
                 all_data[key] = np.append(all_data[key], data[key], axis=0)
                 print('    -> ',np.shape(all_data[key]))
-    
+        
+        
     all_data['dates'] = util.gregorian_from_dates(util.list_days(firstday,lastday))
     attrs['dates'] = {'desc':'gregorian dates: hours since 1985,1,1,0,0'}
-    
+    all_data['lats'] = lats
+    all_data['lons'] = lons
+    attrs['lats'] = {'desc':'latitude midpoints in degrees north'}
+    attrs['lons'] = {'desc':'longitude midpoints in degrees east'}
     save_to_hdf5(outfilename, all_data, fillvalue=np.NaN,
                  attrdicts=attrs, fattrs={}, verbose=True)
     
+# copied from fio.py on 12/2/19
+def read_h5(fpath, keys=[]):
+    '''
+        read using h5py the keys listed
+    '''
+    retstruct={}
+    retattrs={}    
+    with h5py.File(fpath,'r') as in_f:
+        if __VERBOSE__:
+            print('reading from file '+filename)
 
+        # READ DATA AND ATTRIBUTES:
+        for key in in_f.keys():
+            if key not in keys:
+                continue
+            if __VERBOSE__: print(key)
+            retstruct[key]=in_f[key].value
+            attrs=in_f[key].attrs
+            retattrs[key]={}
+            # print the attributes
+            for akey,val in attrs.items():
+                if __VERBOSE__: print("reading %s(attr)   %s:%s"%(key,akey,val))
+                retattrs[key][akey]=val
+
+        # ADD FILE ATTRIBUTES TO ATTRS
+        retattrs['file']={}
+        for fkey in in_f.attrs.keys():
+            retattrs['file'][fkey] = in_f.attrs[fkey]
+    
+    return retstruct, retattrs
+
+def read_overpass_file(d0=datetime(2005,1,1), d1=datetime(2012,12,31), run='tropchem', keys=[]):
+    ''' 
+        Read overpass file created by create_overpass_file
+    '''
+    fpath='Data/GC_Output/overpass_%s.h5'%run
+    avail_keys = ['BXHGHT-$_BXHEIGHT','CHEM-L=$_TS',
+                 'DAO-FLDS_TS', #              Dataset {3042, 28, 144, 47}
+                 'IJ-AVG-$_CH2O', #            Dataset {3042, 28, 144, 47}
+                 'IJ-AVG-$_ISOP', #            Dataset {3042, 28, 144, 47}
+                 'IJ-AVG-$_NO', #              Dataset {3042, 28, 144, 47}
+                 'IJ-AVG-$_NO2', #             Dataset {3042, 28, 144, 47}
+                 'IJ-AVG-$_O3', #              Dataset {3042, 28, 144, 47}
+                 'PEDGE-$_PSURF', #            Dataset {3042, 28, 144, 47}
+                 'TIME-SER_AIRDEN', #          Dataset {3042, 28, 144, 47}
+                 'TR-PAUSE_TPLEV', #           Dataset {3042, 28, 144, 47}
+                ]
+    # check keys are right
+    for key in keys:
+        assert key in avail_keys, '%s missing from overpass dataset'%key
+    # also keep dims
+    keys.extend(['dates','lats','lons'])
+    print('keys:',keys)
+    keep_keys = list(set(keys))
+    print('keep_keys:',keep_keys)
+    
+    # read the dataset (only variables in keys list)
+    data,attrs=read_h5(fpath, keep_keys)
+    
+    # subset to requested dates
+    dates = util.date_from_gregorian(data['dates'])
+    
+    di = util.date_index(d0, dates, d1)
+
+    # and store as datetime object
+    attrs['dates'] = {'desc':'python datetime objects converted from gregorian "dates" dim'}
+    
+    for key in keys:
+        if key in ['lats','lons']:
+            continue
+        print("subsetting data:", key, np.shape(data[key]))
+        #data[key] = util.reshape_time_lat_lon_lev(data[key],len(dates),28,144,47)
+        data[key] = np.squeeze(data[key][di])
+        print("new data shape:", np.shape(data[key]))
+    
+    return data,attrs
 
 def read_Hemco_diags_hourly(d0,d1=None,month=False,new_emissions=False):
     '''

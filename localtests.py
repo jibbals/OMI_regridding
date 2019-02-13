@@ -70,8 +70,16 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-GC_fio.make_overpass_output_files()
+print("starting overpasss reading just isoprene")
+overpass, opattrs = GC_fio.read_overpass_file(d0=datetime(2005,1,1), d1=datetime(2006,12,31), run='tropchem', keys=['IJ-AVG-$_O3'])
 
+print('read overpass file')
+print(overpass.keys())
+
+surfO3 = overpass['IJ-AVG-$_O3'][:,:,:,0]
+TS_O3 = np.nanmean(surfO3,axis=(1,2))
+
+pp.plot_time_series(overpass['dates'], TS_O3, ylabel='O3 [ppb]', pname='test_overpassO3.png')
 
 #d0 = datetime(2005,1,1); d1=datetime(2012,12,31) # two years for now
 #

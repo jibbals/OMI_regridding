@@ -681,10 +681,14 @@ def plot_time_series(datetimes,values,
         mdata=util.monthly_averaged(datetimes,values)
         datetimes=mdata['middates']
         values=mdata[monthly_func] # 'median', or 'mean'
-
-    dates = mdates.date2num(datetimes)
-    #plt.plot_date(dates, values, **pltargs)
-    plt.plot(dates, values, **pltargs)
+    
+    try:
+        dates = mdates.date2num(datetimes)
+        plt.plot(dates, values, **pltargs)
+    except: 
+        print("Couldn't do date2num...")
+        plt.plot_date(datetimes, values, **pltargs)
+        dates=datetimes
 
     #Handle ticks:
     #plt.gcf().autofmt_xdate()

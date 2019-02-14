@@ -590,7 +590,7 @@ class GC_sat(GC_base):
         years=util.list_years(day0,dayN)
         if len(years) >1:
             # read data and attrs from bigger file created specially for this:
-            data, attrs = GC_fio.read_overpass(day0,dayN,keys=keys)
+            data, attrs = GC_fio.read_overpass_file(day0,dayN, run=run, keys=keys)
         else:
             # read data/attrs and initialise class:
             data,attrs = GC_fio.read_bpch(paths,keys=keys)

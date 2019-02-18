@@ -8,7 +8,7 @@ Created on Thu Oct 12 12:15:43 2017
 
 import matplotlib
 matplotlib.use('Agg')
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 import matplotlib.pyplot as plt
 plt.ioff()
@@ -71,7 +71,7 @@ start1=timeit.default_timer()
 ##########
 
 d0=datetime(2005,1,1)
-d1= datetime(2007,12,31)
+d1= datetime(2012,12,31)
 
 pnames = 'Figs/new_emiss/trend_%s.png'
 
@@ -139,7 +139,7 @@ for origkey in satkeys:
         #anomaly = [ np.array([ old_monthly[k][i] - mya[k][i%12] for i in range(len(months)) ]) for k in range(len(regions)) ]
         
         plt.sca(axes[j])
-        print(title)
+        print(title%key)
         print('region, [ slope, regression coeff, p value for slope non zero]')
         for i in range(n_regions):
         #for monthly_anomaly, monthly_data, color, label in zip(anomaly, monthly, colors, labels):
@@ -174,16 +174,18 @@ for origkey in satkeys:
             #print(m/np.nanmean(monthly_data) * 12)
             #if cir[0][0] * cir[0][1] > 0: # if slope doesn't surround zero then we plot line
             if p < 0.05:
-                pp.plot_time_series( [months[0], months[-1]], [b, m*(len(months)-1)], alpha=0.5, color=color ) # regression line
+                pp.plot_time_series( [months[0], months[-1]], [b,b+m*(len(months)-1)], alpha=0.5, color=color ) # regression line
+                print("significant! ", key, label)
             pp.plot_time_series( months, anomaly, color=color, label=label, marker='.', markersize=6, linewidth=0) # regression line
             pp.plot_time_series( np.array(months)[outliers], anomaly[outliers], color=color, marker='x', markersize=8, linewidth=0)
         plt.title(title%key,fontsize=24)
         plt.ylabel(units)
         plt.xticks(util.list_years(d0,d1))
+        plt.xlim(d0 - timedelta(days=31), d1+timedelta(days=31))
     
     plt.sca(axes[0])
     xywh=(.975, 0.15, 0.1, .7)
-    plt.legend(bbox_to_anchor=xywh, loc=3, ncol=1, mode="expand", borderaxespad=0., fontsize=12)
+    plt.legend(bbox_to_anchor=xywh, loc=3, ncol=1, mode="expand", borderaxespad=0., fontsize=12, scatterpoints=1)
     
     plt.savefig(pnames%key)
     print('SAVED ',pnames%key)

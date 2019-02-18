@@ -359,14 +359,14 @@ def read_overpass_file(d0=datetime(2005,1,1), d1=datetime(2012,12,31), run='trop
                  'PEDGE-$_PSURF', #            Dataset {3042, 28, 144, 47}
                  'TIME-SER_AIRDEN', #          Dataset {3042, 28, 144, 47}
                  'TR-PAUSE_TPLEV', #           Dataset {3042, 28, 144, 47}
+                 'dates', 'lats', 'lons', # dims
                 ]
     # check keys are right
     for key in keys:
         assert key in avail_keys, '%s missing from overpass dataset'%key
     # also keep dims
-    keys.extend(['dates','lats','lons'])
-    print('keys:',keys)
-    keep_keys = list(set(keys))
+    allkeys = keys + ['dates','lats','lons']
+    keep_keys = list(set(allkeys))
     print('keep_keys:',keep_keys)
     
     # read the dataset (only variables in keys list)

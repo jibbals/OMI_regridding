@@ -989,7 +989,7 @@ def trend(data,dates,resample_monthly=True, remove_mya=True, remove_outliers=Fal
     
     outliers=None
     X=np.arange(len(months))
-    Y=monthly
+    Y=anomaly
     if remove_outliers:
         
         std=np.nanstd(anomaly)

@@ -134,7 +134,7 @@ class GC_base:
     '''
         Class for GEOS-Chem output, inherited by tavg and sat
     '''
-    def __init__(self, data,attrs, nlevs=47):
+    def __init__(self, data,attrs, nlevs=47, nlats=91, nlons=144):
         '''
 
         '''
@@ -150,8 +150,8 @@ class GC_base:
                 print(np.shape(data['time']))
                 print(data['time'])
             
-        self.nlats=91
-        self.nlons=144
+        self.nlats=nlats
+        self.nlons=nlons
         self.nlevs=nlevs
 
         # Initialise to zeros:
@@ -259,9 +259,13 @@ class GC_base:
 
         # flag to see if class has time dimension
         self._has_time_dim = len(self.dates) > 1
-
-        assert all(self.lats == GMAO.lats_m), "LATS DON'T MATCH GMAO 2x25 MIDS"
+        
+        # Check that all the lats match the GMAO resolution we use
+        assert (set(self.lats) & set(GMAO.lats_m)) == set(self.lats), "LATS DON'T MATCH GMAO 2x25 MIDS"
         self.lats_e=GMAO.lats_e
+        if self.nlats < 91:
+            self.lats_e=util.edges_from_mids(self.lats)
+        # same for lons, but I don't ever trim the lons I think
         assert all(self.lons == GMAO.lons_m), "LONS DON'T MATCH GMAO 2x25 MIDS"
         self.lons_e=GMAO.lons_e
 
@@ -588,9 +592,12 @@ class GC_sat(GC_base):
         
         # need to handle reading of multiple years specially
         years=util.list_years(day0,dayN)
+        nlats=91
+        nlons=144
         if len(years) >1:
             # read data and attrs from bigger file created specially for this:
             data, attrs = GC_fio.read_overpass_file(day0,dayN, run=run, keys=keys)
+            nlats=28 # multiyear file is trimmed
         else:
             # read data/attrs and initialise class:
             data,attrs = GC_fio.read_bpch(paths,keys=keys)
@@ -602,7 +609,7 @@ class GC_sat(GC_base):
         attrs['init_date']=day0
         
         # may need to handle missing time dim...
-        super(GC_sat,self).__init__(data,attrs,nlevs=nlevs)
+        super(GC_sat,self).__init__(data,attrs,nlats=nlats,nlevs=nlevs)
 
         # fix dates:
         #self.has_time_dim= len(dates) > 1

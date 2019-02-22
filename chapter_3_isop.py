@@ -68,13 +68,13 @@ def fullpageFigure(*kvpair):
     """set some Matplotlib stuff."""
     matplotlib.rcParams["text.usetex"]      = False     #
     matplotlib.rcParams["legend.numpoints"] = 1         # one point for marker legends
-    matplotlib.rcParams["legend.fontsize"]  = 17        # legend font size
+    matplotlib.rcParams["legend.fontsize"]  = 10        # legend font size
     matplotlib.rcParams["figure.figsize"]   = (12, 14)  #
     matplotlib.rcParams["font.size"]        = 18        # font sizes:
-    matplotlib.rcParams["axes.titlesize"]   = 26        # title font size
-    matplotlib.rcParams["axes.labelsize"]   = 20        #
-    matplotlib.rcParams["xtick.labelsize"]  = 16        #
-    matplotlib.rcParams["ytick.labelsize"]  = 16        #
+    matplotlib.rcParams["axes.titlesize"]   = 18        # title font size
+    matplotlib.rcParams["axes.labelsize"]   = 13        #
+    matplotlib.rcParams["xtick.labelsize"]  = 13        #
+    matplotlib.rcParams["ytick.labelsize"]  = 13        #
     matplotlib.rcParams['image.cmap'] = 'plasma' #'PuRd' #'inferno_r'       # Colormap default
     # set extra key values if wanted
     for k,v in kvpair:
@@ -159,7 +159,7 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
     ts_hcho=np.nanmean(hcho,axis=(1,2))
     plt.sca(axes[0,1])
     pp.plot_time_series(dates,ts_isop,ylabel=__apri__label__,
-        title='time series for %s'%ymstr, dfmt="%d", color='r',legend=False, label=__apri__)
+        title='Australian midday mean', dfmt="%d", color='r',legend=False, label=__apri__)
     h1, l1 = axes[0,1].get_legend_handles_labels()
     twinx=axes[0,1].twinx()
     plt.sca(twinx)
@@ -172,7 +172,7 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
     plt.autoscale(True)
     # plot a sample of ii_max scatter plots and their regressions
     ii=0; ii_max=9
-    colours=[cm.Set1(i) for i in np.linspace(0, 0.9, ii_max)]
+    colours=[matplotlib.cm.Set1(i) for i in np.linspace(0, 0.9, ii_max)]
     randlati= np.random.choice(range(len(lats)), size=30)
     randloni= np.random.choice(range(len(lons)), size=30)
     # UPDATE: using sydney, west of sydney, and 2 west 1 north of sydney as sample

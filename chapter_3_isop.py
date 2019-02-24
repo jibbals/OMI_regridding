@@ -97,6 +97,58 @@ n_regions=len(regions)
 # METHODS
 ###
 
+def check_modelled_background(month=datetime(2005,1,1)):
+    '''
+        plot map of HCHO over remote pacific
+        also plot map of HCHO when isop emissions are scaled to zero globally
+    '''
+    day0=month
+    dayN=util.last_day(month)
+
+    # DAILY OUTPUT
+    gc=GC_class.GC_tavg(day0,dayN,)
+    gc_noisop=GC_class.GC_tavg(day0,dayN,run='noisop')
+
+    lats=gc.lats
+    lons=gc.lons
+
+    hcho1 = np.nanmean(gc.O_hcho,axis=0) # average the month
+    bg1,bglats,bglons = util.remote_pacific_background(hcho1,lats,lons,)
+    bg_ref, bglats,bglons = util.remote_pacific_background(hcho1,lats,lons,average_lons=True) # background with just lats
+    bg_ref = np.repeat(bg_ref[:,np.newaxis], len(lons), axis=1) # copy ref background over all the longitudes
+    
+    # monthly output already for no-isoprene run
+    hcho2 = gc_noisop.O_hcho
+    #bg2, bglats,bglons = util.remote_pacific_background(hcho2,lats,lons)
+    # difference between no isoprene and reference sector background from normal run
+    diff = hcho2 - bg_ref
+
+    # plot with  panels, hcho over aus, hcho over remote pacific matching lats
+    #                    hcho over both with no isop emissions
+    vmin=1e15
+    vmax=1e16
+    ausregion=pp.__AUSREGION__
+    bgregion=util.__REMOTEPACIFIC__
+    bgregion[0]=ausregion[0]
+    bgregion[2]=ausregion[2]
+    clabel=r'$\Omega_{HCHO}$ [molec cm$^{-2}$]'
+
+    plt.figure(figsize=[15,15])
+    plt.subplot(2,2,1)
+    pp.createmap(hcho1,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
+                 clabel=clabel, title='tropchem')
+    plt.subplot(2,2,2)
+    pp.createmap(bg1,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, 
+                 clabel=clabel, title='tropchem over Pacific ocean')
+    plt.subplot(2,2,3)
+    pp.createmap(hcho2,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
+                 clabel=clabel, title='no isoprene emitted')
+    plt.subplot(2,2,4)
+    pp.createmap(diff,lats,lons,region=ausregion, 
+                 vmin=vmin/100.0,vmax=vmax/100.0, clabel=clabel, 
+                 title='no isoprene - reference sector',
+                 pname='Figs/GC/GC_background_hcho_%s.png'%month.strftime('%Y%m'))
+
 # TODO update titles to just \Omega_{GC}, update legends to a priori or E_{GC}] and \Omega_{GC}, update y axes also
 def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
     '''
@@ -351,7 +403,9 @@ if __name__ == "__main__":
     
     
     ## METHOD PLOTS
-    Examine_Model_Slope() # unfinished 30/5/18
+    
+    check_modelled_background() # finished? 24/2/19
+    #Examine_Model_Slope() # finished ~ 20/2/19
     
     ## Results Plots
     

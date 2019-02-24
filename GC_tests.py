@@ -63,46 +63,7 @@ colours = ['chartreuse','magenta','aqua']
 ###FUNCTIONS####
 ################
 
-def check_modelled_background(month=datetime(2005,1,1)):
-    '''
-        plot map of HCHO over remote pacific
-        also plot map of HCHO when isop emissions are scaled to zero globally
-    '''
-    day0=month
-    dayN=util.last_day(month)
 
-    # DAILY OUTPUT
-    gc=GC_class.GC_tavg(day0,dayN,)
-    gc_noisop=GC_class.GC_tavg(day0,dayN,run='noisop')
-
-    lats=gc.lats
-    lons=gc.lons
-
-    hcho1 = np.nanmean(gc.O_hcho,axis=0) # average the month
-    bg1,bglats,bglons = util.remote_pacific_background(hcho1,lats,lons,)
-
-    hcho2 = gc_noisop.O_hcho
-    bg2, bglats,bglons = util.remote_pacific_background(hcho2,lats,lons)
-
-    # plot with  panels, hcho over aus, hcho over remote pacific matching lats
-    #                    hcho over both with no isop emissions
-    vmin=1e15
-    vmax=1e16
-    ausregion=pp.__AUSREGION__
-    bgregion=util.__REMOTEPACIFIC__
-    bgregion[0]=ausregion[0]
-    bgregion[2]=ausregion[2]
-    clabel=r'$\Omega_{HCHO}$ [molec cm$^{-2}$]'
-
-    plt.figure(figsize=[15,15])
-    plt.subplot(2,2,1)
-    pp.createmap(hcho1,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, clabel=clabel, title='tropchem')
-    plt.subplot(2,2,2)
-    pp.createmap(bg1,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, clabel=clabel, title='tropchem')
-    plt.subplot(2,2,3)
-    pp.createmap(hcho2,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, clabel=clabel, title='no isoprene emitted')
-    plt.subplot(2,2,4)
-    pp.createmap(bg2,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, clabel=clabel, title='no isoprene emitted',pname='Figs/GC/GC_background_hcho_%s.png'%month.strftime('%Y%m'))
 
 def check_rsc_interp(d0=datetime(2005,1,1)):
     '''

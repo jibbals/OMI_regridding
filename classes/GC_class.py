@@ -254,7 +254,13 @@ class GC_base:
         # Convert from numpy.datetime64 to datetime
         if not hasattr(self,'time'):
             self.time=[attrs['init_date'].strftime("%Y-%m-%dT%H:%M:%S.000000000")]
-        self.dates=util.datetimes_from_np_datetime64(self.time)
+            self.dates=[datetime.strptime(self.time[0],"%Y-%m-%dT%H:%M:%S.000000000"),]
+        else:
+            self.dates=list(util.datetimes_from_np_datetime64(self.time))
+        
+        # debug
+        #print('self.time',self.time)
+        #print('self.dates',self.dates)
         self.dstr=self.dates[0].strftime("%Y%m")
 
         # flag to see if class has time dimension

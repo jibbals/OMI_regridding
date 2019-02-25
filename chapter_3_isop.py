@@ -114,7 +114,7 @@ def check_modelled_background(month=datetime(2005,1,1)):
 
     hcho1 = np.nanmean(gc.O_hcho,axis=0) # average the month
     bg1,bglats,bglons = util.remote_pacific_background(hcho1,lats,lons,)
-    bg_ref, bglats,bglons = util.remote_pacific_background(hcho1,lats,lons,average_lons=True) # background with just lats
+    bg_ref, bglats_ref,bglons_ref = util.remote_pacific_background(hcho1,lats,lons,average_lons=True) # background with just lats
     bg_ref = np.repeat(bg_ref[:,np.newaxis], len(lons), axis=1) # copy ref background over all the longitudes
     
     # monthly output already for no-isoprene run
@@ -144,9 +144,8 @@ def check_modelled_background(month=datetime(2005,1,1)):
     pp.createmap(hcho2,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
                  clabel=clabel, title='no isoprene emitted')
     plt.subplot(2,2,4)
-    pp.createmap(diff,lats,lons,region=ausregion, 
-                 vmin=vmin/100.0,vmax=vmax/100.0, clabel=clabel, 
-                 title='no isoprene - reference sector',
+    pp.createmap(diff,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
+                 clabel=clabel, title='no isoprene - reference sector',
                  pname='Figs/GC/GC_background_hcho_%s.png'%month.strftime('%Y%m'))
 
 # TODO update titles to just \Omega_{GC}, update legends to a priori or E_{GC}] and \Omega_{GC}, update y axes also
@@ -400,7 +399,8 @@ if __name__ == "__main__":
     
     start=timeit.default_timer()
     
-    
+    # set up plotting parameters like font sizes etc..
+    fullpageFigure()
     
     ## METHOD PLOTS
     

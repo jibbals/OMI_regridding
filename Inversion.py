@@ -328,8 +328,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
         VC_runcert = np.sqrt( ( 1.0/pixels ) * ( (fitting_uncert/SC)**2 + 0.09 ) ) # assume amf err is 0.3
         VC_runcert_lr = np.sqrt( ( 1.0/pixels_lr ) * ( (fitting_uncert_lr/SC_lr)**2 + 0.09 ) ) 
     # remove infinites
-    VC_runcert[~VC_runcert.isfinite()] = np.NaN
-    VC_runcert_lr[~VC_runcert_lr.isfinite()] = np.NaN
+    VC_runcert[~np.isfinite(VC_runcert)] = np.NaN
+    VC_runcert_lr[~np.isfinite(VC_runcert_lr)] = np.NaN
     
     elapsed = timeit.default_timer() - time_emiss_calc
     if __VERBOSE__:

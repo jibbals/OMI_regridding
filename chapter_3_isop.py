@@ -408,11 +408,37 @@ def uncertainty():
     #   Need: VC_OMI, col_uncertainty_OMI, entries
     # E_new: 
     #   Need: E_PP_lr, ModelSlope, 
+    d0=datetime(2005,1,1)
+    d1=datetime(2005,1,31)
+    uncertkeys = ['VC_relative_uncertainty_lr','pixels_lr']
+    # Read from E_new
+    enew    = E_new(d0,d1, dkeys=uncertkeys)
+    VCrunc  = np.nanmean(enew.VC_relative_uncertainty_lr, axis=0)
+    pix     = np.nanmean(enew.pixels_lr, axis=0)
+    lats    = enew.lats_lr
+    lons    = enew.lons_lr
+    
+    # plot daily averages
+    plt.subplot(2,2,1)
+    pp.createmap(VCrunc, lats, lons, aus=True, linear=True,
+                 vmin=0.001, vmax=10,
+                 title='Relative uncertainty')
+    plt.subplot(2,2,2)
+    pp.createmap(pix, lats, lons, aus=True, linear=True,
+                 title='OMI daily pixel count')
+    # plot monthly average
+    plt.subplot(2,1,2)
+    OM=util.oceanmask(lats,lons)
+    plt.hist(VCrunc[~OM], bins=np.linspace(0,5,21))
+    plt.title('histogram over land squares')
     
     # average/ sqrt(n)
     
     # add by quadrature to assumed error in AMF
-
+    
+    pname='test_uncert.png'
+    plt.savefig(pname)
+    plt.close(pname)
 
 
 if __name__ == "__main__":
@@ -424,12 +450,13 @@ if __name__ == "__main__":
     
     ## METHOD PLOTS
     
-    check_modelled_background() # finished? 24/2/19
+    #check_modelled_background() # finished? 24/2/19
     #Examine_Model_Slope() # finished ~ 20/2/19
     
     ## Results Plots
     
-    
+    ## UNCERTAINTY
+    uncertainty()
 
 
     ### Record and time STUJFFS

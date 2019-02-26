@@ -63,7 +63,39 @@ colours = ['chartreuse','magenta','aqua']
 ###FUNCTIONS####
 ################
 
-
+def check_amf_differences(month=datetime(2005,1,1)):
+    '''
+        Look at AMF_z and AMF_s for a month or two and check how different they are...
+    '''
+    # read omhchorp month
+    d0,d1 = util.first_day(month), util.last_day(month)
+    amf_list = ['AMF_GC',        # AMF calculated using by GEOS-Chem
+                'AMF_GCz',       # secondary way of calculating AMF with GC
+                'AMF_OMI',       # AMF from OMI swaths
+                'AMF_PP', 
+                ]
+    
+    omrp = omhchorp(d0,d1, keylist=amf_list)
+    # subset to AUS
+    lati,loni=util.lat_lon_range(omrp.lats,omrp.lons,pp.__AUSREGION__)
+    agc=omrp.AMF_GC[:,lati,:]
+    agc = agc[:,:,loni]
+    agcz=omrp.AMF_GCz[:,lati,:]
+    agcz=agcz[:,:,loni]
+    aomi=omrp.AMF_OMI[:,lati,:]
+    aomi=aomi[:,:,loni]
+    app=omrp.AMF_PP[:,lati,:]
+    app=app[:,:,loni]
+    
+    plt.scatter(agc, agcz)
+    plt.xlabel('$AMF_{\sigma}$')
+    plt.ylabel('$AMF_z$')
+     plt.title('AMF comparison over Australia for January 2005')
+    pname='test_amfs.png'
+    plt.savefig(pname)
+    print('saved ',pname)
+    plt.close()
+    
 
 def check_rsc_interp(d0=datetime(2005,1,1)):
     '''
@@ -1876,7 +1908,7 @@ if __name__=='__main__':
     ## Look at HCHO lifetime over Australia
     #
     #hcho_lifetime(2005)
-    hcho_lifetime_from_slope()
+    #hcho_lifetime_from_slope()
 
     ## new vs old diagnostics
     #check_old_vs_new_emission_diags()
@@ -1884,7 +1916,10 @@ if __name__=='__main__':
     ## LOOK AT NO vs GEOS-Chem emissions
     #for year in np.arange(2005,2010):
     #    GCe_vs_OMNO2d(year=year)
-
+    
+    ## EXAMINE AMFs
+    check_amf_differences()
+    
     ## UCX VS TROPCHEM AMF
     #
     #AMF_comparison_tc_ucx()

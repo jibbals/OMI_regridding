@@ -121,6 +121,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     arrs_names=['VCC_OMI','VCC_GC','VCC_PP',
                 #'firemask','smokemask','anthromask', # now creating masks in this method
                 'gridentries','ppentries','col_uncertainty_OMI',
+                'SC', # for uncertainty calculation
                 ]
     # list indices
     arrs_i={s:i for i,s in enumerate(arrs_names)}
@@ -150,7 +151,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     VCC_OMI_u             = OMHsub['VCC_OMI']
     pixels_u              = OMHsub['gridentries']
     pixels_PP_u           = OMHsub['ppentries']
-    uncert                = OMHsub['col_uncertainty_OMI']
+    fitting_uncert        = OMHsub['col_uncertainty_OMI']
+    SC                    = OMHsub['SC'] # slant columns
 
     # instead of having masks in this file, we can pull them from their own files
     #firemask              = fio.make_fire_mask(day0, dayn, region=region)
@@ -270,6 +272,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     VCC_OMI_lr          = np.copy(BG_OMI_lr)
     pixels_lr           = np.copy(BG_OMI_lr)
     pixels_PP_lr        = np.copy(BG_OMI_lr)
+    fitting_uncert_lr   = np.copy(BG_OMI_lr)
+    SC_lr               = np.copy(BG_OMI_lr)
     if __DEBUG__:
         print("VCC GC has ",np.sum(np.isnan(VCC_GC) * pixels>0), "nan columns where pixel count is non zero")
         # 3093 nan columns with pixel count > 0
@@ -282,9 +286,12 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
         VCC_GC_lr[i]    = util.regrid_to_lower(VCC_GC[i],omilats,omilons,lats_lr,lons_lr,pixels=pixels[i])
         VCC_PP_lr[i]    = util.regrid_to_lower(VCC_PP[i],omilats,omilons,lats_lr,lons_lr,pixels=pixels_PP[i])
         VCC_OMI_lr[i]   = util.regrid_to_lower(VCC_OMI[i],omilats,omilons,lats_lr,lons_lr,pixels=pixels[i])
+        fitting_uncert_lr[i] = util.regrid_to_lower(fitting_uncert[i], omilats,omilons, lats_lr, lons_lr, pixels=pixels[i])
+        SC_lr[i]        = util.regrid_to_lower(SC[i], omilats,omilons,lats_lr,lons_lr,pixels=pixels[i])
         # store pixel count in lower resolution also, using sum of pixels in each bin
         pixels_lr[i]    = util.regrid_to_lower(pixels[i],omilats,omilons,lats_lr,lons_lr,func=np.nansum)
         pixels_PP_lr[i] = util.regrid_to_lower(pixels_PP[i],omilats,omilons,lats_lr,lons_lr,func=np.nansum)
+
 
     if __VERBOSE__:
         print("Enew Calc Shapes:")
@@ -315,10 +322,19 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     #E_pp_sf         = (VCC_PP_lr - BG_PP_lr) / GC_slope_sf
     #E_omi_sf        = (VCC_OMI_lr - BG_OMI_lr) / GC_slope_sf
 
-
+    # Finally calculate the relative uncertainty of the OMI vertical columns
+    # ignore divide by zero and nan values
+    with np.errstate(divide='ignore'):
+        VC_runcert = np.sqrt( ( 1.0/pixels ) * ( (fitting_uncert/SC)**2 + 0.09 ) ) # assume amf err is 0.3
+        VC_runcert_lr = np.sqrt( ( 1.0/pixels_lr ) * ( (fitting_uncert_lr/SC_lr)**2 + 0.09 ) ) 
+    # remove infinites
+    VC_runcert[~VC_runcert.isfinite()] = np.NaN
+    VC_runcert_lr[~VC_runcert_lr.isfinite()] = np.NaN
+    
     elapsed = timeit.default_timer() - time_emiss_calc
     if __VERBOSE__:
         print ("TIMEIT: Took %6.2f seconds to calculate backgrounds and estimate emissions()"%elapsed)
+    
     # should take < 1 second
 
     # Lets save the daily amounts
@@ -396,13 +412,16 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['firemask']     = firemask.astype(np.int)
     outdata['anthromask']   = anthromask.astype(np.int)
     outdata['smearmask']    = smearmask.astype(np.int)
+    outdata['smokemask']    = smokemask.astype(np.int)
     outdata['pixels']       = pixels
     outdata['pixels_u']     = pixels_u
     outdata['pixels_PP']    = pixels_PP
     outdata['pixels_PP_u']  = pixels_PP_u
     outdata['pixels_lr']    = pixels_lr
     outdata['pixels_PP_lr'] = pixels_PP_lr
-    outdata['uncert_OMI']   = uncert
+    outdata['OMI_fitting_uncertainty']   = fitting_uncert
+    outdata['VC_relative_uncertainty']  = VC_runcert
+    outdata['VC_relative_uncertainty_lr']  = VC_runcert_lr
     outattrs['firemask']    = {'units':'int',
                                'desc':'Squares with more than one fire (over today or last two days, in any adjacent square)'}
     outattrs['smokemask']   = {'units':'int',
@@ -411,8 +430,12 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                                'desc':'Squares with tropNO2 from OMI greater than %.1e or yearly averaged tropNO2 greater than %.1e'%(fio.__Thresh_NO2_d__,fio.__Thresh_NO2_y__)}
     outattrs['smearmask']   = {'units':'int',
                                'desc':'smearing = Delta(HCHO)/Delta(E_isop), we filter outside of [%d to %d] where Delta is the difference between full and half isoprene emission runs from GEOS-Chem at 2x2.5 resolution'%(masks.__smearminlit__,masks.__smearmaxlit__)}
-    outattrs['uncert_OMI']  = {'units':'molec/cm2',
-                               'desc':'OMI pixel uncertainty averaged for each gridsquare'}
+    outattrs['OMI_fitting_uncertainty']  = {'units':'molec/cm2',
+                               'desc':'OMI pixel fitting uncertainty averaged for each gridsquare'}
+    outattrs['VC_relative_uncertainty']  = {'units':'portion',
+                               'desc':'OMI vertical column relative uncertainty for each gridsquare'}
+    outattrs['VC_relative_uncertainty_lr']  = {'units':'portion',
+                               'desc':'OMI vertical column relative uncertainty for each low resolution gridsquare'}
     outattrs['pixels']      = {'units':'n',
                                'desc':'OMI pixels used for gridsquare VC'}
     outattrs['pixels_u']    = {'units':'n',

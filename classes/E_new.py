@@ -71,7 +71,9 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'pixels_PP',    # OMI pixel count using PP code
                 'pixels_PP_u',  # before filtering
                 'pixels_PP_lr', # OMI pixel count using PP code at low resolution
-                'uncert_OMI',   # OMI grid averaged pixel uncertainty
+                'OMI_fitting_uncertainty',   # OMI grid averaged pixel fitting uncertainty
+                'VC_relative_uncertainty', # relative uncertainty per grid square for OMI VC
+                'VC_relative_uncertainty_lr', # relative uncertainty per grid square for OMI VC
                 'time',         # time is a dimension but also data: datetime string stored in file
                 'dates',        # datetime objects created from time field
                 ]
@@ -80,6 +82,7 @@ __E_new_keys_lr__ = [
                      'E_GC_lr',  #  at low resolution
                      'E_OMI_lr', #  E_VCC_OMI at low resolution
                      'E_PP_lr',  #  at low resolution
+                     'VC_relative_uncertainty_lr', # relative uncertainty per grid square for OMI VC
 #                     'E_VCC_GC_lr',  #  at low resolution
 #                     'E_VCC_OMI_lr', #  E_VCC_OMI at low resolution
 #                     'E_VCC_PP_lr',  #  at low resolution

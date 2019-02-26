@@ -394,6 +394,26 @@ def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
         print('SAVED ',pnames%key)
         plt.close()
 
+################
+### UNCERTAINTY
+################
+
+def uncertainty():
+    '''
+        Calculate uncertainty and plot it somehow
+    '''
+    
+    # Read product with pixels and uncertainty
+    # OMHCHORP: 
+    #   Need: VC_OMI, col_uncertainty_OMI, entries
+    # E_new: 
+    #   Need: E_PP_lr, ModelSlope, 
+    
+    # average/ sqrt(n)
+    
+    # add by quadrature to assumed error in AMF
+
+
 
 if __name__ == "__main__":
     

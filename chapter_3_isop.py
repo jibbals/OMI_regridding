@@ -413,26 +413,47 @@ def uncertainty():
     uncertkeys = ['VC_relative_uncertainty_lr','pixels_lr']
     # Read from E_new
     enew    = E_new(d0,d1, dkeys=uncertkeys)
-    VCrunc  = np.nanmean(enew.VC_relative_uncertainty_lr, axis=0)
-    pix     = np.nanmean(enew.pixels_lr, axis=0)
+    VCrunc  = enew.VC_relative_uncertainty_lr
+    pix     = enew.pixels_lr
     lats    = enew.lats_lr
     lons    = enew.lons_lr
     
-    # plot daily averages
-    plt.subplot(2,2,1)
-    pp.createmap(VCrunc, lats, lons, aus=True, linear=True,
-                 vmin=0.001, vmax=10,
-                 title='Relative uncertainty')
-    plt.subplot(2,2,2)
-    pp.createmap(pix, lats, lons, aus=True, linear=True,
-                 title='OMI daily pixel count')
-    # plot monthly average
-    plt.subplot(2,1,2)
-    OM=util.oceanmask(lats,lons)
-    plt.hist(VCrunc[~OM], bins=np.linspace(0,5,21))
-    plt.title('histogram over land squares')
+    # daily means
+    dVCrunc = np.nanmean(VCrunc, axis=0)
+    dpix    = np.nanmean(pix, axis=0)
     
-    # average/ sqrt(n)
+    # monthly uncertainty: reweight using daily pixel counts 
+    with np.errstate(divide='ignore'):
+        mVCrunc = ( 1 / np.sqrt(np.nansum(pix,axis=0)) ) * ( np.nanmean(np.sqrt(pix) * VCrunc, axis=0) )
+    
+    dvmin=0.001
+    dvmax=3
+    dbins=np.logspace(-1,1,25)
+    mvmax=1
+    mbins=np.logspace(-2,0,25)
+        
+    # plot daily averages
+    plt.subplot(3,2,1)
+    pp.createmap(dVCrunc, lats, lons, aus=True, linear=True,
+                 vmin=dvmin,vmax=dvmax,
+                 title='Relative uncertainty')
+    plt.subplot(3,2,2)
+    pp.createmap(dpix, lats, lons, aus=True, linear=True,
+                 title='OMI daily pixel count')
+    # Distribution of daily
+    plt.subplot(3,1,2)
+    OM=util.oceanmask(lats,lons)
+    dVCrunc[dVCrunc>dvmax] = 10
+    plt.hist(dVCrunc[~OM], bins=dbins)
+    plt.xscale('log')
+    plt.title('histogram over land squares (mean daily)')
+    
+    # Distribution of monthly
+    plt.subplot(3,1,3)
+    mVCrunc[mVCrunc>mvmax] = mvmax
+    plt.hist(mVCrunc[~OM], bins=mbins)
+    plt.xscale('log')
+    plt.title('histogram over land squares (monthly)')
     
     # add by quadrature to assumed error in AMF
     

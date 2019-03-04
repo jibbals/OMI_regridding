@@ -394,6 +394,178 @@ def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
         print('SAVED ',pnames%key)
         plt.close()
 
+
+def seasonal_differences():
+    ''' 
+        Compare HCHO, O3, NO columns between runs over Australia
+        # Grab all overpass data, resample to multiyear monthly avg, then look at seasonal compariosn
+        First row:  Summer before, summer after, diff
+        Second row: Winter before, winter after, diff
+    '''
+    d0 = datetime(2005,1,1)
+    d1 = datetime(2006,12,31)
+    print("CURRENTLY TESTING: NEED TO SET d1 TO 2012/12/31")
+    #dstr = d0.strftime("%Y%m%d")
+    pname1 = 'Figs/new_emiss/HCHO_total_columns_seasonal.png'
+    pname2 = 'Figs/new_emiss/O3_surf_map_seasonal.png'
+    pname3 = 'Figs/new_emiss/NO_surf_map_seasonal.png'
+
+    satkeys = ['IJ-AVG-$_ISOP', 'IJ-AVG-$_CH2O',
+               'IJ-AVG-$_NO2',     # NO2 in ppbv
+               'IJ-AVG-$_O3', ] + GC_class.__gc_tropcolumn_keys__
+
+    GCnew = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
+    GCtrop = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
+    print('GEOS-Chem satellite outputs read 2005')
+    lats=GCnew.lats
+    lons=GCnew.lons
+    dates=GCnew.dates
+    
+    # new_sat.hcho.shape #(31, 91, 144, 47)
+    # new_sat.isop.shape #(31, 91, 144, 47)
+
+    # TOTAL column HCHO
+    new_hcho  = GCnew.get_total_columns(keys=['hcho'])['hcho']
+    trop_hcho  = GCtrop.get_total_columns(keys=['hcho'])['hcho']
+    # surface O3 in ppbv
+    new_o3 = GCnew.O3[:,:,:,0]
+    trop_o3 = GCtrop.O3[:,:,:,0]
+    # Surface NO2 in ppbv
+    print(GCnew.attrs['NO2'])
+    new_NO2 = GCnew.NO2[:,:,:,0]
+    trop_NO2 = GCtrop.NO2[:,:,:,0]
+    
+    # MYA monthly averages:
+    summer=np.array([0,1,12])
+    winter=np.array([5,6,7])
+    new_summers=[]
+    new_winters=[]
+    trop_summers=[]
+    trop_winters=[]
+    
+    # HCHO,   O3,   NO2  simple comparisons:
+    f=plt.figure()
+    vmins = [1e15, 10, 0]
+    vmaxs = [1.8e16, 40, 0.4]
+    units = ['molec cm$^{-2}$', 'ppbv', 'ppbv']
+    linears= [False,True,True]
+    stitles = ['Midday total column HCHO','Midday surface ozone','Midday surface NO$_2$']
+    titles = ['Tropchem run','Scaled run', 'Absolute difference']
+    pnames = [pname1,pname2,pname3]
+    for i, new_arr, trop_arr in zip(range(3),[new_hcho, new_o3, new_NO2],[trop_hcho, trop_o3, trop_NO2]):
+        new_mya = util.multi_year_average_spatial(new_arr, dates)
+        trop_mya = util.multi_year_average_spatial(trop_arr, dates)
+        new_summers.append(new_mya['mean'][summer,:,:])
+        new_winters.append(new_mya['mean'][winter,:,:])
+        trop_summers.append(trop_mya['mean'][summer,:,:])
+        trop_winters.append(trop_mya['mean'][winter,:,:])
+        
+        # SUMMER PLOTS:
+        vmin=vmins[i]; vmax=vmaxs[i]
+        plt.subplot(2,3,1)
+        pp.createmap(new_summers[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
+                     clabel=units[i], linear=linears[i], title=titles[0])
+        plt.ylabel('Summer')
+        plt.subplot(2,3,2)
+        pp.createmap(trop_summers[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
+                     clabel=units[i], linear=linears[i], title=titles[1])
+        plt.subplot(2,3,3)
+        pp.createmap(new_summers[i]-trop_summers[i],lats,lons,aus=True, vmin=-1*vmax/2.0,vmax=vmax/2.0, 
+                     clabel=units[i], linear=linears[i], title=titles[2], 
+                     cmapname='BlWhRd')
+        # WINTER PLOTS:
+        vmin=vmin/2.0; vmax=vmax/2.0
+        plt.subplot(2,3,1)
+        pp.createmap(new_winters[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
+                     clabel=units[i], linear=linears[i], title=titles[0])
+        plt.ylabel('Winter')
+        plt.subplot(2,3,2)
+        pp.createmap(trop_winters[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
+                     clabel=units[i], linear=linears[i], title=titles[1])
+        plt.subplot(2,3,3)
+        pp.createmap(new_winters[i]-trop_winters[i],lats,lons,aus=True, vmin=-1*vmax/2.0,vmax=vmax/2.0, 
+                     clabel=units[i], linear=linears[i], title=titles[2], 
+                     cmapname='BlWhRd')
+        
+        plt.suptitle(stitles[i])
+        
+        
+        plt.savefig(pnames[i])
+        plt.close(f)
+        print('SAVING FIGURE ',pnames[i])
+    
+#    # COMPARE HCHO TO SATELLITE?
+#    
+#    ## read old satellite hcho columns...
+#    # OMI total columns, PP corrected total columns
+#    Enew = E_new(d0, d1, dkeys=['VCC_OMI','VCC_PP','pixels_PP_u']) # unfiltered pixel counts
+#
+#    # grab total columns
+#    vcc_omi     = Enew.VCC_OMI
+#    vcc_pp      = Enew.VCC_PP
+#    pixels_pp   = Enew.pixels_PP_u
+#    lats2, lons2= Enew.lats, Enew.lons
+#    lats_lr     = Enew.lats_lr
+#    lons_lr     = Enew.lons_lr
+#
+#    # Get VCC in lower resolution
+#    vcc_pp_lr=np.zeros([len(Enew.dates), len(lats_lr), len(lons_lr)])+np.NaN
+#    pixels_pp_lr=np.zeros([len(Enew.dates), len(lats_lr), len(lons_lr)])
+#    for i in range(vcc_pp.shape[0]):
+#        vcc_pp_lr[i]    = util.regrid_to_lower(vcc_pp[i],lats2,lons2,lats_lr,lons_lr,pixels=pixels_pp[i])
+#        pixels_pp_lr[i] = util.regrid_to_lower(pixels_pp[i],lats2,lons2,lats_lr,lons_lr,func=np.nansum)
+#
+#    omi_pp_map, omi_pp_map_pixels  = util.satellite_mean(vcc_pp_lr, pixels_pp_lr, spatial=False, temporal=True)
+#
+#    # plot some test maps
+#    # one plot for hcho trop columns, similar for surface O3, and then for NO
+#    # order: hcho, O3, NO
+#    
+#
+#    for i in range(3):
+#        vmin=vmins[i]; vmax=vmaxs[i]; unit=units[i]; pname=pnames[i]
+#        linear=linears[i]
+#        f=plt.figure(figsize=[14,14])
+#
+#        plt.subplot(2,2,1)
+#        pp.createmap(first_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
+#        plt.title(first_title)
+#
+#        plt.subplot(2,2,2)
+#        pp.createmap(second_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
+#        plt.title(second_title)
+#        
+#        if comparison_plots[i] is not None:
+#            plt.subplot(2,2,3)
+#            pp.createmap(comparison_plots[i], comparison_lats[i], comparison_lons[i], aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
+#            plt.title(comparison_titles[i])
+#        
+#            plt.subplot(2,2,4)
+#        else:
+#            plt.subplot(2,1,2)
+#        # three way regression if possible
+#        subsets = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,[first_maps[i],second_maps[i]],has_time_dim=False)
+#        X=subsets['data'][0].flatten() # new hcho map
+#        Y=subsets['data'][1].flatten() # trop hcho map
+#        #Z= scatter coloured by value of OMI PP 
+#        plt.scatter(X,Y)
+#        pp.add_regression(X,Y)
+#        plt.legend(loc='best',fontsize=18)
+#        
+#        plt.plot([vmin,vmax],[vmin,vmax], 'k--')# black dotted 1-1 line
+#        plt.xlim(vmin,vmax)
+#        plt.ylim(vmin,vmax)
+#        plt.title('Surface O$_3$')
+#        plt.ylabel('scaled run [%s]'%unit)
+#        plt.xlabel('tropchem run [%s]'%unit)
+#        #pp.createmap(new_hcho_map,lats,lons,aus=True,title='scaled run', vmin=vmin,vmax=vmax)
+#
+#        plt.suptitle(stitles[i])
+#        plt.savefig(pname)
+#        print('Saved ', pname)
+#        plt.close(f)
+
+
 ################
 ### UNCERTAINTY
 ################
@@ -475,6 +647,7 @@ if __name__ == "__main__":
     #Examine_Model_Slope() # finished ~ 20/2/19
     
     ## Results Plots
+    
     
     ## UNCERTAINTY
     uncertainty()

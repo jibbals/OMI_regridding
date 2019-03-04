@@ -405,7 +405,8 @@ def spatial_comparisons(d0, d1, dlabel):
     satkeys = ['IJ-AVG-$_ISOP', 'IJ-AVG-$_CH2O',
                'IJ-AVG-$_NO2',     # NO2 in ppbv
                'IJ-AVG-$_O3', ] + GC_class.__gc_tropcolumn_keys__
-
+    
+    
     GCnew = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
     GCtrop = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
     print('GEOS-Chem satellite outputs read 2005')
@@ -459,19 +460,19 @@ def spatial_comparisons(d0, d1, dlabel):
     # one plot for hcho trop columns, similar for surface O3, and then for NO
     # order: hcho, O3, NO
     vmins = [1e15, 10, 0]
-    vmaxs = [1.8e16, 40, 1.8]
-    units = ['molec cm$^{-2}$', 'ppb', 'ppb']
+    vmaxs = [1.8e16, 40, 0.4]
+    units = ['molec cm$^{-2}$', 'ppbv', 'ppbv']
     linears= [False,True,True]
     comparison_plots = [ omi_pp_map, None, None ]
-    comparison_titles= ['OMI recalculated (PP)', '', '']
+    comparison_titles= ['$\Omega_{OMI}$', '', '']
     comparison_lats  = [lats_lr, None, None]
     comparison_lons  = [lons_lr, None, None]
     first_maps      = [trop_hcho_map, trop_o3_map, trop_NO2_map]
     first_title     ='tropchem run' 
     second_maps       = [new_hcho_map, new_o3_map, new_NO2_map]
-    seecond_title   = 'scaled run'
+    second_title   = 'scaled run'
     pnames = [pname1,pname2,pname3]
-    stitles = ['GEOS-Chem midday $\Omega$ %s'%dlabel,
+    stitles = ['Midday total column HCHO: %s'%dlabel,
                 'GEOS-Chem surface ozone %s'%dlabel,
                 'GEOS-Chem surface NO$_2$ %s'%dlabel]
 

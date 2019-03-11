@@ -1,4 +1,4 @@
-c#!/usr/bin/env python3
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 Created on Thu Oct 12 12:15:43 2017
@@ -21,7 +21,7 @@ from utilities.JesseRegression import RMA, OLS
 from utilities import GMAO,GC_fio,fio, masks
 import Inversion
 import tests
-from tests import utilities_tests, test_new_emissions
+from tests import utilities_tests, test_new_emissions, test_filters
 import reprocess
 import new_emissions
 import Analyse_E_isop
@@ -69,6 +69,9 @@ start1=timeit.default_timer()
 ##########
 ### DO STUFFS
 ##########
+
+test_filters.summary_pixels_filtered()
+
 
 
 #d0 = datetime(2005,1,1); d1=datetime(2012,12,31) # two years for now

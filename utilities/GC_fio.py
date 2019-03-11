@@ -363,10 +363,12 @@ def read_overpass_file(d0=datetime(2005,1,1), d1=datetime(2012,12,31), run='trop
                 ]
     # check keys are right
     for key in keys:
-        assert key in avail_keys, '%s missing from overpass dataset'%key
+        #assert key in avail_keys, '%s missing from overpass dataset'%key
+        if key not in avail_keys:
+            print("WARNING: MULTIYEAR KEY UNAVAILABLE: ",key)
     # also keep dims
     allkeys = keys + ['dates','lats','lons']
-    keep_keys = list(set(allkeys))
+    keep_keys = list(set(allkeys) & set(avail_keys))
     print('keep_keys:',keep_keys)
     
     # read the dataset (only variables in keys list)
@@ -380,7 +382,7 @@ def read_overpass_file(d0=datetime(2005,1,1), d1=datetime(2012,12,31), run='trop
     # and store as datetime object
     attrs['dates'] = {'desc':'python datetime objects converted from gregorian "dates" dim'}
     
-    for key in keys:
+    for key in keep_keys:
         if key in ['lats','lons']:
             continue
         print("subsetting data:", key, np.shape(data[key]))

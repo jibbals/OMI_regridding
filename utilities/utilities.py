@@ -884,6 +884,7 @@ def resample(data,dates, bins='M', **resampleargs):
     '''
         Resample time series using pandas
         bin examples: 'M' = monthly, 'D'= daily, '3T'= 3 minutes, '30S' = 30 seconds,
+        Seasonal bins: 'Q-NOV' # indicates quaterly with year ending in Nov
         other args:
             closed='right'  : closed intervals
             label='left'    : bin labels (default left)

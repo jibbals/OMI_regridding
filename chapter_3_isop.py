@@ -272,10 +272,91 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
 # RESULTS
 ###
 
+def time_series(d0=datetime(2005,1,1), d1=datetime(2012,12,31)):
+    '''
+        Time series before and after scaling 
+        Method takes 5 mins but lots of RAM to read satellite years...
+    '''
+    
+    pnames = 'Figs/new_emiss/time_series_%s.png'
+    
+    satkeys = ['IJ-AVG-$_ISOP',     # isop in ppbc?
+               'IJ-AVG-$_CH2O',     # hcho in ppb
+               'IJ-AVG-$_NO2',      # NO2 in ppb
+               'IJ-AVG-$_NO',       # NO in ppb?
+               'IJ-AVG-$_O3',       # O3 in ppb
+               ] #+ GC_class.__gc_tropcolumn_keys__
+    new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
+    tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
+    # new_sat.hcho.shape #(31, 91, 144, 47)
+    # new_sat.isop.shape #(31, 91, 144, 47)
+    
+    
+    # dims for GEOS-Chem outputs
+    lats=new_sat.lats
+    lons=new_sat.lons
+    dates=new_sat.dates
+    months=util.list_months(d0,d1)
+    
+    # Same process for each key: read surface, split by region, plot series seasonally averaged
+    for origkey in satkeys:
+        key = GC_class._GC_names_to_nice[origkey]
+        
+        # Grab surface array
+        new_surf = getattr(new_sat,key)[:,:,:,0] # ppb or ppbC
+        trop_surf = getattr(tropchem_sat,key)[:,:,:,0]
+        
+        units = 'ppbv'
+        if origkey == 'IJ-AVG-$_ISOP':
+            units = 'ppbC'
+        
+        # pull out subregions, keeping lats and lons
+        new_regional, lats_regional, lons_regional = util.pull_out_subregions(new_surf,lats,lons,subregions=regions)
+        trop_regional, lats_regional, lons_regional = util.pull_out_subregions(trop_surf,lats,lons,subregions=regions)
+
+        # average spatial dims into monthly time series
+        new_regional_ts = [ np.nanmean(new_regional[i], axis=(1,2)) for i in range(n_regions) ]
+        trop_regional_ts = [ np.nanmean(trop_regional[i], axis=(1,2)) for i in range(n_regions) ]
+
+        # Seasonal averages
+        new_seasonal = [ util.resample(new_regional_ts[i],dates,"Q-NOV") for i in range(n_regions) ]
+        trop_seasonal = [ util.resample(trop_regional_ts[i],dates,"Q-NOV") for i in range(n_regions) ]
+        dates_seasonal = new_seasonal[0].mean().index.to_pydatetime()
+        # dates are at right hand side of bin by default...
+        dates_seasonal = [ date_s - timedelta(days=45) for date_s in dates_seasonal ]
+        
+        f,axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True,sharey=True)
+        for i in range(n_regions):
+            plt.sca(axes[i])
+            newmean      = new_seasonal[i].mean().values.squeeze()
+            tropmean     = trop_seasonal[i].mean().values.squeeze()
+
+            plt.plot_date(dates_seasonal, tropmean, color=colors[i], label='Tropchem run',
+                          fmt='-', linewidth=3)
+            #plt.fill_between(x,lq,uq, color=colors[i], alpha=0.4)
+            plt.plot_date(dates_seasonal, newmean, color=colors[i], label='Scaled run',
+                          fmt='--',linewidth=3 )
+            #plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
+            plt.ylabel(labels[i], color=colors[i], fontsize=24)
+            if i==0:
+                plt.legend(loc='best')
+            if i%2 == 1:
+                axes[i].yaxis.set_label_position("right")
+                axes[i].yaxis.tick_right()
+        
+        plt.xlabel('date', fontsize=24)
+        plt.suptitle('Seasonally averaged surface %s [%s]'%(key, units),fontsize=30)
+        f.subplots_adjust(hspace=0)
+
+
+        ## save figure
+        plt.savefig(pnames%key)
+        print('SAVED ',pnames%key)
+        plt.close()
 
 def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
     '''
-        Trends for surface ozone, hcho, isop, NO2?
+        Trends for surface ozone, hcho, isop, NO, NO2
         Method takes 5 mins but lots of RAM to read satellite years...
     '''
     
@@ -284,6 +365,7 @@ def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
     satkeys = ['IJ-AVG-$_ISOP',     # isop in ppbc?
                'IJ-AVG-$_CH2O',     # hcho in ppb
                'IJ-AVG-$_NO2',      # NO2 in ppb
+               'IJ-AVG-$_NO',       # NO in ppb?
                'IJ-AVG-$_O3',       # O3 in ppb
                ] #+ GC_class.__gc_tropcolumn_keys__
     print("TREND: READING new_emissions")
@@ -317,7 +399,7 @@ def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
         
         # For each region plot deseasonalised mean and trend
         
-        units = 'ppb'
+        units = 'ppbv'
         if origkey == 'IJ-AVG-$_ISOP':
             units = 'ppbC'
         
@@ -408,9 +490,11 @@ def seasonal_differences():
     #dstr = d0.strftime("%Y%m%d")
     pname1 = 'Figs/new_emiss/HCHO_total_columns_seasonal.png'
     pname2 = 'Figs/new_emiss/O3_surf_map_seasonal.png'
-    pname3 = 'Figs/new_emiss/NO_surf_map_seasonal.png'
+    pname3 = 'Figs/new_emiss/NOx_surf_map_seasonal.png'
 
-    satkeys = ['IJ-AVG-$_ISOP', 'IJ-AVG-$_CH2O',
+    satkeys = ['IJ-AVG-$_ISOP',     # isop in ppbC
+               'IJ-AVG-$_CH2O',     # hcho in ppbv
+               'IJ-AVG-$_NO',       # NO in ppbv
                'IJ-AVG-$_NO2',     # NO2 in ppbv
                'IJ-AVG-$_O3', ] + GC_class.__gc_tropcolumn_keys__
 
@@ -430,38 +514,41 @@ def seasonal_differences():
     # surface O3 in ppbv
     new_o3 = GCnew.O3[:,:,:,0]
     trop_o3 = GCtrop.O3[:,:,:,0]
-    # Surface NO2 in ppbv
-    print(GCnew.attrs['NO2'])
-    new_NO2 = GCnew.NO2[:,:,:,0]
-    trop_NO2 = GCtrop.NO2[:,:,:,0]
+    # Surface NOx in ppbv
+    print("NO units: ",GCnew.attrs['NO']['units'], " NO2 units: ", GCnew.attrs['NO2']['units'])
+    new_NOx = GCnew.NO2[:,:,:,0] + GCnew.NO[:,:,:,0]
+
+    trop_NOx = GCtrop.NO2[:,:,:,0] + GCtrop.NO[:,:,:,0]
     
     # MYA monthly averages:
-    summer=np.array([0,1,12])
+    summer=np.array([0,1,11])
     winter=np.array([5,6,7])
     new_summers=[]
     new_winters=[]
     trop_summers=[]
     trop_winters=[]
     
-    # HCHO,   O3,   NO2  simple comparisons:
+    # HCHO,   O3,   NOX  simple comparisons:
     f=plt.figure()
-    vmins = [1e15, 10, 0]
-    vmaxs = [1.8e16, 40, 0.4]
+    vmins = [1e15, 20, 0]
+    vmaxs = [2e16, 100, 1]
+    difflims = [[-3e15, 3e15], [-5,5], [-0.05,0.05]]
     units = ['molec cm$^{-2}$', 'ppbv', 'ppbv']
     linears= [False,True,True]
-    stitles = ['Midday total column HCHO','Midday surface ozone','Midday surface NO$_2$']
+    stitles = ['Midday total column HCHO','Midday surface ozone','Midday surface NO$_x$']
     titles = ['Tropchem run','Scaled run', 'Absolute difference']
     pnames = [pname1,pname2,pname3]
-    for i, new_arr, trop_arr in zip(range(3),[new_hcho, new_o3, new_NO2],[trop_hcho, trop_o3, trop_NO2]):
+    for i, new_arr, trop_arr in zip(range(3),[new_hcho, new_o3, new_NOx],[trop_hcho, trop_o3, trop_NOx]):
         new_mya = util.multi_year_average_spatial(new_arr, dates)
         trop_mya = util.multi_year_average_spatial(trop_arr, dates)
-        new_summers.append(new_mya['mean'][summer,:,:])
-        new_winters.append(new_mya['mean'][winter,:,:])
-        trop_summers.append(trop_mya['mean'][summer,:,:])
-        trop_winters.append(trop_mya['mean'][winter,:,:])
+        new_summers.append(np.nanmean(new_mya['mean'][summer,:,:],axis=0))
+        new_winters.append(np.nanmean(new_mya['mean'][winter,:,:],axis=0))
+        trop_summers.append(np.nanmean(trop_mya['mean'][summer,:,:],axis=0))
+        trop_winters.append(np.nanmean(trop_mya['mean'][winter,:,:],axis=0))
         
         # SUMMER PLOTS:
         vmin=vmins[i]; vmax=vmaxs[i]
+        dmin=difflims[i][0]; dmax=difflims[i][1]
         plt.subplot(2,3,1)
         pp.createmap(new_summers[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
                      clabel=units[i], linear=linears[i], title=titles[0])
@@ -470,22 +557,22 @@ def seasonal_differences():
         pp.createmap(trop_summers[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
                      clabel=units[i], linear=linears[i], title=titles[1])
         plt.subplot(2,3,3)
-        pp.createmap(new_summers[i]-trop_summers[i],lats,lons,aus=True, vmin=-1*vmax/2.0,vmax=vmax/2.0, 
-                     clabel=units[i], linear=linears[i], title=titles[2], 
-                     cmapname='BlWhRd')
+        pp.createmap(new_summers[i]-trop_summers[i],lats,lons,aus=True, vmin=dmin,vmax=dmax, 
+                     clabel=units[i], linear=True, title=titles[2], 
+                     cmapname='bwr')
+
         # WINTER PLOTS:
-        vmin=vmin/2.0; vmax=vmax/2.0
-        plt.subplot(2,3,1)
+        plt.subplot(2,3,4)
         pp.createmap(new_winters[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
                      clabel=units[i], linear=linears[i], title=titles[0])
         plt.ylabel('Winter')
-        plt.subplot(2,3,2)
+        plt.subplot(2,3,5)
         pp.createmap(trop_winters[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
                      clabel=units[i], linear=linears[i], title=titles[1])
-        plt.subplot(2,3,3)
-        pp.createmap(new_winters[i]-trop_winters[i],lats,lons,aus=True, vmin=-1*vmax/2.0,vmax=vmax/2.0, 
-                     clabel=units[i], linear=linears[i], title=titles[2], 
-                     cmapname='BlWhRd')
+        plt.subplot(2,3,6)
+        pp.createmap(new_winters[i]-trop_winters[i],lats,lons,aus=True, vmin=dmin,vmax=dmax, 
+                     clabel=units[i], linear=True, title=titles[2], 
+                     cmapname='bwr')
         
         plt.suptitle(stitles[i])
         
@@ -647,7 +734,10 @@ if __name__ == "__main__":
     #Examine_Model_Slope() # finished ~ 20/2/19
     
     ## Results Plots
-    
+    # TODO: trend_analysis
+    seasonal_differences()
+    # TODO: time series
+    time_series()
     
     ## UNCERTAINTY
     uncertainty()

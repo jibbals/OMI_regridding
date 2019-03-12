@@ -70,107 +70,68 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-test_filters.summary_pixels_filtered()
+#test_filters.summary_pixels_filtered()
+
+# Read and store regional time series into dataframe and he5
+d0=datetime(2005,1,1)
+d1=datetime(2005,2,31)
+    
+outname = 'Data/GC_Output/overpass_timeseries_regional.h5'
+    
+satkeys = ['IJ-AVG-$_ISOP',     # isop in ppbc?
+           'IJ-AVG-$_CH2O',     # hcho in ppb
+           'IJ-AVG-$_NO2',      # NO2 in ppb
+           'IJ-AVG-$_NO',       # NO in ppb?
+           'IJ-AVG-$_O3',       # O3 in ppb
+           ] #+ GC_class.__gc_tropcolumn_keys__
+new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
+tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
+# new_sat.hcho.shape #(31, 91, 144, 47)
+# new_sat.isop.shape #(31, 91, 144, 47)
 
 
+# dims for GEOS-Chem outputs
+lats=new_sat.lats
+lons=new_sat.lons
+dates=new_sat.dates
 
-#d0 = datetime(2005,1,1); d1=datetime(2012,12,31) # two years for now
-#
-## look at each region
-#regions   = util.__subregions__
-#colors    = util.__subregions_colors__
-#labels    = util.__subregions_labels__
-#n_regions = len(regions)
-#
-## read apriori and postiori surface ozone:
-#pname1 = 'Figs/new_emiss/trend_ozone.png'
-#satkeys = ['IJ-AVG-$_CH2O', 
-#           'IJ-AVG-$_NO2',      # NO2 in ppbv
-#           'IJ-AVG-$_O3',       # ozone in ppbv
-#           ] + GC_class.__gc_tropcolumn_keys__
-#new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
-#tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
-#
-#print('GEOS-Chem satellite outputs read')
-#
-#new_sat.hcho.shape #(31, 91, 144, 47)
-#new_sat.isop.shape #(31, 91, 144, 47)
-#
-##new_sat_tc  = new_sat.get_total_columns(keys=['hcho'])
-##tropchem_sat_tc  = tropchem_sat.get_total_columns(keys=['hcho'])
-#
-## TOTAL column HCHO
-##new_hcho_tc = new_sat_tc['hcho']
-##tropchem_hcho_tc = tropchem_sat_tc['hcho']
-#
-## Surface O3 in ppb
-#new_o3_surf  = new_sat.O3[:,:,:,0]
-#trop_o3_surf = tropchem_sat.O3[:,:,:,0]
-#
-#lats    = new_sat.lats
-#lons    = new_sat.lons
-#dates   = new_sat.dates
-#months  = util.list_months(d0,d1)
-#
-## plot anomaly and regression for emissions
-#f, axes = plt.subplots(2, 1, figsize=(12,8), sharex=True)
-#pname='Figs/Emiss/trend_E.png'
-#titles=['isoprene a priori anomaly', 'isoprene a postiori anomaly']
-#unitss=['atom C cm$^{-2}$ s$^{-1}$','atom C cm$^{-2}$ s$^{-1}$']
-#
-#for j, (arr,title,units) in enumerate(zip([apri, apos],titles,unitss)):
-#    mya_df = util.multi_year_average_regional(arr, dates, lats, lons, grain='monthly', regions=regions)
-#    mya = [np.squeeze(np.array(mya_df['df'][i].mean())) for i in range(n_regions)]
-#    # pull out subregions, keeping lats and lons
-#    regional, lats_regional, lons_regional = util.pull_out_subregions(arr,lats,lons,subregions=regions)
-#    
-#    # average spatial dims into monthly time series
-#    regional_ts = [ np.nanmean(regional[i], axis=(1,2)) for i in range(n_regions) ]
-#    
-#    # get trend
-#    trends = [ util.trend(regional_ts[i], dates, remove_mya=True, resample_monthly=True, remove_outliers=True) for i in range(n_regions) ]
-#    
-#    #anomaly = [ trends[i]['anomaly'] for i in range(n_regions) ]
-#    #monthly = [ trends[i]['monthly'] for i in range(n_regions) ]
-#    
-#    #monthly = [ np.array(util.resample(np.nanmean(regional[i],axis=(1,2)),dates,bins='M').mean()).squeeze() for i in range(len(regions))]
-#    #anomaly = [ np.array([ old_monthly[k][i] - mya[k][i%12] for i in range(len(months)) ]) for k in range(len(regions)) ]
-#    
-#    plt.sca(axes[j])
-#    print(title)
-#    print('region, [ slope, regression coeff, p value for slope non zero]')
-#    for i in range(n_regions):
-#    #for monthly_anomaly, monthly_data, color, label in zip(anomaly, monthly, colors, labels):
-#        color=colors[i]; label=labels[i]
-#        
-#        trendi=trends[i]
-#        anomaly = trendi['anomaly']
-#
-#        # Y = mX+b
-#        m=trendi['slope']
-#        b=trendi['intercept']
-#        r=trendi['r']
-#        p=trendi['p'] # two sided p value against slope being zero as H0
-#        outliers=trendi['outliers']
-#        
-#        print("%s &  [ m=%.2e,  r=%.3f, p=%.3f ]   & \\"%(label,m, r, p))
-#        
-#        if p < 0.05:
-#            pp.plot_time_series( [months[0], months[-1]], [b, m*(len(months)-1)], alpha=0.5, color=color ) # regression line
-#        pp.plot_time_series( months, anomaly, color=color, label=label, marker='.', markersize=6, linewidth=0) # regression line
-#        pp.plot_time_series( np.array(months)[outliers], anomaly[outliers], color=color, marker='x', markersize=8, linewidth=0)
-#
-#    plt.title(title,fontsize=24)
-#    plt.ylabel(units)
-#    plt.xticks(util.list_years(d0,d1))
-#
-#plt.sca(axes[0])
-#xywh=(.975, 0.15, 0.1, .7)
-#plt.legend(bbox_to_anchor=xywh, loc=3, ncol=1, mode="expand", borderaxespad=0., fontsize=12)
-#
-#plt.savefig(pname)
-#print('SAVED ',pname)
-#plt.close()
+# Same process for each key: read surface, split by region, store into data structure
+means, stds, Q0s, Q1s, Q2s, Q3s, Q4s = [],[],[],[],[],[],[]
+
+for origkey in satkeys:
+    key = GC_class._GC_names_to_nice[origkey]
+    
+    # Grab surface array
+    new_surf = getattr(new_sat,key)[:,:,:,0] # ppb or ppbC
+    trop_surf = getattr(tropchem_sat,key)[:,:,:,0]
+    
+    units = 'ppbv'
+    if origkey == 'IJ-AVG-$_ISOP':
+        units = 'ppbC'
+    
+    # pull out subregions, keeping lats and lons
+    new_regional, lats_regional, lons_regional = util.pull_out_subregions(new_surf,lats,lons,subregions=regions)
+    trop_regional, lats_regional, lons_regional = util.pull_out_subregions(trop_surf,lats,lons,subregions=regions)
+
+    # average spatial dims into time series
+    new_means.append ([ np.nanmean(new_regional[i], axis=(1,2)) for i in range(n_regions) ])
+    trop_means.append ([ np.nanmean(trop_regional[i], axis=(1,2)) for i in range(n_regions) ])
+
+    # also store std, Q0, Q1, Q2, Q3, Q4
+    new_regional_std = [ np.nanstd(new_regional[i], axis=(1,2)) for i in range(n_regions) ]
+    trop_regional__std = [ np.nanstd(trop_regional[i], axis=(1,2)) for i in range(n_regions) ]
+    new_regional_Q0 = [ np.nanpercentile(new_regional[i], 0, axis=(1,2)) for i in range(n_regions) ]
+    new_regional_Q1 = [ np.nanpercentile(new_regional[i], 25, axis=(1,2)) for i in range(n_regions) ]
+    new_regional_Q2 = [ np.nanpercentile(new_regional[i], 50, axis=(1,2)) for i in range(n_regions) ]
+    new_regional_Q3 = [ np.nanpercentile(new_regional[i], 75, axis=(1,2)) for i in range(n_regions) ]
+    new_regional_Q4 = [ np.nanpercentile(new_regional[i], 100, axis=(1,2)) for i in range(n_regions) ]
+    trop_regional_Q0 = [ np.nanpercentile(trop_regional[i], 0, axis=(1,2)) for i in range(n_regions) ]
+    trop_regional_Q1 = [ np.nanpercentile(trop_regional[i], 25, axis=(1,2)) for i in range(n_regions) ]
+    trop_regional_Q2 = [ np.nanpercentile(trop_regional[i], 50, axis=(1,2)) for i in range(n_regions) ]
+    trop_regional_Q3 = [ np.nanpercentile(trop_regional[i], 75, axis=(1,2)) for i in range(n_regions) ]
+    trop_regional_Q4 = [ np.nanpercentile(trop_regional[i], 100, axis=(1,2)) for i in range(n_regions) ]
+
+
 
 ###########
 ### Record and time STUJFFS

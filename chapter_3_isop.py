@@ -85,6 +85,96 @@ colors=util.__subregions_colors__
 regions=util.__subregions__
 n_regions=len(regions)
 
+###################
+### SAVE SATELLITE OUTPUT FOR QUICK ANALYSIS
+###################
+def save_overpass_timeseries():
+    # Read and store regional time series into dataframe and he5
+    d0=datetime(2005,1,1)
+    d1=datetime(2012,12,31)
+
+    regions=util.__subregions__
+    labels=util.__subregions_labels__
+    
+    
+    outname = 'Data/GC_Output/overpass_timeseries_regional.csv'
+        
+    satkeys = ['IJ-AVG-$_ISOP',     # isop in ppbc?
+               'IJ-AVG-$_CH2O',     # hcho in ppb
+               'IJ-AVG-$_NO2',      # NO2 in ppb
+               'IJ-AVG-$_NO',       # NO in ppb?
+               'IJ-AVG-$_O3',       # O3 in ppb
+               ] #+ GC_class.__gc_tropcolumn_keys__
+    new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys+GC_class.__gc_tropcolumn_keys__, run='new_emissions')
+    tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys+GC_class.__gc_tropcolumn_keys__, run='tropchem')
+    # new_sat.hcho.shape #(31, 91, 144, 47)
+    # new_sat.isop.shape #(31, 91, 144, 47)
+    
+    
+    # dims for GEOS-Chem outputs
+    lats=new_sat.lats
+    lons=new_sat.lons
+    dates=new_sat.dates
+    
+    outdict={}
+    
+    plusdata=['NOx','HCHO_TotCol']
+    for origkey in satkeys+plusdata:
+        if origkey in satkeys:
+            key=GC_class._GC_names_to_nice[origkey]
+            # Grab surface array
+            new_surf = getattr(new_sat,key)[:,:,:,0] # ppb or ppbC
+            trop_surf = getattr(tropchem_sat,key)[:,:,:,0]
+        elif origkey == 'NOx':
+            key='NOx'
+            new_surf = new_sat.NO[:,:,:,0] + new_sat.NO2[:,:,:,0]
+            trop_surf = tropchem_sat.NO[:,:,:,0] + tropchem_sat.NO2[:,:,:,0]
+        elif origkey == 'HCHO_TotCol':
+            key='HCHO_TotCol'
+            new_surf = new_sat.get_total_columns()['hcho']
+            trop_surf = tropchem_sat.get_total_columns()['hcho']
+        
+        units = 'ppbv'
+        if origkey == 'IJ-AVG-$_ISOP':
+            units = 'ppbC'
+        
+        # pull out subregions, keeping lats and lons
+        new_regional, lats_regional, lons_regional = util.pull_out_subregions(new_surf,lats,lons,subregions=regions)
+        trop_regional, lats_regional, lons_regional = util.pull_out_subregions(trop_surf,lats,lons,subregions=regions)
+    
+        # average spatial dims into time series
+        # also store std, Q0, Q1, Q2, Q3, Q4
+    
+        
+        for i,label in enumerate(labels):
+            outdict['%s_%s_pri_mean'%(key,label)] = np.nanmean(new_regional[i], axis=(1,2))
+            outdict['%s_%s_pri_std'%(key,label)] = np.nanstd(new_regional[i], axis=(1,2))
+            outdict['%s_%s_pri_Q0'%(key,label)] = np.nanpercentile(new_regional[i],0, axis=(1,2))
+            outdict['%s_%s_pri_Q1'%(key,label)] = np.nanpercentile(new_regional[i],25, axis=(1,2))
+            outdict['%s_%s_pri_Q2'%(key,label)] = np.nanpercentile(new_regional[i],50, axis=(1,2))
+            outdict['%s_%s_pri_Q3'%(key,label)] = np.nanpercentile(new_regional[i],75, axis=(1,2))
+            outdict['%s_%s_pri_Q4'%(key,label)] = np.nanpercentile(new_regional[i],100, axis=(1,2))
+            
+            outdict['%s_%s_post_mean'%(key,label)] = np.nanmean(trop_regional[i], axis=(1,2))
+            outdict['%s_%s_post_std'%(key,label)] = np.nanstd(trop_regional[i], axis=(1,2))
+            outdict['%s_%s_post_Q0'%(key,label)] = np.nanpercentile(trop_regional[i],0, axis=(1,2))
+            outdict['%s_%s_post_Q1'%(key,label)] = np.nanpercentile(trop_regional[i],25, axis=(1,2))
+            outdict['%s_%s_post_Q2'%(key,label)] = np.nanpercentile(trop_regional[i],50, axis=(1,2))
+            outdict['%s_%s_post_Q3'%(key,label)] = np.nanpercentile(trop_regional[i],75, axis=(1,2))
+            outdict['%s_%s_post_Q4'%(key,label)] = np.nanpercentile(trop_regional[i],100, axis=(1,2))
+            print(key, label, ' read into TS lists ')
+            
+    
+    # SAVE THEM WITH DESCRIPTIVE TITLE NAMES INTO DATAFRAME....
+    myDF = pd.DataFrame(outdict,index=dates)
+    myDF.index.name = 'dates'
+    myDF.to_csv(outname)
+
+def read_overpass_timeseries():
+    return pd.read_csv('Data/GC_Output/overpass_timeseries_regional.csv', index_col=0)
+
+
+
 ##########
 ### Plot functions
 ##########

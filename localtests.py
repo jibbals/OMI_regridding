@@ -71,67 +71,9 @@ start1=timeit.default_timer()
 ##########
 
 #test_filters.summary_pixels_filtered()
+import chapter_3_isop
 
-# Read and store regional time series into dataframe and he5
-d0=datetime(2005,1,1)
-d1=datetime(2005,2,31)
-    
-outname = 'Data/GC_Output/overpass_timeseries_regional.h5'
-    
-satkeys = ['IJ-AVG-$_ISOP',     # isop in ppbc?
-           'IJ-AVG-$_CH2O',     # hcho in ppb
-           'IJ-AVG-$_NO2',      # NO2 in ppb
-           'IJ-AVG-$_NO',       # NO in ppb?
-           'IJ-AVG-$_O3',       # O3 in ppb
-           ] #+ GC_class.__gc_tropcolumn_keys__
-new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
-tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
-# new_sat.hcho.shape #(31, 91, 144, 47)
-# new_sat.isop.shape #(31, 91, 144, 47)
-
-
-# dims for GEOS-Chem outputs
-lats=new_sat.lats
-lons=new_sat.lons
-dates=new_sat.dates
-
-# Same process for each key: read surface, split by region, store into data structure
-means, stds, Q0s, Q1s, Q2s, Q3s, Q4s = [],[],[],[],[],[],[]
-
-for origkey in satkeys:
-    key = GC_class._GC_names_to_nice[origkey]
-    
-    # Grab surface array
-    new_surf = getattr(new_sat,key)[:,:,:,0] # ppb or ppbC
-    trop_surf = getattr(tropchem_sat,key)[:,:,:,0]
-    
-    units = 'ppbv'
-    if origkey == 'IJ-AVG-$_ISOP':
-        units = 'ppbC'
-    
-    # pull out subregions, keeping lats and lons
-    new_regional, lats_regional, lons_regional = util.pull_out_subregions(new_surf,lats,lons,subregions=regions)
-    trop_regional, lats_regional, lons_regional = util.pull_out_subregions(trop_surf,lats,lons,subregions=regions)
-
-    # average spatial dims into time series
-    new_means.append ([ np.nanmean(new_regional[i], axis=(1,2)) for i in range(n_regions) ])
-    trop_means.append ([ np.nanmean(trop_regional[i], axis=(1,2)) for i in range(n_regions) ])
-
-    # also store std, Q0, Q1, Q2, Q3, Q4
-    new_regional_std = [ np.nanstd(new_regional[i], axis=(1,2)) for i in range(n_regions) ]
-    trop_regional__std = [ np.nanstd(trop_regional[i], axis=(1,2)) for i in range(n_regions) ]
-    new_regional_Q0 = [ np.nanpercentile(new_regional[i], 0, axis=(1,2)) for i in range(n_regions) ]
-    new_regional_Q1 = [ np.nanpercentile(new_regional[i], 25, axis=(1,2)) for i in range(n_regions) ]
-    new_regional_Q2 = [ np.nanpercentile(new_regional[i], 50, axis=(1,2)) for i in range(n_regions) ]
-    new_regional_Q3 = [ np.nanpercentile(new_regional[i], 75, axis=(1,2)) for i in range(n_regions) ]
-    new_regional_Q4 = [ np.nanpercentile(new_regional[i], 100, axis=(1,2)) for i in range(n_regions) ]
-    trop_regional_Q0 = [ np.nanpercentile(trop_regional[i], 0, axis=(1,2)) for i in range(n_regions) ]
-    trop_regional_Q1 = [ np.nanpercentile(trop_regional[i], 25, axis=(1,2)) for i in range(n_regions) ]
-    trop_regional_Q2 = [ np.nanpercentile(trop_regional[i], 50, axis=(1,2)) for i in range(n_regions) ]
-    trop_regional_Q3 = [ np.nanpercentile(trop_regional[i], 75, axis=(1,2)) for i in range(n_regions) ]
-    trop_regional_Q4 = [ np.nanpercentile(trop_regional[i], 100, axis=(1,2)) for i in range(n_regions) ]
-
-
+chapter_3_isop.save_overpass_timeseries()
 
 ###########
 ### Record and time STUJFFS

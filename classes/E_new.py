@@ -62,6 +62,9 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'VCC_GC',       # {31, 152, 152}
                 'VCC_OMI',      # {31, 152, 152}
                 'VCC_PP',       # {31, 152, 152}
+                'VCC_GC_u',       # Unmasked versions {31, 152, 152}
+                'VCC_OMI_u',      # {31, 152, 152}
+                'VCC_PP_u',       # {31, 152, 152}
                 #'smearing',     # model resolution monthly smearing
                 'ModelSlope',   # model resolution monthly slope
                 #'ModelSlope_sf',# model slope after filtering smearing

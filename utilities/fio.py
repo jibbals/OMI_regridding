@@ -141,11 +141,11 @@ __OMHCHORP_ATTRS__ = {
     'AMF_PP':               {'desc':'AMF based on PPalmer code using OMI and GEOS-Chem'},
     #'fire_mask_16':         {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current or prior 8 day block"},
     #'fire_mask_8':          {'desc':"1 if 1 or more fires in this or the 8 adjacent gridboxes over the current 8 day block"},
-    'fires':                {'desc':"daily gridded fire count from AQUA/TERRA"},
-    'AAOD':                 {'desc':'daily smoke AAOD_500nm from AURA (OMAERUVd)'},
-    'firemask':             {'desc':'fire mask using two days prior and adjacent fire activity'},
-    'smokemask':            {'desc':'aaod over threshhold (0.03)'},
-    'anthromask':           {'desc':'true (1) if no2 for the year is over 1.5e15, or no2 on the day is over 1e15'}
+    #'fires':                {'desc':"daily gridded fire count from AQUA/TERRA"},
+    #'AAOD':                 {'desc':'daily smoke AAOD_500nm from AURA (OMAERUVd)'},
+    #'firemask':             {'desc':'fire mask using two days prior and adjacent fire activity'},
+    #'smokemask':            {'desc':'aaod over threshhold (0.03)'},
+    #'anthromask':           {'desc':'true (1) if no2 for the year is over 1.5e15, or no2 on the day is over 1e15'}
     }
 
 ###############

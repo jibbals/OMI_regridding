@@ -71,9 +71,10 @@ start1=timeit.default_timer()
 ##########
 
 #test_filters.summary_pixels_filtered()
-import chapter_3_isop
 
+import chapter_3_isop
 chapter_3_isop.save_overpass_timeseries()
+
 
 ###########
 ### Record and time STUJFFS

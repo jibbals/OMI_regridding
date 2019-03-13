@@ -620,11 +620,11 @@ def seasonal_differences():
     
     # HCHO,   O3,   NOX  simple comparisons:
     f=plt.figure()
-    vmins = [1e15, 20, 0]
-    vmaxs = [2e16, 100, 1]
-    difflims = [[-3e15, 3e15], [-5,5], [-0.05,0.05]]
+    vmins = [1e15, 20, 0.01]
+    vmaxs = [2e16, 50, 1]
+    difflims = [[-3.5e15, 3.5e15], [-4,4], [-0.05,0.05]]
     units = ['molec cm$^{-2}$', 'ppbv', 'ppbv']
-    linears= [False,True,True]
+    linears= [False,True,False]
     stitles = ['Midday total column HCHO','Midday surface ozone','Midday surface NO$_x$']
     titles = ['Tropchem run','Scaled run', 'Absolute difference']
     pnames = [pname1,pname2,pname3]
@@ -664,9 +664,10 @@ def seasonal_differences():
                      clabel=units[i], linear=True, title=titles[2], 
                      cmapname='bwr')
         
+        
+        plt.subplots_adjust(wspace=0.05)
+        plt.tight_layout()
         plt.suptitle(stitles[i])
-        
-        
         plt.savefig(pnames[i])
         plt.close(f)
         print('SAVING FIGURE ',pnames[i])
@@ -827,10 +828,10 @@ if __name__ == "__main__":
     # TODO: trend_analysis
     seasonal_differences()
     # TODO: time series
-    time_series()
+    #time_series()
     
     ## UNCERTAINTY
-    uncertainty()
+    #uncertainty()
 
 
     ### Record and time STUJFFS

@@ -54,8 +54,13 @@ __VERBOSE__=True
 ## LABELS
 # total column HCHO from GEOS-Chem
 __Ogc__ = "$\Omega_{GC}$"
+__Ogca__ = "$\Omega_{GC}^{\alpha}$"
+__Ogc__units__ = 'molec cm$^{-2}$'
+
+
 # total column HCHO from OMI (recalculated using PP code)
 __Oomi__= "$\Omega_{OMI}$"
+__Oomi__units__ = __Ogc__units__
 # a priori
 __apri__ = "$E_{GC}$"
 __apri__units__ = "atom C cm$^{-2}$ s$^{-1}$"
@@ -147,32 +152,67 @@ def save_overpass_timeseries():
     
         
         for i,label in enumerate(labels):
-            outdict['%s_%s_pri_mean'%(key,label)] = np.nanmean(new_regional[i], axis=(1,2))
-            outdict['%s_%s_pri_std'%(key,label)] = np.nanstd(new_regional[i], axis=(1,2))
-            outdict['%s_%s_pri_Q0'%(key,label)] = np.nanpercentile(new_regional[i],0, axis=(1,2))
-            outdict['%s_%s_pri_Q1'%(key,label)] = np.nanpercentile(new_regional[i],25, axis=(1,2))
-            outdict['%s_%s_pri_Q2'%(key,label)] = np.nanpercentile(new_regional[i],50, axis=(1,2))
-            outdict['%s_%s_pri_Q3'%(key,label)] = np.nanpercentile(new_regional[i],75, axis=(1,2))
-            outdict['%s_%s_pri_Q4'%(key,label)] = np.nanpercentile(new_regional[i],100, axis=(1,2))
+            outdict['%s_%s_post_mean'%(key,label)] = np.nanmean(new_regional[i], axis=(1,2))
+            outdict['%s_%s_post_std'%(key,label)] = np.nanstd(new_regional[i], axis=(1,2))
+            outdict['%s_%s_post_Q0'%(key,label)] = np.nanpercentile(new_regional[i],0, axis=(1,2))
+            outdict['%s_%s_post_Q1'%(key,label)] = np.nanpercentile(new_regional[i],25, axis=(1,2))
+            outdict['%s_%s_post_Q2'%(key,label)] = np.nanpercentile(new_regional[i],50, axis=(1,2))
+            outdict['%s_%s_post_Q3'%(key,label)] = np.nanpercentile(new_regional[i],75, axis=(1,2))
+            outdict['%s_%s_post_Q4'%(key,label)] = np.nanpercentile(new_regional[i],100, axis=(1,2))
             
-            outdict['%s_%s_post_mean'%(key,label)] = np.nanmean(trop_regional[i], axis=(1,2))
-            outdict['%s_%s_post_std'%(key,label)] = np.nanstd(trop_regional[i], axis=(1,2))
-            outdict['%s_%s_post_Q0'%(key,label)] = np.nanpercentile(trop_regional[i],0, axis=(1,2))
-            outdict['%s_%s_post_Q1'%(key,label)] = np.nanpercentile(trop_regional[i],25, axis=(1,2))
-            outdict['%s_%s_post_Q2'%(key,label)] = np.nanpercentile(trop_regional[i],50, axis=(1,2))
-            outdict['%s_%s_post_Q3'%(key,label)] = np.nanpercentile(trop_regional[i],75, axis=(1,2))
-            outdict['%s_%s_post_Q4'%(key,label)] = np.nanpercentile(trop_regional[i],100, axis=(1,2))
+            outdict['%s_%s_pri_mean'%(key,label)] = np.nanmean(trop_regional[i], axis=(1,2))
+            outdict['%s_%s_pri_std'%(key,label)] = np.nanstd(trop_regional[i], axis=(1,2))
+            outdict['%s_%s_pri_Q0'%(key,label)] = np.nanpercentile(trop_regional[i],0, axis=(1,2))
+            outdict['%s_%s_pri_Q1'%(key,label)] = np.nanpercentile(trop_regional[i],25, axis=(1,2))
+            outdict['%s_%s_pri_Q2'%(key,label)] = np.nanpercentile(trop_regional[i],50, axis=(1,2))
+            outdict['%s_%s_pri_Q3'%(key,label)] = np.nanpercentile(trop_regional[i],75, axis=(1,2))
+            outdict['%s_%s_pri_Q4'%(key,label)] = np.nanpercentile(trop_regional[i],100, axis=(1,2))
             print(key, label, ' read into TS lists ')
             
+    # Now read the satellite product into a similar format
+    dkeys=['E_PP_lr','E_MEGAN', 'VCC_OMI','VCC_PP','pixels_lr','pixels_PP_lr']
+    enew=E_new(d0,d1,dkeys=dkeys)
+    lats=enew.lats_lr
+    lons=enew.lons_lr
     
+    assert np.all(dates==enew.dates), "Dates don't match"
+    
+    for key in dkeys:
+        
+        # Grab regional subsets
+        regional,lats_r,lons_r = util.pull_out_subregions(getattr(enew,key),lats,lons,subregions=regions)
+        
+        for i,label in enumerate(labels):
+            outdict['%s_%s_mean'%(key,label)] = np.nanmean(regional[i], axis=(1,2))
+            outdict['%s_%s_std'%(key,label)] = np.nanstd(regional[i], axis=(1,2))
+            outdict['%s_%s_Q0'%(key,label)] = np.nanpercentile(regional[i],0, axis=(1,2))
+            outdict['%s_%s_Q1'%(key,label)] = np.nanpercentile(regional[i],25, axis=(1,2))
+            outdict['%s_%s_Q2'%(key,label)] = np.nanpercentile(regional[i],50, axis=(1,2))
+            outdict['%s_%s_Q3'%(key,label)] = np.nanpercentile(regional[i],75, axis=(1,2))
+            outdict['%s_%s_Q4'%(key,label)] = np.nanpercentile(regional[i],100, axis=(1,2))
+            print (key,label, ' read into TS lists')
+            
     # SAVE THEM WITH DESCRIPTIVE TITLE NAMES INTO DATAFRAME....
     myDF = pd.DataFrame(outdict,index=dates)
     myDF.index.name = 'dates'
     myDF.to_csv(outname)
 
 def read_overpass_timeseries():
+    '''
+        # EXAMPLE:
+        #myDF = chapter_3_isop.read_overpass_timeseries()
+        #
+        #print(myDF)
+        #
+        #styles=['bs-','ro-','b^--','r^--']
+        #linewidths=[3,3,2,2]
+        #fig, ax = plt.subplots()
+        #cols=['HCHO_TotCol_Aus_pri_mean','HCHO_TotCol_Aus_post_mean','HCHO_TotCol_Aus_post_Q2','HCHO_TotCol_Aus_pri_Q2']
+        #for col, style, lw in zip(cols, styles, linewidths):
+        #    myDF[col].plot(style=style, lw=lw, ax=ax)
+    '''
     return pd.read_csv('Data/GC_Output/overpass_timeseries_regional.csv', index_col=0)
-
+    
 
 
 ##########
@@ -363,6 +403,74 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
 ###
 
 def time_series(d0=datetime(2005,1,1), d1=datetime(2012,12,31)):
+    '''
+        Time series before and after scaling 
+        Method takes 5 mins but lots of RAM to read satellite years...
+    '''
+    
+    pnames = 'Figs/new_emiss/time_series_%s.png'
+    
+    #read satellite overpass outputs
+    DF = read_overpass_timeseries()
+    
+    dates=[datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
+    
+    keys = ['HCHO_TotCol', 'isop', 'hcho', 'O3', 'NOx']
+    units = [__Ogc__units__, 'ppbC', 'ppbv', 'ppbv','ppbv']
+    titles= [__Ogc__, 'surface isoprene', 'surface HCHO', 'surface ozone', 'surface NO$_x$']
+    suptitles = [ 'Seasonally averaged %s [%s]'%(lab,unit) for lab,unit in zip(titles,units) ]
+    
+    # plot series seasonally averaged
+    # ONE plot per key
+    for key, suptitle in zip(keys,suptitles):
+        
+        
+        # Priori and posteriori overpass output
+        # KEY_REGION_PRI/POST_METRIC
+        col=[ '%s_%%s_%s_mean'%(key,pripost) for pripost in ['pri','post'] ]
+        
+        # time series
+        new_regional_ts = [ DF[col[1]%reg] for reg in labels ]
+        trop_regional_ts = [ DF[col[0]%reg] for reg in labels ]
+
+        # Seasonal averages
+        new_seasonal = [ util.resample(new_regional_ts[i],dates,"Q-NOV") for i in range(n_regions) ]
+        trop_seasonal = [ util.resample(trop_regional_ts[i],dates,"Q-NOV") for i in range(n_regions) ]
+        
+        # dates are at right hand side of bin by default...
+        dates_seasonal = new_seasonal[0].mean().index.to_pydatetime()
+        dates_seasonal = [ date_s - timedelta(days=45) for date_s in dates_seasonal ]
+        
+        f,axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True,sharey=True)
+        for i in range(n_regions):
+            plt.sca(axes[i])
+            newmean      = new_seasonal[i].mean().values.squeeze()
+            tropmean     = trop_seasonal[i].mean().values.squeeze()
+
+            plt.plot_date(dates_seasonal, tropmean, color=colors[i], label='Tropchem run',
+                          fmt='-', linewidth=3)
+            #plt.fill_between(x,lq,uq, color=colors[i], alpha=0.4)
+            plt.plot_date(dates_seasonal, newmean, color=colors[i], label='Scaled run',
+                          fmt='--',linewidth=3 )
+            #plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
+            plt.ylabel(labels[i], color=colors[i], fontsize=24)
+            if i==0:
+                plt.legend(loc='best')
+            if i%2 == 1:
+                axes[i].yaxis.set_label_position("right")
+                axes[i].yaxis.tick_right()
+        
+        plt.xlabel('date', fontsize=24)
+        plt.suptitle(suptitle,fontsize=30)
+        f.subplots_adjust(hspace=0)
+
+
+        ## save figure
+        plt.savefig(pnames%key)
+        print('SAVED ',pnames%key)
+        plt.close()
+
+def old_time_series(d0=datetime(2005,1,1), d1=datetime(2012,12,31)):
     '''
         Time series before and after scaling 
         Method takes 5 mins but lots of RAM to read satellite years...
@@ -819,18 +927,24 @@ if __name__ == "__main__":
     # set up plotting parameters like font sizes etc..
     fullpageFigure()
     
+    
+    
     ## METHOD PLOTS
     
     #check_modelled_background() # finished? 24/2/19
     #Examine_Model_Slope() # finished ~ 20/2/19
     
     ## Results Plots
-    # TODO: trend_analysis
+    
+    # TODO: trend_analysis barplot summary
     seasonal_differences()
-    # TODO: time series
+    # TODO: time series compared to satellite HCHO
+    # TODO: Seasonal regional multiyear comparison
     #time_series()
+    # TODO: 
     
     ## UNCERTAINTY
+    #TODO: implement
     #uncertainty()
 
 

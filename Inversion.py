@@ -356,7 +356,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['VCC_PP']       = VCC_PP
     outdata['VCC_OMI']      = VCC_OMI
     outattrs['VCC_GC']      = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using recalculated shape factor, masked by pyro/anthro'}
-    outattrs['VCC_PP']      = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code,nmasked by pyro/anthro'}
+    outattrs['VCC_PP']      = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column using PP code,masked by pyro/anthro'}
     outattrs['VCC_OMI']     = {'units':'molec/cm2','desc':'OMI (corrected) Vertical column, masked by fires,anthro'}
 
     # Save the Vertical columns, as well as units/descriptions

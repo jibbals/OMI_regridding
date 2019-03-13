@@ -170,7 +170,7 @@ def save_overpass_timeseries():
             print(key, label, ' read into TS lists ')
             
     # Now read the satellite product into a similar format
-    dkeys=['E_PP_lr','E_MEGAN', 'VCC_OMI','VCC_PP','pixels_lr','pixels_PP_lr']
+    dkeys=['E_PP_lr','E_MEGAN', 'VCC_OMI_u','VCC_PP_u','pixels_lr','pixels_PP_lr']
     enew=E_new(d0,d1,dkeys=dkeys)
     lats=enew.lats_lr
     lons=enew.lons_lr

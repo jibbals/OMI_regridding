@@ -20,10 +20,11 @@ import numpy as np
 
 
 # local modules
-import utilities.utilities as util
-import utilities.plotting as pp
-from utilities.JesseRegression import RMA, OLS
 from utilities import GMAO,GC_fio,fio, masks
+from utilities import utilities as util
+from utilities import plotting as pp
+from utilities.JesseRegression import RMA, OLS
+
 import Inversion
 import tests
 from tests import utilities_tests, test_new_emissions
@@ -35,7 +36,7 @@ from classes.E_new import E_new # E_new class
 from classes import GC_class, campaign
 from classes.omhchorp import omhchorp
 
-from utilities import masks
+
 
 import xbpch
 import xarray
@@ -780,76 +781,74 @@ def seasonal_differences():
         plt.close(f)
         print('SAVING FIGURE ',pnames[i])
     
-#    # COMPARE HCHO TO SATELLITE?
-#    
-#    ## read old satellite hcho columns...
-#    # OMI total columns, PP corrected total columns
-#    Enew = E_new(d0, d1, dkeys=['VCC_OMI','VCC_PP','pixels_PP_u']) # unfiltered pixel counts
-#
-#    # grab total columns
-#    vcc_omi     = Enew.VCC_OMI
-#    vcc_pp      = Enew.VCC_PP
-#    pixels_pp   = Enew.pixels_PP_u
-#    lats2, lons2= Enew.lats, Enew.lons
-#    lats_lr     = Enew.lats_lr
-#    lons_lr     = Enew.lons_lr
-#
-#    # Get VCC in lower resolution
-#    vcc_pp_lr=np.zeros([len(Enew.dates), len(lats_lr), len(lons_lr)])+np.NaN
-#    pixels_pp_lr=np.zeros([len(Enew.dates), len(lats_lr), len(lons_lr)])
-#    for i in range(vcc_pp.shape[0]):
-#        vcc_pp_lr[i]    = util.regrid_to_lower(vcc_pp[i],lats2,lons2,lats_lr,lons_lr,pixels=pixels_pp[i])
-#        pixels_pp_lr[i] = util.regrid_to_lower(pixels_pp[i],lats2,lons2,lats_lr,lons_lr,func=np.nansum)
-#
-#    omi_pp_map, omi_pp_map_pixels  = util.satellite_mean(vcc_pp_lr, pixels_pp_lr, spatial=False, temporal=True)
-#
-#    # plot some test maps
-#    # one plot for hcho trop columns, similar for surface O3, and then for NO
-#    # order: hcho, O3, NO
-#    
-#
-#    for i in range(3):
-#        vmin=vmins[i]; vmax=vmaxs[i]; unit=units[i]; pname=pnames[i]
-#        linear=linears[i]
-#        f=plt.figure(figsize=[14,14])
-#
-#        plt.subplot(2,2,1)
-#        pp.createmap(first_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
-#        plt.title(first_title)
-#
-#        plt.subplot(2,2,2)
-#        pp.createmap(second_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
-#        plt.title(second_title)
-#        
-#        if comparison_plots[i] is not None:
-#            plt.subplot(2,2,3)
-#            pp.createmap(comparison_plots[i], comparison_lats[i], comparison_lons[i], aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
-#            plt.title(comparison_titles[i])
-#        
-#            plt.subplot(2,2,4)
-#        else:
-#            plt.subplot(2,1,2)
-#        # three way regression if possible
-#        subsets = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,[first_maps[i],second_maps[i]],has_time_dim=False)
-#        X=subsets['data'][0].flatten() # new hcho map
-#        Y=subsets['data'][1].flatten() # trop hcho map
-#        #Z= scatter coloured by value of OMI PP 
-#        plt.scatter(X,Y)
-#        pp.add_regression(X,Y)
-#        plt.legend(loc='best',fontsize=18)
-#        
-#        plt.plot([vmin,vmax],[vmin,vmax], 'k--')# black dotted 1-1 line
-#        plt.xlim(vmin,vmax)
-#        plt.ylim(vmin,vmax)
-#        plt.title('Surface O$_3$')
-#        plt.ylabel('scaled run [%s]'%unit)
-#        plt.xlabel('tropchem run [%s]'%unit)
-#        #pp.createmap(new_hcho_map,lats,lons,aus=True,title='scaled run', vmin=vmin,vmax=vmax)
-#
-#        plt.suptitle(stitles[i])
-#        plt.savefig(pname)
-#        print('Saved ', pname)
-#        plt.close(f)
+def regional_seasonal_comparison():
+    ''' 
+        Compare HCHO, O3, NO columns between runs over Australia
+        # Grab all overpass data, resample to multiyear monthly avg, then look at seasonal compariosn
+        First row:  Summer before, summer after, diff
+        Second row: Winter before, winter after, diff
+    '''
+    pnames = 'Figs/new_emiss/time_series_%s.png'
+    
+    #read satellite overpass outputs
+    DF = read_overpass_timeseries()
+    
+    dates=[datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
+    
+    keys = ['HCHO_TotCol', 'VCC_PP', 'hcho', 'O3', 'NOx']
+    units = [__Ogc__units__, 'ppbC', 'ppbv', 'ppbv','ppbv']
+    titles= [__Ogc__, 'surface isoprene', 'surface HCHO', 'surface ozone', 'surface NO$_x$']
+    suptitles = [ 'Seasonally averaged %s [%s]'%(lab,unit) for lab,unit in zip(titles,units) ]
+    
+    # plot series seasonally averaged
+    # ONE plot per key
+    for key, suptitle in zip(keys,suptitles):
+        
+        
+        # Priori and posteriori overpass output
+        # KEY_REGION_PRI/POST_METRIC
+        col=[ '%s_%%s_%s_mean'%(key,pripost) for pripost in ['pri','post'] ]
+        
+        # time series
+        new_regional_ts = [ DF[col[1]%reg] for reg in labels ]
+        trop_regional_ts = [ DF[col[0]%reg] for reg in labels ]
+
+        # Seasonal averages
+        new_seasonal = [ util.resample(new_regional_ts[i],dates,"Q-NOV") for i in range(n_regions) ]
+        trop_seasonal = [ util.resample(trop_regional_ts[i],dates,"Q-NOV") for i in range(n_regions) ]
+        
+        # dates are at right hand side of bin by default...
+        dates_seasonal = new_seasonal[0].mean().index.to_pydatetime()
+        dates_seasonal = [ date_s - timedelta(days=45) for date_s in dates_seasonal ]
+        
+        f,axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True,sharey=True)
+        for i in range(n_regions):
+            plt.sca(axes[i])
+            newmean      = new_seasonal[i].mean().values.squeeze()
+            tropmean     = trop_seasonal[i].mean().values.squeeze()
+
+            plt.plot_date(dates_seasonal, tropmean, color=colors[i], label='Tropchem run',
+                          fmt='-', linewidth=3)
+            #plt.fill_between(x,lq,uq, color=colors[i], alpha=0.4)
+            plt.plot_date(dates_seasonal, newmean, color=colors[i], label='Scaled run',
+                          fmt='--',linewidth=3 )
+            #plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
+            plt.ylabel(labels[i], color=colors[i], fontsize=24)
+            if i==0:
+                plt.legend(loc='best')
+            if i%2 == 1:
+                axes[i].yaxis.set_label_position("right")
+                axes[i].yaxis.tick_right()
+        
+        plt.xlabel('date', fontsize=24)
+        plt.suptitle(suptitle,fontsize=30)
+        f.subplots_adjust(hspace=0)
+
+
+        ## save figure
+        plt.savefig(pnames%key)
+        print('SAVED ',pnames%key)
+        plt.close()
 
 
 ################
@@ -937,9 +936,10 @@ if __name__ == "__main__":
     ## Results Plots
     
     # TODO: trend_analysis barplot summary
-    seasonal_differences()
+    #seasonal_differences()
     # TODO: time series compared to satellite HCHO
     # TODO: Seasonal regional multiyear comparison
+    # TESTING NOW
     #time_series()
     # TODO: 
     

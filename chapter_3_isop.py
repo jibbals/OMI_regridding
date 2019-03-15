@@ -832,14 +832,14 @@ def regional_seasonal_comparison():
         apostseasons   = [ np.nanmean(apost_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
 
         X = np.arange(4)
-        width=0.3
+        width=0.4
         plt.bar(X + 0.00, apriseasons, color = 'm', width = width, label=__apri__)
         plt.bar(X + width, apostseasons, color = 'cyan', width = width, label=__apost__)
         plt.xticks()
         plt.ylabel(labels[i], color=colors[i], fontsize=24)
         
         if i==0:
-            plt.legend(loc='best')
+            plt.legend(loc='best', fontsize=18)
         if i%2 == 1:
             axes[i].yaxis.set_label_position("right")
             axes[i].yaxis.tick_right()
@@ -944,7 +944,7 @@ if __name__ == "__main__":
     #seasonal_differences()
     # TODO: time series compared to satellite HCHO
     # TODO: Seasonal regional multiyear comparison
-    # TESTING NOW
+    regional_seasonal_comparison()
     #time_series()
     # TODO: 
     

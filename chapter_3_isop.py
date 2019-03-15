@@ -144,6 +144,12 @@ def save_overpass_timeseries():
         if origkey == 'IJ-AVG-$_ISOP':
             units = 'ppbC'
         
+        # Make sure ocean squares are zero'd 
+        oceanmask=util.oceanmask(lats,lons)
+        oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],len(dates),axis=0)
+        new_surf[oceanmask3d] = np.NaN
+        trop_surf[oceanmask3d] = np.NaN
+        
         # pull out subregions, keeping lats and lons
         new_regional, lats_regional, lons_regional = util.pull_out_subregions(new_surf,lats,lons,subregions=regions)
         trop_regional, lats_regional, lons_regional = util.pull_out_subregions(trop_surf,lats,lons,subregions=regions)
@@ -178,10 +184,17 @@ def save_overpass_timeseries():
     
     assert np.all(dates==enew.dates), "Dates don't match"
     
+    # Make sure ocean squares are zero'd 
+    oceanmask=util.oceanmask(lats,lons)
+    oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],len(dates),axis=0)
+    
     for key in dkeys:
         
         # Grab regional subsets
-        regional,lats_r,lons_r = util.pull_out_subregions(getattr(enew,key),lats,lons,subregions=regions)
+        enewdata=getattr(enew,key)
+        enewdata[oceanmask3d] = np.NaN
+        regional,lats_r,lons_r = util.pull_out_subregions(enewdata,lats,lons,subregions=regions)
+        
         
         for i,label in enumerate(labels):
             outdict['%s_%s_mean'%(key,label)] = np.nanmean(regional[i], axis=(1,2))
@@ -788,67 +801,59 @@ def regional_seasonal_comparison():
         First row:  Summer before, summer after, diff
         Second row: Winter before, winter after, diff
     '''
-    pnames = 'Figs/new_emiss/time_series_%s.png'
+    pname = 'Figs/new_emiss/RegSeas_emissions.png'
     
     #read satellite overpass outputs
     DF = read_overpass_timeseries()
-    
     dates=[datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
     
-    keys = ['HCHO_TotCol', 'VCC_PP', 'hcho', 'O3', 'NOx']
-    units = [__Ogc__units__, 'ppbC', 'ppbv', 'ppbv','ppbv']
-    titles= [__Ogc__, 'surface isoprene', 'surface HCHO', 'surface ozone', 'surface NO$_x$']
-    suptitles = [ 'Seasonally averaged %s [%s]'%(lab,unit) for lab,unit in zip(titles,units) ]
+    keys = ['E_MEGAN','E_PP_lr']
+    klabels = [__apri__, __apost__]
+    suptitle='Midday emissions [%s]'%__apri__units__
+    #units = [__Ogc__units__, 'ppbC', 'ppbv', 'ppbv','ppbv']
+    #titles= [__Ogc__, 'surface isoprene', 'surface HCHO', 'surface ozone', 'surface NO$_x$']
+    #suptitles = [ 'Seasonally averaged %s [%s]'%(lab,unit) for lab,unit in zip(titles,units) ]
     
-    # plot series seasonally averaged
-    # ONE plot per key
-    for key, suptitle in zip(keys,suptitles):
-        
-        
-        # Priori and posteriori overpass output
-        # KEY_REGION_PRI/POST_METRIC
-        col=[ '%s_%%s_%s_mean'%(key,pripost) for pripost in ['pri','post'] ]
-        
-        # time series
-        new_regional_ts = [ DF[col[1]%reg] for reg in labels ]
-        trop_regional_ts = [ DF[col[0]%reg] for reg in labels ]
+    
+    # Priori and posteriori overpass output
+    # Time series
+    apris=   [ DF['E_MEGAN_%s_mean'%reg] for reg in labels ]
+    aposts=  [ DF['E_PP_lr_%s_mean'%reg] for reg in labels ]
+    
+    # Seasonal averages
+    apri_seasonal = [ util.resample(apris[i],dates,"Q-NOV") for i in range(n_regions) ]
+    apost_seasonal = [ util.resample(aposts[i],dates,"Q-NOV") for i in range(n_regions) ]
+    
+    
+    f,axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True,sharey=True)
+    for i in range(n_regions):
+        plt.sca(axes[i])
+        apriseasons    = [ np.nanmean(apri_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
+        apostseasons   = [ np.nanmean(apost_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
 
-        # Seasonal averages
-        new_seasonal = [ util.resample(new_regional_ts[i],dates,"Q-NOV") for i in range(n_regions) ]
-        trop_seasonal = [ util.resample(trop_regional_ts[i],dates,"Q-NOV") for i in range(n_regions) ]
+        X = np.arange(4)
+        width=0.3
+        plt.bar(X + 0.00, apriseasons, color = 'm', width = width, label=__apri__)
+        plt.bar(X + width, apostseasons, color = 'cyan', width = width, label=__apost__)
+        plt.xticks()
+        plt.ylabel(labels[i], color=colors[i], fontsize=24)
         
-        # dates are at right hand side of bin by default...
-        dates_seasonal = new_seasonal[0].mean().index.to_pydatetime()
-        dates_seasonal = [ date_s - timedelta(days=45) for date_s in dates_seasonal ]
-        
-        f,axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True,sharey=True)
-        for i in range(n_regions):
-            plt.sca(axes[i])
-            newmean      = new_seasonal[i].mean().values.squeeze()
-            tropmean     = trop_seasonal[i].mean().values.squeeze()
-
-            plt.plot_date(dates_seasonal, tropmean, color=colors[i], label='Tropchem run',
-                          fmt='-', linewidth=3)
-            #plt.fill_between(x,lq,uq, color=colors[i], alpha=0.4)
-            plt.plot_date(dates_seasonal, newmean, color=colors[i], label='Scaled run',
-                          fmt='--',linewidth=3 )
-            #plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
-            plt.ylabel(labels[i], color=colors[i], fontsize=24)
-            if i==0:
-                plt.legend(loc='best')
-            if i%2 == 1:
-                axes[i].yaxis.set_label_position("right")
-                axes[i].yaxis.tick_right()
-        
-        plt.xlabel('date', fontsize=24)
-        plt.suptitle(suptitle,fontsize=30)
-        f.subplots_adjust(hspace=0)
+        if i==0:
+            plt.legend(loc='best')
+        if i%2 == 1:
+            axes[i].yaxis.set_label_position("right")
+            axes[i].yaxis.tick_right()
+    
+    plt.xticks(X+width, ['summer','autumn','winter','spring'])
+    plt.xlabel('season', fontsize=24)
+    plt.suptitle(suptitle,fontsize=30)
+    f.subplots_adjust(hspace=0)
 
 
-        ## save figure
-        plt.savefig(pnames%key)
-        print('SAVED ',pnames%key)
-        plt.close()
+    ## save figure
+    plt.savefig(pname)
+    print('SAVED ',pname)
+    plt.close()
 
 
 ################

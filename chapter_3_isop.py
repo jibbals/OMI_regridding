@@ -177,7 +177,8 @@ def save_overpass_timeseries():
             print(key, label, ' read into TS lists ')
             
     # Now read the satellite product into a similar format
-    dkeys=['E_PP_lr','E_MEGAN', 'VCC_OMI_u','VCC_PP_u','pixels_lr','pixels_PP_lr']
+    dkeys=['E_PP_lr','E_MEGAN', 'VCC_OMI_u','VCC_PP_u','pixels_lr','pixels_PP_lr','pixels_PP_u','pixels_u']
+    
     enew=E_new(d0,d1,dkeys=dkeys)
     lats=enew.lats_lr
     lons=enew.lons_lr
@@ -204,6 +205,9 @@ def save_overpass_timeseries():
             outdict['%s_%s_Q2'%(key,label)] = np.nanpercentile(regional[i],50, axis=(1,2))
             outdict['%s_%s_Q3'%(key,label)] = np.nanpercentile(regional[i],75, axis=(1,2))
             outdict['%s_%s_Q4'%(key,label)] = np.nanpercentile(regional[i],100, axis=(1,2))
+            if 'pixel' in key:
+                outdict['%s_%s_sum'%(key,label)] = np.nansum(regional[i],axis=(1,2))
+                
             print (key,label, ' read into TS lists')
             
     # SAVE THEM WITH DESCRIPTIVE TITLE NAMES INTO DATAFRAME....
@@ -793,6 +797,8 @@ def seasonal_differences():
         plt.savefig(pnames[i])
         plt.close(f)
         print('SAVING FIGURE ',pnames[i])
+        
+
     
 def regional_seasonal_comparison():
     ''' 
@@ -923,6 +929,64 @@ def uncertainty():
     plt.savefig(pname)
     plt.close(pname)
 
+def pixel_counts_summary():
+    
+    d0 = datetime(2005,1,1)
+    d1 = datetime(2012,12,31)
+    
+    #dstr = d0.strftime("%Y%m%d")
+    pname1 = 'Figs/pixel_count_seasonally.png'
+    pname2 = 'Figs/pixel_count_barchart.png'
+    pname3 = 'Figs/pixel_count_barchart_unfiltered.png'
+    
+    #read satellite overpass outputs
+    DF = read_overpass_timeseries()
+    dates=[datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
+    
+    key = 'pixels_PP_lr'
+    suptitle='Mean pixel count per grid square'
+    
+    # Time series
+    TS =   [ DF['%s_%s_mean'%(key,reg)] for reg in labels ]
+    
+    
+    # Seasonal averages
+    TS_seasonal = [ util.resample(TS[i],dates,"Q-NOV") for i in range(n_regions) ]
+    
+    
+    f,axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True,sharey=True)
+    for i in range(n_regions):
+        plt.sca(axes[i])
+        TSseasons   = [ np.nanmean(TS_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
+        
+        #Also show temporal std. for mean pixel count
+        std         = [ np.nanstd(TS_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
+        
+        X = np.arange(4)
+        width=0.4
+        plt.bar(X + 0.00, TSseasons, color = 'm', yerr=std, ecolor='k', capsize=8, )# width = width, label='filtered')
+        #plt.bar(X + width, apostseasons, color = 'cyan', width = width, label=__apost__)
+        plt.xticks()
+        plt.ylabel(labels[i], color=colors[i], fontsize=24)
+        
+        #if i==0:
+        #    plt.legend(loc='best', fontsize=18)
+        if i%2 == 1:
+            axes[i].yaxis.set_label_position("right")
+            axes[i].yaxis.tick_right()
+    
+    plt.xticks(X+width, ['summer','autumn','winter','spring'])
+    plt.xlabel('season', fontsize=24)
+    plt.suptitle(suptitle,fontsize=30)
+    f.subplots_adjust(hspace=0)
+
+
+    ## save figure
+    plt.savefig(pname2)
+    print('SAVED ',pname2)
+    plt.close()
+
+
 
 if __name__ == "__main__":
     
@@ -944,14 +1008,16 @@ if __name__ == "__main__":
     #seasonal_differences()
     # TODO: time series compared to satellite HCHO
     # TODO: Seasonal regional multiyear comparison
-    regional_seasonal_comparison()
+    #regional_seasonal_comparison()
     #time_series()
     # TODO: 
     
     ## UNCERTAINTY
     #TODO: implement
     #uncertainty()
-
+    # TODO: add sums to analysis TS
+    # todo: discuss plot output from 
+    pixel_counts_summary()
 
     ### Record and time STUJFFS
     

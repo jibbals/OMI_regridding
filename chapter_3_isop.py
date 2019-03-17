@@ -944,46 +944,83 @@ def pixel_counts_summary():
     dates=[datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
     
     key = 'pixels_PP_lr'
-    suptitle='Mean pixel count per grid square'
-    
+    keyf= 'pixels_PP'
+    keyu= 'pixels_PP_u'
+    suptitle='Mean pixel count per grid square per day'
+    suptitle2='Mean pixel count per season per region'
     # Time series
     TS =   [ DF['%s_%s_mean'%(key,reg)] for reg in labels ]
+    TSf = [ DF['%s_%s_sum'%(keyf,reg)] for reg in labels ]
+    TSu = [ DF['%s_%s_sum'%(keyu,reg)] for reg in labels ]
     
     
-    # Seasonal averages
     TS_seasonal = [ util.resample(TS[i],dates,"Q-NOV") for i in range(n_regions) ]
+    TS_seasonalu= [ util.resample(TSu[i],dates,"Q-NOV") for i in range(n_regions) ]
+    TS_seasonalf= [ util.resample(TSf[i],dates,"Q-NOV") for i in range(n_regions) ]
     
-    
+    # summary of used pixels
     f,axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True,sharey=True)
+    X = np.arange(4)
+    
+    # summary that includes filtered and unfiltered pixel counts
+    f2, axes2 = plt.subplots(n_regions,1,figsize=[16,12], sharex=True,sharey=False)
+    width=0.4
+    
+    #
     for i in range(n_regions):
-        plt.sca(axes[i])
-        TSseasons   = [ np.nanmean(TS_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
         
+        seasonal = TS_seasonal[i].mean().values.squeeze()
+        seasonalf= TS_seasonalf[i].sum().values.squeeze()
+        seasonalu= TS_seasonalu[i].sum().values.squeeze()
+        
+        # Multiyear Seasonal summary
         #Also show temporal std. for mean pixel count
-        std         = [ np.nanstd(TS_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
+        myamean         = [ np.nanmean(seasonal[j::4]) for j in range(4) ]
+        myastd          = [ np.nanstd(seasonal[j::4]) for j in range(4) ]
+        myameanu         = [ np.nanmean(seasonalu[j::4]) for j in range(4) ]
+        myastdu          = [ np.nanstd(seasonalu[j::4]) for j in range(4) ]
+        myameanf         = [ np.nanmean(seasonalf[j::4]) for j in range(4) ]
+        myastdf          = [ np.nanstd(seasonalf[j::4]) for j in range(4) ]
         
-        X = np.arange(4)
-        width=0.4
-        plt.bar(X + 0.00, TSseasons, color = 'm', yerr=std, ecolor='k', capsize=8, )# width = width, label='filtered')
+
+        plt.sca(axes[i])
+        plt.bar(X + 0.00, myamean, color = 'cyan', yerr=myastd, ecolor='k', capsize=8, )# width = width, label='filtered')
         #plt.bar(X + width, apostseasons, color = 'cyan', width = width, label=__apost__)
         plt.xticks()
         plt.ylabel(labels[i], color=colors[i], fontsize=24)
         
+        # Compare to unfiltered version
+        plt.sca(axes2[i])
+        plt.bar(X + 0.00, myameanu, color = 'm', yerr=myastdu, ecolor='k', capsize=8, width = width, label='unfiltered')
+        plt.bar(X + width, myameanf, color = 'cyan', yerr=myastdf, ecolor='k', capsize=8, width = width, label='filtered')
+        
         #if i==0:
         #    plt.legend(loc='best', fontsize=18)
         if i%2 == 1:
-            axes[i].yaxis.set_label_position("right")
-            axes[i].yaxis.tick_right()
+            for ax in [axes, axes2]:
+                ax[i].yaxis.set_label_position("right")
+                ax[i].yaxis.tick_right()
     
-    plt.xticks(X+width, ['summer','autumn','winter','spring'])
-    plt.xlabel('season', fontsize=24)
+    
+    
+    plt.sca(axes[i])
+    plt.xlabel('season', fontsize=24)    
+    plt.xticks(X, ['summer','autumn','winter','spring'])
     plt.suptitle(suptitle,fontsize=30)
     f.subplots_adjust(hspace=0)
-
-
     ## save figure
     plt.savefig(pname2)
     print('SAVED ',pname2)
+    plt.close()
+    
+    plt.sca(axes2[i])
+    plt.xlabel('season', fontsize=24)    
+    plt.xticks(X+width, ['summer','autumn','winter','spring'])
+    plt.suptitle(suptitle2,fontsize=30)
+    f2.subplots_adjust(hspace=0)
+    ## save figure
+    plt.savefig(pname3)
+    print('SAVED ',pname3)
     plt.close()
 
 

@@ -192,7 +192,7 @@ def save_overpass_timeseries():
     for key in dkeys:
         
         # Grab regional subsets
-        enewdata=getattr(enew,key)
+        enewdata=getattr(enew,key).astype(np.float64)
         enewdata[oceanmask3d] = np.NaN
         regional,lats_r,lons_r = util.pull_out_subregions(enewdata,lats,lons,subregions=regions)
         

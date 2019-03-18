@@ -291,8 +291,11 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
         # store pixel count in lower resolution also, using sum of pixels in each bin
         pixels_lr[i]    = util.regrid_to_lower(pixels[i],omilats,omilons,lats_lr,lons_lr,func=np.nansum)
         pixels_PP_lr[i] = util.regrid_to_lower(pixels_PP[i],omilats,omilons,lats_lr,lons_lr,func=np.nansum)
-
-
+    
+    if __VERBOSE__:
+        print("TOTAL PIXELS: ",np.nansum(pixels_PP_lr), 'after resolution change, ', np.nansum(pixels_PP), 'before resolution change')
+        print("PIXELS BEFORE FILTERING: ",np.nansum(pixels_u))
+        
     if __VERBOSE__:
         print("Enew Calc Shapes:")
         print(VCC_GC_u.shape,    BG_VCC.shape,    GC_slope.shape)
@@ -323,10 +326,12 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     #E_omi_sf        = (VCC_OMI_lr - BG_OMI_lr) / GC_slope_sf
 
     # Finally calculate the relative uncertainty of the OMI vertical columns
+    # VCC = (SC - RSC)/AMF: ERR(SC-RSC) = sqrt(err2(SC) + err2(RSC))
     # ignore divide by zero and nan values
     with np.errstate(divide='ignore'):
-        VC_runcert = np.sqrt( ( 1.0/pixels ) * ( (fitting_uncert/SC)**2 + 0.09 ) ) # assume amf err is 0.3
-        VC_runcert_lr = np.sqrt( ( 1.0/pixels_lr ) * ( (fitting_uncert_lr/SC_lr)**2 + 0.09 ) ) 
+        # assuming 30% relative errors in RSC and AMF
+        VC_runcert = np.sqrt( ( 1.0/pixels ) * ( (fitting_uncert/SC)**2 + 0.18 ) )
+        VC_runcert_lr = np.sqrt( ( 1.0/pixels_lr ) * ( (fitting_uncert_lr/SC_lr)**2 + 0.18 ) ) 
     # remove infinites
     VC_runcert[~np.isfinite(VC_runcert)] = np.NaN
     VC_runcert_lr[~np.isfinite(VC_runcert_lr)] = np.NaN

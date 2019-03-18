@@ -177,7 +177,7 @@ def save_overpass_timeseries():
             print(key, label, ' read into TS lists ')
             
     # Now read the satellite product into a similar format
-    dkeys=['E_PP_lr','E_MEGAN', 'VCC_OMI_u','VCC_PP_u','pixels_lr','pixels_PP_lr','pixels_PP_u','pixels_u']
+    dkeys=['E_PP_lr','E_MEGAN', 'VCC_OMI_u','VCC_PP_u','pixels_lr','pixels_PP_lr','pixels_PP_u','pixels_u','pixels','pixels_PP']
     
     enew=E_new(d0,d1,dkeys=dkeys)
     lats=enew.lats_lr
@@ -200,13 +200,14 @@ def save_overpass_timeseries():
         for i,label in enumerate(labels):
             outdict['%s_%s_mean'%(key,label)] = np.nanmean(regional[i], axis=(1,2))
             outdict['%s_%s_std'%(key,label)] = np.nanstd(regional[i], axis=(1,2))
-            outdict['%s_%s_Q0'%(key,label)] = np.nanpercentile(regional[i],0, axis=(1,2))
-            outdict['%s_%s_Q1'%(key,label)] = np.nanpercentile(regional[i],25, axis=(1,2))
-            outdict['%s_%s_Q2'%(key,label)] = np.nanpercentile(regional[i],50, axis=(1,2))
-            outdict['%s_%s_Q3'%(key,label)] = np.nanpercentile(regional[i],75, axis=(1,2))
-            outdict['%s_%s_Q4'%(key,label)] = np.nanpercentile(regional[i],100, axis=(1,2))
             if 'pixel' in key:
                 outdict['%s_%s_sum'%(key,label)] = np.nansum(regional[i],axis=(1,2))
+            else:
+                outdict['%s_%s_Q0'%(key,label)] = np.nanpercentile(regional[i],0, axis=(1,2))
+                outdict['%s_%s_Q1'%(key,label)] = np.nanpercentile(regional[i],25, axis=(1,2))
+                outdict['%s_%s_Q2'%(key,label)] = np.nanpercentile(regional[i],50, axis=(1,2))
+                outdict['%s_%s_Q3'%(key,label)] = np.nanpercentile(regional[i],75, axis=(1,2))
+                outdict['%s_%s_Q4'%(key,label)] = np.nanpercentile(regional[i],100, axis=(1,2))
                 
             print (key,label, ' read into TS lists')
             

@@ -178,24 +178,31 @@ def save_overpass_timeseries():
             
     # Now read the satellite product into a similar format
     dkeys=['E_PP_lr','E_MEGAN', 'VCC_OMI_u','VCC_PP_u','pixels_lr','pixels_PP_lr','pixels_PP_u','pixels_u','pixels','pixels_PP']
-    
+    dkeys_lr = ['E_PP_lr','E_MEGAN','pixels_lr','pixels_PP_lr',]
     enew=E_new(d0,d1,dkeys=dkeys)
-    lats=enew.lats_lr
-    lons=enew.lons_lr
+    lats,lons = enew.lats, enew.lons
+    lats_lr=enew.lats_lr
+    lons_lr=enew.lons_lr
     
     assert np.all(dates==enew.dates), "Dates don't match"
     
     # Make sure ocean squares are zero'd 
     oceanmask=util.oceanmask(lats,lons)
+    oceanmask_lr=util.oceanmask(lats_lr,lons_lr)
     oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],len(dates),axis=0)
-    
+    oceanmask3d_lr=np.repeat(oceanmask_lr[np.newaxis,:,:],len(dates),axis=0)
     for key in dkeys:
         
         # Grab regional subsets
         enewdata=getattr(enew,key).astype(np.float64)
-        enewdata[oceanmask3d] = np.NaN
-        regional,lats_r,lons_r = util.pull_out_subregions(enewdata,lats,lons,subregions=regions)
-        
+        if key in dkeys_lr:
+            enewdata[oceanmask3d_lr] = np.NaN
+            regional,lats_r,lons_r = util.pull_out_subregions(enewdata,lats_lr,lons_lr,subregions=regions)
+            print(key,np.shape(enewdata),' LOW RES', np.shape(oceanmask3d_lr), len(lats_lr),len(lons_lr))
+        else:
+            enewdata[oceanmask3d] = np.NaN
+            regional,lats_r,lons_r = util.pull_out_subregions(enewdata,lats,lons,subregions=regions)
+            print(key,np.shape(enewdata),' HIGH RES', np.shape(oceanmask3d), len(lats),len(lons))
         
         for i,label in enumerate(labels):
             outdict['%s_%s_mean'%(key,label)] = np.nanmean(regional[i], axis=(1,2))
@@ -945,9 +952,10 @@ def pixel_counts_summary():
     
     key = 'pixels_PP_lr'
     keyf= 'pixels_PP'
+    # AT SOME POINT THIS GOT BUGGED!
     keyu= 'pixels_PP_u'
     suptitle='Mean pixel count per grid square per day'
-    suptitle2='Mean pixel count per season per region'
+    suptitle2='Mean total-pixel-count per season per region'
     # Time series
     TS =   [ DF['%s_%s_mean'%(key,reg)] for reg in labels ]
     TSf = [ DF['%s_%s_sum'%(keyf,reg)] for reg in labels ]

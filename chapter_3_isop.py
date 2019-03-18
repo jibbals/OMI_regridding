@@ -931,8 +931,7 @@ def uncertainty():
 
 def pixel_counts_summary():
     
-    d0 = datetime(2005,1,1)
-    d1 = datetime(2012,12,31)
+    
     
     #dstr = d0.strftime("%Y%m%d")
     pname1 = 'Figs/pixel_count_seasonally.png'

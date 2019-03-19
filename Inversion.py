@@ -43,41 +43,60 @@ import timeit
 __VERBOSE__=True
 __DEBUG__=True
 
+__AMF_ERR__ = 0.3
+__RSC_ERR__ = 0.3
+
+
 ###############
 ### METHODS ###
 ###############
 
-# This is perfomed in MODEL_SLOPE in GC_class
-#def Yield(H, k_H, I, k_I):
-#    '''
-#        H=HCHO, k_H=loss, I=Isoprene, k_I=loss
-#        The returned yield will match the first two dimensions.
-#
-#        Y_hcho is the RMA regression between $k_{HCHO}*\Omega_{HCHO}$, and $k_{isop}*\Omega_{isop}$
-#        As is shown in fig. 7 Millet 2006
-#
-#        As a test Yield can be calculated from Emissions as in Palmer2003
-#        Y_hcho = S E_isop
-#
-#        I think this should be run on each 8 days of gridded model output to get the Yield for that 8 days
-#
-#    '''
-#    # first handle the lats and lons:
-#    n0=np.shape(H)[0]
-#    n1=np.shape(H)[1]
-#
-#    #Isoprene Yield, spatially varying, not temporally varying:
-#    #
-#    Y=np.zeros([n0,n1])
-#    A=k_H*H
-#    B=k_I*I
-#    for i in range(n0):
-#        for j in range(n1):
-#            m,b,r,ci1,ci2=RMA(A[i,j,:], B[i,j,:])
-#            Y[i,j] = m
-#
-#    #Return the yields
-#    return Y
+def remote_pacific_error(days, lats,lons, err, pixels, 
+                         rscerr = __RSC_ERR__, amferr=__AMF_ERR__,
+                         average_lons=False, average_lats=False):
+    '''
+        Get remote pacific ocean background from data array
+        Can average the lats and lons if desired
+        
+        Return portional error given data is combined over some area
+
+    '''
+    lats_lr, lons_lr, late,lone = util.lat_lon_grid(GMAO.__LATRES_GC__,GMAO.__LONRES_GC__)
+    lrsize=[len(days),len(lats_lr),len(lons_lr)]
+    data_lr = np.zeros(lrsize)
+    err_lr = np.zeros(lrsize)
+    pixels_lr = np.zeros(lrsize)
+    for i in range(len(days)):
+        data_lr[i] = util.regrid_to_lower(data,lats,lons,lats_lr,lons_lr, pixels=pixels[i])
+        err_lr[i] = util.regrid_to_lower(err,lats,lons,lats_lr,lons_lr, pixels=pixels[i])
+        pixels_lr[i] = util.regrid_to_lower(pixels,lats,lons,lats_lr,lons_lr, func=np.nansum)
+    # First pull out region in the remote pacific
+    # Use the lats from input data
+    remote_bg_region=[lats[0],util.__REMOTEPACIFIC__[1],lats[-1],util.__REMOTEPACIFIC__[3]]
+    subset=util.lat_lon_subset(lats, lons, remote_bg_region, [data,err,pixels],has_time_dim=True)
+    subset_lr = util.lat_lon_subset(lats_lr, lons_lr, remote_bg_region, [data_lr,err_lr,pixels_lr],has_time_dim=True)
+    
+    errs=[]
+    for bg,rp,subpix in [subset['data'], subset_lr['data']]:
+        
+        # mean grid values -> total grid values
+        rp = rp*subpix
+        bg = bg*subpix 
+        
+        # Sum up over lats or lons or both
+        with np.errstate(invalid='ignore'): # ignore divide by zero
+            if average_lons:
+                bg     = np.nansum(bg,axis=2)
+                rp     = np.nansum(rp,axis=2)
+                subpix = np.nansum(subpix,axis=2)
+            if average_lats:
+                bg     = np.nansum(bg,axis=1)
+                rp     = np.nansum(rp,axis=1) 
+                subpix = np.nansum(subpix,axis=1)
+        
+        # we have total error, and total background hcho, need to add RSC correction error and AMF err and combine
+        errs.append(np.sqrt((1.0/subpix)*( (rp/bg)**2 + (rscerr)**2 + (amferr)**2 )))
+    return errs
 
 
 def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
@@ -219,18 +238,24 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     time_emiss_calc=timeit.default_timer()
     # Need background values from remote pacific
     BG_VCCa, bglats, bglons = util.remote_pacific_background(OMHCHORP.VCC_GC,
-                                                            OMHCHORP.lats, OMHCHORP.lons,
-                                                            average_lons=True,has_time_dim=True,
-                                                            pixels=OMHCHORP.gridentries)
+                                                             OMHCHORP.lats, OMHCHORP.lons,
+                                                             average_lons=True,has_time_dim=True,
+                                                             pixels=OMHCHORP.gridentries)
     BG_PPa , bglats, bglons = util.remote_pacific_background(OMHCHORP.VCC_PP,
-                                                            OMHCHORP.lats, OMHCHORP.lons,
-                                                            average_lons=True,has_time_dim=True,
-                                                            pixels=OMHCHORP.ppentries)
+                                                             OMHCHORP.lats, OMHCHORP.lons,
+                                                             average_lons=True,has_time_dim=True,
+                                                             pixels=OMHCHORP.ppentries)
     BG_OMIa, bglats, bglons = util.remote_pacific_background(OMHCHORP.VCC_OMI,
-                                                            OMHCHORP.lats, OMHCHORP.lons,
-                                                            average_lons=True,has_time_dim=True,
-                                                            pixels=OMHCHORP.gridentries)
+                                                             OMHCHORP.lats, OMHCHORP.lons,
+                                                             average_lons=True,has_time_dim=True,
+                                                             pixels=OMHCHORP.gridentries)
+    # BACKGROUND UNCERTAINTY:
+    # average fitting error 
+    BG_errPP, BG_errPP_lr = remote_pacific_error(OMHCHORP.VCC_PP, days, OMHCHORP.lats, OMHCHORP.lons,
+                                                 OMHCHORP.col_uncertainty_OMI, OMHCHORP.ppentries,
+                                                 average_lons=True)
 
+    
 
     # cut the omhchorp backgrounds down to our latitudes
     BG_VCC      = BG_VCCa[:,omilati]

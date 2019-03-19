@@ -886,13 +886,19 @@ def uncertainty():
     #   Need: E_PP_lr, ModelSlope, 
     d0=datetime(2005,1,1)
     d1=datetime(2005,1,31)
-    uncertkeys = ['VC_relative_uncertainty_lr','pixels_lr']
+    # Uncertainty (portional for VC, % for slope)
+    uncertkeys = ['VC_relative_uncertainty_lr','pixels_lr', 'ModelSlopeUncertainty']
+    
     # Read from E_new
     enew    = E_new(d0,d1, dkeys=uncertkeys)
-    VCrunc  = enew.VC_relative_uncertainty_lr
+    VCrunc  = enew.VC_relative_uncertainty_lr # daily portional
+    Srunc   = enew.ModelSlopeUncertainty/100.0 # monthly %
     pix     = enew.pixels_lr
     lats    = enew.lats_lr
     lons    = enew.lons_lr
+    
+    # combine VCC uncertainty into monthly and seasonal averages
+    
     
     # daily means
     dVCrunc = np.nanmean(VCrunc, axis=0)

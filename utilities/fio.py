@@ -1135,7 +1135,7 @@ def get_slope(month,monthN=None):
     lats=sloped['lats']
     lons=sloped['lons']
     dates=sloped['dates']
-    print(type(dates),dates)
+    # print(type(dates),dates)
     r=sloped['r_sf']
     rmya=sloped['r_sf_mya']
     mya=sloped['slope_sf_mya']
@@ -1540,16 +1540,15 @@ def get_fire_mask(d0, dN=None, prior_days_masked=2, fire_thresh=__Thresh_fires__
     lons=data['lons']
     # subset to requested dates, lats and lons
     di = util.date_index(d0,dates,dn=dN)
-    print(d0, dates[0], dates[-1], dN)
 
     if region is not None:
         subset=util.lat_lon_subset(lats,lons,region=region,data=[firemask],has_time_dim=True)
         firemask=subset['data'][0]
         lats=subset['lats']
         lons=subset['lons']
-    print(np.shape(firemask))
+    # print("Firemask before subsetting dates: "np.shape(firemask))
     firemask=np.squeeze(firemask[di])
-    print(np.shape(firemask))
+    # print("firemask after subsetting dates: ",np.shape(firemask))
     dates=np.squeeze(np.array(dates)[di])
     return firemask,dates,lats,lons
 

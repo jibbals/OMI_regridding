@@ -545,11 +545,12 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
 
         # Grab reprocessed data for the month:
         OMI=omhchorp(day0=month,dayn=util.last_day(month), ignorePP=ignorePP)
-        print('mean HCHO column [molec/cm2] from omhchorp',np.nanmean(OMI.VCC_GC))
 
         # Read GC month:
         GCB=GC_class.GC_biogenic(month)
-        print('mean surface hcho [ppb] from GC_biogenic run:',np.nanmean(GCB.sat_out.hcho[:,:,:,0]))
+        if __VERBOSE__:
+            print('mean surface hcho [ppb] from GC_biogenic run:',np.nanmean(GCB.sat_out.hcho[:,:,:,0]))
+            print('mean HCHO column [molec/cm2] from omhchorp',np.nanmean(OMI.VCC_GC))
 
         # save the month of emissions
         store_emissions_month(month=month, GCB=GCB, OMHCHORP=OMI,

@@ -66,8 +66,9 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'VCC_OMI_u',      # {31, 152, 152}
                 'VCC_PP_u',       # {31, 152, 152}
                 #'smearing',     # model resolution monthly smearing
-                'ModelSlope',   # model resolution monthly slope
-                #'ModelSlope_sf',# model slope after filtering smearing
+                'ModelSlope',   # model resolution monthly slope (after filtering smearing)
+                'ModelSlopeUncertainty', # monthly low res uncertainty in slope
+                #'ModelSlope_sf',
                 'pixels',       # OMI pixel count
                 'pixels_u',     # before filtering pixel count
                 'pixels_lr',    # OMI pixel count at low resolution

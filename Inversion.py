@@ -391,10 +391,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['E_OMI_lr']     = E_omi_lr
     outdata['ModelSlope']   = GC_slope_lr[0] # just one value per month
     outattrs['ModelSlope']  = {'units':'molec_HCHO s/atomC',
-                               'desc':'Yield calculated from RMA regression of MEGAN midday emissions vs GEOS-Chem midday HCHO columns' }
-    #outdata['ModelSlope_sf']   = GC_slope_lr[0] # just one value per month
-    #outattrs['ModelSlope_sf']  = {'units':'molec_HCHO s/atomC',
-    #                           'desc':'Yield calculated from RMA regression of MEGAN midday emissions vs GEOS-Chem midday HCHO columns AFTER FILTERING FOR SMEARING' }
+                               'desc':'Yield calculated from RMA regression of MEGAN midday emissions vs GEOS-Chem midday HCHO columns (after smearing filtered)' }
     outdata['ModelSlopeUncertainty']   = slope_uncertainty # one valued per month
     outattrs['ModelSlopeUncertainty']  = {'units':'%',
                                'desc':'(upper bound of 95% CI divided by slope, minus 1 ) times 100' }

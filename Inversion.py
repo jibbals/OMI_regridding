@@ -171,7 +171,11 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # GC.model_slope gets slope and subsets the region
     # Then Map slope onto higher omhchorp resolution:
     # HERE WE LOSE REGION INDEPENDENCE!!
-    GC_slope_lr, slope_dates, slope_lats, slope_lons = fio.get_slope(month,None)
+    GC_slope_dict = fio.get_slope(month,None)
+    GC_slope_lr = GC_slope_dict['slope']
+    slope_lats, slope_lons = GC_slope_dict['lats'], GC_slope_dict['lons']
+    slope_uncertainty = GC_slope_dict['uncertainty']
+    
     #slope_dict=GCB.model_slope(region=region)
     #GC_slope_lr=slope_dict['slope'] # it's at 2x2.5 resolution
     #GC_slope_sf=slope_dict['slopesf'] # slope after applying smearing filter
@@ -391,6 +395,9 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     #outdata['ModelSlope_sf']   = GC_slope_lr[0] # just one value per month
     #outattrs['ModelSlope_sf']  = {'units':'molec_HCHO s/atomC',
     #                           'desc':'Yield calculated from RMA regression of MEGAN midday emissions vs GEOS-Chem midday HCHO columns AFTER FILTERING FOR SMEARING' }
+    outdata['ModelSlopeUncertainty']   = slope_uncertainty # one valued per month
+    outattrs['ModelSlopeUncertainty']  = {'units':'%',
+                               'desc':'(upper bound of 95% CI divided by slope, minus 1 ) times 100' }
     outattrs['E_GC']        = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope'}
     outattrs['E_PP']        = {'units':'atomC/cm2/s',

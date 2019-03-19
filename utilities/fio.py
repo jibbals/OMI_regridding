@@ -1139,8 +1139,11 @@ def get_slope(month,monthN=None):
     r=sloped['r_sf']
     rmya=sloped['r_sf_mya']
     mya=sloped['slope_sf_mya']
-
-
+    ci = sloped['ci_sf']
+    ci_mya=sloped['ci_sf_mya']
+    uncert = np.copy(slope)
+    uncert_mya = 100*(ci_mya[:,:,:,1] / mya - 1)
+    
     # ignore warning from comparing NaNs to number
     with np.errstate(invalid='ignore'):
         # remove negatives from mya
@@ -1156,19 +1159,25 @@ def get_slope(month,monthN=None):
         if __VERBOSE__:
             print('check single month slope creation', slope.shape, mya.shape, myai)
         test=np.copy(slope)
+        
         # ignore warning from comparing NaNs to number
         with np.errstate(invalid='ignore'):
             slope[r<0.4] = mya[myai][r<0.4]
-
+            
             nans=np.isnan(test*slope)
             assert any(test[~nans] != slope[~nans]), 'no changes!'
-
+            
             # also where count is too low
             slope[n<10] = mya[myai][n<10]
 
             # replace negatives with mya also
             slope[slope<0] = mya[myai][slope<0]
-
+            
+            # uncertainty = upper bound / slope - 1
+            uncert=100*(ci[:,:,1] / test - 1)
+            uncert[n<10] = uncert_mya[myai][n<10]
+            uncert[test<0] = uncert_mya[myai][test<0]
+            
     # if we have multiple months then do it monthly
     else:
         for i,m in enumerate(dates):
@@ -1176,7 +1185,9 @@ def get_slope(month,monthN=None):
             nm = n[i] # this months counts
             rm = r[i] # this months regression coefficients
             sm = slope[i]
-
+            cm = ci[i] # this months confidence interval
+            um = uncert[i] # this months uncertainty
+            
             # use multiyear avg where r is too low
             if __VERBOSE__:
                 print('check multimonth slope creation', slope.shape, slope[i].shape, rm.shape, mya.shape, myai)
@@ -1192,9 +1203,15 @@ def get_slope(month,monthN=None):
 
                 # replace negatives with mya also
                 sm[sm<0] = mya[myai][sm<0]
+                
+                # uncertainty = upper bound / slope - 1
+                um=100*(cm[:,:,1] / test - 1)
+                um[n<10] = uncert_mya[myai][n<10]
+                um[test<0] = uncert_mya[myai][test<0]
 
-
-    return slope,dates,lats,lons
+    
+    return {'slope':slope,'dates':dates,'lats':lats,'lons':lons,
+            'uncertainty':uncert}
 
 
 def filter_high_latitudes(array, lats, has_time_dim=False, highest_lat=60.0):

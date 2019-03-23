@@ -24,7 +24,7 @@ from scipy.constants import N_A as N_avegadro
 # local imports
 from utilities.JesseRegression import RMA
 from classes import GC_class  # Class reading GC output
-from classes.omhchorp import omhchorp # class reading OMHCHORP
+from classes.omhchorp import omhchorp, __AMF_REL_ERR__ # class reading OMHCHORP
 from utilities import fio as fio
 import utilities.plotting as pp
 import utilities.utilities as util
@@ -43,60 +43,13 @@ import timeit
 __VERBOSE__=True
 __DEBUG__=True
 
-__AMF_ERR__ = 0.3
-__RSC_ERR__ = 0.3
+
 
 
 ###############
 ### METHODS ###
 ###############
 
-def remote_pacific_error(days, lats,lons, err, pixels, 
-                         rscerr = __RSC_ERR__, amferr=__AMF_ERR__,
-                         average_lons=False, average_lats=False):
-    '''
-        Get remote pacific ocean background from data array
-        Can average the lats and lons if desired
-        
-        Return portional error given data is combined over some area
-
-    '''
-    lats_lr, lons_lr, late,lone = util.lat_lon_grid(GMAO.__LATRES_GC__,GMAO.__LONRES_GC__)
-    lrsize=[len(days),len(lats_lr),len(lons_lr)]
-    data_lr = np.zeros(lrsize)
-    err_lr = np.zeros(lrsize)
-    pixels_lr = np.zeros(lrsize)
-    for i in range(len(days)):
-        data_lr[i] = util.regrid_to_lower(data,lats,lons,lats_lr,lons_lr, pixels=pixels[i])
-        err_lr[i] = util.regrid_to_lower(err,lats,lons,lats_lr,lons_lr, pixels=pixels[i])
-        pixels_lr[i] = util.regrid_to_lower(pixels,lats,lons,lats_lr,lons_lr, func=np.nansum)
-    # First pull out region in the remote pacific
-    # Use the lats from input data
-    remote_bg_region=[lats[0],util.__REMOTEPACIFIC__[1],lats[-1],util.__REMOTEPACIFIC__[3]]
-    subset=util.lat_lon_subset(lats, lons, remote_bg_region, [data,err,pixels],has_time_dim=True)
-    subset_lr = util.lat_lon_subset(lats_lr, lons_lr, remote_bg_region, [data_lr,err_lr,pixels_lr],has_time_dim=True)
-    
-    errs=[]
-    for bg,rp,subpix in [subset['data'], subset_lr['data']]:
-        
-        # mean grid values -> total grid values
-        rp = rp*subpix
-        bg = bg*subpix 
-        
-        # Sum up over lats or lons or both
-        with np.errstate(invalid='ignore'): # ignore divide by zero
-            if average_lons:
-                bg     = np.nansum(bg,axis=2)
-                rp     = np.nansum(rp,axis=2)
-                subpix = np.nansum(subpix,axis=2)
-            if average_lats:
-                bg     = np.nansum(bg,axis=1)
-                rp     = np.nansum(rp,axis=1) 
-                subpix = np.nansum(subpix,axis=1)
-        
-        # we have total error, and total background hcho, need to add RSC correction error and AMF err and combine
-        errs.append(np.sqrt((1.0/subpix)*( (rp/bg)**2 + (rscerr)**2 + (amferr)**2 )))
-    return errs
 
 
 def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
@@ -170,7 +123,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     VCC_OMI_u             = OMHsub['VCC_OMI']
     pixels_u              = OMHsub['gridentries']
     pixels_PP_u           = OMHsub['ppentries']
-    fitting_uncert        = OMHsub['col_uncertainty_OMI']
+    
     SC                    = OMHsub['SC'] # slant columns
 
     # instead of having masks in this file, we can pull them from their own files
@@ -192,8 +145,9 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # HERE WE LOSE REGION INDEPENDENCE!!
     GC_slope_dict = fio.get_slope(month,None)
     GC_slope_lr = GC_slope_dict['slope']
+    r_slope_lr     = GC_slope_dict['uncertainty']
+    
     slope_lats, slope_lons = GC_slope_dict['lats'], GC_slope_dict['lons']
-    slope_uncertainty = GC_slope_dict['uncertainty']
     
     #slope_dict=GCB.model_slope(region=region)
     #GC_slope_lr=slope_dict['slope'] # it's at 2x2.5 resolution
@@ -201,20 +155,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     #gclats,gclons = slope_dict['lats'],slope_dict['lons']
     assert np.all(slope_lats == lats_lr), "Regional lats from slope function don't match GMAO"
     GC_slope = util.regrid_to_higher(GC_slope_lr,slope_lats,slope_lons,omilats,omilons,interp='nearest')
-
-    # Also save smearing
-    #smear, sdates, slats, slons = smearing(month, region=region,)#pname='Figs/GC/smearing_%s.png'%mstr)
-    # Not regridding to higher resolution any more, low res is fine
-    #smear = util.regrid_to_higher(smear,slats,slons,omilats,omilons,interp='nearest')
-    #pp.createmap(smear,omilats,omilons, latlon=True, GC_shift=True, region=pp.__AUSREGION__,
-    #             linear=True, vmin=1000, vmax=10000,
-    #             clabel='S', pname='Figs/GC/smearing_%s_interp.png'%mstr, title='Smearing %s'%mstr)
-    #print("Smearing plots saved in Figs/GC/smearing...")
-
-    # TODO: Smearing Filter
-    #smearfilter = smear > __Thresh_Smearing__#4000 molec_hcho s / atom_C from marais et al
-
-
+    
     # emissions using different columns as basis
     # Fully filtered
     out_shape=VCC_GC_u.shape
@@ -249,12 +190,6 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                                                              OMHCHORP.lats, OMHCHORP.lons,
                                                              average_lons=True,has_time_dim=True,
                                                              pixels=OMHCHORP.gridentries)
-    # BACKGROUND UNCERTAINTY:
-    # average fitting error 
-    BG_errPP, BG_errPP_lr = remote_pacific_error(OMHCHORP.VCC_PP, days, OMHCHORP.lats, OMHCHORP.lons,
-                                                 OMHCHORP.col_uncertainty_OMI, OMHCHORP.ppentries,
-                                                 average_lons=True)
-
     
 
     # cut the omhchorp backgrounds down to our latitudes
@@ -268,6 +203,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # Also repeat Slope array along time axis to avoid looping
     GC_slope    = np.repeat(GC_slope[np.newaxis,:,:], len(days),axis=0)
     GC_slope_lr = np.repeat(GC_slope_lr[np.newaxis,:,:], len(days), axis=0)
+    r_slope_lr  = np.repeat(r_slope_lr[np.newaxis,:,:], len(days), axis=0)
     #GC_slope_sf = np.repeat(GC_slope_sf[np.newaxis,:,:], len(days), axis=0)
 
     # Need low resolution versions also...
@@ -301,7 +237,6 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     VCC_OMI_lr          = np.copy(BG_OMI_lr)
     pixels_lr           = np.copy(BG_OMI_lr)
     pixels_PP_lr        = np.copy(BG_OMI_lr)
-    fitting_uncert_lr   = np.copy(BG_OMI_lr)
     SC_lr               = np.copy(BG_OMI_lr)
     if __DEBUG__:
         print("VCC GC has ",np.sum(np.isnan(VCC_GC) * pixels>0), "nan columns where pixel count is non zero")
@@ -315,7 +250,6 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
         VCC_GC_lr[i]    = util.regrid_to_lower(VCC_GC[i],omilats,omilons,lats_lr,lons_lr,pixels=pixels[i])
         VCC_PP_lr[i]    = util.regrid_to_lower(VCC_PP[i],omilats,omilons,lats_lr,lons_lr,pixels=pixels_PP[i])
         VCC_OMI_lr[i]   = util.regrid_to_lower(VCC_OMI[i],omilats,omilons,lats_lr,lons_lr,pixels=pixels[i])
-        fitting_uncert_lr[i] = util.regrid_to_lower(fitting_uncert[i], omilats,omilons, lats_lr, lons_lr, pixels=pixels[i])
         SC_lr[i]        = util.regrid_to_lower(SC[i], omilats,omilons,lats_lr,lons_lr,pixels=pixels[i])
         # store pixel count in lower resolution also, using sum of pixels in each bin
         pixels_lr[i]    = util.regrid_to_lower(pixels[i],omilats,omilons,lats_lr,lons_lr,func=np.nansum)
@@ -353,17 +287,36 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     #E_gc_sf         = (VCC_GC_lr - BG_VCC_lr) / GC_slope_sf
     #E_pp_sf         = (VCC_PP_lr - BG_PP_lr) / GC_slope_sf
     #E_omi_sf        = (VCC_OMI_lr - BG_OMI_lr) / GC_slope_sf
-
-    # Finally calculate the relative uncertainty of the OMI vertical columns
-    # VCC = (SC - RSC)/AMF: ERR(SC-RSC) = sqrt(err2(SC) + err2(RSC))
-    # ignore divide by zero and nan values
-    with np.errstate(divide='ignore'):
-        # assuming 30% relative errors in RSC and AMF
-        VC_runcert = np.sqrt( ( 1.0/pixels ) * ( (fitting_uncert/SC)**2 + 0.18 ) )
-        VC_runcert_lr = np.sqrt( ( 1.0/pixels_lr ) * ( (fitting_uncert_lr/SC_lr)**2 + 0.18 ) ) 
-    # remove infinites
-    VC_runcert[~np.isfinite(VC_runcert)] = np.NaN
-    VC_runcert_lr[~np.isfinite(VC_runcert_lr)] = np.NaN
+    
+    # Now get the uncertainty from VCC calcs:
+    vccuncert = OMHCHORP.uncertainty(allmasks, region=region) # UNCERTAINTY FOR PP only
+    # need uncertainty in high and low res and unfiltered for comparison
+    # daily relative uncertainties
+    rO, rO_lr = vccuncert['rOd'],vccuncert['rOd_lr']
+    rO_u, rO_u_lr = vccuncert['rOd_u'],vccuncert['rOd_u_lr']
+    fitting_err, fitting_err_lr = vccuncert['dSC'], vccuncert['dSC_lr']
+    # monthly relative uncertainty
+    rOm_lr  = vccuncert['rOm_lr'] # monthly error
+    # daily absolute uncertainties
+    dO = rO * VCC_PP
+    dO_lr = rO_lr * VCC_PP_lr
+    dOm_lr = rOm_lr * np.nanmean(VCC_PP_lr,axis=0)
+    # monthly relative uncertainty
+    
+    # also need background uncertainty
+    rbg, rbg_lr = vccuncert['bg'],vccuncert['bg_lr']
+    rbg_u, rbg_u_lr = vccuncert['bg_u'],vccuncert['bg_u_lr']
+    dbg_lr = rbg_lr * BG_PP_lr
+    
+    # Error in E_isop = E_isop * sqrt (  (dO^2 + dO_0^2 ) / (dO-dO_0)^2 + (dSlope/Slope)^2 )
+    
+    # daily error 
+    dE_pp_lr = E_pp_lr * np.sqrt( (dO_lr**2 + dbg_lr**2)/(VCC_PP_lr-BG_PP_lr)**2 + r_slope_lr**2  )
+    # monthly error
+    E_ppm_lr    = np.nansum(E_pp_lr*pixels_PP_lr,axis=0) / np.nansum(pixels_PP_lr,axis=0)
+    VCCm_PP_lr  = np.nansum(VCC_PP_lr * pixels_PP_lr, axis=0) / np.nansum(pixels_PP_lr,axis=0)
+    BGm_PP_lr   = np.nanmean(BG_PP_lr,axis=0)
+    dE_ppm_lr = np.nanmean(E_ppm_lr) * np.sqrt( (dOm_lr**2 + dbg_lr**2)/(VCCm_PP_lr-BGm_PP_lr)**2 + r_slope_lr**2 )
     
     elapsed = timeit.default_timer() - time_emiss_calc
     if __VERBOSE__:
@@ -417,9 +370,6 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['ModelSlope']   = GC_slope_lr[0] # just one value per month
     outattrs['ModelSlope']  = {'units':'molec_HCHO s/atomC',
                                'desc':'Yield calculated from RMA regression of MEGAN midday emissions vs GEOS-Chem midday HCHO columns (after smearing filtered)' }
-    outdata['ModelSlopeUncertainty']   = slope_uncertainty # one valued per month
-    outattrs['ModelSlopeUncertainty']  = {'units':'%',
-                               'desc':'(upper bound of 95% CI divided by slope, minus 1 ) times 100' }
     outattrs['E_GC']        = {'units':'atomC/cm2/s',
                                'desc':'Isoprene Emissions based on VCC and GC_slope'}
     outattrs['E_PP']        = {'units':'atomC/cm2/s',
@@ -456,9 +406,21 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['pixels_PP_u']  = pixels_PP_u
     outdata['pixels_lr']    = pixels_lr
     outdata['pixels_PP_lr'] = pixels_PP_lr
-    outdata['OMI_fitting_uncertainty']   = fitting_uncert
-    outdata['VC_relative_uncertainty']  = VC_runcert
-    outdata['VC_relative_uncertainty_lr']  = VC_runcert_lr
+    
+    # Uncertainty stuff:
+    outdata['E_PP_err_lr'] = dE_pp_lr
+    outdata['E_PPm_err_lr'] = dE_ppm_lr
+    outdata['SC_err']   = fitting_err
+    outdata['SC_err_lr'] = fitting_err_lr
+    outdata['VCC_err']  = dO
+    outdata['VCC_rerr']  = rO
+    outdata['VCC_err_lr']  = dO_lr
+    outdata['VCC_rerr_lr']  = rO_lr
+    outdata['slope_rerr_lr']   = r_slope_lr[0] # one valued per month
+    outattrs['slope_rerr_lr']  = {'units':'portion',
+                               'desc':'upper bound of 95% CI divided by slope, minus 1' }
+    
+    
     outattrs['firemask']    = {'units':'int',
                                'desc':'Squares with more than one fire (over today or last two days, in any adjacent square)'}
     outattrs['smokemask']   = {'units':'int',
@@ -467,12 +429,22 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                                'desc':'Squares with tropNO2 from OMI greater than %.1e or yearly averaged tropNO2 greater than %.1e'%(fio.__Thresh_NO2_d__,fio.__Thresh_NO2_y__)}
     outattrs['smearmask']   = {'units':'int',
                                'desc':'smearing = Delta(HCHO)/Delta(E_isop), we filter outside of [%d to %d] where Delta is the difference between full and half isoprene emission runs from GEOS-Chem at 2x2.5 resolution'%(masks.__smearminlit__,masks.__smearmaxlit__)}
-    outattrs['OMI_fitting_uncertainty']  = {'units':'molec/cm2',
+    outattrs['E_PP_err_lr']    = {'units':'atomC/cm2/s',
+                               'desc':'uncertainty in daily E_PP estimate'}
+    outattrs['E_PPm_err_lr']    = {'units':'atomC/cm2/s',
+                               'desc':'uncertainty in monthly E_PP estimate'}
+    outattrs['SC_err']  = {'units':'molec/cm2',
                                'desc':'OMI pixel fitting uncertainty averaged for each gridsquare'}
-    outattrs['VC_relative_uncertainty']  = {'units':'portion',
-                               'desc':'OMI vertical column relative uncertainty for each gridsquare'}
-    outattrs['VC_relative_uncertainty_lr']  = {'units':'portion',
-                               'desc':'OMI vertical column relative uncertainty for each low resolution gridsquare'}
+    outattrs['SC_err_lr']  = {'units':'molec/cm2',
+                               'desc':'OMI pixel fitting uncertainty averaged for each gridsquare'}
+    outattrs['VCC_err']  = {'units':'molec/cm2',
+                               'desc':'OMI vertical column uncertainty for each gridsquare'}
+    outattrs['VCC_rerr']  = {'units':'portion',
+                               'desc':'OMI vertical column relative uncertainty'}
+    outattrs['VCC_err_lr']  = {'units':'molec/cm2',
+                               'desc':'OMI vertical column uncertainty'}
+    outattrs['VCC_rerr_lr']  = {'units':'portion',
+                               'desc':'OMI vertical column relative uncertainty'}
     outattrs['pixels']      = {'units':'n',
                                'desc':'OMI pixels used for gridsquare VC'}
     outattrs['pixels_u']    = {'units':'n',

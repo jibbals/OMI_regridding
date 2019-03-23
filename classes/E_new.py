@@ -67,7 +67,17 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'VCC_PP_u',       # {31, 152, 152}
                 #'smearing',     # model resolution monthly smearing
                 'ModelSlope',   # model resolution monthly slope (after filtering smearing)
-                'ModelSlopeUncertainty', # monthly low res uncertainty in slope
+                # Uncertainty stuff:
+                'E_PP_err', # E_new error  
+                'E_PPm_err'# monthly E_new error
+                'SC_err', # fitting error
+                'SC_err_lr', 
+                'VCC_err', # Omega_pp error, relative error, and low res too
+                'VCC_rerr',
+                'VCC_err_lr',
+                'VCC_rerr_lr',
+                'slope_rerr_lr', # relative slope error per month
+                #'ModelSlopeUncertainty', # monthly low res uncertainty in slope
                 #'ModelSlope_sf',
                 'pixels',       # OMI pixel count
                 'pixels_u',     # before filtering pixel count
@@ -75,9 +85,6 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 'pixels_PP',    # OMI pixel count using PP code
                 'pixels_PP_u',  # before filtering
                 'pixels_PP_lr', # OMI pixel count using PP code at low resolution
-                'OMI_fitting_uncertainty',   # OMI grid averaged pixel fitting uncertainty
-                'VC_relative_uncertainty', # relative uncertainty per grid square for OMI VC
-                'VC_relative_uncertainty_lr', # relative uncertainty per grid square for OMI VC
                 'time',         # time is a dimension but also data: datetime string stored in file
                 'dates',        # datetime objects created from time field
                 ]
@@ -95,6 +102,10 @@ __E_new_keys_lr__ = [
                      'ModelSlope',   # model resolution monthly slope
                      'pixels_lr',    # OMI pixel count at low resolution
                      'pixels_PP_lr', # OMI pixel count using PP code at low resolution
+                     'SC_err_lr', 
+                     'VCC_err_lr',
+                     'VCC_rerr_lr',
+                     'slope_rerr_lr', # relative slope error per month
                     ]
 __E_new_dims__=['lats',         # 0.25x0.3125 resolution
                 'lats_e',       # edges

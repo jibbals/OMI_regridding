@@ -877,6 +877,7 @@ def read_omhchorp(day0,dayn=None,keylist=None,latres=__LATRES__,lonres=__LONRES_
     # Change latitude to lats...
     data['lats']=struct[0]['latitude']
     data['lons']=struct[0]['longitude']
+    data['dates']=daylist
     data.pop('latitude') # remove latitudes
     data.pop('longitude') # remove latitudes
 
@@ -1142,7 +1143,9 @@ def get_slope(month,monthN=None):
     ci = sloped['ci_sf']
     ci_mya=sloped['ci_sf_mya']
     uncert = np.copy(slope)
-    uncert_mya = 100*(ci_mya[:,:,:,1] / mya - 1)
+    # relative uncertainty
+    uncert_mya = ci_mya[:,:,:,1] / mya - 1  # portional error: upper bound/mean
+    # absolute will just be upper bound - slope
     
     # ignore warning from comparing NaNs to number
     with np.errstate(invalid='ignore'):
@@ -1174,7 +1177,7 @@ def get_slope(month,monthN=None):
             slope[slope<0] = mya[myai][slope<0]
             
             # uncertainty = upper bound / slope - 1
-            uncert=100*(ci[:,:,1] / test - 1)
+            uncert[:,:]=(ci[:,:,1] / test - 1)
             uncert[n<10] = uncert_mya[myai][n<10]
             uncert[test<0] = uncert_mya[myai][test<0]
             
@@ -1205,11 +1208,11 @@ def get_slope(month,monthN=None):
                 sm[sm<0] = mya[myai][sm<0]
                 
                 # uncertainty = upper bound / slope - 1
-                um=100*(cm[:,:,1] / test - 1)
+                um[:,:]=100*(cm[:,:,1] / test - 1)
                 um[n<10] = uncert_mya[myai][n<10]
                 um[test<0] = uncert_mya[myai][test<0]
 
-    
+    # returns slope and stuff and relative uncertainty
     return {'slope':slope,'dates':dates,'lats':lats,'lons':lons,
             'uncertainty':uncert}
 

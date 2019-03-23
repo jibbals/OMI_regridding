@@ -20,13 +20,15 @@ import numpy as np
 from datetime import datetime, timedelta
 
 # my file reading library
-from utilities import fio
+from utilities import fio, GMAO
 import utilities.utilities as util
 from utilities import plotting as pp
 
 ###############
 ### GLOBALS ###
 ###############
+
+__AMF_REL_ERR__=0.3 # 30% relative AMF error assumed
 
 __VERBOSE__=True
 __DEBUG__=False
@@ -59,11 +61,164 @@ class omhchorp:
         # Make all the data attributes of this class
         for k in data.keys():
             setattr(self, k, np.squeeze(np.array(data[k])))
-
-        self.n_times = len(util.list_days(day0,dayn))
-
+            
+        self.dates = util.list_days(day0,dayn)
+        self.n_times = len(self.dates)
+        self.n_lats, self.n_lons = len(self.lats), len(self.lons)
         self.oceanmask=util.oceanmask(self.lats,self.lons)
-
+        
+    def uncertainty(self, masks, region=pp.__AUSREGION__, ramf=__AMF_REL_ERR__):
+        '''
+            set and return delta omega / omega at low resolution, daily and monthly?
+               dO/O = sqrt (  (dsc^2 + drsc^2) / (sc-rsc)^2 + (damf/amf)^2   )
+            RSC = mean at SC latitudes over all tracks
+            dRSC = std monthly for Aus lats (-45 to -10) and all tracks
+            
+            Assume we have one month of data
+            ONLY looking at uncertainty in PP columns
+        '''
+        # low and high resolution
+        lats_lr, lons_lr, lates, lones = util.lat_lon_grid(GMAO.__LATRES_GC__, GMAO.__LONRES_GC__)
+        lats,lons = self.lats, self.lons
+        ndays=len(self.dates)
+        
+        dSC_u       = np.copy(self.col_uncertainty_OMI) # high res mean 
+        dSC         = np.copy(self.col_uncertainty_OMI) # high res mean 
+        dSC[masks]  = np.NaN
+        SC_u        = np.copy(self.SC)  # high res mean
+        SC          = np.copy(self.SC)
+        SC[masks]   = np.NaN
+        pix_u       = np.copy(self.ppentries)
+        pix         = np.copy(self.ppentries) # high res total
+        pix[masks]  = 0
+        
+        RSC         = self.RSC[:,:,:,2] # [days, 500 lats, 60 tracks, 3 types]# type=omi,gc,pp
+        lats_RSC    = self.RSC_latitude
+        
+        # error based on std over Aus latitudes
+        auslats     = (lats_RSC < -10) * (lats_RSC > -45)
+        dRSC        = np.nanstd(RSC[:,auslats,:])
+        
+        # we also want to bin the RSC onto the same grid as SC
+        RSC         = np.nanmean(RSC,axis=2) # average over the tracks
+        RSCnew      = np.copy(SC)
+        lats_e      = util.edges_from_mids(lats, fix_max=None)
+        for i in range(len(lats)):
+            lati = (lats_RSC >= lats_e[i]) * (lats_RSC < lats_e[i+1])
+            RSCnew[:,i] = np.nanmean(RSC[:,lati],axis=1)
+        RSC         = RSCnew # averaged on lower resolution
+        RSC         = np.repeat(RSC[:,:,np.newaxis],len(self.lons), axis=2) # repeat over longitudes
+        
+        
+        # Need to convert to low res:
+        dSC_lr, dSC_u_lr, SC_lr, SC_u_lr, pix_lr, pix_u_lr, RSC_lr = [],[],[],[],[],[],[]
+        for i in range(ndays):
+            dSC_lr[i]       = util.regrid_to_lower(dSC[i], lats,lons, lats_lr, lons_lr, pixels=pix[i])
+            dSC_u_lr[i]     = util.regrid_to_lower(dSC_u[i], lats,lons, lats_lr, lons_lr, pixels=pix_u[i])
+            SC_lr[i]        = util.regrid_to_lower(SC[i], lats,lons, lats_lr, lons_lr,pixels=pix[i])
+            SC_u_lr[i]      = util.regrid_to_lower(SC_u[i], lats,lons, lats_lr, lons_lr,pixels=pix_u[i])
+            RSC_lr[i]       = util.regrid_to_lower(RSC[i], lats_RSC, lons, lats, lons)
+            
+            # store pixel count in lower resolution also, using sum of pixels in each bin
+            pix_lr[i]    = util.regrid_to_lower(pix[i],lats,lons,lats_lr,lons_lr,func=np.nansum)
+            pix_u_lr[i] = util.regrid_to_lower(pix_u[i],lats,lons,lats_lr,lons_lr,func=np.nansum)
+        
+        
+        # Finally calculate the relative uncertainty of the OMI vertical columns
+        # VCC = (SC - RSC)/AMF: ERR(SC-RSC) = sqrt(err2(SC) + err2(RSC))
+        
+        # monthly pixel counts
+        pixm=np.nansum(pix,axis=0)
+        pixm_lr=np.nansum(pix_lr,axis=0)
+        pixm_u=np.nansum(pix_u,axis=0)
+        pixm_u_lr=np.nansum(pix_u_lr,axis=0)
+        
+        # Relative error per day
+        # ignore divide by zero and nan values
+        with np.errstate(divide='ignore'):
+            ## relative Omega error: dO/O = sqrt (  (dsc^2 + drsc^2) / (sc-rsc)^2 + (damf/amf)^2   )
+            
+            # per pixel
+            rO = np.sqrt( (dSC**2 + dRSC**2) / (SC-RSC)**2 + (ramf)**2 )                    
+            rO_u = np.sqrt( (dSC_u**2 + dRSC**2) / (SC_u-RSC)**2 + (ramf)**2 )              
+            rO_lr = np.sqrt( (dSC_lr**2 + dRSC**2) / (SC_lr-RSC_lr)**2 + (ramf)**2 )        
+            rO_u_lr = np.sqrt( (dSC_u_lr**2 + dRSC**2) / (SC_u_lr-RSC_lr)**2 + (ramf)**2 )  
+            
+            # daily
+            rOd         = rO/ np.sqrt(pix)
+            rOd_u       = rO_u/ np.sqrt(pix_u)
+            rOd_lr      = rO_lr/ np.sqrt(pix_lr)
+            rOd_u_lr    = rO_u_lr  / np.sqrt(pix_u_lr)
+            
+            # monthly can be found by dividing by the sqrt(N):
+            rOm = np.nanmean(rO,axis=0)             #/np.sqrt(pixm)
+            rOm_u = np.nanmean(rO_u,axis=0)         #/np.sqrt(pixm_u)
+            rOm_lr = np.nanmean(rO_lr,axis=0)       #/np.sqrt(pixm_lr)
+            rOm_u_lr = np.nanmean(rO_u_lr,axis=0)   #/np.sqrt(pixm_u_lr)
+            
+            
+        # Also lets get daily remote pacific background error
+        # This matches process in Inversion.py
+        # get mean error over remote pacific, and total pixels used
+        bg, _,_      = util.remote_pacific_background(rO, lats, lons,
+                              average_lons=True, has_time_dim=True)
+        bgpix, _,_      = util.remote_pacific_background(pix, lats, lons,
+                              average_lons=True, has_time_dim=True, func = np.nansum)
+        bg_lr, _,_   = util.remote_pacific_background(rO_lr, lats, lons,
+                              average_lons=True, has_time_dim=True)
+        bgpix_lr, _,_   = util.remote_pacific_background(pix_lr, lats, lons,
+                              average_lons=True, has_time_dim=True, func = np.nansum)
+        bg_u, _,_    = util.remote_pacific_background(rO_u, lats, lons,
+                              average_lons=True, has_time_dim=True)
+        bgpix_u, _,_    = util.remote_pacific_background(pix_u, lats, lons,
+                              average_lons=True, has_time_dim=True, func = np.nansum)
+        bg_u_lr, _,_ = util.remote_pacific_background(rO_u_lr, lats, lons,
+                              average_lons=True, has_time_dim=True)
+        bgpix_u_lr, _,_ = util.remote_pacific_background(pix_u_lr, lats, lons,
+                              average_lons=True, has_time_dim=True, func = np.nansum)
+        
+        # for background error using daily reduced error
+        # divide mean bgerr by sqrt(n)
+        bg       = bg/np.sqrt(bgpix)
+        bg_u     = bg_u/np.sqrt(bgpix_u)
+        bg_lr    = bg_lr/np.sqrt(bgpix_lr)
+        bg_u_lr  = bg_u_lr/np.sqrt(bgpix_u_lr)
+        # finally repeat them over the longitudinal dimension
+        bg       = np.repeat(bg[:,:,np.newaxis],len(lons), axis=2)
+        bg_u     = np.repeat(bg_u[:,:,np.newaxis],len(lons), axis=2)
+        bg_lr    = np.repeat(bg_lr[:,:,np.newaxis],len(lons_lr), axis=2)
+        bg_u_lr  = np.repeat(bg_u_lr[:,:,np.newaxis],len(lons_lr), axis=2)
+        # remove infinites?
+        #rO[~np.isfinite(rO)] = np.NaN
+        
+        # Subset to region
+        errs = [rOd, rOd_u, pix, pix_u, rOm, rOm_u, pixm, pixm_u, bg, bg_u, RSC]
+        errs_lr = [rOd_lr, rOd_u_lr, pix_lr, pix_u_lr, rOm_lr, rOm_u_lr, pixm_lr, pixm_u_lr, bg_lr, bg_u_lr, RSC_lr]
+        subs=util.lat_lon_subset(lats,lons,region,data=errs, has_time_dim=True)
+        subs_lr=util.lat_lon_subset(lats_lr, lons_lr, region, data=errs_lr, has_time_dim=True)
+        lats=subs['lats']
+        lons=subs['lons']
+        lats_lr=subs_lr['lats']
+        lons_lr=subs_lr['lons']
+        [rOd, rOd_u, pix, pix_u, rOm, rOm_u, pixm, pixm_u, bg, bg_u, RSC] = subs['data'][i]
+        [rOd_lr, rOd_u_lr, pix_lr, pix_u_lr, rOm_lr, rOm_u_lr, pixm_lr, pixm_u_lr, bg_lr, bg_u_lr, RSC_lr] = subs_lr['data'][i]
+                  # these are the mean per pixel relative errors
+        return  { 'rO':rO, 'rO_u':rO_u, 'rO_lr':rO_lr, 'rO_u_lr':rO_u_lr, 
+                 # number of pixels per grid square per day
+                 'pix':pix,'pix_u':pix_u, 'pix_lr':pix_lr, 'pix_u_lr':pix_u_lr,
+                 # same but per month
+                 'pixm':pixm,'pixm_u':pixm_u, 'pixm_lr':pixm_lr, 'pixm_u_lr':pixm_u_lr,
+                 # monthly uncertainty
+                 'rOm':rOm, 'rOm_u':rOm_u, 'rOm_lr':rOm_lr, 'rOm_u_lr':rOm_u_lr, 
+                 # Reference sector correction errors (RSC is repeated along longitudes)
+                 'RSC':RSC, 'RSC_lr':RSC_lr, 'dRSC':dRSC,
+                 # background errors per day from remote pacific
+                 'bg':bg, 'bg_u':bg_u, 'bg_lr':bg_lr, 'bg_u_lr':bg_u_lr, 
+                 # Fitting Error:
+                 'dSC':dSC, 'dSC_lr':dSC_lr,
+                 # extras
+                 'lats_lr':lats_lr,'lons_lr':lons_lr,
+                 }
 
     def inds_subset(self, lat0=None, lat1=None, lon0=None, lon1=None, maskocean=False, maskland=False):
         ''' return indices of lat, lon arrays within input box '''
@@ -195,7 +350,7 @@ class omhchorp:
 
         return mbackground
 
-    def lower_resolution(self, key='VCC', factor=8, dates=None):
+    def lower_resolution(self, key='VCC_PP', factor=8, dates=None):
         '''
             return data with resolution lowered by a factor of 8 (or input any integer)
             This function averages out the time dimension from dates[0] to dates[1]
@@ -246,7 +401,7 @@ class omhchorp:
                 'lats':lats, 'lons':lons,
                 'lats_e':lats_e, 'lons_e':lons_e}
 
-    def time_averaged(self, day0, dayn=None, keys=['VCC'],
+    def time_averaged(self, day0, dayn=None, keys=['VCC_PP'],
                       month=False, weighted=True):
         '''
             Return keys averaged over the time dimension
@@ -304,7 +459,7 @@ class omhchorp:
 
         return ret
 
-    def plot_map(self,key='VCC',day0=None,dayn=None,region=pp.__AUSREGION__,**cmargs):
+    def plot_map(self,key='VCC_PP',day0=None,dayn=None,region=pp.__AUSREGION__,**cmargs):
         '''
             plot key over region averaged on day [to dayn]
         '''
@@ -327,10 +482,10 @@ class omhchorp:
 if __name__=='__main__':
 
     om=omhchorp(datetime(2005,1,1))
-    print("One day data shape: %s"%str(om.VCC.shape))
+    print("One day data shape: %s"%str(om.VCC_PP.shape))
     om.plot_map(**{'pname':'map_test_1.png'})
     om=omhchorp(datetime(2005,1,1), dayn=datetime(2005,1,4))
-    print("4 day data shape: %s"%str(om.VCC.shape))
+    print("4 day data shape: %s"%str(om.VCC_PP.shape))
     om.plot_map(**{'pname':'map_test_2.png'})
 
     landinds=om.inds_subset(maskocean=True)
@@ -339,5 +494,5 @@ if __name__=='__main__':
     print("%d land elements"%np.sum(landinds))
     print("%d australia land elements"%np.sum(ausinds))
 
-    om=omhchorp(datetime(2005,1,1),datetime(2005,1,31))
-    om.plot_map(**{'pname':'map_test_3.png'})
+    #om=omhchorp(datetime(2005,1,1),datetime(2005,1,31))
+    #om.plot_map(**{'pname':'map_test_3.png'})

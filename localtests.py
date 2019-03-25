@@ -80,6 +80,10 @@ uncert=om.uncertainty(mask, region=pp.__AUSREGION__)
 lats,lons=uncert['lats'],uncert['lons']
 lats_lr,lons_lr=uncert['lats_lr'],uncert['lons_lr']
 
+for key in uncert.keys():
+    print(key, uncert[key].shape)
+
+
 plt.figure(figsize=[12,10])
 vmin,vmax=0,1
 

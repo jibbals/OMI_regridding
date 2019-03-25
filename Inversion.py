@@ -319,8 +319,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     BGm_PP_lr   = np.nanmean(BG_PP_lr,axis=0)
     dbgm_lr     = rbgm_lr * BGm_PP_lr
     dE_ppm_lr   = E_ppm_lr * np.sqrt( (dOm_lr**2 + dbgm_lr**2)/(VCCm_PP_lr-BGm_PP_lr)**2 + r_slope_lr[0]**2 )
-    print(dE_ppm_lr.shape)
-    print(E_ppm_lr.shape, dOm_lr.shape, dbgm_lr.shape, VCCm_PP_lr.shape, BGm_PP_lr, r_slope_lr.shape)
+    #print(dE_ppm_lr.shape)
+    #print(E_ppm_lr.shape, dOm_lr.shape, dbgm_lr.shape, VCCm_PP_lr.shape, BGm_PP_lr.shape, r_slope_lr.shape)
     elapsed = timeit.default_timer() - time_emiss_calc
     if __VERBOSE__:
         print ("TIMEIT: Took %6.2f seconds to calculate backgrounds and estimate emissions()"%elapsed)

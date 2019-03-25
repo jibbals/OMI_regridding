@@ -74,7 +74,7 @@ class omhchorp:
             RSC = mean at SC latitudes over all tracks
             dRSC = std monthly for Aus lats (-45 to -10) and all tracks
             
-            Assume we have one month of data
+            Assume we have one month of data for monthly outputs
             ONLY looking at uncertainty in PP columns
         '''
         # low and high resolution
@@ -101,23 +101,25 @@ class omhchorp:
         
         # we also want to bin the RSC onto the same grid as SC
         RSC         = np.nanmean(RSC,axis=2) # average over the tracks
+        RSC         = np.repeat(RSC[:,:,np.newaxis],len(lons),axis=2)
         RSCnew      = np.copy(SC)
-        lats_e      = util.edges_from_mids(lats, fix_max=None)
-        for i in range(len(lats)):
-            lati = (lats_RSC >= lats_e[i]) * (lats_RSC < lats_e[i+1])
-            RSCnew[:,i] = np.nanmean(RSC[:,lati],axis=1)
-        RSC         = RSCnew # averaged on lower resolution
-        RSC         = np.repeat(RSC[:,:,np.newaxis],len(self.lons), axis=2) # repeat over longitudes
+        for i in range(ndays):
+            RSCnew[i]  = util.regrid_to_higher(RSC[i],lats_RSC,lons,lats,lons )
+        RSC         = RSCnew
         
         
         # Need to convert to low res:
-        dSC_lr, dSC_u_lr, SC_lr, SC_u_lr, pix_lr, pix_u_lr, RSC_lr = [],[],[],[],[],[],[]
+        lrshape=[ndays, len(lats_lr),len(lons_lr)]
+        dSC_lr, dSC_u_lr    = np.zeros(lrshape),np.zeros(lrshape) 
+        SC_lr, SC_u_lr      = np.zeros(lrshape),np.zeros(lrshape)
+        pix_lr, pix_u_lr    = np.zeros(lrshape),np.zeros(lrshape)
+        RSC_lr              = np.zeros(lrshape)
         for i in range(ndays):
             dSC_lr[i]       = util.regrid_to_lower(dSC[i], lats,lons, lats_lr, lons_lr, pixels=pix[i])
             dSC_u_lr[i]     = util.regrid_to_lower(dSC_u[i], lats,lons, lats_lr, lons_lr, pixels=pix_u[i])
             SC_lr[i]        = util.regrid_to_lower(SC[i], lats,lons, lats_lr, lons_lr,pixels=pix[i])
             SC_u_lr[i]      = util.regrid_to_lower(SC_u[i], lats,lons, lats_lr, lons_lr,pixels=pix_u[i])
-            RSC_lr[i]       = util.regrid_to_lower(RSC[i], lats_RSC, lons, lats, lons)
+            RSC_lr[i]       = util.regrid_to_lower(RSC[i], lats, lons, lats_lr, lons_lr)
             
             # store pixel count in lower resolution also, using sum of pixels in each bin
             pix_lr[i]    = util.regrid_to_lower(pix[i],lats,lons,lats_lr,lons_lr,func=np.nansum)
@@ -145,16 +147,16 @@ class omhchorp:
             rO_u_lr = np.sqrt( (dSC_u_lr**2 + dRSC**2) / (SC_u_lr-RSC_lr)**2 + (ramf)**2 )  
             
             # daily
-            rOd         = rO/ np.sqrt(pix)
-            rOd_u       = rO_u/ np.sqrt(pix_u)
-            rOd_lr      = rO_lr/ np.sqrt(pix_lr)
-            rOd_u_lr    = rO_u_lr  / np.sqrt(pix_u_lr)
+            rOd         = rO        / np.sqrt(pix)
+            rOd_u       = rO_u      / np.sqrt(pix_u)
+            rOd_lr      = rO_lr     / np.sqrt(pix_lr)
+            rOd_u_lr    = rO_u_lr   / np.sqrt(pix_u_lr)
             
-            # monthly can be found by dividing by the sqrt(N):
-            rOm = np.nanmean(rO,axis=0)             #/np.sqrt(pixm)
-            rOm_u = np.nanmean(rO_u,axis=0)         #/np.sqrt(pixm_u)
-            rOm_lr = np.nanmean(rO_lr,axis=0)       #/np.sqrt(pixm_lr)
-            rOm_u_lr = np.nanmean(rO_u_lr,axis=0)   #/np.sqrt(pixm_u_lr)
+            # monthly:
+            rOm = np.nanmean(rO,axis=0)             /np.sqrt(pixm)
+            rOm_u = np.nanmean(rO_u,axis=0)         /np.sqrt(pixm_u)
+            rOm_lr = np.nanmean(rO_lr,axis=0)       /np.sqrt(pixm_lr)
+            rOm_u_lr = np.nanmean(rO_u_lr,axis=0)   /np.sqrt(pixm_u_lr)
             
             
         # Also lets get daily remote pacific background error
@@ -164,21 +166,24 @@ class omhchorp:
                               average_lons=True, has_time_dim=True)
         bgpix, _,_      = util.remote_pacific_background(pix, lats, lons,
                               average_lons=True, has_time_dim=True, func = np.nansum)
-        bg_lr, _,_   = util.remote_pacific_background(rO_lr, lats, lons,
+        bg_lr, _,_   = util.remote_pacific_background(rO_lr, lats_lr, lons_lr,
                               average_lons=True, has_time_dim=True)
-        bgpix_lr, _,_   = util.remote_pacific_background(pix_lr, lats, lons,
+        bgpix_lr, _,_   = util.remote_pacific_background(pix_lr, lats_lr, lons_lr,
                               average_lons=True, has_time_dim=True, func = np.nansum)
         bg_u, _,_    = util.remote_pacific_background(rO_u, lats, lons,
                               average_lons=True, has_time_dim=True)
         bgpix_u, _,_    = util.remote_pacific_background(pix_u, lats, lons,
                               average_lons=True, has_time_dim=True, func = np.nansum)
-        bg_u_lr, _,_ = util.remote_pacific_background(rO_u_lr, lats, lons,
+        bg_u_lr, _,_ = util.remote_pacific_background(rO_u_lr, lats_lr, lons_lr,
                               average_lons=True, has_time_dim=True)
-        bgpix_u_lr, _,_ = util.remote_pacific_background(pix_u_lr, lats, lons,
+        bgpix_u_lr, _,_ = util.remote_pacific_background(pix_u_lr, lats_lr, lons_lr,
                               average_lons=True, has_time_dim=True, func = np.nansum)
         
         # for background error using daily reduced error
-        # divide mean bgerr by sqrt(n)
+        
+        # daily error reduced by sqrt(n), monthly too
+        
+        bgm_lr   = np.nanmean(bg_lr,axis=0)/np.nansum(bgpix_lr,axis=0)
         bg       = bg/np.sqrt(bgpix)
         bg_u     = bg_u/np.sqrt(bgpix_u)
         bg_lr    = bg_lr/np.sqrt(bgpix_lr)
@@ -188,22 +193,34 @@ class omhchorp:
         bg_u     = np.repeat(bg_u[:,:,np.newaxis],len(lons), axis=2)
         bg_lr    = np.repeat(bg_lr[:,:,np.newaxis],len(lons_lr), axis=2)
         bg_u_lr  = np.repeat(bg_u_lr[:,:,np.newaxis],len(lons_lr), axis=2)
+        # monthly also
+        bgm_lr   = np.repeat(bgm_lr[:,np.newaxis],len(lons_lr), axis=1)
+        
         # remove infinites?
         #rO[~np.isfinite(rO)] = np.NaN
         
         # Subset to region
-        errs = [rOd, rOd_u, pix, pix_u, rOm, rOm_u, pixm, pixm_u, bg, bg_u, RSC]
-        errs_lr = [rOd_lr, rOd_u_lr, pix_lr, pix_u_lr, rOm_lr, rOm_u_lr, pixm_lr, pixm_u_lr, bg_lr, bg_u_lr, RSC_lr]
+        errs        = [rOd, rOd_u, pix, pix_u, bg, bg_u, RSC]
+        errsm       = [rOm, rOm_u, pixm, pixm_u ]
+        errs_lr     = [rOd_lr, rOd_u_lr, pix_lr, pix_u_lr, bg_lr, bg_u_lr, RSC_lr]
+        errsm_lr    = [rOm_lr, rOm_u_lr, pixm_lr, pixm_u_lr, bgm_lr]
         subs=util.lat_lon_subset(lats,lons,region,data=errs, has_time_dim=True)
         subs_lr=util.lat_lon_subset(lats_lr, lons_lr, region, data=errs_lr, has_time_dim=True)
+        subsm=util.lat_lon_subset(lats,lons,region,data=errsm, has_time_dim=False)
+        subsm_lr=util.lat_lon_subset(lats_lr, lons_lr, region, data=errsm_lr, has_time_dim=False)
         lats=subs['lats']
         lons=subs['lons']
         lats_lr=subs_lr['lats']
         lons_lr=subs_lr['lons']
-        [rOd, rOd_u, pix, pix_u, rOm, rOm_u, pixm, pixm_u, bg, bg_u, RSC] = subs['data'][i]
-        [rOd_lr, rOd_u_lr, pix_lr, pix_u_lr, rOm_lr, rOm_u_lr, pixm_lr, pixm_u_lr, bg_lr, bg_u_lr, RSC_lr] = subs_lr['data'][i]
+        
+        [rOd, rOd_u, pix, pix_u, bg, bg_u, RSC]     = subs['data']
+        [rOm, rOm_u, pixm, pixm_u,]                 = subsm['data']
+        [rOd_lr, rOd_u_lr, pix_lr, pix_u_lr, 
+         bg_lr, bg_u_lr, RSC_lr]                    = subs_lr['data']
+        [rOm_lr, rOm_u_lr, pixm_lr, pixm_u_lr, 
+         bgm_lr, ]                                  = subsm_lr['data']
                   # these are the mean per pixel relative errors
-        return  { 'rO':rO, 'rO_u':rO_u, 'rO_lr':rO_lr, 'rO_u_lr':rO_u_lr, 
+        return  { 'rO':rOd, 'rO_u':rOd_u, 'rO_lr':rOd_lr, 'rO_u_lr':rOd_u_lr, 
                  # number of pixels per grid square per day
                  'pix':pix,'pix_u':pix_u, 'pix_lr':pix_lr, 'pix_u_lr':pix_u_lr,
                  # same but per month
@@ -217,7 +234,7 @@ class omhchorp:
                  # Fitting Error:
                  'dSC':dSC, 'dSC_lr':dSC_lr,
                  # extras
-                 'lats_lr':lats_lr,'lons_lr':lons_lr,
+                 'lats':lats,'lons':lons, 'lats_lr':lats_lr,'lons_lr':lons_lr,
                  }
 
     def inds_subset(self, lat0=None, lat1=None, lon0=None, lon1=None, maskocean=False, maskland=False):

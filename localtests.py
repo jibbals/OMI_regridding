@@ -71,9 +71,28 @@ start1=timeit.default_timer()
 ##########
 
 #test_filters.summary_pixels_filtered()
+d0,dN = datetime(2005,1,1),datetime(2005,1,2)
+om=omhchorp(d0,dN)
+mask, dates, lats, lons =fio.get_anthro_mask(d0,dN)
+om.RSC.shape
 
-import chapter_3_isop
-chapter_3_isop.save_overpass_timeseries()
+uncert=om.uncertainty(mask, region=pp.__AUSREGION__)
+lats,lons=uncert['lats'],uncert['lons']
+lats_lr,lons_lr=uncert['lats_lr'],uncert['lons_lr']
+
+plt.figure(figsize=[12,10])
+vmin,vmax=0,1
+
+plt.subplot(2,1,1)
+pp.createmap(uncert['rOm'],lats,lons,aus=True,
+             linear=True, vmin=vmin,vmax=vmax)
+
+plt.subplot(2,1,2)
+pp.createmap(uncert['rOm_lr'],lats_lr,lons_lr,aus=True,
+             linear=True, vmin=vmin,vmax=vmax,
+             title='low_res',pname='test_uncert.png')
+#import chapter_3_isop
+#chapter_3_isop.save_overpass_timeseries()
 
 
 ###########

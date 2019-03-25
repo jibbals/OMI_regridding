@@ -292,8 +292,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     vccuncert = OMHCHORP.uncertainty(allmasks, region=region) # UNCERTAINTY FOR PP only
     # need uncertainty in high and low res and unfiltered for comparison
     # daily relative uncertainties
-    rO, rO_lr = vccuncert['rOd'],vccuncert['rOd_lr']
-    rO_u, rO_u_lr = vccuncert['rOd_u'],vccuncert['rOd_u_lr']
+    rO, rO_lr = vccuncert['rO'],vccuncert['rO_lr']
+    rO_u, rO_u_lr = vccuncert['rO_u'],vccuncert['rO_u_lr']
     fitting_err, fitting_err_lr = vccuncert['dSC'], vccuncert['dSC_lr']
     # monthly relative uncertainty
     rOm_lr  = vccuncert['rOm_lr'] # monthly error
@@ -305,7 +305,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     
     # also need background uncertainty
     rbg, rbg_lr = vccuncert['bg'],vccuncert['bg_lr']
-    rbg_u, rbg_u_lr = vccuncert['bg_u'],vccuncert['bg_u_lr']
+    #rbg_u, rbg_u_lr = vccuncert['bg_u'],vccuncert['bg_u_lr']
+    rbgm_lr = vccuncert['bgm_lr']
     dbg_lr = rbg_lr * BG_PP_lr
     
     # Error in E_isop = E_isop * sqrt (  (dO^2 + dO_0^2 ) / (dO-dO_0)^2 + (dSlope/Slope)^2 )
@@ -316,7 +317,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     E_ppm_lr    = np.nansum(E_pp_lr*pixels_PP_lr,axis=0) / np.nansum(pixels_PP_lr,axis=0)
     VCCm_PP_lr  = np.nansum(VCC_PP_lr * pixels_PP_lr, axis=0) / np.nansum(pixels_PP_lr,axis=0)
     BGm_PP_lr   = np.nanmean(BG_PP_lr,axis=0)
-    dE_ppm_lr = np.nanmean(E_ppm_lr) * np.sqrt( (dOm_lr**2 + dbg_lr**2)/(VCCm_PP_lr-BGm_PP_lr)**2 + r_slope_lr**2 )
+    dbgm_lr     = rbgm_lr * BGm_PP_lr
+    dE_ppm_lr = np.nanmean(E_ppm_lr) * np.sqrt( (dOm_lr**2 + dbgm_lr**2)/(VCCm_PP_lr-BGm_PP_lr)**2 + r_slope_lr**2 )
     
     elapsed = timeit.default_timer() - time_emiss_calc
     if __VERBOSE__:

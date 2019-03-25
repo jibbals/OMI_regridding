@@ -318,7 +318,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     VCCm_PP_lr  = np.nansum(VCC_PP_lr * pixels_PP_lr, axis=0) / np.nansum(pixels_PP_lr,axis=0)
     BGm_PP_lr   = np.nanmean(BG_PP_lr,axis=0)
     dbgm_lr     = rbgm_lr * BGm_PP_lr
-    dE_ppm_lr = np.nanmean(E_ppm_lr) * np.sqrt( (dOm_lr**2 + dbgm_lr**2)/(VCCm_PP_lr-BGm_PP_lr)**2 + r_slope_lr**2 )
+    dE_ppm_lr   = E_ppm_lr * np.sqrt( (dOm_lr**2 + dbgm_lr**2)/(VCCm_PP_lr-BGm_PP_lr)**2 + r_slope_lr**2 )
     
     elapsed = timeit.default_timer() - time_emiss_calc
     if __VERBOSE__:

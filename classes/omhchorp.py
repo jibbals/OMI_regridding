@@ -231,6 +231,8 @@ class omhchorp:
                  'RSC':RSC, 'RSC_lr':RSC_lr, 'dRSC':dRSC,
                  # background errors per day from remote pacific
                  'bg':bg, 'bg_u':bg_u, 'bg_lr':bg_lr, 'bg_u_lr':bg_u_lr, 
+                 # background errors per monnth
+                 'bgm_lr':bgm_lr,
                  # Fitting Error:
                  'dSC':dSC, 'dSC_lr':dSC_lr,
                  # extras

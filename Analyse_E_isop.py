@@ -535,14 +535,18 @@ def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
     print("Saved %s"%pname)
     plt.close()
 
+# UPDATE: fix Y axis labels -> a priori, X axis -> a posteriori, add units, remove negative axes, REMOVE legend point marker
 def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,31)):
     '''
     '''
 
     ## Read Emegan and Enew into dataframe for a region and season
     # a priori and a posteriori
+    print("TESTING , NEED TO UPDATE TO LAST DATE")
+    dE=datetime(2005,2,28)
     Enew=E_new(d0,dE, dkeys=['E_MEGAN','E_PP_lr'])
     lats,lons=Enew.lats_lr,Enew.lons_lr
+    
     Em=Enew.E_MEGAN
     Em[Em<1] = np.NaN
     Eo=Enew.E_PP_lr
@@ -625,7 +629,9 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
             # make sure minimum value on axes is zero
             g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1])
             g.ax_marg_y.set_ylim(0,g.ax_marg_y.get_ylim()[1])
-            g.ax_joint.legend(handlelength=0, handletextpad=0, frameon=False)
+            thelegend=g.ax_joint.legend(markerscale=0, handlelength=0, handletextpad=0, frameon=False)
+            #for legendhandle in thelegend.legendHandles:
+            #    legendhandle._legmarker.set_markersize(0)
             # Annotate the units
             plt.gca().annotate('molec cm$^{-2}$ s$^{-1}$', xy=(.75,.05))
             # halve the x axis limit
@@ -1214,7 +1220,7 @@ if __name__=='__main__':
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
     #MEGAN_vs_E_new(d0,dn)
-    #distributions_comparison_regional()
+    distributions_comparison_regional()
     # TODO: need to fix or manually combine the images made in this one...
 
     ## Plot showing comparison of different top-down estimates
@@ -1226,12 +1232,13 @@ if __name__=='__main__':
     ## In isop chapter results
     ## Ran 7/11/18
     with np.warnings.catch_warnings():
+        print("ignoring warnings")
         # run for one year using daily values:
         #for force_monthly in [True, False]:
         #    E_regional_time_series(d0,dn,force_monthly=force_monthly)
         # Run for all years, monthly medians for time series
         
-        E_regional_multiyear(d0=d0,dn=df, etype='pp')
+        #E_regional_multiyear(d0=d0,dn=df, etype='pp')
         #np.warnings.filterwarnings('ignore')
         #for etype in ['gc','omi','pp']:
             #E_regional_multiyear(d0=d0,dn=de, etype=etype)

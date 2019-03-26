@@ -385,7 +385,7 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2012,12,31),
 
         currently can't compare high-res E_new to low res E_MEGAN
 
-        Plot:    MAP apriori    |    MAP apostiori
+        Plot:    MAP apriori    |    MAP aposteriori
                  time series |    time series
                  differences one row per region
     '''
@@ -419,9 +419,9 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2012,12,31),
                                          subzones=subzones,colors=colors,
                                          showmaps=showmaps,
                                          force_monthly=force_monthly, force_monthly_func=force_monthly_func,
-                                         title='a priori', comparisontitle='a postiori')
+                                         title='a priori', comparisontitle='a posteriori')
     axs[0].set_title('a priori',fontsize=28)
-    axs[1].set_title('a postiori',fontsize=28)
+    axs[1].set_title('a posteriori',fontsize=28)
     axs[0].set_ylabel('molec cm$^{-2}$ s$^{-1}$')
 
     # add row at bottom for differences between Enew and Emeg
@@ -459,11 +459,14 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2012,12,31),
     print("Saved %s"%pname)
     plt.close()
 
+
+#TODO update titles and add Y axis, update legend
+#TODO run over 2005-2012
 def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
                          etype='pp', lowres=True):
     '''
     Plot the time series of E_new, compare against MEGAN, using multi-year monthly average and IQR
-    megan is apriori, postiori is E_PP or other depending on etype argument
+    megan is apriori, posteriori is E_PP or other depending on etype argument
     Averaged within subregions
 
     '''
@@ -509,7 +512,7 @@ def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
         lqmeg       = dfEmeg[i].quantile(0.25).values.squeeze()
 
         plt.fill_between(x,lq,uq, color=colors[i], alpha=0.4)
-        plt.plot(x, mean, color=colors[i], label='a postiori', linewidth=3)
+        plt.plot(x, mean, color=colors[i], label='a posteriori', linewidth=3)
         plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
         plt.plot(x, meanmeg, color=colors[i], linestyle='--', label='a priori',linewidth=3)
         plt.ylabel(labels[i], color=colors[i], fontsize=24)
@@ -523,7 +526,7 @@ def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
     plt.xticks(x)
     plt.gca().set_xticklabels(['J','F','M','A','M','J','J','A','S','O','N','D'])
     plt.xlabel('month', fontsize=24)
-    plt.suptitle('a priori vs a postiori; mean and IQR\n [molec cm$^{-2}$ s$^{-1}$]',fontsize=30)
+    plt.suptitle('a priori vs a posteriori; mean and IQR\n [molec cm$^{-2}$ s$^{-1}$]',fontsize=30)
     f.subplots_adjust(hspace=0)
 
 
@@ -537,7 +540,7 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
     '''
 
     ## Read Emegan and Enew into dataframe for a region and season
-    # a priori and a postiori
+    # a priori and a posteriori
     Enew=E_new(d0,dE, dkeys=['E_MEGAN','E_PP_lr'])
     lats,lons=Enew.lats_lr,Enew.lons_lr
     Em=Enew.E_MEGAN
@@ -594,12 +597,12 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
         slope,intercept,reg,ci1,ci2 = JesseRegression.RMA(subdata_m[:,1],subdata_m[:,0])
         legend = "y={0:.1f}x+{1:.1e}: r={2:.2f}".format(slope,intercept,reg)
 
-        df = pd.DataFrame(data=subdata, columns=['a priori','a postiori'])
-        df_m = pd.DataFrame(data=subdata_m, columns=['a priori','a postiori'])
+        df = pd.DataFrame(data=subdata, columns=['a priori','a posteriori'])
+        df_m = pd.DataFrame(data=subdata_m, columns=['a priori','a posteriori'])
 
         plt.figure(figsize=[15,15])
         with sns.axes_style('white'):
-            g = sns.jointplot("a postiori", "a priori", df, kind='hex',#kind='reg')
+            g = sns.jointplot("a posteriori", "a priori", df, kind='hex',#kind='reg')
                               dropna=True, xlim=[0,xmax], ylim=[0,ymax],
                               color=color,)
             # Add units as inset text
@@ -614,7 +617,7 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
 
         plt.figure(figsize=[15,15])
         with sns.axes_style('white'):
-            g = sns.jointplot("a postiori", "a priori", df_m, kind='reg',
+            g = sns.jointplot("a posteriori", "a priori", df_m, kind='reg',
                               dropna=True, #xlim=[0,xmax], ylim=[0,ymax],
                               color=color,
                               label=legend,
@@ -1224,8 +1227,8 @@ if __name__=='__main__':
     ## Ran 7/11/18
     with np.warnings.catch_warnings():
         # run for one year using daily values:
-        for force_monthly in [True, False]:
-            E_regional_time_series(d0,dn,force_monthly=force_monthly)
+        #for force_monthly in [True, False]:
+        #    E_regional_time_series(d0,dn,force_monthly=force_monthly)
         # Run for all years, monthly medians for time series
         
         E_regional_multiyear(d0=d0,dn=df, etype='pp')

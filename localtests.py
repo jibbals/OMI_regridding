@@ -70,31 +70,69 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+import chapter_3_isop
+
+df=chapter_3_isop.read_overpass_timeseries()
+
 #test_filters.summary_pixels_filtered()
-d0,dN = datetime(2005,1,1),datetime(2005,1,2)
-om=omhchorp(d0,dN)
-mask, dates, lats, lons =fio.get_anthro_mask(d0,dN)
-om.RSC.shape
+d0,dN = datetime(2005,1,1),datetime(2005,1,31)
+dkeys=['E_PP_lr', 'pixels_PP_lr', # emissiosn and pixel counts
+       'E_PP_err_lr','E_PPm_err_lr','SC_err_lr',  # Error in emissions estimate
+       'VCC_err_lr','VCC_rerr_lr', # daily OmegaPP error in
+       'slope_rerr_lr'] # monthly portional error in slope
 
-uncert=om.uncertainty(mask, region=pp.__AUSREGION__)
-lats,lons=uncert['lats'],uncert['lons']
-lats_lr,lons_lr=uncert['lats_lr'],uncert['lons_lr']
+enew=E_new(d0,dN,dkeys=dkeys)
 
-for key in uncert.keys():
-    print(key, uncert[key].shape)
+lats,lons=enew.lats_lr, enew.lons_lr
 
 
-plt.figure(figsize=[12,10])
-vmin,vmax=0,1
+for key in dkeys:
+    print(key, getattr(enew,key).shape)
 
-plt.subplot(2,1,1)
-pp.createmap(uncert['rOm'],lats,lons,aus=True,
-             linear=True, vmin=vmin,vmax=vmax)
+err   = np.abs(enew.E_PP_err_lr)
+errm  = np.abs(enew.E_PPm_err_lr)
+rerr  = np.abs(err/enew.E_PP_lr)
+rerrm = np.abs(errm/np.nanmean(enew.E_PP_lr,axis=0))
+Serr  = enew.slope_rerr_lr
 
-plt.subplot(2,1,2)
-pp.createmap(uncert['rOm_lr'],lats_lr,lons_lr,aus=True,
-             linear=True, vmin=vmin,vmax=vmax,
-             title='low_res',pname='test_uncert.png')
+plt.figure(figsize=[14,14])
+vmin,vmax=1e11,1e13
+linear=False
+
+plt.subplot(2,3,1)
+pp.createmap(np.nanmean(enew.E_PP_lr,axis=0),lats,lons,aus=True,
+             linear=linear, vmin=vmin,vmax=vmax,
+             clabel='C/cm2/s',
+             title='mean a posteriori 200501')
+
+plt.subplot(2,3,2)
+pp.createmap(np.nanmean(err,axis=0),lats,lons,aus=True,
+             linear=linear, vmin=vmin,vmax=vmax,
+             clabel='C/cm2/s',
+             title='Daily a posteriori error')
+plt.subplot(2,3,3)
+pp.createmap(np.nanmean(rerr,axis=0), lats,lons, aus=True,
+             linear=True, vmin=0,vmax=1,
+             clabel='portional',
+             title='Daily relative error')
+
+plt.subplot(2,3,4)
+pp.createmap(errm, lats,lons, aus=True,
+             linear=linear, vmin=vmin,vmax=vmax,
+             clabel='C/cm2/s',
+             title='Monthly a posteriori error')
+plt.subplot(2,3,5)
+pp.createmap(Serr,lats,lons,aus=True,
+             linear=True, vmin=0,vmax=1, 
+             clabel='Portional',
+             title='Slope error 200501')
+plt.subplot(2,3,6)
+pp.createmap(rerrm,lats,lons,aus=True,
+             linear=True, vmin=0,vmax=1, 
+             clabel='Portional',
+             title='Monthly relative error', suptitle='Jan 2005',
+             pname='test_uncert.png')
+
 #import chapter_3_isop
 #chapter_3_isop.save_overpass_timeseries()
 

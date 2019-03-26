@@ -464,6 +464,15 @@ def match_bottom_levels(p1i, p2i, arr1i, arr2i):
 
     return p1,p2,arr1,arr2
 
+#def seasonal_mean_iqr(data,dates):
+#    '''
+#    return mean, q1, q3, dates
+#    '''
+#    df = pd.DataFrame(data=data, index=dates)
+#    seasonal_idx = resample(data,dates,'Q-NOV')
+#    group = df.groupby(seasonal_idx)
+#    mean = group.mean
+    
 def multi_year_average(data,dates, grain='monthly'):
     '''
         Use pandas dataframes to get average for each month of the year

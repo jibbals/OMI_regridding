@@ -428,6 +428,7 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
 # RESULTS
 ###
 
+
 def time_series(d0=datetime(2005,1,1), d1=datetime(2012,12,31)):
     '''
         Time series before and after scaling 
@@ -496,87 +497,7 @@ def time_series(d0=datetime(2005,1,1), d1=datetime(2012,12,31)):
         print('SAVED ',pnames%key)
         plt.close()
 
-def old_time_series(d0=datetime(2005,1,1), d1=datetime(2012,12,31)):
-    '''
-        Time series before and after scaling 
-        Method takes 5 mins but lots of RAM to read satellite years...
-    '''
-    
-    pnames = 'Figs/new_emiss/time_series_%s.png'
-    
-    satkeys = ['IJ-AVG-$_ISOP',     # isop in ppbc?
-               'IJ-AVG-$_CH2O',     # hcho in ppb
-               'IJ-AVG-$_NO2',      # NO2 in ppb
-               'IJ-AVG-$_NO',       # NO in ppb?
-               'IJ-AVG-$_O3',       # O3 in ppb
-               ] #+ GC_class.__gc_tropcolumn_keys__
-    new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
-    tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
-    # new_sat.hcho.shape #(31, 91, 144, 47)
-    # new_sat.isop.shape #(31, 91, 144, 47)
-    
-    
-    # dims for GEOS-Chem outputs
-    lats=new_sat.lats
-    lons=new_sat.lons
-    dates=new_sat.dates
-    months=util.list_months(d0,d1)
-    
-    # Same process for each key: read surface, split by region, plot series seasonally averaged
-    for origkey in satkeys:
-        key = GC_class._GC_names_to_nice[origkey]
-        
-        # Grab surface array
-        new_surf = getattr(new_sat,key)[:,:,:,0] # ppb or ppbC
-        trop_surf = getattr(tropchem_sat,key)[:,:,:,0]
-        
-        units = 'ppbv'
-        if origkey == 'IJ-AVG-$_ISOP':
-            units = 'ppbC'
-        
-        # pull out subregions, keeping lats and lons
-        new_regional, lats_regional, lons_regional = util.pull_out_subregions(new_surf,lats,lons,subregions=regions)
-        trop_regional, lats_regional, lons_regional = util.pull_out_subregions(trop_surf,lats,lons,subregions=regions)
 
-        # average spatial dims into monthly time series
-        new_regional_ts = [ np.nanmean(new_regional[i], axis=(1,2)) for i in range(n_regions) ]
-        trop_regional_ts = [ np.nanmean(trop_regional[i], axis=(1,2)) for i in range(n_regions) ]
-
-        # Seasonal averages
-        new_seasonal = [ util.resample(new_regional_ts[i],dates,"Q-NOV") for i in range(n_regions) ]
-        trop_seasonal = [ util.resample(trop_regional_ts[i],dates,"Q-NOV") for i in range(n_regions) ]
-        dates_seasonal = new_seasonal[0].mean().index.to_pydatetime()
-        # dates are at right hand side of bin by default...
-        dates_seasonal = [ date_s - timedelta(days=45) for date_s in dates_seasonal ]
-        
-        f,axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True,sharey=True)
-        for i in range(n_regions):
-            plt.sca(axes[i])
-            newmean      = new_seasonal[i].mean().values.squeeze()
-            tropmean     = trop_seasonal[i].mean().values.squeeze()
-
-            plt.plot_date(dates_seasonal, tropmean, color=colors[i], label='Tropchem run',
-                          fmt='-', linewidth=3)
-            #plt.fill_between(x,lq,uq, color=colors[i], alpha=0.4)
-            plt.plot_date(dates_seasonal, newmean, color=colors[i], label='Scaled run',
-                          fmt='--',linewidth=3 )
-            #plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
-            plt.ylabel(labels[i], color=colors[i], fontsize=24)
-            if i==0:
-                plt.legend(loc='best')
-            if i%2 == 1:
-                axes[i].yaxis.set_label_position("right")
-                axes[i].yaxis.tick_right()
-        
-        plt.xlabel('date', fontsize=24)
-        plt.suptitle('Seasonally averaged surface %s [%s]'%(key, units),fontsize=30)
-        f.subplots_adjust(hspace=0)
-
-
-        ## save figure
-        plt.savefig(pnames%key)
-        print('SAVED ',pnames%key)
-        plt.close()
 
 def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
     '''
@@ -810,24 +731,24 @@ def seasonal_differences():
     
 def regional_seasonal_comparison():
     ''' 
-        Compare HCHO, O3, NO columns between runs over Australia
-        # Grab all overpass data, resample to multiyear monthly avg, then look at seasonal compariosn
-        First row:  Summer before, summer after, diff
-        Second row: Winter before, winter after, diff
+        Compare apri and apost in each region
+        # Grab all overpass data, resample to 3 monthly avg, then look at seasonal compariosn
+        #
+        # First plot: Time_series_emissions.png
+            Row1: a priori 3m averaged time series
+            Row2: a posteriori
+            Row3: Diffs
+            coloured by regionn, Aus region shaded for IQR
+        # Second plot: RegSeas_emissions.png
+            seasonal mean apri and apost for each region, as a bar chart
+        
     '''
     pname = 'Figs/new_emiss/RegSeas_emissions.png'
+    pname1 = 'Figs/Emiss/E_zones_diffs.png'
     
     #read satellite overpass outputs
     DF = read_overpass_timeseries()
     dates=[datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
-    
-    keys = ['E_MEGAN','E_PP_lr']
-    klabels = [__apri__, __apost__]
-    suptitle='Midday emissions [%s]'%__apri__units__
-    #units = [__Ogc__units__, 'ppbC', 'ppbv', 'ppbv','ppbv']
-    #titles= [__Ogc__, 'surface isoprene', 'surface HCHO', 'surface ozone', 'surface NO$_x$']
-    #suptitles = [ 'Seasonally averaged %s [%s]'%(lab,unit) for lab,unit in zip(titles,units) ]
-    
     
     # Priori and posteriori overpass output
     # Time series
@@ -837,8 +758,59 @@ def regional_seasonal_comparison():
     # Seasonal averages
     apri_seasonal = [ util.resample(apris[i],dates,"Q-NOV") for i in range(n_regions) ]
     apost_seasonal = [ util.resample(aposts[i],dates,"Q-NOV") for i in range(n_regions) ]
+    seasons=apri_seasonal[0].mean().index.to_pydatetime()
+    seasons = [season - timedelta(days=45) for season in seasons]
+    years = util.list_years(datetime(2005,1,1), datetime(2013,1,1))
+    ##
+    ## FIRST FIGURE:
+    f,axes = plt.subplots(3,1,figsize=[16,12], sharex=True,sharey=False)
+    for i in range(n_regions):
+        
+        apri_mean = apri_seasonal[i].mean()
+        apost_mean = apost_seasonal[i].mean()
+        lw=[1,2][i==0]
+        
+        # first subplot is apriori
+        plt.sca(axes[0])
+        pp.plot_time_series(seasons,apri_mean, color=colors[i], label=labels[i], linewidth=lw)
+        #if i==0:
+        #    plt.fill_between()
+        
+        plt.sca(axes[1])
+        pp.plot_time_series(seasons,apost_mean, color=colors[i], linewidth=lw)
+        
+        plt.sca(axes[2])
+        pp.plot_time_series(seasons,apri_mean - apost_mean, color=colors[i], linewidth=lw)
+        
+    plt.xlabel('date', fontsize=24)
+    plt.xticks(years)
+    plt.title('%s - %s'%(__apri__,__apost__))
+    plt.suptitle('Midday emissions',fontsize=30)
+    #f.subplots_adjust(hspace=0)
+    
+    plt.sca(axes[0])
+    plt.title(__apri__)
+    axes[0].legend(fontsize=18, loc='upper right', bbox_to_anchor=(1, 1.05), ncol=3,)
     
     
+    plt.sca(axes[1])
+    plt.title(__apost__)
+    
+    for ax in axes:
+        plt.sca(ax)
+        plt.ylabel(__apri__units__)
+        # Add grid for scale comparison
+        for line in [[0,0], [3e12,3e12], [6e12,6e12], [9e12,9e12]]:
+            plt.plot([datetime(2004,1,1),datetime(2020,1,1)], line, '--', color='k', alpha=0.2)
+            
+        plt.xlim([seasons[0]-timedelta(days=40), seasons[-1]+timedelta(days=40)])
+    ## save figure
+    plt.savefig(pname1)
+    print('SAVED ',pname1)
+    plt.close()
+    
+    ##
+    ## SECOND FIGURE:
     f,axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True,sharey=True)
     for i in range(n_regions):
         plt.sca(axes[i])
@@ -860,7 +832,7 @@ def regional_seasonal_comparison():
     
     plt.xticks(X+width, ['summer','autumn','winter','spring'])
     plt.xlabel('season', fontsize=24)
-    plt.suptitle(suptitle,fontsize=30)
+    plt.suptitle('Midday emissions [%s]'%__apri__units__,fontsize=30)
     f.subplots_adjust(hspace=0)
 
 
@@ -1059,7 +1031,8 @@ if __name__ == "__main__":
     #seasonal_differences()
     # TODO: time series compared to satellite HCHO
     # TODO: Seasonal regional multiyear comparison
-    #regional_seasonal_comparison()
+    regional_seasonal_comparison()
+    
     #time_series()
     # TODO: 
     
@@ -1068,7 +1041,7 @@ if __name__ == "__main__":
     #uncertainty()
     # TODO: add sums to analysis TS
     # todo: discuss plot output from 
-    pixel_counts_summary()
+    #pixel_counts_summary()
 
     ### Record and time STUJFFS
     

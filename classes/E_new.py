@@ -68,8 +68,8 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 #'smearing',     # model resolution monthly smearing
                 'ModelSlope',   # model resolution monthly slope (after filtering smearing)
                 # Uncertainty stuff:
-                'E_PP_err', # E_new error  
-                'E_PPm_err'# monthly E_new error
+                'E_PP_err_lr', # E_new error  
+                'E_PPm_err_lr', # monthly E_new error
                 'SC_err', # fitting error
                 'SC_err_lr', 
                 'VCC_err', # Omega_pp error, relative error, and low res too
@@ -93,7 +93,9 @@ __E_new_keys_lr__ = [
                      'E_GC_lr',  #  at low resolution
                      'E_OMI_lr', #  E_VCC_OMI at low resolution
                      'E_PP_lr',  #  at low resolution
-                     'VC_relative_uncertainty_lr', # relative uncertainty per grid square for OMI VC
+                     'E_PP_err_lr', # E_new error  
+                     'E_PPm_err_lr',
+#                     'VC_relative_uncertainty_lr', # relative uncertainty per grid square for OMI VC
 #                     'E_VCC_GC_lr',  #  at low resolution
 #                     'E_VCC_OMI_lr', #  E_VCC_OMI at low resolution
 #                     'E_VCC_PP_lr',  #  at low resolution

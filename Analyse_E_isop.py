@@ -542,8 +542,6 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
 
     ## Read Emegan and Enew into dataframe for a region and season
     # a priori and a posteriori
-    print("TESTING , NEED TO UPDATE TO LAST DATE")
-    dE=datetime(2005,2,28)
     Enew=E_new(d0,dE, dkeys=['E_MEGAN','E_PP_lr'])
     lats,lons=Enew.lats_lr,Enew.lons_lr
     
@@ -1220,7 +1218,7 @@ if __name__=='__main__':
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
     #MEGAN_vs_E_new(d0,dn)
-    distributions_comparison_regional()
+    #distributions_comparison_regional()
     # TODO: need to fix or manually combine the images made in this one...
 
     ## Plot showing comparison of different top-down estimates
@@ -1238,7 +1236,7 @@ if __name__=='__main__':
         #    E_regional_time_series(d0,dn,force_monthly=force_monthly)
         # Run for all years, monthly medians for time series
         
-        #E_regional_multiyear(d0=d0,dn=df, etype='pp')
+        E_regional_multiyear(d0=d0,dn=df, etype='pp')
         #np.warnings.filterwarnings('ignore')
         #for etype in ['gc','omi','pp']:
             #E_regional_multiyear(d0=d0,dn=de, etype=etype)

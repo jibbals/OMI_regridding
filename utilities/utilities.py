@@ -178,6 +178,12 @@ def datetimes_from_np_datetime64(times, reverse=False):
         return np.squeeze([np.datetime64(d.strftime('%Y-%m-%dT%H:%M:%S.000000000')) for d in times])
     return np.squeeze([datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in times])
 
+def daylengths():
+    ''' How many hours in a day, for each month '''
+    
+    monthly_daylength_changes = np.array([20, -20, -40, -60, -60, -40, -20, 20, 40, 60, 60, 40])
+    monthly_daylengths = 14*60-20 + np.cumsum(monthly_daylength_changes) # in minutes
+    return monthly_daylengths
 
 def edges_from_mids(x,fix_max=179.99):
     '''

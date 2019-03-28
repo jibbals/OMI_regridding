@@ -498,6 +498,136 @@ def time_series(d0=datetime(2005,1,1), d1=datetime(2012,12,31)):
         plt.close()
 
 
+def Seasonal_daycycle():
+    '''
+    '''
+    d0=datetime(2005,1,1)
+    dn=datetime(2012,12,31)
+    
+    # Read megan (3-hourly)
+    MEGAN = GC_class.Hemco_diag(d0,dn)
+    data=MEGAN.E_isop_bio # hours, lats, lons
+    dates=np.array(MEGAN.dates)
+    
+    # Read top-down emissions (midday)
+    Enew = E_new(d0,dn,dkeys=['E_PP_lr'])
+    
+    # average over some regions
+    region_means=[]
+    region_stds=[]
+    topd_means=[]
+    topd_stds=[]
+    # UTC offsets for x axis
+    # region_offsets=[11,10,10,11,12,11]
+    offset=10 # utc + 10
+    daylengths = util.daylengths()/60.0 # in hours
+
+    for region in regions:
+        # subset MEGAN data and serialise
+        subset=util.lat_lon_subset(MEGAN.lats, MEGAN.lons, region, [data], has_time_dim=True)
+        series=np.nanmean(subset['data'][0],axis=(1,2))
+        
+        # subset topd data
+        topdsub=util.lat_lon_subset(Enew.lats_lr, Enew.lons_lr, region, [Enew.E_PP_lr], has_time_dim=True)
+        topdser=np.nanmean(topdsub['data'][0],axis=(1,2))
+        
+        # group by month, and hour to get the multi-year monthly averaged diurnal cycle
+        monthly_hours=util.multi_year_average(series,dates,grain='hourly')
+        monthly_topd=util.multi_year_average(topdser, Enew.dates, grain='monthly')
+        # save mean and std into [month, hour] array
+        region_means.append(monthly_hours.mean().squeeze().values.reshape([12,24]))
+        region_stds.append(monthly_hours.std().squeeze().values.reshape([12,24]))
+        topd_means.append(monthly_topd.mean().squeeze().values)
+        topd_stds.append(monthly_topd.std().squeeze().values)
+
+
+    ## set up the plots
+    # monthly day cycles : 4 rows 3 columns with shared axes
+    f, axes = plt.subplots(4,3, sharex=True, sharey=True, figsize=(16,16))
+    axes[3,1].set_xlabel('Hour (UTC+%d)'%offset)
+    xlim=[6,22]
+    axes[3,1].set_xlim(xlim)
+    axes[1,0].set_ylabel('Emission (molec/cm2/s)')
+    ylim=[1e10,2e13]
+    axes[1,0].set_ylim(ylim)
+    axes[1,0].set_yscale('log')
+    titles=np.array([['Dec','Jan','Feb'],['Mar','Apr','May'],['Jun','Jul','Aug'],['Sep','Oct','Nov']])
+
+    for r,region in enumerate(regions):
+        means = region_means[r]
+        stds  = region_stds[r]
+        topdm = topd_means[r]
+        topds = topd_stds[r]
+        #offset= region_offsets[r]
+
+        # plot the daily cycle and std range
+        for i in range(4): # 4 rows
+            for j in range(3): # 3 columns
+                # shift forward by one month to get dec as first entry
+                ii, jj = (i+int((j+1)%3==0))%4, (j+1)%3
+                # grab month (map i,j onto (0-11)*24)
+                #mi=i*3*24 + j*24
+                mi=i*3+j #month index
+                mip=(mi+1)%12
+                dayhours = np.round(daylengths[mip])
+                
+                # grab mean and std from dataset for this month in this region
+                mdata = means[mip,:].squeeze()
+                mstd  = stds[mip,:].squeeze()
+                mtopd = topdm[mip].squeeze()
+                mtopds= topds[mip].squeeze()
+                
+                # make sin wave from topd midday mean
+                sinbase=np.arange(0,dayhours, 0.1)
+                mtopd_sin = mtopd * np.sin(sinbase * np.pi / (dayhours) )
+                sinbase = sinbase + 13.5 - dayhours/2.0
+                # roll over x axis to get local time midday in the middle
+                #high  = np.roll(data+std, offset)
+                #low   = np.roll(data-std, offset)
+                mdata  = np.roll(mdata, offset)
+
+                #plot into monthly panel, and remove ticks
+                ax   = axes[ii,jj]
+                plt.sca(ax)
+
+                # remove ticks from right and top edges
+                plt.tick_params(
+                    axis='both',      # changes apply to the x-axis
+                    which='both',     # both major and minor ticks are affected
+                    right=False,      # ticks along the right edge are off
+                    top=False,       # ticks along the top edge are off
+                    left=jj==0,
+                    bottom=ii==3)
+
+                # first highlight the 1300-1400 time window with soft grey
+                #plt.fill_betweenx(ylim,[13,13],[14,14], color='grey', alpha=0.2)
+                plt.plot([13,13], ylim, color='grey',alpha=0.5)
+                plt.plot([14,14], ylim, color='grey',alpha=0.5)
+                
+
+                #plt.fill_between(np.arange(24), high, low, color='k')
+                plt.plot(np.arange(24), mdata, color=colors[r], linewidth=1+(r==1))
+                plt.title(titles[ii,jj])
+        
+                # also plot topd from 1300-1400
+                if r == 0:
+                    
+                    # Plot sin wave of correct monthly scale
+                    #plt.plot([12,15], [mtopd, mtopd], color=colors[r], linewidth=2)
+                    plt.plot(sinbase, mtopd_sin, color=colors[r], linewidth=2)
+                    
+                    # Add std bars
+                    plt.plot([12,15], [mtopd+mtopds, mtopd+mtopds], color=colors[r], linewidth=1)
+                    plt.plot([12,15], [mtopd-mtopds, mtopd-mtopds], color=colors[r], linewidth=1)
+                    
+
+
+    # remove gaps between plots
+    f.subplots_adjust(wspace=0, hspace=0.1)
+    pname='Figs/Emiss/MEGAN_monthly_daycycle.png'
+    plt.savefig(pname)
+    print('SAVED FIGURE ',pname)
+    plt.close()
 
 def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
     '''
@@ -811,7 +941,7 @@ def regional_seasonal_comparison():
     
     ##
     ## SECOND FIGURE:
-    f,axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True,sharey=True)
+    f, axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True, sharey=True)
     for i in range(n_regions):
         plt.sca(axes[i])
         apriseasons    = [ np.nanmean(apri_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
@@ -1029,9 +1159,14 @@ if __name__ == "__main__":
     
     # TODO: trend_analysis barplot summary
     #seasonal_differences()
+    
+    # Day cycle for each month compared to sin wave from postiori
+    Seasonal_daycycle()
+    
+    
     # TODO: time series compared to satellite HCHO
     # TODO: Seasonal regional multiyear comparison
-    regional_seasonal_comparison()
+    #regional_seasonal_comparison()
     
     #time_series()
     # TODO: 

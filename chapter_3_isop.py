@@ -574,16 +574,17 @@ def Seasonal_daycycle():
                 # grab mean and std from dataset for this month in this region
                 mdata = means[mip,:].squeeze()
                 mstd  = stds[mip,:].squeeze()
+                
                 mtopd = topdm[mip].squeeze()
                 mtopds= topds[mip].squeeze()
                 
                 # make sin wave from topd midday mean
-                sinbase=np.arange(0,dayhours, 0.1)
+                sinbase=np.arange(0,dayhours+.1, 0.1)
                 mtopd_sin = mtopd * np.sin(sinbase * np.pi / (dayhours) )
                 sinbase = sinbase + 13.5 - dayhours/2.0
                 # roll over x axis to get local time midday in the middle
-                #high  = np.roll(data+std, offset)
-                #low   = np.roll(data-std, offset)
+                mhigh  = np.roll(mdata+mstd, offset)
+                mlow   = np.roll(mdata-mstd, offset)
                 mdata  = np.roll(mdata, offset)
 
                 #plot into monthly panel, and remove ticks
@@ -605,8 +606,9 @@ def Seasonal_daycycle():
                 plt.plot([14,14], ylim, color='grey',alpha=0.5)
                 
 
-                #plt.fill_between(np.arange(24), high, low, color='k')
-                plt.plot(np.arange(24), mdata, color=colors[r], linewidth=1+(r==1))
+                if r == 0 :
+                    plt.fill_between(np.arange(24), mhigh, mlow, color='k', alpha=0.25)
+                plt.plot(np.arange(24), mdata, color=colors[r], linewidth=1+2*(r==0))
                 plt.title(titles[ii,jj])
         
                 # also plot topd from 1300-1400
@@ -614,11 +616,12 @@ def Seasonal_daycycle():
                     
                     # Plot sin wave of correct monthly scale
                     #plt.plot([12,15], [mtopd, mtopd], color=colors[r], linewidth=2)
-                    plt.plot(sinbase, mtopd_sin, color=colors[r], linewidth=2)
+                    plt.plot(sinbase, mtopd_sin, '--', color=colors[r], linewidth=3)
                     
                     # Add std bars
-                    plt.plot([12,15], [mtopd+mtopds, mtopd+mtopds], color=colors[r], linewidth=1)
-                    plt.plot([12,15], [mtopd-mtopds, mtopd-mtopds], color=colors[r], linewidth=1)
+                    plt.plot([13,14], [mtopd+mtopds, mtopd+mtopds], color=colors[r], linewidth=1)
+                    plt.plot([13,14], [mtopd-mtopds, mtopd-mtopds], color=colors[r], linewidth=1)
+                    plt.plot([13.5,13.5], [mtopd-mtopds, mtopd+mtopds], color=colors[r], linewidth=1)
                     
 
 

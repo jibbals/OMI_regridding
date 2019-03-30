@@ -536,128 +536,148 @@ def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
     plt.close()
 
 # UPDATE: fix Y axis labels -> a priori, X axis -> a posteriori, add units, remove negative axes, REMOVE legend point marker
-def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,31)):
+def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,31), JUST_STITCH=False):
     '''
     '''
-
-    ## Read Emegan and Enew into dataframe for a region and season
-    # a priori and a posteriori
-    Enew=E_new(d0,dE, dkeys=['E_MEGAN','E_PP_lr'])
-    lats,lons=Enew.lats_lr,Enew.lons_lr
-    
-    Em=Enew.E_MEGAN
-    Em[Em<1] = np.NaN
-    Eo=Enew.E_PP_lr
-    Eo[Eo<1] = np.NaN
-    dates=Enew.dates
-    # summer date indices
-    summer= [ d.month in [1,2,12] for d in dates ]
-    # winter date indices
-    winter= [ d.month in [6,7,8] for d in dates ]
-
-    # also work on monthly datasets
-    # ignore warnings from taking mean of nans
-    with np.warnings.catch_warnings():
-        monthlym = util.monthly_averaged(dates, Em.copy(), keep_spatial=True)
-    Em_m = monthlym['mean']
-    dates_m = monthlym['dates']
-
-    with np.warnings.catch_warnings():
-        monthlyo = util.monthly_averaged(dates, Eo.copy(), keep_spatial=True)
-    Eo_m = monthlyo['mean']
-
-    summer_m = [d.month in [1,2,12] for d in dates_m]
-    winter_m = [d.month in [6,7,8] for d in dates_m]
-
-    pname1=[]
-    pname2=[]
-    for region,color,label in zip(pp.__subregions__, pp.__subregions_colors__, pp.__subregions_labels__):
-
-        # pull out region:
-        lati,loni = util.lat_lon_range(lats,lons,region)
-        Emsub=Em[:,lati,:]
-        Emsub=Emsub[:,:,loni]
-        Eosub=Eo[:,lati,:]
-        Eosub=Eosub[:,:,loni]
-        Emsub=Emsub[summer]
-        Eosub=Eosub[summer]
-        # for monthly also
-        Emsub_m=Em_m[:,lati,:]
-        Emsub_m=Emsub_m[:,:,loni]
-        Eosub_m=Eo_m[:,lati,:]
-        Eosub_m=Eosub_m[:,:,loni]
-        Emsub_m=Emsub_m[summer_m]
-        Eosub_m=Eosub_m[summer_m]
-
-        # set 95th percentile as axes limits
-        xmax=np.nanpercentile(Eosub,99)
-        ymax=np.nanpercentile(Emsub,99)
-
-        # lets put summer data into a dataframe for easy plotting
-        subdata=np.array([Emsub.flatten(), Eosub.flatten()]).T
-        subdata_m=np.array([Emsub_m.flatten(), Eosub_m.flatten()]).T
-        slope,intercept,reg,ci1,ci2 = JesseRegression.RMA(subdata_m[:,1],subdata_m[:,0])
-        legend = "y={0:.1f}x+{1:.1e}: r={2:.2f}".format(slope,intercept,reg)
-
-        df = pd.DataFrame(data=subdata, columns=['a priori','a posteriori'])
-        df_m = pd.DataFrame(data=subdata_m, columns=['a priori','a posteriori'])
-
-        plt.figure(figsize=[15,15])
-        with sns.axes_style('white'):
-            g = sns.jointplot("a posteriori", "a priori", df, kind='hex',#kind='reg')
-                              dropna=True, xlim=[0,xmax], ylim=[0,ymax],
-                              color=color,)
-            # Add units as inset text
-            plt.gca().annotate('molec cm$^{-2}$ s$^{-1}$', xy=(.75,.05))
-            # make sure minimum value on axes is zero
-            #g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1])
-        plt.suptitle(label,fontsize=20)
-        pname1.append('%s_summer_daily.png'%label)
-        plt.savefig(pname1[-1])
-        print('SAVED ',pname1[-1])
-        plt.close()
-
-        plt.figure(figsize=[15,15])
-        with sns.axes_style('white'):
-            g = sns.jointplot("a posteriori", "a priori", df_m, kind='reg',
-                              dropna=True, #xlim=[0,xmax], ylim=[0,ymax],
-                              color=color,
-                              label=legend,
-                              )
-            # make sure minimum value on axes is zero
-            g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1])
-            g.ax_marg_y.set_ylim(0,g.ax_marg_y.get_ylim()[1])
-            thelegend=g.ax_joint.legend(markerscale=0, handlelength=0, handletextpad=0, frameon=False)
-            #for legendhandle in thelegend.legendHandles:
-            #    legendhandle._legmarker.set_markersize(0)
-            # Annotate the units
-            plt.gca().annotate('molec cm$^{-2}$ s$^{-1}$', xy=(.75,.05))
-            # halve the x axis limit
-            #g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1]/2.0)
-        plt.suptitle(label,fontsize=20)
-        pname2.append('Figs/Emiss/%s_summer_monthly.png'%label)
-        plt.savefig(pname2[-1])
-        print('SAVED ',pname2[-1])
-        plt.close()
-
-
-    for combined, pnames in zip(['Figs/Emiss/daily_Egressions.png','Figs/Emiss/monthly_Egressions.png'],[pname1, pname2]):
+    if JUST_STITCH:
+        combined='Figs/Emiss/monthly_Egressions.png'
+        pnames = [ 'Figs/Emiss/%s_summer_monthly.png'%label for label in pp.__subregions_labels__]
         images = [Image.open(pname) for pname in pnames]
         width, height = images[0].size
-
+    
         # 3 rows 2 cols
         total_width = width * 2 + 50
         total_height= height * 3 + 50
         #max_height = max(heights)
-
+    
         new_im = Image.new('RGBA', (total_width, total_height))
-
+    
         for i,im in enumerate(images):
             x_offset = width*(i%2)
             y_offset = height*(i//2)
             new_im.paste(im, [x_offset, y_offset])
         new_im.save(combined)
         print('SAVED ',combined)
+
+    else:
+        ## Read Emegan and Enew into dataframe for a region and season
+        # a priori and a posteriori
+        Enew=E_new(d0,dE, dkeys=['E_MEGAN','E_PP_lr'])
+        lats,lons=Enew.lats_lr,Enew.lons_lr
+        
+        Em=Enew.E_MEGAN
+        Em[Em<1] = np.NaN
+        Eo=Enew.E_PP_lr
+        Eo[Eo<1] = np.NaN
+        dates=Enew.dates
+        # summer date indices
+        summer= [ d.month in [1,2,12] for d in dates ]
+        # winter date indices
+        winter= [ d.month in [6,7,8] for d in dates ]
+    
+        # also work on monthly datasets
+        # ignore warnings from taking mean of nans
+        with np.warnings.catch_warnings():
+            monthlym = util.monthly_averaged(dates, Em.copy(), keep_spatial=True)
+        Em_m = monthlym['mean']
+        dates_m = monthlym['dates']
+    
+        with np.warnings.catch_warnings():
+            monthlyo = util.monthly_averaged(dates, Eo.copy(), keep_spatial=True)
+        Eo_m = monthlyo['mean']
+    
+        summer_m = [d.month in [1,2,12] for d in dates_m]
+        winter_m = [d.month in [6,7,8] for d in dates_m]
+    
+        pname1=[]
+        pname2=[]
+        for region,color,label in zip(pp.__subregions__, pp.__subregions_colors__, pp.__subregions_labels__):
+    
+            # pull out region:
+            lati,loni = util.lat_lon_range(lats,lons,region)
+            Emsub=Em[:,lati,:]
+            Emsub=Emsub[:,:,loni]
+            Eosub=Eo[:,lati,:]
+            Eosub=Eosub[:,:,loni]
+            Emsub=Emsub[summer]
+            Eosub=Eosub[summer]
+            # for monthly also
+            Emsub_m=Em_m[:,lati,:]
+            Emsub_m=Emsub_m[:,:,loni]
+            Eosub_m=Eo_m[:,lati,:]
+            Eosub_m=Eosub_m[:,:,loni]
+            Emsub_m=Emsub_m[summer_m]
+            Eosub_m=Eosub_m[summer_m]
+    
+            # set 95th percentile as axes limits
+            xmax=np.nanpercentile(Eosub,99)
+            ymax=np.nanpercentile(Emsub,99)
+    
+            # lets put summer data into a dataframe for easy plotting
+            subdata=np.array([Emsub.flatten(), Eosub.flatten()]).T
+            subdata_m=np.array([Emsub_m.flatten(), Eosub_m.flatten()]).T
+            slope,intercept,reg,ci1,ci2 = JesseRegression.RMA(subdata_m[:,1],subdata_m[:,0])
+            legend = "y={0:.1f}x+{1:.1e}: r={2:.2f}".format(slope,intercept,reg)
+    
+            df = pd.DataFrame(data=subdata, columns=['a priori','a posteriori'])
+            df_m = pd.DataFrame(data=subdata_m, columns=['a priori','a posteriori'])
+    
+            plt.figure(figsize=[15,15])
+            with sns.axes_style('white'):
+                g = sns.jointplot("a posteriori", "a priori", df, kind='hex',#kind='reg')
+                                  dropna=True, xlim=[0,xmax], ylim=[0,ymax],
+                                  color=color,)
+                # Add units as inset text
+                plt.gca().annotate('molec cm$^{-2}$ s$^{-1}$', xy=(.75,.05))
+                # make sure minimum value on axes is zero
+                #g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1])
+            plt.suptitle(label,fontsize=20)
+            pname1.append('%s_summer_daily.png'%label)
+            plt.savefig(pname1[-1])
+            print('SAVED ',pname1[-1])
+            plt.close()
+    
+            plt.figure(figsize=[15,15])
+            with sns.axes_style('white'):
+                g = sns.jointplot("a posteriori", "a priori", df_m, kind='reg',
+                                  dropna=True, #xlim=[0,xmax], ylim=[0,ymax],
+                                  color=color,
+                                  label=legend,
+                                  )
+                # make sure minimum value on axes is zero
+                g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1])
+                g.ax_marg_y.set_ylim(0,g.ax_marg_y.get_ylim()[1])
+                thelegend=g.ax_joint.legend(markerscale=0, handlelength=0, handletextpad=0, frameon=False)
+                #for legendhandle in thelegend.legendHandles:
+                #    legendhandle._legmarker.set_markersize(0)
+                # Annotate the units
+                plt.gca().annotate('molec cm$^{-2}$ s$^{-1}$', xy=(.75,.05))
+                # halve the x axis limit
+                #g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1]/2.0)
+            plt.suptitle(label,fontsize=20)
+            pname2.append('Figs/Emiss/%s_summer_monthly.png'%label)
+            plt.savefig(pname2[-1])
+            print('SAVED ',pname2[-1])
+            plt.close()
+    
+    
+        for combined, pnames in zip(['Figs/Emiss/daily_Egressions.png','Figs/Emiss/monthly_Egressions.png'],[pname1, pname2]):
+            images = [Image.open(pname) for pname in pnames]
+            width, height = images[0].size
+    
+            # 3 rows 2 cols
+            total_width = width * 2 + 50
+            total_height= height * 3 + 50
+            #max_height = max(heights)
+    
+            new_im = Image.new('RGBA', (total_width, total_height))
+    
+            for i,im in enumerate(images):
+                x_offset = width*(i%2)
+                y_offset = height*(i//2)
+                new_im.paste(im, [x_offset, y_offset])
+            new_im.save(combined)
+            print('SAVED ',combined)
 
 def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
               smoothed=False, linear=True,
@@ -1218,7 +1238,7 @@ if __name__=='__main__':
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
     #MEGAN_vs_E_new(d0,dn)
-    #distributions_comparison_regional()
+    distributions_comparison_regional(JUST_STITCH=True)
     # TODO: need to fix or manually combine the images made in this one...
 
     ## Plot showing comparison of different top-down estimates
@@ -1236,7 +1256,7 @@ if __name__=='__main__':
         #    E_regional_time_series(d0,dn,force_monthly=force_monthly)
         # Run for all years, monthly medians for time series
         
-        E_regional_multiyear(d0=d0,dn=df, etype='pp')
+        #E_regional_multiyear(d0=d0,dn=df, etype='pp')
         #np.warnings.filterwarnings('ignore')
         #for etype in ['gc','omi','pp']:
             #E_regional_multiyear(d0=d0,dn=de, etype=etype)

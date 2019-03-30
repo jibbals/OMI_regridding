@@ -31,8 +31,8 @@ from utilities import plotting as pp
 ### GLOBALS ###
 ###############
 
-__VERBOSE__=False
-__DEBUG__=False
+__VERBOSE__=True
+__DEBUG__=True
 __E_new_keys__=[            # #  # {time, lats, lons}
                 'BG_OMI',       #  {31, 152, 152}
                 'BG_PP',        #  {31, 152, 152}
@@ -170,7 +170,7 @@ class E_new:
             if __VERBOSE__:
                 print('keys after pruning')
                 print(data.keys())
-        self.attributes=attrs
+        self.attrs=attrs
 
         # Combine the data
         for key in E_new_list[0].keys():
@@ -182,9 +182,9 @@ class E_new:
                 setattr(self,key,E_new_list[0][key])
                 if __VERBOSE__:
                     print("Reading %s"%key )
-            # Read the data and append to time dimensions if there's more than
-            # one month file being read
-            elif (key in ['ModelSlope']) and key in dkeys:
+            # Read in monthly data
+            #
+            elif (key in ['ModelSlope','slope_rerr_lr','E_PPm_err_lr']) and key in dkeys:
 
                 # np array of the data [lats, lons]
                 data0=np.array(E_new_list[0][key])
@@ -202,7 +202,8 @@ class E_new:
                     setattr(self,key,data.astype(np.bool))
                 if __VERBOSE__:
                     print("Reading %s"%key )
-
+            #Read time dimensions
+            # Also handles daily data
             elif (key in ['time','dates']) or (key in dkeys):
 
                 # np array of the data [time, lats, lons]
@@ -235,12 +236,12 @@ class E_new:
             self.SA = util.area_grid(self.lats,self.lons)
             self.SA_lr = util.area_grid(self.lats_lr,self.lons_lr)
         ## conversions to kg/s
-        # [atom C / cm2 / s ] * 1/5 * cm2/km2 * km2 * kg/atom_isop
+        # [atom C / cm2 / s ] * (molec_isop/atom_C=1/5) * cm2/km2 * km2 * kg/molec_isop
         # = isoprene kg/s
-        # kg/atom_isop = grams/mole * mole/molec * kg/gram
-        kg_per_atom = util.__grams_per_mole__['isop'] * 1.0/N_avegadro * 1e-3
-        conversion= 1./5.0 * 1e10 * self.SA * kg_per_atom
-        conversion_lr = 1./5.0 * 1e10 * self.SA_lr * kg_per_atom
+        # kg/molec_isop = grams/mole * mole/molec * kg/gram
+        kg_per_molec = util.__grams_per_mole__['isop'] * 1.0/N_avegadro * 1e-3
+        conversion= 1./5.0 * 1e10 * self.SA * kg_per_molec
+        conversion_lr = 1./5.0 * 1e10 * self.SA_lr * kg_per_molec
         self.conversion_to_kg    = np.repeat(conversion[np.newaxis,:,:],len(self.dates),axis=0)
         self.conversion_to_kg_lr = np.repeat(conversion_lr[np.newaxis,:,:],len(self.dates),axis=0)
 
@@ -372,7 +373,7 @@ class E_new:
         else:
             data=np.nanmean(data[di,:,:],axis=0)
 
-        units=self.attributes[key]['units']
+        units=self.attrs[key]['units']
         pp.createmap(data, self.lats_e, self.lons_e, edges=True,
                      latlon=True, region=region, linear=True,
                      clabel=None, colorbar=True, cbarfmt=None, cbarxtickrot=None,

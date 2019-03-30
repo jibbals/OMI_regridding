@@ -972,8 +972,14 @@ class Hemco_diag(GC_base):
         assert self.attrs['E_isop_bio']['units']=='kgC/m2/s', 'E_isop_bio units are %s'%self.attrs['E_isop_bio']['units']
         self.E_isop_bio = self.E_isop_bio*self.kgC_per_m2_to_atomC_per_cm2
         self.attrs['E_isop_bio']['units']='atomC/cm2/s'
-
+        
+        # LETS REMOVE OCEAN ZEROS, REPLACE WITH NANS
+        oceanmask=util.oceanmask(self.lats,self.lons)
+        oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],self.n_dates,axis=0)
+        self.E_isop_bio[oceanmask3d] = np.NaN
+        
         if __VERBOSE__:
+            print("E_isop_bio oceanic squares replaced with np.NaN")
             for k in datadict:
                 print('  %10s %10s %s'%(k, np.shape(datadict[k]), attrs[k]))
 
@@ -1226,35 +1232,6 @@ class GC_biogenic:
 ###FUNCTIONS####
 ################
 
-def slope_calc(isop,hcho,lats,lons):
-    # arrays to hold the month's slope, background, and regression coeff
-    n_x = len(lons)
-    n_y = len(lats)
-    slope  = np.zeros([n_y,n_x]) + np.NaN
-    bg     = np.zeros([n_y,n_x]) + np.NaN
-    reg    = np.zeros([n_y,n_x]) + np.NaN
-    err    = np.zeros([n_y,n_x,2]) + np.NaN
-    # regression for each lat/lon gives us slope
-    for xi in range(n_x):
-        for yi in range(n_y):
-            # Y = m X + B
-            X=isop[:, yi, xi]
-            Y=hcho[:, yi, xi]
-
-            # Skip ocean or no emissions squares:
-            # potential problem: When using kgC/cm2/s, we are always close to zero (1e-11 order)
-            # however we are using molec/cm2/s
-            if np.isclose(np.mean(X), 0.0): continue
-            if np.all(np.isnan(X)) : continue
-
-            # get regression
-            m, b, r, CI1, CI2=RMA(X, Y)
-            slope[yi, xi] = m
-            bg[yi, xi] = b
-            reg[yi, xi] = r
-            err[yi,xi] = CI1[0] # slope limits (CI: ricker method)
-
-    return slope, bg, reg, err
 
 def check_units(d=datetime(2005,1,1)):
     '''
@@ -1444,7 +1421,7 @@ def create_slope_file(d0=datetime(2005,1,1),dN=datetime(2012,12,31), region=pp._
 
 if __name__=='__main__':
     #check_diag()
-    check_units(datetime(2005,2,1))
+    #check_units(datetime(2005,2,1))
 
-
+    print("shouldn't be here")
 

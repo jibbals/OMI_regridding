@@ -502,8 +502,9 @@ def Seasonal_daycycle():
     '''
     '''
     d0=datetime(2005,1,1)
-    dn=datetime(2012,12,31)
-    
+    #dn=datetime(2012,12,31)
+    dn=datetime(2005,12,31)
+    print("TESTING, NEED TO CHANGE dn TO 2012")
     # Read megan (3-hourly)
     MEGAN = GC_class.Hemco_diag(d0,dn)
     data=MEGAN.E_isop_bio # hours, lats, lons
@@ -548,7 +549,7 @@ def Seasonal_daycycle():
     xlim=[6,22]
     axes[3,1].set_xlim(xlim)
     axes[1,0].set_ylabel('Emission (molec/cm2/s)')
-    ylim=[1e10,2e13]
+    ylim=[1e11,1.1e13]
     axes[1,0].set_ylim(ylim)
     axes[1,0].set_yscale('log')
     titles=np.array([['Dec','Jan','Feb'],['Mar','Apr','May'],['Jun','Jul','Aug'],['Sep','Oct','Nov']])
@@ -563,6 +564,9 @@ def Seasonal_daycycle():
         # plot the daily cycle and std range
         for i in range(4): # 4 rows
             for j in range(3): # 3 columns
+                print("TESTING: remove skip")
+                if not ((i==0) and (j==1)):
+                    continue
                 # shift forward by one month to get dec as first entry
                 ii, jj = (i+int((j+1)%3==0))%4, (j+1)%3
                 # grab month (map i,j onto (0-11)*24)
@@ -990,34 +994,56 @@ def uncertainty():
     # E_new: 
     #   Need: E_PP_lr, ModelSlope, 
     d0=datetime(2005,1,1)
-    d1=datetime(2005,1,31)
+    d1=datetime(2005,12,31)
     # Uncertainty (portional for VC, % for slope)
-    uncertkeys = ['VC_relative_uncertainty_lr','pixels_lr', 'ModelSlopeUncertainty']
+    uncertkeys = ['VCC_rerr_lr', 'slope_rerr_lr', 'E_PP_err_lr',]
+    labels      = {'VCC_rerr_lr':__Oomi__, 'slope_rerr_lr':'S', 'E_PP_err_lr':__apost__}
+    colours     = {'VCC_rerr_lr':'cyan', 'slope_rerr_lr':'m', 'E_PP_err_lr':'k'}
+    otherkeys=['E_PP_lr','pixels_lr']
+    
     
     # Read from E_new
-    enew    = E_new(d0,d1, dkeys=uncertkeys)
-    VCrunc  = enew.VC_relative_uncertainty_lr # daily portional
-    Srunc   = enew.ModelSlopeUncertainty/100.0 # monthly %
+    enew    = E_new(d0,d1, dkeys=uncertkeys+otherkeys)
+    dates   = enew.dates
+    months  = util.list_months(dates[0],dates[-1])
     pix     = enew.pixels_lr
     lats    = enew.lats_lr
     lons    = enew.lons_lr
     
-    # combine VCC uncertainty into monthly and seasonal averages
+    # Relative uncertainty time series
+    for key in uncertkeys:
+        # pull out regions:
+        oceanmask=util.oceanmask(lats,lons)
+        oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],len(dates),axis=0)
+        oceanmask3dm= np.repeat(oceanmask[np.newaxis,:,:],len(months),axis=0)
+        data=getattr(enew,key)
+        print(key, data.shape)
+        label=labels[key]
+        if key == 'E_PP_err_lr':
+            data = data/enew.E_PP_lr # error into relative error
+        # mean over space
+        data = np.nanmean(data,axis=(1,2))
+        
+        toohigh = data > 1
+        
+        
+        # some are monthly
+        if key in ['slope_rerr_lr']:
+            data[oceanmask3dm] = np.NaN
+            pp.plot_time_series(months, data, label=label, color=colours[key], linestyle='', marker='+' )
+            pp.plot_time_series(months[toohigh], data[toohigh], color=colours[key], linestyle='', marker='^' )
+        else:
+            data[oceanmask3d] = np.NaN
+            pp.plot_time_series(dates, data, label=label, color=colours[key], linestyle='', marker='+' )
+            pp.plot_time_series(dates[toohigh], data[toohigh], color=colours[key], linestyle='', marker='^' )
+        
+        
+    plt.ylim([-1,1])
+    plt.title('Relative uncertainty')
+    plt.legend()
     
-    
-    # daily means
-    dVCrunc = np.nanmean(VCrunc, axis=0)
-    dpix    = np.nanmean(pix, axis=0)
-    
-    # monthly uncertainty: reweight using daily pixel counts 
-    with np.errstate(divide='ignore'):
-        mVCrunc = ( 1 / np.sqrt(np.nansum(pix,axis=0)) ) * ( np.nanmean(np.sqrt(pix) * VCrunc, axis=0) )
-    
-    dvmin=0.001
-    dvmax=3
-    dbins=np.logspace(-1,1,25)
-    mvmax=1
-    mbins=np.logspace(-2,0,25)
+    plt.savefig('test_rerr.png')
+    print("Saved test_rerr.png")
         
     # plot daily averages
     plt.subplot(3,2,1)
@@ -1176,7 +1202,7 @@ if __name__ == "__main__":
     
     ## UNCERTAINTY
     #TODO: implement
-    #uncertainty()
+    uncertainty()
     # TODO: add sums to analysis TS
     # todo: discuss plot output from 
     #pixel_counts_summary()

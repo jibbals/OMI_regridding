@@ -977,6 +977,8 @@ class Hemco_diag(GC_base):
         oceanmask=util.oceanmask(self.lats,self.lons)
         oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],self.n_dates,axis=0)
         self.E_isop_bio[oceanmask3d] = np.NaN
+        self.oceanmask=oceanmask
+        self.oceanmask3d=oceanmask3d
         
         if __VERBOSE__:
             print("E_isop_bio oceanic squares replaced with np.NaN")

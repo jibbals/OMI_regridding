@@ -502,9 +502,7 @@ def Seasonal_daycycle():
     '''
     '''
     d0=datetime(2005,1,1)
-    #dn=datetime(2012,12,31)
-    dn=datetime(2005,12,31)
-    print("TESTING, NEED TO CHANGE dn TO 2012")
+    dn=datetime(2012,12,31)
     # Read megan (3-hourly)
     MEGAN = GC_class.Hemco_diag(d0,dn)
     data=MEGAN.E_isop_bio # hours, lats, lons
@@ -564,9 +562,6 @@ def Seasonal_daycycle():
         # plot the daily cycle and std range
         for i in range(4): # 4 rows
             for j in range(3): # 3 columns
-                print("TESTING: remove skip")
-                if not ((i==0) and (j==1)):
-                    continue
                 # shift forward by one month to get dec as first entry
                 ii, jj = (i+int((j+1)%3==0))%4, (j+1)%3
                 # grab month (map i,j onto (0-11)*24)
@@ -1009,13 +1004,13 @@ def uncertainty():
     pix     = enew.pixels_lr
     lats    = enew.lats_lr
     lons    = enew.lons_lr
+    oceanmask=util.oceanmask(lats,lons)
+    oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],len(dates),axis=0)
+    oceanmask3dm= np.repeat(oceanmask[np.newaxis,:,:],len(months),axis=0)
     
     # Relative uncertainty time series
     for key in uncertkeys:
         # pull out regions:
-        oceanmask=util.oceanmask(lats,lons)
-        oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],len(dates),axis=0)
-        oceanmask3dm= np.repeat(oceanmask[np.newaxis,:,:],len(months),axis=0)
         data=getattr(enew,key)
         print(key, data.shape)
         label=labels[key]
@@ -1045,6 +1040,7 @@ def uncertainty():
     plt.savefig('test_rerr.png')
     print("Saved test_rerr.png")
         
+    # Now plot pixel counts per region as multiyear avg...
     # plot daily averages
     plt.subplot(3,2,1)
     pp.createmap(dVCrunc, lats, lons, aus=True, linear=True,

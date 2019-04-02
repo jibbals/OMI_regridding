@@ -497,7 +497,9 @@ def multi_year_average(data,dates, grain='monthly'):
         ind.append(df.index.day)
     elif grain=='hourly':
         ind.append(df.index.hour)
-
+    elif grain=='weekly':
+        #ind.append(df.index.week)
+        ind = [df.index.week,]
     # grouping by hour and month, returns 288 (24x12) rows if doing hourly grain
     #  columns: count, mean, std, min, 25%, 50%, 75%, max
     return df.groupby(ind)

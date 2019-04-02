@@ -239,7 +239,60 @@ def read_overpass_timeseries():
     '''
     return pd.read_csv('Data/GC_Output/overpass_timeseries_regional.csv', index_col=0)
     
+def PlotMultiyear(data, dates, lats,lons, weekly=False,
+                  xlims=None, ylims=None):
+    '''
+        Split data into subregions, and take multiyear monthly or weekly means and IQR
 
+    '''
+    
+    # multi-year monthly averages
+    grain = ['monthly','weekly'][weekly]
+    mya    = util.multi_year_average_regional(data,dates,lats,lons,grain=grain,regions=regions)
+    
+    df     = mya['df']
+    
+    # monthly will be 12, weekly will be 52 or 53
+    x=range(len(df[0].mean().values.squeeze()))
+    #x=range([12,52][weekly])
+    n=len(df)
+    f,axes = plt.subplots(n,1, sharex=True,sharey=True)
+    for i in range(n):
+        plt.sca(axes[i])
+        mean        = df[i].mean().values.squeeze()
+        uq          = df[i].quantile(0.75).values.squeeze()
+        lq          = df[i].quantile(0.25).values.squeeze()
+        
+        plt.fill_between(x,lq,uq, color=colors[i], alpha=0.4)
+        plt.plot(x, mean, color=colors[i], label=labels[i], linewidth=3)
+        
+        #plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
+        #plt.plot(x, meanmeg, color=colors[i], linestyle='--', label='a priori',linewidth=3)
+        plt.ylabel(labels[i], color=colors[i], fontsize=24)
+        
+        if i%2 == 1:
+            axes[i].yaxis.set_label_position("right")
+            axes[i].yaxis.tick_right()
+    
+    if ylims is not None:
+        plt.ylim(ylims)
+    if xlims is not None:
+        plt.xlim(xlims)
+    
+    monthletters=['J','F','M','A','M','J','J','A','S','O','N','D']
+    #if weekly:
+    plt.xticks([x,np.arange(2,52,4.5)][weekly])
+    #else:
+    #plt.xticks(x)
+    plt.gca().set_xticklabels(monthletters)
+    plt.xlabel('month', fontsize=24)
+    #plt.suptitle('a priori vs a posteriori; mean and IQR\n [molec cm$^{-2}$ s$^{-1}$]',fontsize=30)
+    f.subplots_adjust(hspace=0)
+
+    ## save figure
+    #plt.savefig(pname)
+    #print("Saved %s"%pname)
+    #plt.close()
 
 ##########
 ### Plot functions
@@ -502,9 +555,7 @@ def Seasonal_daycycle():
     '''
     '''
     d0=datetime(2005,1,1)
-    #dn=datetime(2012,12,31)
-    dn=datetime(2005,12,31)
-    print("TESTING, NEED TO CHANGE dn TO 2012")
+    dn=datetime(2012,12,31)
     # Read megan (3-hourly)
     MEGAN = GC_class.Hemco_diag(d0,dn)
     data=MEGAN.E_isop_bio # hours, lats, lons
@@ -564,9 +615,6 @@ def Seasonal_daycycle():
         # plot the daily cycle and std range
         for i in range(4): # 4 rows
             for j in range(3): # 3 columns
-                print("TESTING: remove skip")
-                if not ((i==0) and (j==1)):
-                    continue
                 # shift forward by one month to get dec as first entry
                 ii, jj = (i+int((j+1)%3==0))%4, (j+1)%3
                 # grab month (map i,j onto (0-11)*24)
@@ -983,7 +1031,7 @@ def regional_seasonal_comparison():
 ### UNCERTAINTY
 ################
 
-def uncertainty():
+def uncertainty(d1=datetime(2012,12,31)):
     '''
         Calculate uncertainty and plot it somehow
     '''
@@ -994,12 +1042,13 @@ def uncertainty():
     # E_new: 
     #   Need: E_PP_lr, ModelSlope, 
     d0=datetime(2005,1,1)
-    d1=datetime(2005,12,31)
+    
     # Uncertainty (portional for VC, % for slope)
     uncertkeys = ['VCC_rerr_lr', 'slope_rerr_lr', 'E_PP_err_lr']#,'E_PPm_err_lr']
+    
     labels      = {'VCC_rerr_lr':__Oomi__, 'slope_rerr_lr':'S', 'E_PP_err_lr':__apost__}
-    colours     = {'VCC_rerr_lr':'cyan', 'slope_rerr_lr':'m', 'E_PP_err_lr':'k'}
-    otherkeys=['E_PP_lr','pixels_lr']
+    colours     = {'VCC_rerr_lr':'orange', 'slope_rerr_lr':'m', 'E_PP_err_lr':'k'}
+    otherkeys   = ['E_PP_lr', 'E_PPm_err_lr', 'pixels_lr']
     
     
     # Read from E_new
@@ -1015,7 +1064,7 @@ def uncertainty():
     oceanmask=util.oceanmask(lats,lons)
     oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],len(dates),axis=0)
     oceanmask3dm= np.repeat(oceanmask[np.newaxis,:,:],len(months),axis=0) 
-    for key in ['VCC_rerr_lr','E_PP_err_lr']:
+    for key in ['VCC_rerr_lr','E_PP_err_lr','E_PP_lr']:
         data=getattr(enew,key) 
         data[oceanmask3d] = np.NaN
         setattr(enew,key,data)
@@ -1024,7 +1073,9 @@ def uncertainty():
         data=getattr(enew,key)
         data[oceanmask3dm] = np.NaN
         setattr(enew,key,data)
-        
+    
+    Eppm = util.monthly_averaged(dates,enew.E_PP_err_lr,keep_spatial=True)['mean']
+    Em = Eppm/enew.E_PPm_err_lr    
     
     # Relative uncertainty time series
     for key in uncertkeys:
@@ -1044,20 +1095,35 @@ def uncertainty():
         
         # some are monthly
         if key in ['slope_rerr_lr']:
-            pp.plot_time_series(months, data, label=label, color=colours[key], linestyle='', marker='+' )
+            pp.plot_time_series(months, data, label=label, color=colours[key], linestyle='--', marker='+' ,markersize=10)
             #pp.plot_time_series(months[toohigh], np.ones(np.sum(toohigh)), color=colours[key], linestyle='', marker='^' )
         else:
             pp.plot_time_series(dates, data, label=label, color=colours[key], linestyle='', marker='+' )
             #pp.plot_time_series(dates[toohigh], np.ones(np.sum(toohigh)), color=colours[key], linestyle='', marker='^' )
         
-        
+    # finally add monthly E relative error
+    Emser = np.nanmean(Em,axis=(1,2))
+    n_toohigh = np.sum(Emser>highlim)
+    pp.plot_time_series(months, Emser, label='monthly '+__apost__+ ' (%d entries > %d)'%(n_toohigh,highlim), 
+                        linestyle='--',color='blue',marker='+',markersize=10)
+    
     plt.ylim([0,highlim+0.05*highlim])
     plt.title('Relative uncertainty')
     plt.legend()
-    
-    plt.savefig('test_rerr.png')
-    print("Saved test_rerr.png")
+    pname1='Figs/rerr_summary.png'
+    plt.savefig(pname1)
+    print("Saved ",pname1)
     plt.close()
+    
+    # Also add a pixel count summary (multiyear-avg)
+    pix[oceanmask3d]=np.NaN
+    PlotMultiyear(pix, dates,lats,lons,weekly=True)
+    plt.suptitle('Mean pixel count per 2$^{\circ}$x2.5$^{\circ}$ land grid square')
+    pname2='Figs/pix_mya.png'
+    plt.savefig(pname2)
+    print("Saved ",pname2)
+    plt.close()
+    
     
     # Now plot maps for summer/winter mean uncertainties over Australia
     f=plt.figure()
@@ -1065,6 +1131,7 @@ def uncertainty():
     vmax=2
     
     E=enew.E_PP_err_lr / enew.E_PP_lr
+    
     S=enew.slope_rerr_lr
     O=enew.VCC_rerr_lr
     
@@ -1113,7 +1180,7 @@ def pixel_counts_summary():
     
     #read satellite overpass outputs
     DF = read_overpass_timeseries()
-    dates=[datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
+    dates = [datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
     
     key = 'pixels_PP_lr'
     keyf= 'pixels_PP'
@@ -1166,9 +1233,10 @@ def pixel_counts_summary():
         plt.sca(axes2[i])
         plt.bar(X + 0.00, myameanu, color = 'm', yerr=myastdu, ecolor='k', capsize=8, width = width, label='unfiltered')
         plt.bar(X + width, myameanf, color = 'cyan', yerr=myastdf, ecolor='k', capsize=8, width = width, label='filtered')
+        plt.ylabel(labels[i], color=colors[i], fontsize=24)
         
-        #if i==0:
-        #    plt.legend(loc='best', fontsize=18)
+        if i==0:
+            plt.legend(loc='best', fontsize=16)
         if i%2 == 1:
             for ax in [axes, axes2]:
                 ax[i].yaxis.set_label_position("right")
@@ -1233,7 +1301,7 @@ if __name__ == "__main__":
     uncertainty()
     # TODO: add sums to analysis TS
     # todo: discuss plot output from 
-    #pixel_counts_summary()
+    pixel_counts_summary()
 
     ### Record and time STUJFFS
     

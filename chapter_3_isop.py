@@ -996,7 +996,7 @@ def uncertainty():
     d0=datetime(2005,1,1)
     d1=datetime(2005,12,31)
     # Uncertainty (portional for VC, % for slope)
-    uncertkeys = ['VCC_rerr_lr', 'slope_rerr_lr', 'E_PP_err_lr',]
+    uncertkeys = ['VCC_rerr_lr', 'slope_rerr_lr', 'E_PP_err_lr']#,'E_PPm_err_lr']
     labels      = {'VCC_rerr_lr':__Oomi__, 'slope_rerr_lr':'S', 'E_PP_err_lr':__apost__}
     colours     = {'VCC_rerr_lr':'cyan', 'slope_rerr_lr':'m', 'E_PP_err_lr':'k'}
     otherkeys=['E_PP_lr','pixels_lr']
@@ -1004,71 +1004,99 @@ def uncertainty():
     
     # Read from E_new
     enew    = E_new(d0,d1, dkeys=uncertkeys+otherkeys)
-    dates   = enew.dates
-    months  = util.list_months(dates[0],dates[-1])
+    dates   = np.array(enew.dates)
+    months  = np.array(util.list_months(dates[0],dates[-1]))
     pix     = enew.pixels_lr
     lats    = enew.lats_lr
     lons    = enew.lons_lr
+    highlim = 2.0
+    
+    # remove ocean squares
+    oceanmask=util.oceanmask(lats,lons)
+    oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],len(dates),axis=0)
+    oceanmask3dm= np.repeat(oceanmask[np.newaxis,:,:],len(months),axis=0) 
+    for key in ['VCC_rerr_lr','E_PP_err_lr']:
+        data=getattr(enew,key) 
+        data[oceanmask3d] = np.NaN
+        setattr(enew,key,data)
+    # some are monthly
+    for key in ['slope_rerr_lr', 'E_PPm_err_lr']:
+        data=getattr(enew,key)
+        data[oceanmask3dm] = np.NaN
+        setattr(enew,key,data)
+        
     
     # Relative uncertainty time series
     for key in uncertkeys:
         # pull out regions:
-        oceanmask=util.oceanmask(lats,lons)
-        oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],len(dates),axis=0)
-        oceanmask3dm= np.repeat(oceanmask[np.newaxis,:,:],len(months),axis=0)
         data=getattr(enew,key)
         print(key, data.shape)
         label=labels[key]
         if key == 'E_PP_err_lr':
             data = data/enew.E_PP_lr # error into relative error
+            data[enew.E_PP_lr == 0] = np.NaN
+        
         # mean over space
         data = np.nanmean(data,axis=(1,2))
-        
-        toohigh = data > 1
-        
+        toohigh = data > highlim
+        n_toohigh = np.sum(toohigh)
+        label = label + ' (%d entries > %d)'%(n_toohigh,highlim)
         
         # some are monthly
         if key in ['slope_rerr_lr']:
-            data[oceanmask3dm] = np.NaN
             pp.plot_time_series(months, data, label=label, color=colours[key], linestyle='', marker='+' )
-            pp.plot_time_series(months[toohigh], data[toohigh], color=colours[key], linestyle='', marker='^' )
+            #pp.plot_time_series(months[toohigh], np.ones(np.sum(toohigh)), color=colours[key], linestyle='', marker='^' )
         else:
-            data[oceanmask3d] = np.NaN
             pp.plot_time_series(dates, data, label=label, color=colours[key], linestyle='', marker='+' )
-            pp.plot_time_series(dates[toohigh], data[toohigh], color=colours[key], linestyle='', marker='^' )
+            #pp.plot_time_series(dates[toohigh], np.ones(np.sum(toohigh)), color=colours[key], linestyle='', marker='^' )
         
         
-    plt.ylim([-1,1])
+    plt.ylim([0,highlim+0.05*highlim])
     plt.title('Relative uncertainty')
     plt.legend()
     
     plt.savefig('test_rerr.png')
     print("Saved test_rerr.png")
-        
-    # plot daily averages
+    plt.close()
+    
+    # Now plot maps for summer/winter mean uncertainties over Australia
+    f=plt.figure()
+    vmin=0
+    vmax=2
+    
+    E=enew.E_PP_err_lr / enew.E_PP_lr
+    S=enew.slope_rerr_lr
+    O=enew.VCC_rerr_lr
+    
+    # pull out summer, winter means
+    
+    
+    
+    # plot each thing
     plt.subplot(3,2,1)
-    pp.createmap(dVCrunc, lats, lons, aus=True, linear=True,
-                 vmin=dvmin,vmax=dvmax,
-                 title='Relative uncertainty')
+    pp.createmap(np.nanmean(E,axis=0), lats, lons, aus=True, linear=True,
+                 vmin=vmin,vmax=vmax,
+                 title='Summer')
+    plt.ylabel(__apost__)
     plt.subplot(3,2,2)
-    pp.createmap(dpix, lats, lons, aus=True, linear=True,
-                 title='OMI daily pixel count')
-    # Distribution of daily
-    plt.subplot(3,1,2)
-    OM=util.oceanmask(lats,lons)
-    dVCrunc[dVCrunc>dvmax] = 10
-    plt.hist(dVCrunc[~OM], bins=dbins)
-    plt.xscale('log')
-    plt.title('histogram over land squares (mean daily)')
+    pp.createmap(np.nanmean(E,axis=0), lats, lons, aus=True, linear=True,
+                 title='Winter')
     
-    # Distribution of monthly
-    plt.subplot(3,1,3)
-    mVCrunc[mVCrunc>mvmax] = mvmax
-    plt.hist(mVCrunc[~OM], bins=mbins)
-    plt.xscale('log')
-    plt.title('histogram over land squares (monthly)')
+    plt.subplot(3,2,3)
+    pp.createmap(np.nanmean(S,axis=0), lats, lons, aus=True, linear=True,
+                 vmin=vmin,vmax=vmax)
+    plt.ylabel('Slope')
+    plt.subplot(3,2,4)
+    pp.createmap(np.nanmean(S,axis=0), lats, lons, aus=True, linear=True,
+                 vmin=vmin,vmax=vmax)
     
-    # add by quadrature to assumed error in AMF
+    plt.subplot(3,2,5)
+    pp.createmap(np.nanmean(O,axis=0), lats, lons, aus=True, linear=True,
+                 vmin=vmin,vmax=vmax)
+    plt.ylabel(__Oomi__)
+    plt.subplot(3,2,6)
+    pp.createmap(np.nanmean(O,axis=0), lats, lons, aus=True, linear=True,
+                 title='Winter')
     
     pname='test_uncert.png'
     plt.savefig(pname)
@@ -1190,7 +1218,7 @@ if __name__ == "__main__":
     #seasonal_differences()
     
     # Day cycle for each month compared to sin wave from postiori
-    Seasonal_daycycle()
+    #Seasonal_daycycle()
     
     
     # TODO: time series compared to satellite HCHO

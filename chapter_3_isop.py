@@ -240,7 +240,7 @@ def read_overpass_timeseries():
     return pd.read_csv('Data/GC_Output/overpass_timeseries_regional.csv', index_col=0)
     
 def PlotMultiyear(data, dates, lats,lons, weekly=False,
-                  xlims=None, ylims=None):
+                  xlims=None, ylims=None, median=False):
     '''
         Split data into subregions, and take multiyear monthly or weekly means and IQR
 
@@ -255,12 +255,16 @@ def PlotMultiyear(data, dates, lats,lons, weekly=False,
     
     # monthly will be 12, weekly will be 52 or 53
     x=range(len(df[0].mean().values.squeeze()))
+        
     #x=range([12,52][weekly])
     n=len(df)
     f,axes = plt.subplots(n,1, sharex=True,sharey=True)
     for i in range(n):
         plt.sca(axes[i])
         mean        = df[i].mean().values.squeeze()
+        if median:
+            mean    = df[i].median().values.squeeze()
+            
         uq          = df[i].quantile(0.75).values.squeeze()
         lq          = df[i].quantile(0.25).values.squeeze()
         
@@ -681,6 +685,7 @@ def Seasonal_daycycle():
     # remove gaps between plots
     f.subplots_adjust(wspace=0, hspace=0.1)
     pname='Figs/Emiss/MEGAN_monthly_daycycle.png'
+    plt.suptitle('Diurnal isoprene emissions')
     plt.savefig(pname)
     print('SAVED FIGURE ',pname)
     plt.close()
@@ -1290,19 +1295,20 @@ if __name__ == "__main__":
     #seasonal_differences()
     
     # Day cycle for each month compared to sin wave from postiori
-    #Seasonal_daycycle()
+    # TODO: suptitle
+    Seasonal_daycycle()
     
     
     # TODO: time series compared to satellite HCHO
     # TODO: Seasonal regional multiyear comparison
-    regional_seasonal_comparison()
+    #regional_seasonal_comparison()
     
     #time_series()
     # TODO: 
     
     ## UNCERTAINTY
     #TODO: implement
-    uncertainty()
+    #uncertainty()
     # TODO: add sums to analysis TS
     # todo: discuss plot output from 
     #pixel_counts_summary()

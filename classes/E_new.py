@@ -31,8 +31,8 @@ from utilities import plotting as pp
 ### GLOBALS ###
 ###############
 
-__VERBOSE__=True
-__DEBUG__=True
+__VERBOSE__=False
+__DEBUG__=False
 __E_new_keys__=[            # #  # {time, lats, lons}
                 'BG_OMI',       #  {31, 152, 152}
                 'BG_PP',        #  {31, 152, 152}

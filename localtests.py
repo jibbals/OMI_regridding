@@ -87,71 +87,73 @@ for key in dkeys:
 E = enew.E_PP_lr
 E[enew.oceanmask3d_lr] = np.NaN
 Em      = util.monthly_averaged(dates,E,keep_spatial=True)['mean']
-Eerr   = np.abs(enew.E_PP_err_lr)
-Eerrm  = np.abs(enew.E_PPm_err_lr)
-Ererr  = np.abs(Eerr/enew.E_PP_lr)
+Eerr   = enew.E_PP_err_lr
+Eerrm  = enew.E_PPm_err_lr
+Ererr  = Eerr/E
 Ererr[~np.isfinite(Ererr)] = np.NaN
-Ererrm = np.abs(Eerrm/np.nanmean(E,axis=0))
+Ererr[np.isclose(E,0.0)] = np.NaN
+Ererrm = Eerrm/Em
 Ererrm[~np.isfinite(Ererrm)] = np.NaN
+Ererrm[np.isclose(Em,0.0)] = np.NaN
+
 Srerr  = enew.slope_rerr_lr
 Orerr  = enew.VCC_rerr_lr
 
 # first lets do A seasonal plot of relative monthly error
 plt.close()
-chapter_3_isop.PlotMultiyear(Ererrm,months,lats,lons,weekly=False,ylims=[0,2])
+chapter_3_isop.PlotMultiyear(Ererrm,months,lats,lons,weekly=False,
+                             median=True,ylims=[0,1])
 plt.savefig('mya_rerr.png')
+print("SAVED ",'mya_rerr.png')
 
-mya = util.multi_year_average_spatial(new_arr, dates)
-mya = util.multi_year_average_spatial(trop_arr, dates)
-new_summers.append(np.nanmean(new_mya['mean'][summer,:,:],axis=0))
-new_winters.append(np.nanmean(new_mya['mean'][winter,:,:],axis=0))
-trop_summers.append(np.nanmean(trop_mya['mean'][summer,:,:],axis=0))
-trop_winters.append(np.nanmean(trop_mya['mean'][winter,:,:],axis=0))
-        
+
+
+mya = util.multi_year_average_spatial(E, dates)
+myam = util.multi_year_average_spatial(Ererrm, months)
+
+
+summer=np.array([0,1,11])
+winter=np.array([5,6,7])
+summersm = np.nanmean(myam['mean'][summer,:,:],axis=0)
+wintersm = np.nanmean(myam['mean'][winter,:,:],axis=0)
+Esummer = np.nanmean(mya['mean'][summer,:,:],axis=0)
+Ewinter = np.nanmean(mya['mean'][winter,:,:],axis=0)
+
 
 plt.close()
 
-# FIRST Plot summer,winter maps of monthly rerr
+# Plot summer,winter maps of monthly rerr
 plt.figure(figsize=[14,14])
 vmin,vmax=1e11,1e13
 linear=False
 
-plt.subplot(2,3,1)
-pp.createmap(np.nanmean(E,axis=0),lats,lons,aus=True,
+plt.subplot(2,2,1)
+pp.createmap(Esummer,lats,lons,aus=True,
              linear=linear, vmin=vmin,vmax=vmax,
              clabel='C/cm2/s',
-             title='mean a posteriori 200501')
-
-plt.subplot(2,3,2)
-pp.createmap(np.nanmean(Eerr,axis=0),lats,lons,aus=True,
-             linear=linear, vmin=vmin,vmax=vmax,
-             clabel='C/cm2/s',
-             title='Daily a posteriori error')
-plt.subplot(2,3,3)
-pp.createmap(np.nanmean(Ererr,axis=0), lats,lons, aus=True,
+             title='mean a posteriori')
+plt.ylabel("Summer")
+plt.subplot(2,2,2)
+pp.createmap(summersm,lats,lons,aus=True,
              linear=True, vmin=0,vmax=1,
-             clabel='portional',
-             title='Daily relative error')
+             clabel='Portional',
+             title='relative a posteriori error')
+plt.ylabel("Summer")
 
-plt.subplot(2,3,4)
-pp.createmap(np.nanmean(Eerrm,axis=0), lats,lons, aus=True,
+plt.subplot(2,2,3)
+pp.createmap(Ewinter, lats,lons, aus=True,
              linear=linear, vmin=vmin,vmax=vmax,
              clabel='C/cm2/s',
-             title='Monthly a posteriori error')
-plt.subplot(2,3,5)
-pp.createmap(np.nanmean(Srerr,axis=0),lats,lons,aus=True,
+             title='mean a posteriori')
+plt.ylabel("Winter")
+plt.subplot(2,2,4)
+pp.createmap(wintersm,lats,lons,aus=True,
              linear=True, vmin=0,vmax=1, 
              clabel='Portional',
-             title='Slope error 200501')
-plt.subplot(2,3,6)
-pp.createmap(np.nanmean(Ererrm,axis=0),lats,lons,aus=True,
-             linear=True, vmin=0,vmax=1, 
-             clabel='Portional',
-             title='Monthly relative error', suptitle='Jan 2005',
+             title='relative a posteriori error',
              pname='test_uncert.png')
+plt.ylabel("Winter")
 
-plt.savefig('test_errmap.png')
-plt.close()
 
 
 

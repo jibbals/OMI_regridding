@@ -231,7 +231,9 @@ class E_new:
         self.oceanmask=maskoceans(mlons,mlats,mlons,inlands=False).mask
         self.oceanmask_lr=maskoceans(mlons_lr,mlats_lr,mlons_lr,inlands=False).mask
         self.oceanmask3d=np.repeat(self.oceanmask[np.newaxis,:,:],len(self.dates),axis=0)
-
+        self.oceanmask3d_lr=np.repeat(self.oceanmask_lr[np.newaxis,:,:],len(self.dates),axis=0)
+        
+        
         if not hasattr(self,'SA'):
             self.SA = util.area_grid(self.lats,self.lons)
             self.SA_lr = util.area_grid(self.lats_lr,self.lons_lr)

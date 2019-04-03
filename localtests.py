@@ -55,13 +55,6 @@ region=pp.__AUSREGION__
 ## SETUP STUFFS
 #####
 
-#jan1,jan31 = datetime(2005,1,1), datetime(2005,1,31)
-#feb1 = datetime(2005,2,1)
-#febn = util.last_day(feb1)
-#dec1,dec31 = datetime(2005,12,1), datetime(2005,12,31)
-#dec061,dec0631 = datetime(2006,12,1), datetime(2006,12,31)
-#jun1,jun30 = datetime(2005,6,1), datetime(2005,6,30)
-#jul1,jul31 = datetime(2005,7,1), datetime(2005,7,31)
 
 # start timer
 start1=timeit.default_timer()
@@ -71,70 +64,95 @@ start1=timeit.default_timer()
 ##########
 
 import chapter_3_isop
-
 df=chapter_3_isop.read_overpass_timeseries()
 
 #test_filters.summary_pixels_filtered()
-d0,dN = datetime(2005,1,1),datetime(2005,1,31)
+d0,dN = datetime(2005,1,1),datetime(2012,12,31)
 dkeys=['E_PP_lr', 'pixels_PP_lr', # emissiosn and pixel counts
        'E_PP_err_lr','E_PPm_err_lr','SC_err_lr',  # Error in emissions estimate
        'VCC_err_lr','VCC_rerr_lr', # daily OmegaPP error in
        'slope_rerr_lr'] # monthly portional error in slope
 
+
 enew=E_new(d0,dN,dkeys=dkeys)
-
+dates=enew.dates
+months=util.list_months(d0,dN)
 lats,lons=enew.lats_lr, enew.lons_lr
-
+pix=enew.pixels_PP_lr
+pixm=util.monthly_averaged(dates,pix,keep_spatial=True)['sum']
 
 for key in dkeys:
     print(key, getattr(enew,key).shape)
 
-err   = np.abs(enew.E_PP_err_lr)
-errm  = np.abs(enew.E_PPm_err_lr)
-rerr  = np.abs(err/enew.E_PP_lr)
-rerrm = np.abs(errm/np.nanmean(enew.E_PP_lr,axis=0))
-Serr  = enew.slope_rerr_lr
+E = enew.E_PP_lr
+E[enew.oceanmask3d_lr] = np.NaN
+Em      = util.monthly_averaged(dates,E,keep_spatial=True)['mean']
+Eerr   = np.abs(enew.E_PP_err_lr)
+Eerrm  = np.abs(enew.E_PPm_err_lr)
+Ererr  = np.abs(Eerr/enew.E_PP_lr)
+Ererr[~np.isfinite(Ererr)] = np.NaN
+Ererrm = np.abs(Eerrm/np.nanmean(E,axis=0))
+Ererrm[~np.isfinite(Ererrm)] = np.NaN
+Srerr  = enew.slope_rerr_lr
+Orerr  = enew.VCC_rerr_lr
 
+# first lets do A seasonal plot of relative monthly error
+plt.close()
+chapter_3_isop.PlotMultiyear(Ererrm,months,lats,lons,weekly=False,ylims=[0,2])
+plt.savefig('mya_rerr.png')
+
+mya = util.multi_year_average_spatial(new_arr, dates)
+mya = util.multi_year_average_spatial(trop_arr, dates)
+new_summers.append(np.nanmean(new_mya['mean'][summer,:,:],axis=0))
+new_winters.append(np.nanmean(new_mya['mean'][winter,:,:],axis=0))
+trop_summers.append(np.nanmean(trop_mya['mean'][summer,:,:],axis=0))
+trop_winters.append(np.nanmean(trop_mya['mean'][winter,:,:],axis=0))
+        
+
+plt.close()
+
+# FIRST Plot summer,winter maps of monthly rerr
 plt.figure(figsize=[14,14])
 vmin,vmax=1e11,1e13
 linear=False
 
 plt.subplot(2,3,1)
-pp.createmap(np.nanmean(enew.E_PP_lr,axis=0),lats,lons,aus=True,
+pp.createmap(np.nanmean(E,axis=0),lats,lons,aus=True,
              linear=linear, vmin=vmin,vmax=vmax,
              clabel='C/cm2/s',
              title='mean a posteriori 200501')
 
 plt.subplot(2,3,2)
-pp.createmap(np.nanmean(err,axis=0),lats,lons,aus=True,
+pp.createmap(np.nanmean(Eerr,axis=0),lats,lons,aus=True,
              linear=linear, vmin=vmin,vmax=vmax,
              clabel='C/cm2/s',
              title='Daily a posteriori error')
 plt.subplot(2,3,3)
-pp.createmap(np.nanmean(rerr,axis=0), lats,lons, aus=True,
+pp.createmap(np.nanmean(Ererr,axis=0), lats,lons, aus=True,
              linear=True, vmin=0,vmax=1,
              clabel='portional',
              title='Daily relative error')
 
 plt.subplot(2,3,4)
-pp.createmap(errm, lats,lons, aus=True,
+pp.createmap(np.nanmean(Eerrm,axis=0), lats,lons, aus=True,
              linear=linear, vmin=vmin,vmax=vmax,
              clabel='C/cm2/s',
              title='Monthly a posteriori error')
 plt.subplot(2,3,5)
-pp.createmap(Serr,lats,lons,aus=True,
+pp.createmap(np.nanmean(Srerr,axis=0),lats,lons,aus=True,
              linear=True, vmin=0,vmax=1, 
              clabel='Portional',
              title='Slope error 200501')
 plt.subplot(2,3,6)
-pp.createmap(rerrm,lats,lons,aus=True,
+pp.createmap(np.nanmean(Ererrm,axis=0),lats,lons,aus=True,
              linear=True, vmin=0,vmax=1, 
              clabel='Portional',
              title='Monthly relative error', suptitle='Jan 2005',
              pname='test_uncert.png')
 
-#import chapter_3_isop
-#chapter_3_isop.save_overpass_timeseries()
+plt.savefig('test_errmap.png')
+plt.close()
+
 
 
 ###########

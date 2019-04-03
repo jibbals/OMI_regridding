@@ -248,6 +248,7 @@ def PlotMultiyear(data, dates, lats,lons, weekly=False,
     
     # multi-year monthly averages
     grain = ['monthly','weekly'][weekly]
+    #print(data.shape, len(dates))
     mya    = util.multi_year_average_regional(data,dates,lats,lons,grain=grain,regions=regions)
     
     df     = mya['df']
@@ -931,9 +932,14 @@ def regional_seasonal_comparison():
     pname = 'Figs/new_emiss/RegSeas_emissions.png'
     pname1 = 'Figs/Emiss/E_zones_diffs.png'
     
+    d0=datetime(2005,1,1)
+    d1=datetime(2005,12,31)
+    
     #read satellite overpass outputs
-    DF = read_overpass_timeseries()
-    dates=[datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
+    #DF = read_overpass_timeseries()
+    #dates=[datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
+    enew=E_new(d0,d1)
+    
     
     # Priori and posteriori overpass output
     # Time series
@@ -1042,6 +1048,7 @@ def uncertainty(d1=datetime(2012,12,31)):
     # E_new: 
     #   Need: E_PP_lr, ModelSlope, 
     d0=datetime(2005,1,1)
+    d1=datetime(2012,12,31)
     
     # Uncertainty (portional for VC, % for slope)
     uncertkeys = ['VCC_rerr_lr', 'slope_rerr_lr', 'E_PP_err_lr']#,'E_PPm_err_lr']
@@ -1171,10 +1178,7 @@ def uncertainty(d1=datetime(2012,12,31)):
 
 def pixel_counts_summary():
     
-    
-    
     #dstr = d0.strftime("%Y%m%d")
-    pname1 = 'Figs/pixel_count_seasonally.png'
     pname2 = 'Figs/pixel_count_barchart.png'
     pname3 = 'Figs/pixel_count_barchart_unfiltered.png'
     
@@ -1291,7 +1295,7 @@ if __name__ == "__main__":
     
     # TODO: time series compared to satellite HCHO
     # TODO: Seasonal regional multiyear comparison
-    #regional_seasonal_comparison()
+    regional_seasonal_comparison()
     
     #time_series()
     # TODO: 
@@ -1301,7 +1305,7 @@ if __name__ == "__main__":
     uncertainty()
     # TODO: add sums to analysis TS
     # todo: discuss plot output from 
-    pixel_counts_summary()
+    #pixel_counts_summary()
 
     ### Record and time STUJFFS
     

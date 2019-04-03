@@ -185,7 +185,7 @@ def daylengths():
     monthly_daylengths = 14*60-20 + np.cumsum(monthly_daylength_changes) # in minutes
     return monthly_daylengths
 
-def edges_from_mids(x,fix_max=179.99):
+def edges_from_mids(x,fix_max=None):#179.99):
     '''
         Take a lat or lon vector input and return the edges
         Works for monotonic increasing grids only
@@ -687,7 +687,7 @@ def regrid_to_lower(data, lats, lons, newlats, newlons, func=np.nanmean, pixels=
         print('WARNING: regrid_to_lower called using identical grid..')
         return data
 
-    newlats_e,newlons_e=edges_from_mids(newlats),edges_from_mids(newlons)
+    newlats_e,newlons_e=edges_from_mids(newlats,fix_max=None),edges_from_mids(newlons,fix_max=None)
     ret=np.zeros([len(newlats_e)-1,len(newlons_e)-1])+np.NaN
     # Ignore numpy warnings... (they suck)
     with np.warnings.catch_warnings():

@@ -70,6 +70,7 @@ __E_new_keys__=[            # #  # {time, lats, lons}
                 # Uncertainty stuff:
                 'E_PP_err_lr', # E_new error  
                 'E_PPm_err_lr', # monthly E_new error
+                'E_PPm_rerr_lr', 
                 'SC_err', # fitting error
                 'SC_err_lr', 
                 'VCC_err', # Omega_pp error, relative error, and low res too
@@ -94,7 +95,8 @@ __E_new_keys_lr__ = [
                      'E_OMI_lr', #  E_VCC_OMI at low resolution
                      'E_PP_lr',  #  at low resolution
                      'E_PP_err_lr', # E_new error  
-                     'E_PPm_err_lr',
+                     'E_PPm_err_lr', # Monthly emissions error
+                     'E_PPm_rerr_lr', #Monthly relative emissions error
 #                     'VC_relative_uncertainty_lr', # relative uncertainty per grid square for OMI VC
 #                     'E_VCC_GC_lr',  #  at low resolution
 #                     'E_VCC_OMI_lr', #  E_VCC_OMI at low resolution
@@ -252,11 +254,21 @@ class E_new:
             if hasattr(self,key):
                 topd = getattr(self,key)
                 avg=np.nanmean(topd)
-                topd[topd<0] = 0
-                if __VERBOSE__:
-                    print("Removing negatives from ",key)
-                    print('%.2e -> %.2e'%(avg, np.nanmean(topd)))
+                negs = topd<0
+                topd[negs] = 0
+                #if __VERBOSE__:
+                print("Removing negatives from ",key)
+                print('%.2e -> %.2e'%(avg, np.nanmean(topd)))
                 setattr(self,key,topd)
+                # SET ERROR TO 100% where this happens
+                if key == 'E_PP_lr':
+                    # remove absolute error
+                    if hasattr(self,'E_PP_err_lr'):
+                        self.E_PP_err_lr[negs] = np.NaN
+                    # set relative error to 100%
+                    if hasattr(self,'E_PP_rerr_lr'):
+                        self.E_PP_err_lr[negs] = 1.0
+                     
 
     def get_monthly_multiyear(self, key, region, maskocean=True):
         '''

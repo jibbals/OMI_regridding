@@ -293,7 +293,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # need uncertainty in high and low res and unfiltered for comparison
     # daily relative uncertainties
     rO, rO_lr = vccuncert['rO'],vccuncert['rO_lr']
-    rO_u, rO_u_lr = vccuncert['rO_u'],vccuncert['rO_u_lr']
+    #rO_u, rO_u_lr = vccuncert['rO_u'],vccuncert['rO_u_lr']
     fitting_err, fitting_err_lr = vccuncert['dSC'], vccuncert['dSC_lr']
     # monthly relative uncertainty
     rOm_lr  = vccuncert['rOm_lr'] # monthly error
@@ -304,7 +304,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # monthly relative uncertainty
     
     # also need background uncertainty
-    rbg, rbg_lr = vccuncert['bg'],vccuncert['bg_lr']
+    rbg_lr = vccuncert['bg_lr']
     #rbg_u, rbg_u_lr = vccuncert['bg_u'],vccuncert['bg_u_lr']
     rbgm_lr = vccuncert['bgm_lr']
     dbg_lr = rbg_lr * BG_PP_lr
@@ -314,11 +314,25 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # daily error 
     dE_pp_lr = E_pp_lr * np.sqrt( (dO_lr**2 + dbg_lr**2)/(VCC_PP_lr-BG_PP_lr)**2 + r_slope_lr**2  )
     # monthly error
+    # Monthly emissions
+    # For monthly error, negative emissions may occur
     E_ppm_lr    = np.nansum(E_pp_lr*pixels_PP_lr,axis=0) / np.nansum(pixels_PP_lr,axis=0)
+    # Monthly VCC
     VCCm_PP_lr  = np.nansum(VCC_PP_lr * pixels_PP_lr, axis=0) / np.nansum(pixels_PP_lr,axis=0)
+    # Monthly background
     BGm_PP_lr   = np.nanmean(BG_PP_lr,axis=0)
     dbgm_lr     = rbgm_lr * BGm_PP_lr
+    # Monthly absolute error in E_PP
     dE_ppm_lr   = E_ppm_lr * np.sqrt( (dOm_lr**2 + dbgm_lr**2)/(VCCm_PP_lr-BGm_PP_lr)**2 + r_slope_lr[0]**2 )
+    rE_ppm_lr   = np.sqrt( (dOm_lr**2 + dbgm_lr**2)/(VCCm_PP_lr-BGm_PP_lr)**2 + r_slope_lr[0]**2 )
+    
+    # Wherever monthly emissions are negative I set the absolute error to NaN, and the relative error to 100%
+    # Also setting the monthly emissinos to zero
+    Enegs=E_ppm_lr      < 0
+    E_ppm_lr[Enegs]     = 0
+    dE_ppm_lr[Enegs]    = np.NaN
+    rE_ppm_lr[Enegs]    = 1.0
+    
     #print(dE_ppm_lr.shape)
     #print(E_ppm_lr.shape, dOm_lr.shape, dbgm_lr.shape, VCCm_PP_lr.shape, BGm_PP_lr.shape, r_slope_lr.shape)
     elapsed = timeit.default_timer() - time_emiss_calc
@@ -337,7 +351,10 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outattrs['BG_VCC']      = {'units':'molec/cm2','desc':'Background: VCC zonally averaged from remote pacific'}
     outattrs['BG_PP']       = {'units':'molec/cm2','desc':'Background: VCC_PP zonally averaged from remote pacific'}
     outattrs['BG_OMI']      = {'units':'molec/cm2','desc':'Background: VCC_OMI zonally averaged from remote pacific'}
-
+    # Background error:
+    outdata['BG_PP_rerr']    = rbgm_lr
+    outattrs['BG_PP_rerr']   = {'units':'portion','desc':'Background relative error'}
+    
     # Save the Vertical columns, as well as units/descriptions
     outdata['VCC_GC_u']       = VCC_GC_u
     outdata['VCC_PP_u']       = VCC_PP_u
@@ -413,6 +430,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # Uncertainty stuff:
     outdata['E_PP_err_lr'] = dE_pp_lr
     outdata['E_PPm_err_lr'] = dE_ppm_lr
+    outdata['E_PPm_rerr_lr'] = rE_ppm_lr
     outdata['SC_err']   = fitting_err
     outdata['SC_err_lr'] = fitting_err_lr
     outdata['VCC_err']  = dO
@@ -436,6 +454,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                                'desc':'uncertainty in daily E_PP estimate'}
     outattrs['E_PPm_err_lr']    = {'units':'atomC/cm2/s',
                                'desc':'uncertainty in monthly E_PP estimate'}
+    outattrs['E_PPm_rerr_lr']    = {'units':'portion',
+                               'desc':'relative uncertainty in monthly E_PP estimate'}
     outattrs['SC_err']  = {'units':'molec/cm2',
                                'desc':'OMI pixel fitting uncertainty averaged for each gridsquare'}
     outattrs['SC_err_lr']  = {'units':'molec/cm2',

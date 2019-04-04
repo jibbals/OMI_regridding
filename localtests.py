@@ -67,23 +67,25 @@ import chapter_3_isop
 df=chapter_3_isop.read_overpass_timeseries()
 
 #test_filters.summary_pixels_filtered()
-d0,dN = datetime(2005,1,1),datetime(2012,12,31)
+d0,dN = datetime(2005,1,1),datetime(2005,6,30)
 dkeys=['E_PP_lr', 'pixels_PP_lr', # emissiosn and pixel counts
        'E_PP_err_lr','E_PPm_err_lr','SC_err_lr',  # Error in emissions estimate
        'VCC_err_lr','VCC_rerr_lr', # daily OmegaPP error in
        'slope_rerr_lr'] # monthly portional error in slope
 
-
+# READ EMISSIONS AND ERROR
 enew=E_new(d0,dN,dkeys=dkeys)
 dates=enew.dates
 months=util.list_months(d0,dN)
 lats,lons=enew.lats_lr, enew.lons_lr
 pix=enew.pixels_PP_lr
+# GET MONTHLY TOTAL PIXELS
 pixm=util.monthly_averaged(dates,pix,keep_spatial=True)['sum']
 
 for key in dkeys:
     print(key, getattr(enew,key).shape)
 
+# MASK OCEANS, 
 E = enew.E_PP_lr
 E[enew.oceanmask3d_lr] = np.NaN
 Em      = util.monthly_averaged(dates,E,keep_spatial=True)['mean']
@@ -102,7 +104,7 @@ Orerr  = enew.VCC_rerr_lr
 # first lets do A seasonal plot of relative monthly error
 plt.close()
 chapter_3_isop.PlotMultiyear(Ererrm,months,lats,lons,weekly=False,
-                             median=True,ylims=[0,1])
+                             median=True,ylims=[-1,1])
 plt.savefig('mya_rerr.png')
 print("SAVED ",'mya_rerr.png')
 

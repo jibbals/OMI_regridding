@@ -1013,10 +1013,16 @@ class Hemco_diag(GC_base):
         LTO=self.local_time_offset
         for i,date in enumerate(dates):
             GMT=date.hour # current GMT
+            # iterating over hours, handle case where we reach end of day or end of month or end of year
             if (date.day > prior_day.day) or (date.month > prior_day.month) or (date.year > prior_day.year):
                 prior_day=date
-                if (not np.all(sanity[di]==1)) or (np.any(np.isnan(out[di]))):
-                    print('ERROR: should get one hour from each day!')
+                if (not np.all(sanity[di]==1)):# or (np.any(np.isnan(out[di]))):
+                    if not np.all(sanity[di]==1):
+                        print('ERROR: should get one hour from each day!')
+                    # has sanity not been set? has something created a NAN output?
+                    # Oceanic squares are NaN now, rather than zero.
+                    #if np.any(np.isnan(out[di])):
+                    #    print("ERROR: Should not have NANs in MEGAN output")
                     print(date, hour, GMT)
                     print(sanity[di,0,:])
                     print(dates[0::12], days)

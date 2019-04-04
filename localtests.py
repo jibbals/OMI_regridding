@@ -63,6 +63,14 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+GCB=GC_class.GC_biogenic(datetime(2005,1,1))
+
+MEGAN=GCB.hemco
+
+lte=MEGAN.daily_LT_averaged(13)
+
+assert False, 'Stop here'
+
 import chapter_3_isop
 df=chapter_3_isop.read_overpass_timeseries()
 

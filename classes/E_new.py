@@ -36,6 +36,7 @@ __DEBUG__=False
 __E_new_keys__=[            # #  # {time, lats, lons}
                 'BG_OMI',       #  {31, 152, 152}
                 'BG_PP',        #  {31, 152, 152}
+                'BG_PP_rerr',  # monthly low res rerr over Aus
                 'BG_VCC',       #  {31, 152, 152}
                 'E_MEGAN',      #  {31, 18, 19}
                 'E_GC',     #  {31, 152, 152}
@@ -186,7 +187,7 @@ class E_new:
                     print("Reading %s"%key )
             # Read in monthly data
             #
-            elif (key in ['ModelSlope','slope_rerr_lr','E_PPm_err_lr']) and key in dkeys:
+            elif (key in ['BG_PP_rerr','ModelSlope','slope_rerr_lr','E_PPm_err_lr']) and key in dkeys:
 
                 # np array of the data [lats, lons]
                 data0=np.array(E_new_list[0][key])

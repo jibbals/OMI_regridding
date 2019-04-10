@@ -437,6 +437,8 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     outdata['VCC_rerr']  = rO
     outdata['VCC_err_lr']  = dO_lr
     outdata['VCC_rerr_lr']  = rO_lr
+    outdata['VCCm_rerr_lr'] = rOm_lr
+    outdata['VCCm_err_lr']  = dOm_lr
     outdata['slope_rerr_lr']   = r_slope_lr[0] # one valued per month
     outattrs['slope_rerr_lr']  = {'units':'portion',
                                'desc':'upper bound of 95% CI divided by slope, minus 1' }
@@ -468,6 +470,10 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
                                'desc':'OMI vertical column uncertainty'}
     outattrs['VCC_rerr_lr']  = {'units':'portion',
                                'desc':'OMI vertical column relative uncertainty'}
+    outattrs['VCCm_err_lr']  = {'units':'molec/cm2',
+                               'desc':'monthly OMI vertical column uncertainty'}
+    outattrs['VCCm_rerr_lr']  = {'units':'portion',
+                               'desc':'monthly OMI vertical column relative uncertainty'}
     outattrs['pixels']      = {'units':'n',
                                'desc':'OMI pixels used for gridsquare VC'}
     outattrs['pixels_u']    = {'units':'n',

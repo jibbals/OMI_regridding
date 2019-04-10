@@ -1,0 +1,95 @@
+area:key,   new_emiss,   tropchem
+isop monthly anomaly
+region, [ yearly slope, regression coeff, p value for slope non zero]
+Aus &  [ m=-4.38e-02,  r=-0.472, p=0.000 ]   & \
+significant!  isop Aus
+SE &  [ m=-1.58e-01,  r=-0.397, p=0.000 ]   & \
+significant!  isop SE
+NE &  [ m=-1.31e-01,  r=-0.386, p=0.000 ]   & \
+significant!  isop NE
+Mid &  [ m=-6.83e-02,  r=-0.389, p=0.000 ]   & \
+significant!  isop Mid
+SW &  [ m=-7.78e-03,  r=-0.048, p=0.643 ]   & \
+N &  [ m=-6.22e-02,  r=-0.247, p=0.015 ]   & \
+significant!  isop N
+isop monthly anomaly (scaled)
+region, [ yearly slope, regression coeff, p value for slope non zero]
+Aus &  [ m=-1.60e-02,  r=-0.433, p=0.000 ]   & \
+significant!  isop Aus
+SE &  [ m=-7.21e-02,  r=-0.431, p=0.000 ]   & \
+significant!  isop SE
+NE &  [ m=-4.14e-02,  r=-0.385, p=0.000 ]   & \
+significant!  isop NE
+Mid &  [ m=-2.14e-02,  r=-0.384, p=0.000 ]   & \
+significant!  isop Mid
+SW &  [ m=-5.74e-03,  r=-0.120, p=0.248 ]   & \
+N &  [ m=-2.38e-02,  r=-0.184, p=0.074 ]   & \
+SAVED  Figs/new_emiss/trend_isop.png
+area:key,   new_emiss,   tropchem
+hcho monthly anomaly
+region, [ yearly slope, regression coeff, p value for slope non zero]
+Aus &  [ m=-5.90e-03,  r=-0.275, p=0.007 ]   & \
+significant!  hcho Aus
+SE &  [ m=-2.83e-02,  r=-0.351, p=0.000 ]   & \
+significant!  hcho SE
+NE &  [ m=-1.86e-02,  r=-0.305, p=0.003 ]   & \
+significant!  hcho NE
+Mid &  [ m=-1.15e-02,  r=-0.233, p=0.022 ]   & \
+significant!  hcho Mid
+SW &  [ m=-5.39e-04,  r=-0.012, p=0.906 ]   & \
+N &  [ m=-8.31e-03,  r=-0.119, p=0.247 ]   & \
+hcho monthly anomaly (scaled)
+region, [ yearly slope, regression coeff, p value for slope non zero]
+Aus &  [ m=-2.38e-03,  r=-0.179, p=0.080 ]   & \
+SE &  [ m=-1.98e-02,  r=-0.397, p=0.000 ]   & \
+significant!  hcho SE
+NE &  [ m=-7.80e-03,  r=-0.238, p=0.021 ]   & \
+significant!  hcho NE
+Mid &  [ m=-2.81e-03,  r=-0.110, p=0.286 ]   & \
+SW &  [ m=1.47e-04,  r=0.006, p=0.953 ]   & \
+N &  [ m=-2.57e-03,  r=-0.057, p=0.584 ]   & \
+SAVED  Figs/new_emiss/trend_hcho.png
+area:key,   new_emiss,   tropchem
+NO$_x$ monthly anomaly
+region, [ yearly slope, regression coeff, p value for slope non zero]
+Aus &  [ m=-4.76e-04,  r=-0.107, p=0.302 ]   & \
+SE &  [ m=-4.25e-03,  r=-0.299, p=0.003 ]   & \
+significant!  NO$_x$ SE
+NE &  [ m=-2.00e-03,  r=-0.219, p=0.032 ]   & \
+significant!  NO$_x$ NE
+Mid &  [ m=-1.08e-03,  r=-0.149, p=0.153 ]   & \
+SW &  [ m=-2.18e-04,  r=-0.028, p=0.788 ]   & \
+N &  [ m=2.30e-03,  r=0.176, p=0.089 ]   & \
+NO$_x$ monthly anomaly (scaled)
+region, [ yearly slope, regression coeff, p value for slope non zero]
+Aus &  [ m=-4.36e-04,  r=-0.104, p=0.317 ]   & \
+SE &  [ m=-4.08e-03,  r=-0.294, p=0.004 ]   & \
+significant!  NO$_x$ SE
+NE &  [ m=-1.82e-03,  r=-0.212, p=0.038 ]   & \
+significant!  NO$_x$ NE
+Mid &  [ m=-7.17e-04,  r=-0.109, p=0.298 ]   & \
+SW &  [ m=-3.50e-04,  r=-0.046, p=0.659 ]   & \
+N &  [ m=1.83e-03,  r=0.157, p=0.133 ]   & \
+SAVED  Figs/new_emiss/trend_NO$_x$.png
+area:key,   new_emiss,   tropchem
+O3 monthly anomaly
+region, [ yearly slope, regression coeff, p value for slope non zero]
+Aus &  [ m=5.28e-02,  r=0.073, p=0.480 ]   & \
+SE &  [ m=-3.37e-01,  r=-0.287, p=0.005 ]   & \
+significant!  O3 SE
+NE &  [ m=-7.85e-02,  r=-0.073, p=0.480 ]   & \
+Mid &  [ m=-4.85e-02,  r=-0.041, p=0.693 ]   & \
+SW &  [ m=1.53e-01,  r=0.204, p=0.047 ]   & \
+significant!  O3 SW
+N &  [ m=1.77e-01,  r=0.102, p=0.326 ]   & \
+O3 monthly anomaly (scaled)
+region, [ yearly slope, regression coeff, p value for slope non zero]
+Aus &  [ m=7.33e-02,  r=0.111, p=0.280 ]   & \
+SE &  [ m=-2.80e-01,  r=-0.268, p=0.009 ]   & \
+significant!  O3 SE
+NE &  [ m=-4.90e-02,  r=-0.050, p=0.632 ]   & \
+Mid &  [ m=-4.16e-02,  r=-0.042, p=0.686 ]   & \
+SW &  [ m=1.70e-01,  r=0.259, p=0.011 ]   & \
+significant!  O3 SW
+N &  [ m=1.69e-01,  r=0.106, p=0.306 ]   & \
+SAVED  Figs/new_emiss/trend_O3.png

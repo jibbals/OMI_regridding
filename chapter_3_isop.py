@@ -240,7 +240,7 @@ def read_overpass_timeseries():
     return pd.read_csv('Data/GC_Output/overpass_timeseries_regional.csv', index_col=0)
     
 def PlotMultiyear(data, dates, lats,lons, weekly=False,
-                  xlims=None, ylims=None, median=False):
+                  xlims=None, ylims=None, median=False, label=None):
     '''
         Split data into subregions, and take multiyear monthly or weekly means and IQR
 
@@ -259,9 +259,11 @@ def PlotMultiyear(data, dates, lats,lons, weekly=False,
     #x=range([12,52][weekly])
     n=len(df)
     f,axes = plt.subplots(n,1, sharex=True,sharey=True)
+    returns = []
     for i in range(n):
         plt.sca(axes[i])
         mean        = df[i].mean().values.squeeze()
+        returns.append(mean)
         if median:
             mean    = df[i].median().values.squeeze()
             
@@ -269,11 +271,11 @@ def PlotMultiyear(data, dates, lats,lons, weekly=False,
         lq          = df[i].quantile(0.25).values.squeeze()
         
         plt.fill_between(x,lq,uq, color=colors[i], alpha=0.4)
-        plt.plot(x, mean, color=colors[i], label=labels[i], linewidth=3)
+        plt.plot(x, mean, color=colors[i], label=label, linewidth=3)
         
         #plt.fill_between(x, lqmeg,uqmeg, color=colors[i], alpha=0.5, facecolor=colors[i], hatch='X', linewidth=0)
         #plt.plot(x, meanmeg, color=colors[i], linestyle='--', label='a priori',linewidth=3)
-        plt.ylabel(labels[i], color=colors[i], fontsize=24)
+        plt.ylabel(labels[i], color=colors[i], fontsize=18)
         
         if i%2 == 1:
             axes[i].yaxis.set_label_position("right")
@@ -290,7 +292,7 @@ def PlotMultiyear(data, dates, lats,lons, weekly=False,
     #else:
     #plt.xticks(x)
     plt.gca().set_xticklabels(monthletters)
-    plt.xlabel('month', fontsize=24)
+    plt.xlabel('month', fontsize=20)
     #plt.suptitle('a priori vs a posteriori; mean and IQR\n [molec cm$^{-2}$ s$^{-1}$]',fontsize=30)
     f.subplots_adjust(hspace=0)
 
@@ -298,6 +300,7 @@ def PlotMultiyear(data, dates, lats,lons, weekly=False,
     #plt.savefig(pname)
     #print("Saved %s"%pname)
     #plt.close()
+    return returns, x, axes
 
 ##########
 ### Plot functions
@@ -551,6 +554,8 @@ def time_series(d0=datetime(2005,1,1), d1=datetime(2012,12,31)):
 
 
         ## save figure
+        if key=='NO$_x$':
+            key='NOx'
         plt.savefig(pnames%key)
         print('SAVED ',pnames%key)
         plt.close()
@@ -704,11 +709,11 @@ def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
                'IJ-AVG-$_NO',       # NO in ppb?
                'IJ-AVG-$_O3',       # O3 in ppb
                ] #+ GC_class.__gc_tropcolumn_keys__
-    print("TREND: READING new_emissions")
+    #print("TREND: READING new_emissions")
     new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
-    print("TREND: READING tropchem")
+    #print("TREND: READING tropchem")
     tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
-    print('TREND: GEOS-Chem satellite outputs read')
+    #print('TREND: GEOS-Chem satellite outputs read')
     # new_sat.hcho.shape #(31, 91, 144, 47)
     # new_sat.isop.shape #(31, 91, 144, 47)
     
@@ -729,6 +734,13 @@ def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
         # Grab surface array
         new_surf = getattr(new_sat,key)[:,:,:,0] # ppb or ppbC
         trop_surf = getattr(tropchem_sat,key)[:,:,:,0]
+        # Get NOx instead of NO or NO2
+        if origkey == 'IJ-AVG-$_NO2':
+            continue
+        if origkey == 'IJ-AVG-$_NO':
+            new_surf = new_sat.NO2[:,:,:,0] + new_sat.NO[:,:,:,0]
+            trop_surf = tropchem_sat.NO2[:,:,:,0] + tropchem_sat.NO[:,:,:,0]
+            key='NO$_x$'
         
         # will be printing mean differences
         print('area:key,   new_emiss,   tropchem')
@@ -761,7 +773,7 @@ def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
             
             plt.sca(axes[j])
             print(title%key)
-            print('region, [ slope, regression coeff, p value for slope non zero]')
+            print('region, [ yearly slope, regression coeff, p value for slope non zero]')
             for i in range(n_regions):
             #for monthly_anomaly, monthly_data, color, label in zip(anomaly, monthly, colors, labels):
                 color=colors[i]; label=labels[i]
@@ -781,7 +793,7 @@ def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
                 p=trendi['p'] # two sided p value against slope being zero as H0
                 outliers=trendi['outliers']
                 
-                print("%s &  [ m=%.2e,  r=%.3f, p=%.3f ]   & \\"%(label,m, r, p))
+                print("%s &  [ m=%.2e,  r=%.3f, p=%.3f ]   & \\"%(label,12.0*m, r, p))
                 
                 # once more with outliers removed
                 #std=np.nanstd(monthly_anomaly)
@@ -807,7 +819,8 @@ def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
         plt.sca(axes[0])
         xywh=(.985, 0.15, 0.1, .7)
         plt.legend(bbox_to_anchor=xywh, loc=3, ncol=1, mode="expand", borderaxespad=0., fontsize=12, scatterpoints=1)
-        
+        if key=='NO$_x$':
+            key='NOx'
         plt.savefig(pnames%key)
         print('SAVED ',pnames%key)
         plt.close()
@@ -1042,9 +1055,10 @@ def regional_seasonal_comparison():
 ### UNCERTAINTY
 ################
 
-def uncertainty(d1=datetime(2012,12,31)):
+def uncertainty_time_series(d1=datetime(2012,12,31)):
     '''
-        Calculate uncertainty and plot it somehow
+        Uncertainty time series plotting
+        TODO: Time series plots updated, other plots moved elsewhere
     '''
     
     # Read product with pixels and uncertainty
@@ -1273,7 +1287,176 @@ def pixel_counts_summary():
     print('SAVED ',pname3)
     plt.close()
 
+def relative_error_summary():
+    '''
+        Plots: MYA seasonal relative error in E, Omega, and S
+        Plots2: summer vs winter relative error in E
+        Prints: summer/winter mean and IQR of regionally averaged rerrs
+    '''
+    
+    d0,dN = datetime(2005,1,1),datetime(2012,12,31)
+    dkeys=['E_PP_lr', 'pixels_PP_lr', # emissiosn and pixel counts
+           'E_PP_err_lr','E_PPm_err_lr','E_PPm_rerr_lr', # Error in emissions estimate
+           'SC_err_lr', 
+           'VCC_PP_lr', # Omega 
+           'VCC_err_lr','VCC_rerr_lr', # daily OmegaPP error in
+           'slope_rerr_lr'] # monthly portional error in slope
 
+    # READ EMISSIONS AND ERROR
+    enew=E_new(d0,dN,dkeys=dkeys)
+    dates=enew.dates
+    months=util.list_months(d0,dN)
+    lats,lons=enew.lats_lr, enew.lons_lr
+    pix=enew.pixels_PP_lr
+    # GET MONTHLY TOTAL PIXELS
+    pixm=util.monthly_averaged(dates,pix,keep_spatial=True)['sum']
+
+    for key in dkeys:
+        print(key, getattr(enew,key).shape)
+
+    # MASK OCEANS, 
+    E = enew.E_PP_lr
+    E[enew.oceanmask3d_lr] = np.NaN
+    Em      = util.monthly_averaged(dates,E,keep_spatial=True)['mean']
+    Eerr   = enew.E_PP_err_lr
+    Eerrm  = enew.E_PPm_err_lr
+    Ererr  = Eerr/E
+    Ererr[~np.isfinite(Ererr)] = np.NaN
+    Ererr[np.isclose(E,0.0)] = np.NaN
+    Ererrm = Eerrm/Em
+    Ererrm[~np.isfinite(Ererrm)] = np.NaN
+    Ererrm[np.isclose(Em,0.0)] = np.NaN
+
+    Srerrm  = enew.slope_rerr_lr
+
+    # monthly VCC error:from per pixel error divided by pixels in the month
+    O   = enew.VCC_PP_lr
+    Om  = util.monthly_averaged(dates,O,keep_spatial=True)['mean']
+    Oerr  = enew.VCC_err_lr * np.sqrt(pix) # error has already been divided by sqrt daily pix
+    Oerrm = util.monthly_averaged(dates,Oerr,keep_spatial=True)['mean'] /  np.sqrt(pixm)
+    # Same as Enew monthly error:replace error with NaN and set relative error to 100%
+    # Enew monthly negatives are replaced with zeros, but not VCCm 
+    Orerrm = Oerrm / Om
+    negerr = (Om < 0)+(Oerrm<0)
+    Orerrm[negerr] = 1.0
+    
+
+    # 3d monthly oceanmask:
+    oceanmask=np.repeat(enew.oceanmask_lr[np.newaxis,:,:], len(months), axis=0)
+    print("Checking Oerr")
+    # Definitely includes ocean squares
+    print(np.nanmean(Orerrm), np.nanmean(Orerrm[oceanmask]))
+    Orerrm[oceanmask] = np.NaN
+    print("Checking Serr")
+    # also
+    print(np.nanmean(Srerrm), np.nanmean(Srerrm[oceanmask]))
+    Srerrm[oceanmask] = np.NaN
+    print("Checking Eerr")
+    # does not seem to have ocean squares (good)
+    print(np.nanmean(Ererrm), np.nanmean(Ererrm[oceanmask]))
+    Ererrm[oceanmask] = np.NaN
+
+
+    # first lets do A seasonal plot of relative monthly error
+    arrs=[Ererrm, Srerrm, Orerrm]
+    titles = ['relative error in monthly a posteriori', 
+              'relative error in monthly slope',
+              'relative error in monthly $\Omega$']
+    pnames = ['Figs/mya_Ererr.png',
+                'Figs/mya_Srerr.png',
+                'Figs/mya_Orerr.png']
+    ylims = [ [0,1.5], [0, 0.6], [0,3]]
+    
+    # First do Srerr
+    plt.figure(figsize=[10,14])
+    ylim,pname=ylims[1],pnames[1]
+    Sret,x,ax = PlotMultiyear(Srerrm,months,lats,lons,weekly=False,
+                                     median=True,ylims=ylim)
+    plt.suptitle(titles[1],fontsize=20)
+    plt.yticks(np.linspace(ylim[0], ylim[1], 4))
+    plt.savefig(pname)
+    print("SAVED ",pname)
+    plt.close()
+    
+    # Now do Omega rerr
+    plt.figure(figsize=[10,14])
+    ylim,pname=ylims[2],pnames[2]
+    Oret,x,ax = PlotMultiyear(Orerrm,months,lats,lons,weekly=False,
+                                     median=True,ylims=ylim)
+    plt.suptitle(titles[2],fontsize=20)
+    plt.yticks(np.linspace(ylim[0], ylim[1], 4))
+    plt.savefig(pname)
+    print("SAVED ",pname)
+    plt.close()
+    
+    # Finally do the a postiori summary error
+    plt.figure(figsize=[10,14])
+    ylim,pname=ylims[0],pnames[0]
+    label="$\Delta$%s/%s"%(__apost__,__apost__)
+    Eret,x,axes = PlotMultiyear(Ererrm,months,lats,lons,weekly=False,
+                                     median=True,ylims=ylim,label=label)
+    plt.suptitle(titles[0],fontsize=20)
+    plt.yticks(np.linspace(ylim[0], ylim[1], 4))
+    for i,ax in enumerate(axes):
+        plt.sca(ax)
+        plt.plot(x,Sret[i], '--',label='$\Delta$S/S')
+        plt.plot(x,Oret[i], ':',label='$\Delta \Omega / \Omega$')
+        if i==0:
+            plt.legend(loc='best')
+    # will add legend in paint
+    plt.savefig(pname)
+    print("SAVED ",pname)
+    plt.close()
+    
+    ###############################
+    # Summer Winter Plots##########
+    mya = util.multi_year_average_spatial(E, dates)
+    myam = util.multi_year_average_spatial(Ererrm, months)
+
+
+    summer=np.array([0,1,11])
+    winter=np.array([5,6,7])
+    summersm = np.nanmean(myam['mean'][summer,:,:],axis=0)
+    wintersm = np.nanmean(myam['mean'][winter,:,:],axis=0)
+    Esummer = np.nanmean(mya['mean'][summer,:,:],axis=0)
+    Ewinter = np.nanmean(mya['mean'][winter,:,:],axis=0)
+
+
+    plt.close()
+
+    # Plot summer,winter maps of monthly rerr
+    plt.figure(figsize=[14,14])
+    vmin,vmax=1e11,1e13
+    linear=False
+
+    ccm2s='C cm$^{-2}$ s$^{-1}$'
+    plt.subplot(2,2,1)
+    pp.createmap(Esummer,lats,lons,aus=True,
+                 linear=linear, vmin=vmin,vmax=vmax,
+                 clabel=ccm2s,
+                 title='mean a posteriori')
+    plt.ylabel("Summer")
+    plt.subplot(2,2,2)
+    pp.createmap(summersm,lats,lons,aus=True,
+                 linear=True, vmin=0,vmax=1,
+                 clabel='Portional',
+                 title='relative a posteriori error')
+    plt.ylabel("Summer")
+
+    plt.subplot(2,2,3)
+    pp.createmap(Ewinter, lats,lons, aus=True,
+                 linear=linear, vmin=vmin,vmax=vmax,
+                 clabel=ccm2s,
+                 title='mean a posteriori')
+    plt.ylabel("Winter")
+    plt.subplot(2,2,4)
+    pp.createmap(wintersm,lats,lons,aus=True,
+                 linear=True, vmin=0,vmax=1, 
+                 clabel='Portional',
+                 title='relative a posteriori error',
+                 pname='Figs/Ererr_map_summerwinter.png')
+    plt.ylabel("Winter")
+    
 
 if __name__ == "__main__":
     
@@ -1282,7 +1465,9 @@ if __name__ == "__main__":
     # set up plotting parameters like font sizes etc..
     fullpageFigure()
     
+    # Run time series creation
     
+    #save_overpass_timeseries()
     
     ## METHOD PLOTS
     
@@ -1291,12 +1476,12 @@ if __name__ == "__main__":
     
     ## Results Plots
     
-    # TODO: trend_analysis barplot summary
+    #  trend analysis plots, printing slopes for tabularisation
+    trend_analysis()
     #seasonal_differences()
     
     # Day cycle for each month compared to sin wave from postiori
-    # TODO: suptitle
-    Seasonal_daycycle()
+    #Seasonal_daycycle() # done with updated suptitle 4/4/19
     
     
     # TODO: time series compared to satellite HCHO
@@ -1308,10 +1493,12 @@ if __name__ == "__main__":
     
     ## UNCERTAINTY
     #TODO: implement
-    #uncertainty()
+    #uncertainty_time_series()
     # TODO: add sums to analysis TS
     # todo: discuss plot output from 
     #pixel_counts_summary()
+    ## summarised uncertainty
+    relative_error_summary()
 
     ### Record and time STUJFFS
     

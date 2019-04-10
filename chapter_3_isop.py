@@ -1365,7 +1365,7 @@ def relative_error_summary():
     pnames = ['Figs/mya_Ererr.png',
                 'Figs/mya_Srerr.png',
                 'Figs/mya_Orerr.png']
-    ylims = [ [0,1.5], [0, 0.6], [0,3]]
+    ylims = [ [0,1.5], [0.2, 0.5], [0,3]]
     
     # First do Srerr
     plt.figure(figsize=[10,14])
@@ -1477,7 +1477,7 @@ if __name__ == "__main__":
     ## Results Plots
     
     #  trend analysis plots, printing slopes for tabularisation
-    trend_analysis()
+    #trend_analysis()
     #seasonal_differences()
     
     # Day cycle for each month compared to sin wave from postiori

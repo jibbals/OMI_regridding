@@ -695,6 +695,118 @@ def Seasonal_daycycle():
     print('SAVED FIGURE ',pname)
     plt.close()
 
+def ozone_sensitivity():
+    '''
+        Regional regression between delta E and delta surface ozone
+    '''
+    d0,d1=datetime(2005,1,1),datetime(2012,12,31)
+    ekeys=['E_MEGAN','E_PP_lr']
+    enew=E_new(d0,d1,dkeys=ekeys)
+    apri=enew.E_MEGAN
+    apost=enew.E_PP_lr
+    # [days, 18,19]
+    deltaE=apri-apost
+    
+    elats=enew.lats_lr
+    elons=enew.lons_lr
+    # apply oceanmask
+    om = enew.oceanmask3d_lr
+    deltaE[om] = np.NaN
+    
+    #pixm=util.monthly_average(enew.dates, enew.pixels_PP_lr, keep_spatial=True)['sum']
+    
+    # need surf ozone before, and after
+    
+    pnames = 'Figs/new_emiss/delta_regression_%s.png'
+        
+    satkeys = ['IJ-AVG-$_ISOP',     # isop in ppbc?
+               'IJ-AVG-$_CH2O',     # hcho in ppb
+               #'IJ-AVG-$_NO2',      # NO2 in ppb
+               #'IJ-AVG-$_NO',       # NO in ppb?
+               'IJ-AVG-$_O3',       # O3 in ppb
+               ] #+ GC_class.__gc_tropcolumn_keys__
+    new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
+    tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
+    # dims for GEOS-Chem outputs
+    lats=new_sat.lats
+    lons=new_sat.lons
+    dates=new_sat.dates
+    months=util.list_months(d0,d1)
+    
+    # new_sat.hcho.shape #(31, 91, 144, 47)
+    # new_sat.isop.shape #(31, 91, 144, 47)
+    o3 = tropchem_sat.O3[:,:,:,0] # surface only
+    o3a= new_sat.O3[:,:,:,0]
+    
+    subs = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,data=[o3,o3a], has_time_dim=True)
+    o3=subs['data'][0]
+    o3a=subs['data'][1]
+    
+    o3[om] = np.NaN
+    o3a[om] = np.NaN
+    
+    # change to monthly averages
+    deltaE = util.monthly_averaged(dates, deltaE, keep_spatial=True)['mean']
+    o3 = util.monthly_averaged(dates, o3, keep_spatial=True)['mean']
+    o3a = util.monthly_averaged(dates, o3a, keep_spatial=True)['mean']
+    
+    # subset just to summer
+    # TODO
+    summers=[ i%12 in [0,1,12] for i in range(len(months)) ]
+    deltaE = deltaE[summers,:,:]
+    o3 = o3[summers,:,:]
+    o3a = o3a[summers,:,:]
+    deltao3 = o3-o3a
+    
+    # sub regions
+    deltao3s, lats_regional, lons_regional = util.pull_out_subregions(deltao3,elats,elons,subregions=regions)
+    deltaEs, lats_regional,lons_regional = util.pull_out_subregions(deltaE,elats,elons,subregions=regions)
+    # correlation for each region
+    
+    #plt.subplots(ncols=1,nrows=n_regions)
+    plt.figure(figsize=[10,12])
+    
+    print('region, [ yearly slope, regression coeff, p value for slope non zero]')
+    key='ozone'
+    units='ppbv'
+    
+    for i in range(n_regions):
+    #for monthly_anomaly, monthly_data, color, label in zip(anomaly, monthly, colors, labels):
+        color=colors[i]; 
+        label=labels[i]
+        
+        DE = deltaEs[i]
+        DO3= deltao3s[i]
+        #monthly = trendi['monthly']
+        
+        # correlation
+        m, b, r, cir, cijm = RMA(DE.flatten(), DO3.flatten())
+        #print("%s (has outliers) &  [ %.2e,  %.2e ]   & \\"%(label,cir[0][0], cir[0][1]))
+        
+        # Y = mX+b
+        
+        print("%s &  [ m=%.2e,  r=%.3f ]   & \\"%(label, m, r))
+        print("   CI for m = [%.1e,  %.1e]"%(cir[0][0], cir[0][1]))
+        #ppb = m * C/cm2/s
+        # for ppb=1: C/cm2/s = 1/m
+        decrease = -1.0/m
+        print("   decreasing emissions by %.1e C/cm2/s leads to 1 ppb decrease in surface ozone"%decrease )
+        plt.subplot(n_regions,1,i+1)
+        nans= (np.isnan(DE) + np.isnan(DO3))
+        X,Y = DE[~nans], DO3[~nans]
+        plt.scatter(X,Y,color=color)
+        pp.add_regression(X,Y)
+        plt.ylabel(label,color=color)
+        plt.legend(loc='best')
+        #plt.title(title%key,fontsize=24)
+    
+    plt.ylabel(units)
+    plt.suptitle('$E_{GC} - E_{OMI}$ vs ozone - ozone$^{\\alpha}$')
+    plt.savefig(pnames%key)
+    print('SAVED ',pnames%key)
+    plt.close()
+
+
 def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
     '''
         Trends for surface ozone, hcho, isop, NO, NO2
@@ -1479,6 +1591,7 @@ if __name__ == "__main__":
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
     #seasonal_differences()
+    ozone_sensitivity()
     
     # Day cycle for each month compared to sin wave from postiori
     #Seasonal_daycycle() # done with updated suptitle 4/4/19

@@ -194,7 +194,7 @@ def add_regression(X,Y,label=None, addlabel=True, exponential=False, **pargs):
     # set up lable
     if addlabel and (label is None):
         n=len(X)
-        label='Y = %.2fX + %.2f ; r=%.2f, N=%d'%(m,b,r,n)
+        label='Y = %.1eX + %.2f ; r=%.2f, N=%d'%(m,b,r,n)
         if exponential:
             n=np.sum(~np.isnan(Y2))
             label='Y = exp(%.2fX + %.2f) ; r=%.2f, N=%d'%(m,b,r,n)

@@ -64,18 +64,11 @@ start1=timeit.default_timer()
 ##########
 
 import chapter_3_isop
+regions=chapter_3_isop.regions
+labels=chapter_3_isop.labels
+colors=chapter_3_isop.colors
+n_regions=len(regions)
 #test_filters.summary_pixels_filtered()
-d0,d1=datetime(2005,1,1),datetime(2005,12,31)
-enew=E_new(d0,d1)
-months=util.list_months(d0,d1)
-pixm=util.monthly_average(enew.dates, enew.pixels_PP_lr, keep_spatial=True)['sum']
-perpixBGrerr=enew.BG_PP_rerr * np.sqrt(pixm)
-chapter_3_isop.PlotMultiyear(perpixBGrerr, months, enew.lats_lr, enew.lons_lr)
-plt.savefig('test_bgrerr.png')
-print('saved test_bgrerr.png')
-plt.close()
-
-
 
 
 ###########

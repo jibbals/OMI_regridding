@@ -695,13 +695,16 @@ def Seasonal_daycycle():
     print('SAVED FIGURE ',pname)
     plt.close()
 
-def ozone_sensitivity():
+def ozone_sensitivity(area_averaged=False):
     '''
         Regional regression between delta E and delta surface ozone
+            Also same plot but for HCHO
     '''
     d0,d1=datetime(2005,1,1),datetime(2012,12,31)
     ekeys=['E_MEGAN','E_PP_lr']
     enew=E_new(d0,d1,dkeys=ekeys)
+    dates=enew.dates
+    months=util.list_months(d0,d1)
     apri=enew.E_MEGAN
     apost=enew.E_PP_lr
     # [days, 18,19]
@@ -712,7 +715,15 @@ def ozone_sensitivity():
     # apply oceanmask
     om = enew.oceanmask3d_lr
     deltaE[om] = np.NaN
-    
+    # change to monthly averages
+    deltaE = util.monthly_averaged(dates, deltaE, keep_spatial=True)['mean']
+    # subset just to summer
+    summers=[ i%12 in [0,1,12] for i in range(len(months)) ]
+    deltaE = deltaE[summers,:,:]
+    dEi, lats_regional,lons_regional = util.pull_out_subregions(deltaE,elats,elons,subregions=regions)
+    if area_averaged:
+        dEi = [ np.nanmean(dE,axis=(1,2)) for dE in dEi ]
+        
     #pixm=util.monthly_average(enew.dates, enew.pixels_PP_lr, keep_spatial=True)['sum']
     
     # need surf ozone before, and after
@@ -721,8 +732,8 @@ def ozone_sensitivity():
         
     satkeys = ['IJ-AVG-$_ISOP',     # isop in ppbc?
                'IJ-AVG-$_CH2O',     # hcho in ppb
-               #'IJ-AVG-$_NO2',      # NO2 in ppb
-               #'IJ-AVG-$_NO',       # NO in ppb?
+               'IJ-AVG-$_NO2',      # NO2 in ppb
+               'IJ-AVG-$_NO',       # NO in ppb?
                'IJ-AVG-$_O3',       # O3 in ppb
                ] #+ GC_class.__gc_tropcolumn_keys__
     new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
@@ -730,81 +741,86 @@ def ozone_sensitivity():
     # dims for GEOS-Chem outputs
     lats=new_sat.lats
     lons=new_sat.lons
-    dates=new_sat.dates
-    months=util.list_months(d0,d1)
+    
     
     # new_sat.hcho.shape #(31, 91, 144, 47)
     # new_sat.isop.shape #(31, 91, 144, 47)
-    o3 = tropchem_sat.O3[:,:,:,0] # surface only
-    o3a= new_sat.O3[:,:,:,0]
+    o3      = tropchem_sat.O3[:,:,:,0] # surface only
+    o3a     = new_sat.O3[:,:,:,0]
+    hcho    = tropchem_sat.hcho[:,:,:,0]
+    hchoa   = new_sat.hcho[:,:,:,0]
+    nox     = tropchem_sat.NO[:,:,:,0] + tropchem_sat.NO2[:,:,:,0]
+    noxa    = new_sat.NO[:,:,:,0] + new_sat.NO2[:,:,:,0]
     
-    subs = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,data=[o3,o3a], has_time_dim=True)
-    o3=subs['data'][0]
-    o3a=subs['data'][1]
-    
-    o3[om] = np.NaN
-    o3a[om] = np.NaN
-    
-    # change to monthly averages
-    deltaE = util.monthly_averaged(dates, deltaE, keep_spatial=True)['mean']
-    o3 = util.monthly_averaged(dates, o3, keep_spatial=True)['mean']
-    o3a = util.monthly_averaged(dates, o3a, keep_spatial=True)['mean']
-    
-    # subset just to summer
-    # TODO
-    summers=[ i%12 in [0,1,12] for i in range(len(months)) ]
-    deltaE = deltaE[summers,:,:]
-    o3 = o3[summers,:,:]
-    o3a = o3a[summers,:,:]
-    deltao3 = o3-o3a
-    
-    # sub regions
-    deltao3s, lats_regional, lons_regional = util.pull_out_subregions(deltao3,elats,elons,subregions=regions)
-    deltaEs, lats_regional,lons_regional = util.pull_out_subregions(deltaE,elats,elons,subregions=regions)
-    # correlation for each region
-    
-    #plt.subplots(ncols=1,nrows=n_regions)
-    plt.figure(figsize=[10,12])
-    
-    print('region, [ yearly slope, regression coeff, p value for slope non zero]')
-    key='ozone'
-    units='ppbv'
-    
-    for i in range(n_regions):
-    #for monthly_anomaly, monthly_data, color, label in zip(anomaly, monthly, colors, labels):
-        color=colors[i]; 
-        label=labels[i]
+    do3     = o3-o3a
+    dhcho   = hcho-hchoa
+    dnox    = nox-noxa
+    darrs   = [do3, dhcho, dnox]
+    stitles = ['($E_{GC} - E_{OMI}$) vs. (ozone - ozone$^{\\alpha}$)',
+               '($E_{GC} - E_{OMI}$) vs. (HCHO - HCHO$^{\\alpha}$)',
+               '($E_{GC} - E_{OMI}$) vs. (NO$_x$ - NO$_x$$^{\\alpha}$)']
+    keys    = ['ozone', 'HCHO', 'NOx']
+    for darr, stitle, key in zip(darrs,stitles, keys):
         
-        DE = deltaEs[i]
-        DO3= deltao3s[i]
-        #monthly = trendi['monthly']
+        # subset to AUS and remove ocean
+        subs = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,data=[darr], has_time_dim=True)
+        darr = subs['data'][0]
+        darr[om] = np.NaN
         
-        # correlation
-        m, b, r, cir, cijm = RMA(DE.flatten(), DO3.flatten())
-        #print("%s (has outliers) &  [ %.2e,  %.2e ]   & \\"%(label,cir[0][0], cir[0][1]))
+        # monthly averaged
+        darr = util.monthly_averaged(dates, darr, keep_spatial=True)['mean']
         
-        # Y = mX+b
+        # pull out summers
+        darr = darr[summers,:,:]
         
-        print("%s &  [ m=%.2e,  r=%.3f ]   & \\"%(label, m, r))
-        print("   CI for m = [%.1e,  %.1e]"%(cir[0][0], cir[0][1]))
-        #ppb = m * C/cm2/s
-        # for ppb=1: C/cm2/s = 1/m
-        decrease = -1.0/m
-        print("   decreasing emissions by %.1e C/cm2/s leads to 1 ppb decrease in surface ozone"%decrease )
-        plt.subplot(n_regions,1,i+1)
-        nans= (np.isnan(DE) + np.isnan(DO3))
-        X,Y = DE[~nans], DO3[~nans]
-        plt.scatter(X,Y,color=color)
-        pp.add_regression(X,Y)
-        plt.ylabel(label,color=color)
-        plt.legend(loc='best')
-        #plt.title(title%key,fontsize=24)
-    
-    plt.ylabel(units)
-    plt.suptitle('$E_{GC} - E_{OMI}$ vs ozone - ozone$^{\\alpha}$')
-    plt.savefig(pnames%key)
-    print('SAVED ',pnames%key)
-    plt.close()
+        # sub regions
+        darri, lats_regional, lons_regional = util.pull_out_subregions(darr,elats,elons,subregions=regions)
+        
+        
+        f,axes=plt.subplots(n_regions,1,figsize=[10,12], sharex=True, sharey=True)
+        
+        print(key)
+        print(' region, [ yearly slope, regression coeff, p value for slope non zero]')
+        units='ppbv'
+        
+        for i in range(n_regions):
+        #for monthly_anomaly, monthly_data, color, label in zip(anomaly, monthly, colors, labels):
+            color=colors[i]; 
+            label=labels[i]
+            
+            # regionoal deltas to compare
+            DE = dEi[i] # emissions
+            DA = darri[i] # array from satellite overpass outputs
+            if area_averaged:
+                DA = np.nanmean(darri[i],axis=(1,2))
+            # correlation: Y = m X + b
+            m, b, r, cir, cijm = RMA(DE.flatten(), DA.flatten())
+            
+            print("%s &  [ m=%.2e,  r=%.3f ]   & \\"%(label, m, r))
+            print("   CI for m = [%.1e,  %.1e]"%(cir[0][0], cir[0][1]))
+            #ppb = m * C/cm2/s
+            # for ppb=1: C/cm2/s = 1/m
+            decrease = -1.0/m
+            print("   decreasing emissions by %.1e C/cm2/s leads to 1 ppb decrease in surface ppb"%decrease )
+            plt.sca(axes[i])
+            nans= (np.isnan(DE) + np.isnan(DA))
+            X,Y = DE[~nans], DA[~nans]
+            plt.scatter(X,Y,color=color)
+            pp.add_regression(X,Y)
+            plt.legend(loc='best')
+            
+            # add region label to opposite side
+            plt.twinx()
+            plt.yticks([], [])
+            plt.ylabel(label,color=color)
+            
+        plt.sca(axes[-1])
+        plt.ylabel('$\Delta$'+key)
+        plt.xlabel('$\Delta$E '+__apri__units__)
+        plt.suptitle(stitle)
+        plt.savefig(pnames%key)
+        print('SAVED ',pnames%key)
+        plt.close()
 
 
 def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
@@ -1611,7 +1627,7 @@ if __name__ == "__main__":
     # todo: discuss plot output from 
     #pixel_counts_summary()
     ## summarised uncertainty
-    relative_error_summary()
+    #relative_error_summary()
 
     ### Record and time STUJFFS
     

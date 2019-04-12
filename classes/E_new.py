@@ -110,6 +110,7 @@ __E_new_keys_lr__ = [
                      'SC_err_lr', 
                      'VCC_err_lr',
                      'VCC_rerr_lr',
+                     'BG_PP_rerr',  # monthly low res rerr over Aus
                      'slope_rerr_lr', # relative slope error per month
                     ]
 __E_new_dims__=['lats',         # 0.25x0.3125 resolution

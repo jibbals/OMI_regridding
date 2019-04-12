@@ -202,6 +202,19 @@ class sps(campaign):
 
         #print(data)
 
+__ftir_keys__ = {'H2CO.COLUMN_ABSORPTION.SOLAR':'VC', # vertical column 1d}
+                 'H2CO.COLUMN_ABSORPTION.SOLAR_APRIORI':'VC_apri',
+                 'H2CO.COLUMN_ABSORPTION.SOLAR_AVK':'AK', # avg kernal [dates,ALTS]
+                 'H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR':'VMR', # vertical mixing ratio [dates, ALTS]
+                 'H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_APRIORI':'VMR_apri',
+                 'H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_AVK':'VMR_AK',
+                 
+                 # dims
+                 'PRESSURE_INDEPENDENT':'P', # pressure mid level
+                 'DATETIME':'dates', # dates in MJD2000
+                 'SURFACE.PRESSURE_INDEPENDENT':'Psurf', 
+                 }
+
 class Wgong(campaign):
     '''
     '''
@@ -209,6 +222,44 @@ class Wgong(campaign):
         '''
             Read the h5 data
         '''
-        datadir='Data/campaigns/'
+        # read first year
+        datadir='Data/campaigns/Wgong/'
         data, attrs= fio.read_hdf5(datadir+'ftir_2007.h5')
-
+        self.attrs={}
+        for key in __ftir_keys__.keys():
+            nicekey=__ftir_keys__[key]
+            setattr(self, nicekey, data[key])
+            self.attrs[nicekey] = attrs[key]
+        
+        for year in np.arange(2008,2014):
+            data, attrs= fio.read_hdf5(datadir+'ftir_%d.h5'%year)
+            # extend along time dim for things we want to keep
+            for key in __ftir_keys__.keys():
+                nicekey=__ftir_keys__[key]
+                array=getattr(self,nicekey)
+                array = np.append(array, data[key], axis=0)
+                setattr(self, nicekey, array)
+        
+        # convert modified julian days to local datetimes
+        UTC = [datetime(2000,1,1)+timedelta(days=d) for d in self.dates]
+        dates = [ d + timedelta(hours=10) for d in UTC ] # UTC to local time for wollongong
+        self.dates=dates
+        self.lat = data['LATITUDE.INSTRUMENT']
+        self.lon = data['LONGITUDE.INSTRUMENT']
+        self.alt = 310 # 310 metres
+        # dimensions
+        self.alts = data['ALTITUDE']
+        self.alts_e = data['ALTITUDE.BOUNDARIES'] # altitude limits in km
+        
+    def resample_middays(self,key):
+        '''
+            TODO: just get midday averages using resampling in dataframe
+        '''
+        
+    def Deconvolve(self,ModelledProfile):
+        '''
+            Return what instrument would see if modelled profile was the Truth
+            VMR = APRI + AK * (True - APRI) ?? Check this
+        '''
+        print("Not Implemented, TODO")
+        return None

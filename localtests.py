@@ -63,14 +63,20 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-import chapter_3_isop
-regions=chapter_3_isop.regions
-labels=chapter_3_isop.labels
-colors=chapter_3_isop.colors
-n_regions=len(regions)
-#test_filters.summary_pixels_filtered()
+ftir=campaign.Wgong()
+plt.close()
+plt.figure()
+plt.subplot(2,1,1)
+pp.plot_time_series(ftir.VC, ftir.dates)
+plt.ylabel('FTIR VC molec cm$^{-2}$')
 
+plt.subplot(2,1,2)
+trop = GC_class.GC_sat(datetime(2007,8,1), datetime(2012,12,31), keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
+GC_VC = trop.units_to_molec_cm2(keys=['hcho'])['hcho']
+# want total column for wollongong only:
 
+plt.show()
+plt.close()
 ###########
 ### Record and time STUJFFS
 ###########

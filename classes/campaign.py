@@ -12,6 +12,7 @@ Created on Sun Oct  8 15:40:03 2017
 import numpy as np
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
+import pandas as pd
 
 from utilities import fio
 from utilities import plotting as pp
@@ -204,7 +205,7 @@ class sps(campaign):
 
 __ftir_keys__ = {'H2CO.COLUMN_ABSORPTION.SOLAR':'VC', # vertical column 1d}
                  'H2CO.COLUMN_ABSORPTION.SOLAR_APRIORI':'VC_apri',
-                 'H2CO.COLUMN_ABSORPTION.SOLAR_AVK':'AK', # avg kernal [dates,ALTS]
+                 'H2CO.COLUMN_ABSORPTION.SOLAR_AVK':'VC_AK', # avg kernal [dates,ALTS]
                  'H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR':'VMR', # vertical mixing ratio [dates, ALTS]
                  'H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_APRIORI':'VMR_apri',
                  'H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_AVK':'VMR_AK',
@@ -255,6 +256,13 @@ class Wgong(campaign):
         '''
             TODO: just get midday averages using resampling in dataframe
         '''
+        # First just pull out measurements within the 13-14 window
+        inds        = [ d.hour == 13 for d in self.dates ]
+        middays     = np.array(self.dates)[inds]
+        middatas    = {}
+        for key in ['VC','VC_apri']:
+            middatas[key] = np.array(getattr(self,key))[inds]
+        
         
     def Deconvolve(self,ModelledProfile):
         '''

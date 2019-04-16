@@ -70,18 +70,46 @@ ftir=campaign.Wgong()
 
 # Read GC output
 #trop = GC_class.GC_sat(datetime(2007,8,1), datetime(2012,12,31), keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
-trop = GC_class.GC_sat(datetime(2005,1,1), datetime(2005,1,31), keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
-tropa= GC_class.GC_sat(datetime(2005,1,1), datetime(2005,1,31), keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emiss')
+d0,d1=datetime(2005,1,1), datetime(2005,1,31)
+trop = GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
+tropa= GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emiss')
+# make sure pedges and pmids are created
+trop.add_pedges()
+
+# colours for trop and tropa
+c = 'r'
+ca= 'm'
 
 # grab wollongong square
 Woli, Wolj = util.lat_lon_index(LatWol,LonWol,trop.lats,trop.lons) # lat, lon indices
 GC_VC = trop.units_to_molec_cm2(keys=['hcho'])['hcho'][:,Woli,Wolj,:]
 GCa_VC = tropa.units_to_molec_cm2(keys=['hcho'])['hcho'][:,Woli,Wolj,:]
 
+GC_pmids=trop.pmids[:,Woli,Wolj,:]
+GC_zmids=trop.zmids[:,Woli,Wolj,:]
+
 # Total column also of interest:
 GC_TC = np.sum(GC_VC, axis=1)
 GCa_TC = np.sum(GCa_VC, axis=1)
 
+# check profile
+plt.close()
+plt.figure(figsize=[10,10])
+#ax0=plt.subplot(1,2,1)
+for i,prof in enumerate([trop.hcho[0:20,Woli,Wolj,:],tropa.hcho[0:20,Woli,Wolj,:]]):
+    zmids = np.nanmean(GC_zmids[0:20,:],axis=0)
+    pmids = np.nanmean(GC_pmids[0:20,:],axis=0)
+    
+    mean = np.nanmean(prof,axis=0)
+    lq = np.nanpercentile(prof, 25, axis=0)
+    uq = np.nanpercentile(prof, 75, axis=0)
+    plt.fill_betweenx(zmids, lq, uq, alpha=0.5, color=[c,ca][i])
+    plt.plot(mean,zmids,label=['VMR','VMR$^{\\alpha}$'],linewidth=2,color=[c,ca][i])
+#plt.yscale('log')
+plt.ylim([0, 40000])
+pname_checkprof='check_GC_profile.png'
+plt.savefig(pname_checkprof)
+print("Saved ", pname_checkprof)
 
 # plot time series
 plt.close()
@@ -100,36 +128,9 @@ plt.legend(loc='best')
 plt.show()
 plt.close()
 
+# Resample FTIR to just midday averages
+middatas=ftir.resample_middays()
 
-
-##### Resample to midday averages:
-# First just pull out measurements within the 13-14 window
-inds        = [ d.hour == 13 for d in ftir.dates ]
-middays     = np.array(ftir.dates)[inds]
-middatas    = {}
-for key in ['VC','VC_apri', 'VMR', 'VMR_apri', 'VC_AK']:
-    # pull out midday entries
-    middata = np.array(getattr(ftir,key))[inds]
-    # save into a DataFrame
-    mids = pd.DataFrame(middata,index=middays)
-    # resample to get daily mean values
-    daily = mids.resample('D',axis=0).mean()
-    # save to dict
-    middatas[key] = daily
-
-# VMR Avg Kernal is 3-D, need to reesample manually.....!!
-days=middatas['VC'].index.to_pydatetime()
-middatas['VMR_AK'] = np.zeros([len(days),48,48]) + np.NaN
-for i,day in enumerate(days):
-    # for each day where midday data exists
-    dinds = [ (d.year == day.year) and ( d.month==day.month) and (d.day==day.day) for d in middays ]
-    #if i == 0:
-    #    print(ftir.VMR_AK.shape, ftir.VMR_AK[inds].shape, ftir.VMR_AK[inds][dinds].shape)
-    #elif i < 50:
-    #    print(ftir.VMR_AK[inds][dinds].shape)
-    if np.sum(dinds) < 1:
-        continue
-    middatas['VMR_AK'][i] = np.nanmean(ftir.VMR_AK[inds][dinds], axis=0)
 
 # check plot of VC_AK
 # [dates, levels]

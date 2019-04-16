@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from utilities import fio
+from utilities import utilities as util
 from utilities import plotting as pp
 
 ###############
@@ -252,16 +253,46 @@ class Wgong(campaign):
         self.alts = data['ALTITUDE']
         self.alts_e = data['ALTITUDE.BOUNDARIES'] # altitude limits in km
         
-    def resample_middays(self,key):
+    def resample_middays(self):
         '''
-            TODO: just get midday averages using resampling in dataframe
+            midday averages using resampling in dataframe
+            Returns dictionary and alsoo stores output as middatas
         '''
+        # if recalled, just use last calculation
+        if hasattr(self,'middatas'):
+            return self.middatas
+        
         # First just pull out measurements within the 13-14 window
         inds        = [ d.hour == 13 for d in self.dates ]
         middays     = np.array(self.dates)[inds]
         middatas    = {}
-        for key in ['VC','VC_apri']:
-            middatas[key] = np.array(getattr(self,key))[inds]
+        for key in ['VC','VC_apri', 'VMR', 'VMR_apri', 'VC_AK']:
+            # pull out midday entries
+            middata = np.array(getattr(self,key))[inds]
+            # save into a DataFrame
+            mids = pd.DataFrame(middata,index=middays)
+            # resample to get daily mean values
+            daily = mids.resample('D',axis=0).mean()
+            # save to dict
+            middatas[key] = daily
+        
+        # VMR Avg Kernal is 3-D, need to reesample manually.....!!
+        days=middatas['VC'].index.to_pydatetime()
+        middatas['VMR_AK'] = np.zeros([len(days),48,48]) + np.NaN
+        for i,day in enumerate(days):
+            # for each day where midday data exists
+            dinds = [ (d.year == day.year) and ( d.month==day.month) and (d.day==day.day) for d in middays ]
+            #if i == 0:
+            #    print(self.VMR_AK.shape, self.VMR_AK[inds].shape, self.VMR_AK[inds][dinds].shape)
+            #elif i < 50:
+            #    print(self.VMR_AK[inds][dinds].shape)
+            if np.sum(dinds) < 1:
+                continue
+            middatas['VMR_AK'][i] = np.nanmean(self.VMR_AK[inds][dinds], axis=0)
+        middatas['dates']=util.list_days(middays[0], middays[-1])
+        self.middatas=middatas
+        return middatas
+        
         
         
     def Deconvolve(self,ModelledProfile):

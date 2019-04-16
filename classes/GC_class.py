@@ -620,9 +620,21 @@ class GC_sat(GC_base):
         super(GC_sat,self).__init__(data,attrs,nlats=nlats,nlevs=nlevs)
 
         # fix dates:
-        #self.has_time_dim= len(dates) > 1
+        self.has_time_dim= len(dates) > 1
         #self.dates=dates
+        
+        if hasattr(self,'boxH'):
+            # box heights (m)
+            h=self.boxH
 
+            # Altitudes (m)
+            level_axis=2
+            if self.has_time_dim:
+                level_axis=3
+            self.zmids=np.cumsum(h,axis=level_axis)-h/2.0
+            self.attrs['zmids']={'units':'m','desc':'altitude at middle of each level'}
+            
+        
         # fix TR-PAUSE_TPLEV output:
         if hasattr(self,'tplev'):
             if self._has_time_dim:
@@ -692,9 +704,6 @@ class GC_sat(GC_base):
             # box heights (m)
             h=self.boxH
 
-            # Altitudes (m)
-            self.zmids=np.cumsum(h,axis=2)-h/2.0
-            self.attrs['zmids']={'units':'m','desc':'altitude at middle of each level'}
             # Altitudes in sigmas coordinates
             #self.smids = (pmids - 0.1) / (psurfs - 0.1)
             self.smids = (pmids - TOA) / (psurfs - TOA)

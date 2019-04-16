@@ -695,11 +695,16 @@ def Seasonal_daycycle():
     print('SAVED FIGURE ',pname)
     plt.close()
 
+# Delta ozone vs Delta emissions
 def ozone_sensitivity(area_averaged=False):
     '''
         Regional regression between delta E and delta surface ozone
             Also same plot but for HCHO
     '''
+    pnames = 'Figs/new_emiss/delta_regression_%s.png'
+    if area_averaged:
+        pnames = 'Figs/new_emiss/delta_avg_regression_%s.png'
+    
     d0,d1=datetime(2005,1,1),datetime(2012,12,31)
     ekeys=['E_MEGAN','E_PP_lr']
     enew=E_new(d0,d1,dkeys=ekeys)
@@ -727,8 +732,6 @@ def ozone_sensitivity(area_averaged=False):
     #pixm=util.monthly_average(enew.dates, enew.pixels_PP_lr, keep_spatial=True)['sum']
     
     # need surf ozone before, and after
-    
-    pnames = 'Figs/new_emiss/delta_regression_%s.png'
         
     satkeys = ['IJ-AVG-$_ISOP',     # isop in ppbc?
                'IJ-AVG-$_CH2O',     # hcho in ppb
@@ -781,7 +784,6 @@ def ozone_sensitivity(area_averaged=False):
         
         print(key)
         print(' region, [ yearly slope, regression coeff, p value for slope non zero]')
-        units='ppbv'
         
         for i in range(n_regions):
         #for monthly_anomaly, monthly_data, color, label in zip(anomaly, monthly, colors, labels):
@@ -1607,7 +1609,7 @@ if __name__ == "__main__":
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
     #seasonal_differences()
-    ozone_sensitivity()
+    ozone_sensitivity(area_averaged=True)
     
     # Day cycle for each month compared to sin wave from postiori
     #Seasonal_daycycle() # done with updated suptitle 4/4/19

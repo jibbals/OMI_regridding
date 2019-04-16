@@ -763,6 +763,7 @@ def ozone_sensitivity(area_averaged=False):
                '($E_{GC} - E_{OMI}$) vs. (HCHO - HCHO$^{\\alpha}$)',
                '($E_{GC} - E_{OMI}$) vs. (NO$_x$ - NO$_x$$^{\\alpha}$)']
     keys    = ['ozone', 'HCHO', 'NOx']
+    yticks = {'ozone':None ,'HCHO':np.arange(0,1.6,0.5), 'NOx':None} 
     for darr, stitle, key in zip(darrs,stitles, keys):
         
         # subset to AUS and remove ocean
@@ -818,6 +819,9 @@ def ozone_sensitivity(area_averaged=False):
             
         plt.sca(axes[-1])
         plt.ylabel('$\Delta$'+key)
+        if not area_averaged:
+            if yticks[key] is not None:
+                plt.yticks(yticks[key])
         plt.xlabel('$\Delta$E '+__apri__units__)
         plt.suptitle(stitle)
         plt.savefig(pnames%key)
@@ -1609,7 +1613,7 @@ if __name__ == "__main__":
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
     #seasonal_differences()
-    ozone_sensitivity(area_averaged=True)
+    [ozone_sensitivity(aa) for aa in [True, False] ]
     
     # Day cycle for each month compared to sin wave from postiori
     #Seasonal_daycycle() # done with updated suptitle 4/4/19

@@ -212,11 +212,11 @@ __ftir_keys__ = {'H2CO.COLUMN_ABSORPTION.SOLAR':'VC', # vertical column 1d}
                  'H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_AVK':'VMR_AK',
                  
                  # dims
-                 'PRESSURE_INDEPENDENT':'P', # pressure mid level
+                 'PRESSURE_INDEPENDENT':'p', # pressure mid level
                  #'ALTITUDE':'alts', # altitude mid level not on time dim
                  #'ALTITUDE.BOUNDARIES':'alts_e', # altitude edges not on time dim
                  'DATETIME':'dates', # dates in MJD2000
-                 'SURFACE.PRESSURE_INDEPENDENT':'Psurf', 
+                 'SURFACE.PRESSURE_INDEPENDENT':'psurf', 
                  }
 
 class Wgong(campaign):
@@ -271,7 +271,7 @@ class Wgong(campaign):
         inds        = [ d.hour == 13 for d in self.dates ]
         middays     = np.array(self.dates)[inds]
         middatas    = {}
-        for key in ['VC','VC_apri', 'VMR', 'VMR_apri', 'VC_AK','P', 'DOF']:
+        for key in ['VC','VC_apri', 'VMR', 'VMR_apri', 'VC_AK','p', 'DOF']:
             # pull out midday entries
             middata = np.array(getattr(self,key))[inds]
             # save into a DataFrame
@@ -300,10 +300,51 @@ class Wgong(campaign):
         
         
         
-    def Deconvolve(self,ModelledProfile):
+    def Deconvolve(self,x_m, dates, p):
         '''
             Return what instrument would see if modelled profile was the Truth
-            VMR = APRI + AK * (True - APRI) ?? Check this
+            VMR = APRI + AK * (True - APRI)
+            x_m' = APRI + AK * (x_m - APRI)
+            # RIGHT NOW ASSUMING MODEL STARTS BEFORE START AND ENDS BEFORE END OF FTIR
+        
         '''
-        print("Not Implemented, TODO")
-        return None
+        x_m = np.copy(x_m)
+        dates=np.copy(dates)
+        p=np.copy(p)
+        
+        # get midday columns
+        self.resample_middays()
+        x_a = np.copy(middatas['VMR_apri'])
+        ftdates = np.copy(middates=middatas['dates'])
+        A = np.copy(middatas['VMR_AK'])
+        ftp = np.copy(middatas['p'])
+        # First just subset x_m to the same dates that we have
+        # if input starts before ftir, cut input
+        if dates[0] < ftdates[0]:
+            dpre = util.date_index(ftdates[0],dates)
+            x_m = x_m[dpre:]
+            dates=dates[dpre:]
+            p = p[dpre:]
+        # else cut ftir
+        elif dates[0] > ftdates[0]:
+            dpre = util.date_index(dates[0],ftdates)
+            x_a = x_a[dpre:]
+            ftdates=ftdates[dpre:]
+            ftp = ftp[dpre:]
+            A = A[dpre:]
+        # if input ends before ftir, then cut ftir down
+        if dates[-1] < ftdates[-1]:
+            dpost = util.date_index(dates[-1],ftdates)
+            x_a = x_a[:dpost]
+            ftdates=ftdates[:dpost]
+            ftp = ftp[:dpost]
+            A = A[:dpost]
+        # else if input ends after ftir cut input down
+        elif dates[-1] > ftdates[-1]
+            dpost = util.date_index(ftdates[-1], dates)
+            x_m = x_m[:dpost]
+            dates=dates[:dpost]
+            p=p[:dpost]
+        
+        # Now make sure x_m is interpolated to the same vertical resolution...
+                

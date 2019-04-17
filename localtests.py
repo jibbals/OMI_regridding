@@ -68,6 +68,19 @@ LatWol, LonWol = pp.__cities__['Wol']
 # Read FTIR output
 ftir=campaign.Wgong()
 
+# Resample FTIR to just midday averages
+middatas=ftir.resample_middays()
+
+#plt.plot(middatas['DOF']) # DOFs range from 1.3 in summer to 1.7 in winters
+
+
+from tests import test_campaigns
+# read ftir and plot some stuff for methods summary
+test_campaigns.ftir_method_plots()
+
+import chapter_3_isop
+chapter_3_isop.fullpageFigure()
+
 # Read GC output
 #trop = GC_class.GC_sat(datetime(2007,8,1), datetime(2012,12,31), keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
 d0,d1=datetime(2005,1,1), datetime(2005,1,31)
@@ -97,17 +110,21 @@ plt.close()
 plt.figure(figsize=[10,10])
 #ax0=plt.subplot(1,2,1)
 for i,prof in enumerate([trop.hcho[0:20,Woli,Wolj,:],tropa.hcho[0:20,Woli,Wolj,:]]):
-    zmids = np.nanmean(GC_zmids[0:20,:],axis=0)
+    zmids = np.nanmean(GC_zmids[0:20,:],axis=0)/1000.0
     pmids = np.nanmean(GC_pmids[0:20,:],axis=0)
     
     mean = np.nanmean(prof,axis=0)
     lq = np.nanpercentile(prof, 25, axis=0)
     uq = np.nanpercentile(prof, 75, axis=0)
     plt.fill_betweenx(zmids, lq, uq, alpha=0.5, color=[c,ca][i])
-    plt.plot(mean,zmids,label=['VMR','VMR$^{\\alpha}$'],linewidth=2,color=[c,ca][i])
+    plt.plot(mean,zmids,label=['VMR','VMR$^{\\alpha}$'][i],linewidth=2,color=[c,ca][i])
 #plt.yscale('log')
-plt.ylim([0, 40000])
-pname_checkprof='check_GC_profile.png'
+plt.ylim([0, 40])
+plt.ylabel('altitude [km]')
+plt.legend(fontsize=20)
+plt.xlabel('HCHO [ppbv]')
+plt.title("Wollongong midday HCHO profile Jan, 2005")
+pname_checkprof='Figs/check_GC_profile.png'
 plt.savefig(pname_checkprof)
 print("Saved ", pname_checkprof)
 
@@ -128,46 +145,12 @@ plt.legend(loc='best')
 plt.show()
 plt.close()
 
-# Resample FTIR to just midday averages
-middatas=ftir.resample_middays()
-
-
-# check plot of VC_AK
-# [dates, levels]
-plt.close()
-plt.figure(figsize=(12,12))
-ax0=plt.subplot(1,2,1)
-OAK=middatas['VC_AK']
-mean = np.nanmean(OAK,axis=0)
-lq = np.nanpercentile(OAK,25, axis=0)
-uq = np.nanpercentile(OAK,75, axis=0)
-plt.fill_betweenx(ftir.alts,lq,uq, label='IQR')
-plt.plot(mean, ftir.alts,color='k',linewidth=2, label='mean')
-plt.title("$\Omega$ sensitivity to HCHO")
-plt.legend()
-plt.ylabel('altitude [km]')
 
 
 
-# also check average AK
-AAK = np.nanmean(middatas['VMR_AK'],axis=0)    
-colors=pp.get_colors('gist_ncar',48) # gist_ncar
-plt.subplot(1,2,2, sharey=ax0)
-for i in np.arange(0,48,1):
-    sample = int((i%6)==0)
-    label=[None,ftir.alts[47-i]][sample]
-    linestyle=['--','-'][sample]
-    linewidth=[1,2][sample]
-    alpha=[.5,1][sample]
-    plt.plot(AAK[47-i],ftir.alts, color=colors[i], alpha=alpha,
-             label=label,linestyle=linestyle,linewidth=linewidth)
-plt.legend(title='altitude')
-plt.title('Mean averaging kernal')
-#plt.colorbar()
-plt.ylim([-1,81])
-pname='Figs/FTIR_midday_AK.png'
-plt.savefig(pname)
-print('Saved ',pname)
+
+
+
 
 
 ###########

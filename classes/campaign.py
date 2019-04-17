@@ -213,6 +213,8 @@ __ftir_keys__ = {'H2CO.COLUMN_ABSORPTION.SOLAR':'VC', # vertical column 1d}
                  
                  # dims
                  'PRESSURE_INDEPENDENT':'P', # pressure mid level
+                 #'ALTITUDE':'alts', # altitude mid level not on time dim
+                 #'ALTITUDE.BOUNDARIES':'alts_e', # altitude edges not on time dim
                  'DATETIME':'dates', # dates in MJD2000
                  'SURFACE.PRESSURE_INDEPENDENT':'Psurf', 
                  }
@@ -232,6 +234,8 @@ class Wgong(campaign):
             nicekey=__ftir_keys__[key]
             setattr(self, nicekey, data[key])
             self.attrs[nicekey] = attrs[key]
+            if __VERBOSE__:
+                print("FTIR Reading : ",key, nicekey, data[key].shape)
         
         for year in np.arange(2008,2014):
             data, attrs= fio.read_hdf5(datadir+'ftir_%d.h5'%year)
@@ -242,6 +246,7 @@ class Wgong(campaign):
                 array = np.append(array, data[key], axis=0)
                 setattr(self, nicekey, array)
         
+        self.DOF = np.trace(self.VMR_AK, axis1=1,axis2=2)
         # convert modified julian days to local datetimes
         UTC = [datetime(2000,1,1)+timedelta(days=d) for d in self.dates]
         dates = [ d + timedelta(hours=10) for d in UTC ] # UTC to local time for wollongong
@@ -266,7 +271,7 @@ class Wgong(campaign):
         inds        = [ d.hour == 13 for d in self.dates ]
         middays     = np.array(self.dates)[inds]
         middatas    = {}
-        for key in ['VC','VC_apri', 'VMR', 'VMR_apri', 'VC_AK']:
+        for key in ['VC','VC_apri', 'VMR', 'VMR_apri', 'VC_AK','P', 'DOF']:
             # pull out midday entries
             middata = np.array(getattr(self,key))[inds]
             # save into a DataFrame

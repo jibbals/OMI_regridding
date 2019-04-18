@@ -272,7 +272,7 @@ class Wgong(campaign):
         inds        = [ d.hour == 13 for d in self.dates ]
         middays     = np.array(self.dates)[inds]
         middatas    = {}
-        for key in ['VC','VC_apri', 'VMR', 'VMR_apri', 'VC_AK','p', 'DOF']:
+        for key in ['VC','VC_apri', 'VMR', 'VMR_apri', 'VC_AK','p', 'psurf', 'DOF']:
             # pull out midday entries
             middata = np.array(getattr(self,key))[inds]
             # save into a DataFrame
@@ -309,12 +309,13 @@ class Wgong(campaign):
             Return what instrument would see if modelled profile was the Truth
             VMR = APRI + AK * (True - APRI)
             x_m' = APRI + AK * (x_m - APRI)
-            # RIGHT NOW ASSUMING MODEL STARTS BEFORE START AND ENDS BEFORE END OF FTIR
+            # everything is calculated after flipping the input vertical dim to go from toa to surf
         
         '''
-        x_m = np.copy(x_m)
+        # Copy inputs, flip so that vertical dim is from TOA to surf
+        x_m = np.copy(np.flip(x_m)) 
         dates=np.copy(dates)
-        p=np.copy(p)
+        p=np.copy(np.flip(p))
         
         # get midday columns
         middatas=self.resample_middays()
@@ -323,6 +324,7 @@ class Wgong(campaign):
         A = np.copy(middatas['VMR_AK'])
         ftp = np.copy(middatas['p'])
         x_ret = np.copy(middatas['VMR'])
+        
         
         print("model dates",dates[0],'..',dates[-1])
         print("ftir dates", ftdates[0],'..',ftdates[-1])
@@ -372,16 +374,14 @@ class Wgong(campaign):
         check=True
         for i in range(len(dates)):
             if not np.all(np.isnan(x_a[i])):
-                # coords need to be ascending for interpolation
-                ftpr    = np.flip(ftp[i])
-                pr      = np.flip(p[i])
-                x_mr    = np.flip(x_m[i])
-                matched_x_m[i] = np.flip(np.interp(ftpr,pr,x_mr,left=None,right=None))
+                # interpolate to FTIR pressures
+                matched_x_m[i] = np.interp(ftp[i],p[i],x_m[i],left=None,right=None)
                 
                 new_x_m[i] = x_a[i] + np.matmul(A[i],(matched_x_m[i] - x_a[i]))
         
                 
                 if check:
+                    checki = i
                     plt.plot(x_m[i],p[i],':x',label='x$_{GC}$')
                     plt.plot(matched_x_m[i], ftp[i], '--+', label='interpolated x$_{GC}$')
                     plt.plot(1000.0*x_a[i], ftp[i], '--1', label='x$_{apri}$')
@@ -395,4 +395,35 @@ class Wgong(campaign):
                     print("Saved ", checkname)
                     check = False
         
-        return new_x_m, dates, ftp, x_a, x_m, x_ret
+        TOA = np.zeros(np.shape(dates))*ftp[:,0] # zeros or nans as TOA
+        pedges = (ftp[:,1:]+ftp[:,0:-1])/(2.0)
+        psurf  = ftp[:,-1] + (ftp[:,-1] - ftp[:,-2])/2.0 # approximated by extension
+        print('pmids : ',np.shape(ftp),ftp[checki,-6:])
+        print('pedges: ',np.shape(pedges),pedges[checki,-5:])
+        print('adding TOA and psurf : ',np.shape(TOA),TOA[checki],np.shape(psurf),psurf[checki])
+        
+        # insert TOA at start of pedges
+        pedges = np.insert(pedges, 0, TOA, axis=1)
+        # append psurf to end, needs to be same number of dims as pedges
+        psurf = np.expand_dims(psurf,axis=1)
+        pedges = np.append(pedges, psurf, axis=1)
+        
+        print('pedges: ',np.shape(pedges),pedges[checki,:6],'...',pedges[checki,-6:])
+        
+        # ppbv -> molec/cm2 assuming dry air profile
+        dp = pedges[:,1:] - pedges[:,:-1]
+        
+        new_TC = np.sum(new_x_m*2.12e13 * dp, axis=1)
+        orig_TC = np.sum(matched_x_m * 2.12e13 * dp, axis=1)
+        TC_ret = np.sum(x_ret * 2.12e16 * dp, axis=1) # ppmv -> molec/cm2
+        
+        
+        return {'new_x_m':new_x_m, 'dates':dates, 'p':ftp,
+                # Delta p and pedges
+                'dp':dp, 'pedges':pedges, 
+                # Original and interpolated profiles
+                'x_m':x_m, 'matched_x_m':matched_x_m, 
+                # FTIR outputs
+                'x_a':x_a, 'x_ret':x_ret, 'A':A, 
+                # TOtal columns
+                'new_TC':new_TC, 'orig_TC':orig_TC, 'TC_ret':TC_ret}

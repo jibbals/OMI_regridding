@@ -83,7 +83,7 @@ chapter_3_isop.fullpageFigure()
 
 # Read GC output
 #trop = GC_class.GC_sat(datetime(2007,8,1), datetime(2012,12,31), keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
-d0,d1=datetime(2008,1,1), datetime(2008,1,31)
+d0,d1=datetime(2007,6,1), datetime(2012,12,31)
 trop = GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
 tropa= GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emiss')
 # make sure pedges and pmids are created
@@ -98,10 +98,25 @@ ca= 'm'
 Woli, Wolj = util.lat_lon_index(LatWol,LonWol,trop.lats,trop.lons) # lat, lon indices
 GC_VMR  = trop.hcho[:,Woli,Wolj,:]
 GCa_VMR = tropa.hcho[:,Woli,Wolj,:]
-p=trop.pmids[:,Woli,Wolj,:]
-GC_VMR_ret, dates_ret, p_ret, _,_,_ = ftir.Deconvolve(GC_VMR, dates,p, checkname='check_interp.png')
-GCa_VMR_ret, dates_ret, p_ret, _,_,_ = ftir.Deconvolve(GCa_VMR, dates,p,checkname='check_interp_a.png')
+p       = trop.pmids[:,Woli,Wolj,:]
+decon   = ftir.Deconvolve(GC_VMR, dates,p, checkname='check_interp.png')
+decona  = ftir.Deconvolve(GCa_VMR, dates,p,checkname='check_interp_a.png')
+print(decon['new_TC'].shape)
 
+# need delta pressure for TC conversion:
+data={ k:decon[k] for k in ['new_TC', 'orig_TC', 'TC_ret']}
+TC_df = pd.DataFrame(data, index=decon['dates'])
+
+print(decon['new_TC'])
+print(decon['orig_TC'])
+print(decon['TC_ret'])
+TC_df.plot()
+plt.show()
+
+pname_TC_series='check_TC_series.png'
+plt.savefig(pname_TC_series)
+plt.close()
+print("Saved ",pname_TC_series)
 assert False, 'stop'
 
 GC_VC = trop.units_to_molec_cm2(keys=['hcho'])['hcho'][:,Woli,Wolj,:]

@@ -365,6 +365,64 @@ def check_modelled_background(month=datetime(2005,1,1)):
                  clabel=clabel, title='no isoprene - reference sector',
                  pname='Figs/GC/GC_background_hcho_%s.png'%month.strftime('%Y%m'))
 
+
+def check_modelled_profile():
+    '''
+        Check profile before and after scaling
+    '''
+    pname_checkprof='Figs/check_GC_profile.png'
+    
+    LatWol, LonWol = pp.__cities__['Wol']
+    
+    # Read GC output
+    #trop = GC_class.GC_sat(datetime(2007,8,1), datetime(2012,12,31), keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
+    d0,d1=datetime(2005,1,1), datetime(2005,1,31)
+    trop = GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
+    tropa= GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emiss')
+    # make sure pedges and pmids are created
+    trop.add_pedges()
+    
+    # colours for trop and tropa
+    c = 'r'
+    ca= 'm'
+    
+    # grab wollongong square
+    Woli, Wolj = util.lat_lon_index(LatWol,LonWol,trop.lats,trop.lons) # lat, lon indices
+    GC_VC = trop.units_to_molec_cm2(keys=['hcho'])['hcho'][:,Woli,Wolj,:]
+    GCa_VC = tropa.units_to_molec_cm2(keys=['hcho'])['hcho'][:,Woli,Wolj,:]
+    
+    GC_pmids=trop.pmids[:,Woli,Wolj,:]
+    GC_zmids=trop.zmids[:,Woli,Wolj,:]
+    
+    # Total column also of interest:
+    GC_TC = np.sum(GC_VC, axis=1)
+    GCa_TC = np.sum(GCa_VC, axis=1)
+    
+    # check profile
+    plt.close()
+    plt.figure(figsize=[10,10])
+    #ax0=plt.subplot(1,2,1)
+    for i,prof in enumerate([trop.hcho[0:20,Woli,Wolj,:],tropa.hcho[0:20,Woli,Wolj,:]]):
+        zmids = np.nanmean(GC_zmids[0:20,:],axis=0)/1000.0
+        pmids = np.nanmean(GC_pmids[0:20,:],axis=0)
+        
+        mean = np.nanmean(prof,axis=0)
+        lq = np.nanpercentile(prof, 25, axis=0)
+        uq = np.nanpercentile(prof, 75, axis=0)
+        plt.fill_betweenx(zmids, lq, uq, alpha=0.5, color=[c,ca][i])
+        plt.plot(mean,zmids,label=['VMR','VMR$^{\\alpha}$'][i],linewidth=2,color=[c,ca][i])
+    #plt.yscale('log')
+    plt.ylim([0, 40])
+    plt.ylabel('altitude [km]')
+    plt.legend(fontsize=20)
+    plt.xlabel('HCHO [ppbv]')
+    plt.title("Wollongong midday HCHO profile Jan, 2005")
+    plt.savefig(pname_checkprof)
+    print("Saved ", pname_checkprof)
+    
+    # plot time series
+    plt.close()
+
 # TODO update titles to just \Omega_{GC}, update legends to a priori or E_{GC}] and \Omega_{GC}, update y axes also
 def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
     '''

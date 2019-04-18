@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from utilities import fio
+from utilities import utilities as util
 from utilities import plotting as pp
 
 ###############
@@ -211,9 +212,11 @@ __ftir_keys__ = {'H2CO.COLUMN_ABSORPTION.SOLAR':'VC', # vertical column 1d}
                  'H2CO.MIXING.RATIO.VOLUME_ABSORPTION.SOLAR_AVK':'VMR_AK',
                  
                  # dims
-                 'PRESSURE_INDEPENDENT':'P', # pressure mid level
+                 'PRESSURE_INDEPENDENT':'p', # pressure mid level
+                 #'ALTITUDE':'alts', # altitude mid level not on time dim
+                 #'ALTITUDE.BOUNDARIES':'alts_e', # altitude edges not on time dim
                  'DATETIME':'dates', # dates in MJD2000
-                 'SURFACE.PRESSURE_INDEPENDENT':'Psurf', 
+                 'SURFACE.PRESSURE_INDEPENDENT':'psurf', 
                  }
 
 class Wgong(campaign):
@@ -223,7 +226,7 @@ class Wgong(campaign):
         '''
             Read the h5 data
         '''
-        # read first year
+        # read first year (200711 - 20071231)
         datadir='Data/campaigns/Wgong/'
         data, attrs= fio.read_hdf5(datadir+'ftir_2007.h5')
         self.attrs={}
@@ -231,8 +234,11 @@ class Wgong(campaign):
             nicekey=__ftir_keys__[key]
             setattr(self, nicekey, data[key])
             self.attrs[nicekey] = attrs[key]
+            if __VERBOSE__:
+                print("FTIR Reading : ",key, nicekey, data[key].shape)
         
-        for year in np.arange(2008,2014):
+        # Read 20080101-20121231
+        for year in np.arange(2008,2013):
             data, attrs= fio.read_hdf5(datadir+'ftir_%d.h5'%year)
             # extend along time dim for things we want to keep
             for key in __ftir_keys__.keys():
@@ -241,6 +247,7 @@ class Wgong(campaign):
                 array = np.append(array, data[key], axis=0)
                 setattr(self, nicekey, array)
         
+        self.DOF = np.trace(self.VMR_AK, axis1=1,axis2=2)
         # convert modified julian days to local datetimes
         UTC = [datetime(2000,1,1)+timedelta(days=d) for d in self.dates]
         dates = [ d + timedelta(hours=10) for d in UTC ] # UTC to local time for wollongong
@@ -252,22 +259,171 @@ class Wgong(campaign):
         self.alts = data['ALTITUDE']
         self.alts_e = data['ALTITUDE.BOUNDARIES'] # altitude limits in km
         
-    def resample_middays(self,key):
+    def resample_middays(self):
         '''
-            TODO: just get midday averages using resampling in dataframe
+            midday averages using resampling in dataframe
+            Returns dictionary and alsoo stores output as middatas
         '''
+        # if recalled, just use last calculation
+        if hasattr(self,'middatas'):
+            return self.middatas
+        
         # First just pull out measurements within the 13-14 window
         inds        = [ d.hour == 13 for d in self.dates ]
         middays     = np.array(self.dates)[inds]
         middatas    = {}
-        for key in ['VC','VC_apri']:
-            middatas[key] = np.array(getattr(self,key))[inds]
+        for key in ['VC','VC_apri', 'VMR', 'VMR_apri', 'VC_AK','p', 'psurf', 'DOF']:
+            # pull out midday entries
+            middata = np.array(getattr(self,key))[inds]
+            # save into a DataFrame
+            mids = pd.DataFrame(middata,index=middays)
+            # resample to get daily mean values
+            daily = mids.resample('D',axis=0).mean()
+            # save to dict
+            middatas[key] = daily
+        
+        # VMR Avg Kernal is 3-D, need to reesample manually.....!!
+        days=middatas['VC'].index.to_pydatetime()
+        middatas['VMR_AK'] = np.zeros([len(days),48,48]) + np.NaN
+        for i,day in enumerate(days):
+            # for each day where midday data exists
+            dinds = [ (d.year == day.year) and ( d.month==day.month) and (d.day==day.day) for d in middays ]
+            #if i == 0:
+            #    print(self.VMR_AK.shape, self.VMR_AK[inds].shape, self.VMR_AK[inds][dinds].shape)
+            #elif i < 50:
+            #    print(self.VMR_AK[inds][dinds].shape)
+            if np.sum(dinds) < 1:
+                continue
+            middatas['VMR_AK'][i] = np.nanmean(self.VMR_AK[inds][dinds], axis=0)
+        # remove hours and store datetimes
+        just_dates0 = datetime(middays[0].year, middays[0].month, middays[0].day)
+        just_dates1 = datetime(middays[-1].year, middays[-1].month, middays[-1].day)
+        middatas['dates']=util.list_days(just_dates0,just_dates1)
+        self.middatas=middatas
+        return middatas
         
         
-    def Deconvolve(self,ModelledProfile):
+        
+    def Deconvolve(self,x_m, dates, p, checkname='Figs/FTIR_check_interpolation.png'):
         '''
             Return what instrument would see if modelled profile was the Truth
-            VMR = APRI + AK * (True - APRI) ?? Check this
+            VMR = APRI + AK * (True - APRI)
+            x_m' = APRI + AK * (x_m - APRI)
+            # everything is calculated after flipping the input vertical dim to go from toa to surf
+        
         '''
-        print("Not Implemented, TODO")
-        return None
+        # Copy inputs, flip so that vertical dim is from TOA to surf
+        x_m = np.copy(np.flip(x_m)) 
+        dates=np.copy(dates)
+        p=np.copy(np.flip(p))
+        
+        # get midday columns
+        middatas=self.resample_middays()
+        x_a = np.copy(middatas['VMR_apri'])
+        ftdates = np.copy(middatas['dates'])
+        A = np.copy(middatas['VMR_AK'])
+        ftp = np.copy(middatas['p'])
+        x_ret = np.copy(middatas['VMR'])
+        
+        
+        print("model dates",dates[0],'..',dates[-1])
+        print("ftir dates", ftdates[0],'..',ftdates[-1])
+        print("subsetting...")
+        # First just subset x_m to the same dates that we have
+        # if input starts before ftir, cut input
+        if dates[0] < ftdates[0]:
+            dpre = util.date_index(ftdates[0],dates)[0]
+            print('dpre0:',dpre)
+            x_m = x_m[dpre:]
+            dates=dates[dpre:]
+            p = p[dpre:]
+        # else cut ftir
+        elif dates[0] > ftdates[0]:
+            dpre = util.date_index(dates[0],ftdates)[0]
+            print('dpre1:',dpre, dates[0], ftdates[dpre])
+            x_a = x_a[dpre:]
+            ftdates=ftdates[dpre:]
+            ftp = ftp[dpre:]
+            A = A[dpre:]
+            x_ret = x_ret[dpre:]
+        # if input ends before ftir, then cut ftir down
+        if dates[-1] < ftdates[-1]:
+            dpost = util.date_index(dates[-1],ftdates)[0] + 1 # need to add 1 to get right subset
+            print('dpost0:',dpost)
+            x_a = x_a[:dpost]
+            ftdates=ftdates[:dpost]
+            ftp = ftp[:dpost]
+            A = A[:dpost]
+            x_ret = x_ret[:dpost]
+        # else if input ends after ftir cut input down
+        elif dates[-1] > ftdates[-1]:
+            dpost = util.date_index(ftdates[-1], dates)[0]  + 1 # need to add 1 to get right subset
+            print('dpost1:',dpost)
+            x_m = x_m[:dpost]
+            dates=dates[:dpost]
+            p=p[:dpost]
+        
+        # check subsetting dates worked OK
+        print("model dates",dates[0],'..',dates[-1])
+        print("ftir dates", ftdates[0],'..',ftdates[-1])
+        assert np.all(dates == ftdates), "dates don't match after subsetting"
+        
+        # Now make sure x_m is interpolated to the same vertical resolution...
+        matched_x_m = np.copy(x_a)
+        new_x_m     = np.copy(x_a)
+        check=True
+        for i in range(len(dates)):
+            if not np.all(np.isnan(x_a[i])):
+                # interpolate to FTIR pressures
+                matched_x_m[i] = np.interp(ftp[i],p[i],x_m[i],left=None,right=None)
+                
+                new_x_m[i] = x_a[i] + np.matmul(A[i],(matched_x_m[i] - x_a[i]))
+        
+                
+                if check:
+                    checki = i
+                    plt.plot(x_m[i],p[i],':x',label='x$_{GC}$')
+                    plt.plot(matched_x_m[i], ftp[i], '--+', label='interpolated x$_{GC}$')
+                    plt.plot(1000.0*x_a[i], ftp[i], '--1', label='x$_{apri}$')
+                    plt.legend(loc='best')
+                    plt.yscale('log')
+                    plt.ylim([1.2e3, 5e1])
+                    plt.ylabel('pressure [hPa]')
+                    plt.xlabel('HCHO [ppbv]')
+                    plt.savefig(checkname)
+                    plt.close()
+                    print("Saved ", checkname)
+                    check = False
+        
+        TOA = np.zeros(np.shape(dates))*ftp[:,0] # zeros or nans as TOA
+        pedges = (ftp[:,1:]+ftp[:,0:-1])/(2.0)
+        psurf  = ftp[:,-1] + (ftp[:,-1] - ftp[:,-2])/2.0 # approximated by extension
+        print('pmids : ',np.shape(ftp),ftp[checki,-6:])
+        print('pedges: ',np.shape(pedges),pedges[checki,-5:])
+        print('adding TOA and psurf : ',np.shape(TOA),TOA[checki],np.shape(psurf),psurf[checki])
+        
+        # insert TOA at start of pedges
+        pedges = np.insert(pedges, 0, TOA, axis=1)
+        # append psurf to end, needs to be same number of dims as pedges
+        psurf = np.expand_dims(psurf,axis=1)
+        pedges = np.append(pedges, psurf, axis=1)
+        
+        print('pedges: ',np.shape(pedges),pedges[checki,:6],'...',pedges[checki,-6:])
+        
+        # ppbv -> molec/cm2 assuming dry air profile
+        dp = pedges[:,1:] - pedges[:,:-1]
+        
+        new_TC = np.sum(new_x_m*2.12e13 * dp, axis=1)
+        orig_TC = np.sum(matched_x_m * 2.12e13 * dp, axis=1)
+        TC_ret = np.sum(x_ret * 2.12e16 * dp, axis=1) # ppmv -> molec/cm2
+        
+        
+        return {'new_x_m':new_x_m, 'dates':dates, 'p':ftp,
+                # Delta p and pedges
+                'dp':dp, 'pedges':pedges, 
+                # Original and interpolated profiles
+                'x_m':x_m, 'matched_x_m':matched_x_m, 
+                # FTIR outputs
+                'x_a':x_a, 'x_ret':x_ret, 'A':A, 
+                # TOtal columns
+                'new_TC':new_TC, 'orig_TC':orig_TC, 'TC_ret':TC_ret}

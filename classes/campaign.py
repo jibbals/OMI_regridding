@@ -226,7 +226,7 @@ class Wgong(campaign):
         '''
             Read the h5 data
         '''
-        # read first year
+        # read first year (200711 - 20071231)
         datadir='Data/campaigns/Wgong/'
         data, attrs= fio.read_hdf5(datadir+'ftir_2007.h5')
         self.attrs={}
@@ -237,7 +237,8 @@ class Wgong(campaign):
             if __VERBOSE__:
                 print("FTIR Reading : ",key, nicekey, data[key].shape)
         
-        for year in np.arange(2008,2014):
+        # Read 20080101-20121231
+        for year in np.arange(2008,2013):
             data, attrs= fio.read_hdf5(datadir+'ftir_%d.h5'%year)
             # extend along time dim for things we want to keep
             for key in __ftir_keys__.keys():
@@ -294,13 +295,16 @@ class Wgong(campaign):
             if np.sum(dinds) < 1:
                 continue
             middatas['VMR_AK'][i] = np.nanmean(self.VMR_AK[inds][dinds], axis=0)
-        middatas['dates']=util.list_days(middays[0], middays[-1])
+        # remove hours and store datetimes
+        just_dates0 = datetime(middays[0].year, middays[0].month, middays[0].day)
+        just_dates1 = datetime(middays[-1].year, middays[-1].month, middays[-1].day)
+        middatas['dates']=util.list_days(just_dates0,just_dates1)
         self.middatas=middatas
         return middatas
         
         
         
-    def Deconvolve(self,x_m, dates, p):
+    def Deconvolve(self,x_m, dates, p, checkname='Figs/FTIR_check_interpolation.png'):
         '''
             Return what instrument would see if modelled profile was the Truth
             VMR = APRI + AK * (True - APRI)
@@ -313,38 +317,82 @@ class Wgong(campaign):
         p=np.copy(p)
         
         # get midday columns
-        self.resample_middays()
+        middatas=self.resample_middays()
         x_a = np.copy(middatas['VMR_apri'])
-        ftdates = np.copy(middates=middatas['dates'])
+        ftdates = np.copy(middatas['dates'])
         A = np.copy(middatas['VMR_AK'])
         ftp = np.copy(middatas['p'])
+        x_ret = np.copy(middatas['VMR'])
+        
+        print("model dates",dates[0],'..',dates[-1])
+        print("ftir dates", ftdates[0],'..',ftdates[-1])
+        print("subsetting...")
         # First just subset x_m to the same dates that we have
         # if input starts before ftir, cut input
         if dates[0] < ftdates[0]:
-            dpre = util.date_index(ftdates[0],dates)
+            dpre = util.date_index(ftdates[0],dates)[0]
+            print('dpre0:',dpre)
             x_m = x_m[dpre:]
             dates=dates[dpre:]
             p = p[dpre:]
         # else cut ftir
         elif dates[0] > ftdates[0]:
-            dpre = util.date_index(dates[0],ftdates)
+            dpre = util.date_index(dates[0],ftdates)[0]
+            print('dpre1:',dpre, dates[0], ftdates[dpre])
             x_a = x_a[dpre:]
             ftdates=ftdates[dpre:]
             ftp = ftp[dpre:]
             A = A[dpre:]
+            x_ret = x_ret[dpre:]
         # if input ends before ftir, then cut ftir down
         if dates[-1] < ftdates[-1]:
-            dpost = util.date_index(dates[-1],ftdates)
+            dpost = util.date_index(dates[-1],ftdates)[0] + 1 # need to add 1 to get right subset
+            print('dpost0:',dpost)
             x_a = x_a[:dpost]
             ftdates=ftdates[:dpost]
             ftp = ftp[:dpost]
             A = A[:dpost]
+            x_ret = x_ret[:dpost]
         # else if input ends after ftir cut input down
-        elif dates[-1] > ftdates[-1]
-            dpost = util.date_index(ftdates[-1], dates)
+        elif dates[-1] > ftdates[-1]:
+            dpost = util.date_index(ftdates[-1], dates)[0]  + 1 # need to add 1 to get right subset
+            print('dpost1:',dpost)
             x_m = x_m[:dpost]
             dates=dates[:dpost]
             p=p[:dpost]
         
+        # check subsetting dates worked OK
+        print("model dates",dates[0],'..',dates[-1])
+        print("ftir dates", ftdates[0],'..',ftdates[-1])
+        assert np.all(dates == ftdates), "dates don't match after subsetting"
+        
         # Now make sure x_m is interpolated to the same vertical resolution...
+        matched_x_m = np.copy(x_a)
+        new_x_m     = np.copy(x_a)
+        check=True
+        for i in range(len(dates)):
+            if not np.all(np.isnan(x_a[i])):
+                # coords need to be ascending for interpolation
+                ftpr    = np.flip(ftp[i])
+                pr      = np.flip(p[i])
+                x_mr    = np.flip(x_m[i])
+                matched_x_m[i] = np.flip(np.interp(ftpr,pr,x_mr,left=None,right=None))
                 
+                new_x_m[i] = x_a[i] + np.matmul(A[i],(matched_x_m[i] - x_a[i]))
+        
+                
+                if check:
+                    plt.plot(x_m[i],p[i],':x',label='x$_{GC}$')
+                    plt.plot(matched_x_m[i], ftp[i], '--+', label='interpolated x$_{GC}$')
+                    plt.plot(1000.0*x_a[i], ftp[i], '--1', label='x$_{apri}$')
+                    plt.legend(loc='best')
+                    plt.yscale('log')
+                    plt.ylim([1.2e3, 5e1])
+                    plt.ylabel('pressure [hPa]')
+                    plt.xlabel('HCHO [ppbv]')
+                    plt.savefig(checkname)
+                    plt.close()
+                    print("Saved ", checkname)
+                    check = False
+        
+        return new_x_m, dates, ftp, x_a, x_m, x_ret

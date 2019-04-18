@@ -76,18 +76,19 @@ middatas=ftir.resample_middays()
 
 from tests import test_campaigns
 # read ftir and plot some stuff for methods summary
-test_campaigns.ftir_method_plots()
+#test_campaigns.ftir_method_plots()
 
 import chapter_3_isop
 chapter_3_isop.fullpageFigure()
 
 # Read GC output
 #trop = GC_class.GC_sat(datetime(2007,8,1), datetime(2012,12,31), keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
-d0,d1=datetime(2005,1,1), datetime(2005,1,31)
+d0,d1=datetime(2008,1,1), datetime(2008,1,31)
 trop = GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
 tropa= GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emiss')
 # make sure pedges and pmids are created
 trop.add_pedges()
+dates=trop.dates
 
 # colours for trop and tropa
 c = 'r'
@@ -95,6 +96,14 @@ ca= 'm'
 
 # grab wollongong square
 Woli, Wolj = util.lat_lon_index(LatWol,LonWol,trop.lats,trop.lons) # lat, lon indices
+GC_VMR  = trop.hcho[:,Woli,Wolj,:]
+GCa_VMR = tropa.hcho[:,Woli,Wolj,:]
+p=trop.pmids[:,Woli,Wolj,:]
+GC_VMR_ret, dates_ret, p_ret, _,_,_ = ftir.Deconvolve(GC_VMR, dates,p, checkname='check_interp.png')
+GCa_VMR_ret, dates_ret, p_ret, _,_,_ = ftir.Deconvolve(GCa_VMR, dates,p,checkname='check_interp_a.png')
+
+assert False, 'stop'
+
 GC_VC = trop.units_to_molec_cm2(keys=['hcho'])['hcho'][:,Woli,Wolj,:]
 GCa_VC = tropa.units_to_molec_cm2(keys=['hcho'])['hcho'][:,Woli,Wolj,:]
 
@@ -109,7 +118,7 @@ GCa_TC = np.sum(GCa_VC, axis=1)
 plt.close()
 plt.figure(figsize=[10,10])
 #ax0=plt.subplot(1,2,1)
-for i,prof in enumerate([trop.hcho[0:20,Woli,Wolj,:],tropa.hcho[0:20,Woli,Wolj,:]]):
+for i,prof in enumerate([GC_VMR,GCa_VMR]):
     zmids = np.nanmean(GC_zmids[0:20,:],axis=0)/1000.0
     pmids = np.nanmean(GC_pmids[0:20,:],axis=0)
     
@@ -125,8 +134,9 @@ plt.legend(fontsize=20)
 plt.xlabel('HCHO [ppbv]')
 plt.title("Wollongong midday HCHO profile Jan, 2005")
 pname_checkprof='Figs/check_GC_profile.png'
-plt.savefig(pname_checkprof)
-print("Saved ", pname_checkprof)
+
+#plt.savefig(pname_checkprof)
+#print("Saved ", pname_checkprof)
 
 # plot time series
 plt.close()

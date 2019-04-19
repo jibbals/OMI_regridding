@@ -74,7 +74,7 @@ middatas=ftir.resample_middays()
 #plt.plot(middatas['DOF']) # DOFs range from 1.3 in summer to 1.7 in winters
 
 
-from tests import test_campaigns
+#from tests import test_campaigns
 # read ftir and plot some stuff for methods summary
 #test_campaigns.ftir_method_plots()
 
@@ -84,6 +84,7 @@ chapter_3_isop.fullpageFigure()
 # Read GC output
 #trop = GC_class.GC_sat(datetime(2007,8,1), datetime(2012,12,31), keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
 d0,d1=datetime(2007,6,1), datetime(2012,12,31)
+#d0,d1=datetime(2008,1,1), datetime(2008,1,31)
 trop = GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
 tropa= GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emiss')
 # make sure pedges and pmids are created
@@ -117,7 +118,30 @@ pname_TC_series='check_TC_series.png'
 plt.savefig(pname_TC_series)
 plt.close()
 print("Saved ",pname_TC_series)
+
+
+# Lets also do multi year seasonal cycle
+plt.close()
+tc_colors = {'new_TC':'m','orig_TC':'r','TC_ret':'k'}
+for k,v in data.items():
+    mya = util.multi_year_average(v, decon['dates'])
+    myav = np.squeeze(mya.mean().values)
+    uq = np.squeeze(mya.quantile(.75).values)
+    lq = np.squeeze(mya.quantile(.25).values)
+    tcc = tc_colors[k]
+    plt.fill_between(np.arange(12), lq, uq, color=tcc, alpha=0.4)
+    plt.plot(np.arange(12),myav, label=k, linewidth=2, color=tcc)
+plt.legend(fontsize=22)
+plt.ylabel('$\Omega$ [molec cm$^{-2}$]')
+plt.xlabel('month')
+plt.title('Multiyear monthly mean total columns')
+pname_mya='check_TC_MYA.png'
+plt.savefig(pname_mya)
+plt.close()
+print("Saved ",pname_mya)
+
 assert False, 'stop'
+
 
 GC_VC = trop.units_to_molec_cm2(keys=['hcho'])['hcho'][:,Woli,Wolj,:]
 GCa_VC = tropa.units_to_molec_cm2(keys=['hcho'])['hcho'][:,Woli,Wolj,:]

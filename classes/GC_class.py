@@ -43,14 +43,16 @@ sat_path  = {'tropchem':rdir+'geos5_2x25_tropchem/satellite_output/ts_satellite_
              'UCX':rdir+'UCX_geos5_2x25/satellite_output/ts_satellite.%s',
              'biogenic':rdir+'geos5_2x25_tropchem_biogenic/satellite_output/sat_biogenic.%s.bpch',
              'new_emissions':rdir+'new_emissions/satellite_output/ts_satellite_altered.%s.bpch',
-             'new_emiss':rdir+'new_emissions/satellite_output/ts_satellite_altered.%s.bpch',}
+             }
+#             'new_emiss':rdir+'new_emissions/satellite_output/ts_satellite_altered.%s.bpch',}
 tavg_path = {'tropchem':rdir+'geos5_2x25_tropchem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'halfisop':rdir+'geos5_2x25_tropchem_halfisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'noisop':rdir+'geos5_2x25_tropchem_noisoprene/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'UCX':rdir+'UCX_geos5_2x25/trac_avg/trac_avg_geos5_2x25_UCX_updated.%s',
              'nochem':rdir+'nochem/trac_avg/trac_avg.geos5_2x25_tropchem.%s',
              'new_emissions':rdir+'new_emissions/trac_avg/trac_avg.geos5_2x25_tropchem_altered.%s',
-             'new_emiss':rdir+'new_emissions/trac_avg/trac_avg.geos5_2x25_tropchem_altered.%s',}
+              }
+             #'new_emiss':rdir+'new_emissions/trac_avg/trac_avg.geos5_2x25_tropchem_altered.%s',}
 
 # GC OUTPUT NAMES:
 __coords__ = ['lev','lon','lat','time']

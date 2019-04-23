@@ -91,6 +91,47 @@ colors=util.__subregions_colors__
 regions=util.__subregions__
 n_regions=len(regions)
 
+## Summarise a data set over subregions
+def summarise(arr, dates, lats, lons, label):
+    ''' regional seasonal mean, median, std within subregions after taking monthly averages '''
+    
+    months = util.list_months(dates)
+    # subset to AUS and remove ocean
+    subs = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,data=[arr], has_time_dim=True)
+    darr = subs['data'][0]
+    om = util.oceanmask(lats,lons)
+    om = np.repeat(om[np.newaxis,:,:], len(dates), axis=0)
+    darr[om] = np.NaN
+    
+    # monthly averaged
+    monthly = util.monthly_averaged(dates, darr, keep_spatial=True)
+    darr = monthly['mean']
+    
+    # pull out summers
+    summers=[ i%12 in [0,1,11] for i in range(len(months)) ]
+    autumns=[ i%12 in [2,3,4] for i in range(len(months)) ]
+    
+    winters=[ i%12 in [5,6,7] for i in range(len(months)) ]
+    springs=[ i%12 in [8,9,10] for i in range(len(months)) ]
+    
+    # sub regions
+    darrsub, lats_regional, lons_regional = util.pull_out_subregions(darr,lats,lons,subregions=regions)
+    
+    
+    for i in range(n_regions):        
+        darr_sum = darrsub[summers,:,:]
+        darr_aut = darrsub[autumns,:,:]
+        darr_win = darrsub[winters,:,:]
+        darr_spr = darrsub[springs,:,:]
+        
+        for reglab, darray in zip(['SUMMER','AUTUMN','WINTER','SPRING'],[darr_sum, darr_aut, darr_win, darr_spr]):
+            print(reglab," @ ",labels[i])
+            print(label, " MEAN: ", np.nanmean(darray))
+            print(label, " STD:", np.nanstd(darray))
+        
+            
+        
+
 ###################
 ### SAVE SATELLITE OUTPUT FOR QUICK ANALYSIS
 ###################
@@ -547,6 +588,37 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
 # RESULTS
 ###
 
+def compare_model_outputs():
+    '''
+        Print out seasonal regional surface values for things between tropchem and scaled run
+    '''
+    d0 = datetime(2005,1,1)
+    d1 = datetime(2012,12,31)
+    satkeys = ['IJ-AVG-$_ISOP',     # isop in ppbc?
+               'IJ-AVG-$_CH2O',     # hcho in ppb
+               'IJ-AVG-$_NO2',      # NO2 in ppb
+               'IJ-AVG-$_NO',       # NO in ppb?
+               'IJ-AVG-$_O3',       # O3 in ppb
+               ] #+ GC_class.__gc_tropcolumn_keys__
+    new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
+    tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
+    # dims for GEOS-Chem outputs
+    dates=new_sat.dates
+    lats=new_sat.lats
+    lons=new_sat.lons
+    
+    
+    # new_sat.hcho.shape #(31, 91, 144, 47)
+    # new_sat.isop.shape #(31, 91, 144, 47)
+    o3      = tropchem_sat.O3[:,:,:,0] # surface only
+    o3a     = new_sat.O3[:,:,:,0]
+    hcho    = tropchem_sat.hcho[:,:,:,0]
+    hchoa   = new_sat.hcho[:,:,:,0]
+    nox     = tropchem_sat.NO[:,:,:,0] + tropchem_sat.NO2[:,:,:,0]
+    noxa    = new_sat.NO[:,:,:,0] + new_sat.NO2[:,:,:,0]
+    
+    for arr, label in zip([o3, o3a, hcho, hchoa, nox, noxa],['ozone','ozone_scaled', 'HCHO','HCHO_scaled', 'NOx','NOx_scaled']):
+        summarise(arr, dates, lats, lons, label)
 
 def time_series(d0=datetime(2005,1,1), d1=datetime(2012,12,31)):
     '''
@@ -781,7 +853,7 @@ def ozone_sensitivity(area_averaged=False):
     # change to monthly averages
     deltaE = util.monthly_averaged(dates, deltaE, keep_spatial=True)['mean']
     # subset just to summer
-    summers=[ i%12 in [0,1,12] for i in range(len(months)) ]
+    summers=[ i%12 in [0,1,11] for i in range(len(months)) ]
     deltaE = deltaE[summers,:,:]
     dEi, lats_regional,lons_regional = util.pull_out_subregions(deltaE,elats,elons,subregions=regions)
     if area_averaged:
@@ -1668,10 +1740,15 @@ if __name__ == "__main__":
     
     ## Results Plots
     
+    # print out seasonal regional means and STDs
+    compare_model_outputs()
+    
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
     #seasonal_differences()
     [ozone_sensitivity(aa) for aa in [True, False] ]
+    
+    
     
     # Day cycle for each month compared to sin wave from postiori
     #Seasonal_daycycle() # done with updated suptitle 4/4/19

@@ -371,7 +371,7 @@ class Wgong(campaign):
         # Now make sure x_m is interpolated to the same vertical resolution...
         matched_x_m = np.copy(x_a)
         new_x_m     = np.copy(x_a)
-        check=True
+        check       = checkname is not None
         for i in range(len(dates)):
             if not np.all(np.isnan(x_a[i])):
                 # interpolate to FTIR pressures
@@ -379,9 +379,11 @@ class Wgong(campaign):
                 
                 new_x_m[i] = x_a[i] + np.matmul(A[i],(matched_x_m[i] - x_a[i]))
         
+                # can check last available column
+                checki = i
                 
                 if check:
-                    checki = i
+                    
                     plt.plot(x_m[i],p[i],':x',label='x$_{GC}$')
                     plt.plot(matched_x_m[i], ftp[i], '--+', label='interpolated x$_{GC}$')
                     plt.plot(1000.0*x_a[i], ftp[i], '--1', label='x$_{apri}$')

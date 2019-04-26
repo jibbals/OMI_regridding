@@ -95,12 +95,15 @@ n_regions=len(regions)
 def summarise(arr, dates, lats, lons, label):
     ''' regional seasonal mean, median, std within subregions after taking monthly averages '''
     
-    months = util.list_months(dates)
+    months = util.list_months(dates[0],dates[-1])
     # subset to AUS and remove ocean
     subs = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,data=[arr], has_time_dim=True)
     darr = subs['data'][0]
-    om = util.oceanmask(lats,lons)
+    dlats, dlons = subs['lats'], subs['lons']
+    om = util.oceanmask(dlats,dlons)
     om = np.repeat(om[np.newaxis,:,:], len(dates), axis=0)
+    #print("shape of arrays in summarise")
+    #print(np.shape(om),np.shape(darr),np.shape(lats),np.shape(dlats),np.shape(lons),np.shape(dlons))
     darr[om] = np.NaN
     
     # monthly averaged
@@ -108,28 +111,30 @@ def summarise(arr, dates, lats, lons, label):
     darr = monthly['mean']
     
     # pull out summers
-    summers=[ i%12 in [0,1,11] for i in range(len(months)) ]
-    autumns=[ i%12 in [2,3,4] for i in range(len(months)) ]
+    summers=np.array([ i%12 in [0,1,11] for i in range(len(months)) ])
+    autumns=np.array([ i%12 in [2,3,4] for i in range(len(months)) ])
     
-    winters=[ i%12 in [5,6,7] for i in range(len(months)) ]
-    springs=[ i%12 in [8,9,10] for i in range(len(months)) ]
+    winters=np.array([ i%12 in [5,6,7] for i in range(len(months)) ])
+    springs=np.array([ i%12 in [8,9,10] for i in range(len(months)) ])
     
     # sub regions
-    darrsub, lats_regional, lons_regional = util.pull_out_subregions(darr,lats,lons,subregions=regions)
+    darrsub, lats_regional, lons_regional = util.pull_out_subregions(darr,dlats,dlons,subregions=regions)
     
+    reg_str = []
     
+    print(label)
+    print("region:    summer   , autumn   , winter   , spring")
     for i in range(n_regions):        
-        darr_sum = darrsub[summers,:,:]
-        darr_aut = darrsub[autumns,:,:]
-        darr_win = darrsub[winters,:,:]
-        darr_spr = darrsub[springs,:,:]
+        darr_sum = darrsub[i][summers,:,:]
+        darr_aut = darrsub[i][autumns,:,:]
+        darr_win = darrsub[i][winters,:,:]
+        darr_spr = darrsub[i][springs,:,:]
         
+        
+        inner_str = [labels[i]+':   ']
         for reglab, darray in zip(['SUMMER','AUTUMN','WINTER','SPRING'],[darr_sum, darr_aut, darr_win, darr_spr]):
-            print(reglab," @ ",labels[i])
-            print(label, " MEAN: ", np.nanmean(darray))
-            print(label, " STD:", np.nanstd(darray))
-        
-            
+            inner_str.append("%.1f(%.1f)"%(np.nanmean(darray),np.nanstd(darray)))
+        print(inner_str)
         
 
 ###################
@@ -618,6 +623,8 @@ def compare_model_outputs():
     noxa    = new_sat.NO[:,:,:,0] + new_sat.NO2[:,:,:,0]
     
     for arr, label in zip([o3, o3a, hcho, hchoa, nox, noxa],['ozone','ozone_scaled', 'HCHO','HCHO_scaled', 'NOx','NOx_scaled']):
+        print("summarise input shapes")
+        print(np.shape(arr), np.shape(dates), np.shape(lats), np.shape(lons))
         summarise(arr, dates, lats, lons, label)
 
 def time_series(d0=datetime(2005,1,1), d1=datetime(2012,12,31)):
@@ -853,7 +860,7 @@ def ozone_sensitivity(area_averaged=False):
     # change to monthly averages
     deltaE = util.monthly_averaged(dates, deltaE, keep_spatial=True)['mean']
     # subset just to summer
-    summers=[ i%12 in [0,1,11] for i in range(len(months)) ]
+    summers=np.array([ i%12 in [0,1,11] for i in range(len(months)) ])
     deltaE = deltaE[summers,:,:]
     dEi, lats_regional,lons_regional = util.pull_out_subregions(deltaE,elats,elons,subregions=regions)
     if area_averaged:

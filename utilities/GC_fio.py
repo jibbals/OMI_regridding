@@ -385,10 +385,12 @@ def read_overpass_file(d0=datetime(2005,1,1), d1=datetime(2012,12,31), run='trop
     for key in keep_keys:
         if key in ['lats','lons']:
             continue
-        print("subsetting data:", key, np.shape(data[key]))
+        if __VERBOSE__:
+            print("subsetting data:", key, np.shape(data[key]))
         #data[key] = util.reshape_time_lat_lon_lev(data[key],len(dates),28,144,47)
         data[key] = np.squeeze(data[key][di])
-        print("new data shape:", np.shape(data[key]))
+        if __VERBOSE__:
+            print("new data shape:", np.shape(data[key]))
     
     return data,attrs
 

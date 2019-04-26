@@ -71,6 +71,8 @@ ftir=campaign.Wgong()
 # Resample FTIR to just midday averages
 middatas=ftir.resample_middays()
 
+print("FTIR data shapes: ",np.shape(ftir.VMR),np.shape(ftir.dates))
+print("FTIR midday data shapes: ", np.shape(middatas['VMR']),np.shape(middatas['dates']), np.shape(ftir.dates))
 #plt.plot(middatas['DOF']) # DOFs range from 1.3 in summer to 1.7 in winters
 
 
@@ -83,10 +85,13 @@ chapter_3_isop.fullpageFigure()
 
 # Read GC output
 #trop = GC_class.GC_sat(datetime(2007,8,1), datetime(2012,12,31), keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
-d0,d1=datetime(2007,6,1), datetime(2012,12,31)
+
+d0,d1=datetime(2007,7,1), datetime(2012,12,31)
+#d0,d1=datetime(2007,7,1), datetime(2008,12,31)
 #d0,d1=datetime(2008,1,1), datetime(2008,1,31)
+
 trop = GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
-tropa= GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emiss')
+tropa= GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emissions')
 # make sure pedges and pmids are created
 trop.add_pedges()
 dates=trop.dates
@@ -100,19 +105,22 @@ Woli, Wolj = util.lat_lon_index(LatWol,LonWol,trop.lats,trop.lons) # lat, lon in
 GC_VMR  = trop.hcho[:,Woli,Wolj,:]
 GCa_VMR = tropa.hcho[:,Woli,Wolj,:]
 p       = trop.pmids[:,Woli,Wolj,:]
+#print("FTIR shapes before deconv:", np.shape(middatas['VMR']),np.shape(middatas['dates']), np.shape(ftir.dates))
 decon   = ftir.Deconvolve(GC_VMR, dates,p, checkname='check_interp.png')
 decona  = ftir.Deconvolve(GCa_VMR, dates,p,checkname='check_interp_a.png')
-print(decon['new_TC'].shape)
+#print( "shapes after deconv")
+#for key in ['new_TC', 'p','matched_x_m','x_m','dates','dp']:
+#    print(key, np.shape(decon[key]), np.shape(decona[key]) )
 
 # need delta pressure for TC conversion:
-data={ k:decon[k] for k in ['new_TC', 'orig_TC', 'TC_ret']}
+#data={ k:decon[k] for k in ['new_TC', 'orig_TC', 'TC_ret']}
+data= {'apri':decon['new_TC'], 'apost':decona['new_TC'], 'FTIR':decon['TC_ret']}
 TC_df = pd.DataFrame(data, index=decon['dates'])
 
-print(decon['new_TC'])
-print(decon['orig_TC'])
-print(decon['TC_ret'])
-TC_df.plot()
-plt.show()
+# drop the NaNs and plot 
+TC_df.dropna()
+TC_df.plot(linestyle=':',marker='+')
+#plt.show()
 
 pname_TC_series='check_TC_series.png'
 plt.savefig(pname_TC_series)
@@ -120,27 +128,31 @@ plt.close()
 print("Saved ",pname_TC_series)
 
 
-# Lets also do multi year seasonal cycle
+# Annual cycle of FTIR, deconvolved a priori, and deconvolved a posteriori
 plt.close()
-tc_colors = {'new_TC':'m','orig_TC':'r','TC_ret':'k'}
-for k,v in data.items():
+TC_ftir = decon['TC_ret']
+TC_apri = decon['new_TC']
+TC_apost= decona['new_TC']
+tc_colors = ['k', 'r', 'm']
+tc_labels = ['\Omega_{FTIR}','$\Omega_{GC}$', '$\Omega_{GC}^{\\alpha}$']
+for i, v in enumerate([TC_ftir,TC_apri,TC_apost]):
     mya = util.multi_year_average(v, decon['dates'])
     myav = np.squeeze(mya.mean().values)
     uq = np.squeeze(mya.quantile(.75).values)
     lq = np.squeeze(mya.quantile(.25).values)
-    tcc = tc_colors[k]
+    tcc = tc_colors[i]
     plt.fill_between(np.arange(12), lq, uq, color=tcc, alpha=0.4)
-    plt.plot(np.arange(12),myav, label=k, linewidth=2, color=tcc)
+    plt.plot(np.arange(12),myav, label=tc_labels[i], linewidth=2, color=tcc)
 plt.legend(fontsize=22)
 plt.ylabel('$\Omega$ [molec cm$^{-2}$]')
 plt.xlabel('month')
 plt.title('Multiyear monthly mean total columns')
-pname_mya='check_TC_MYA.png'
+plt.xlim([-0.5, 11.5])
+plt.xticks(range(12),['J','F','M','A','M','J','J','A','S','O','N','D'])
+pname_mya='Figs/FTIR_TC_Comparison_MYA.png'
 plt.savefig(pname_mya)
 plt.close()
 print("Saved ",pname_mya)
-
-assert False, 'stop'
 
 
 GC_VC = trop.units_to_molec_cm2(keys=['hcho'])['hcho'][:,Woli,Wolj,:]

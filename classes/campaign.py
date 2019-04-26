@@ -269,7 +269,9 @@ class Wgong(campaign):
             return self.middatas
         
         # First just pull out measurements within the 13-14 window
-        inds        = [ d.hour == 13 for d in self.dates ]
+        if __VERBOSE__:
+            print("Middays to be resampled between ",self.dates[0], self.dates[-1])
+        inds        = np.array([ d.hour == 13 for d in self.dates ])
         middays     = np.array(self.dates)[inds]
         middatas    = {}
         for key in ['VC','VC_apri', 'VMR', 'VMR_apri', 'VC_AK','p', 'psurf', 'DOF']:
@@ -287,7 +289,7 @@ class Wgong(campaign):
         middatas['VMR_AK'] = np.zeros([len(days),48,48]) + np.NaN
         for i,day in enumerate(days):
             # for each day where midday data exists
-            dinds = [ (d.year == day.year) and ( d.month==day.month) and (d.day==day.day) for d in middays ]
+            dinds = np.array([ (d.year == day.year) and ( d.month==day.month) and (d.day==day.day) for d in middays ])
             #if i == 0:
             #    print(self.VMR_AK.shape, self.VMR_AK[inds].shape, self.VMR_AK[inds][dinds].shape)
             #elif i < 50:
@@ -298,6 +300,8 @@ class Wgong(campaign):
         # remove hours and store datetimes
         just_dates0 = datetime(middays[0].year, middays[0].month, middays[0].day)
         just_dates1 = datetime(middays[-1].year, middays[-1].month, middays[-1].day)
+        if __VERBOSE__:
+            print("Middays resampled: between ",just_dates0, just_dates1)
         middatas['dates']=util.list_days(just_dates0,just_dates1)
         self.middatas=middatas
         return middatas
@@ -313,9 +317,10 @@ class Wgong(campaign):
         
         '''
         # Copy inputs, flip so that vertical dim is from TOA to surf
-        x_m = np.copy(np.flip(x_m)) 
+        # first dim is time, second dim is pressures
+        x_m = np.copy(np.fliplr(x_m)) 
         dates=np.copy(dates)
-        p=np.copy(np.flip(p))
+        p=np.copy(np.fliplr(p))
         
         # get midday columns
         middatas=self.resample_middays()
@@ -325,22 +330,23 @@ class Wgong(campaign):
         ftp = np.copy(middatas['p'])
         x_ret = np.copy(middatas['VMR'])
         
-        
-        print("model dates",dates[0],'..',dates[-1])
-        print("ftir dates", ftdates[0],'..',ftdates[-1])
-        print("subsetting...")
+        if __VERBOSE__:
+            print("model dates",dates[0],'..',dates[-1])
+            print("ftir dates", ftdates[0],'..',ftdates[-1])
+            print("subsetting...")
         # First just subset x_m to the same dates that we have
         # if input starts before ftir, cut input
         if dates[0] < ftdates[0]:
             dpre = util.date_index(ftdates[0],dates)[0]
-            print('dpre0:',dpre)
+            #print('dpre0:',dpre)
+            #print( dates[0], ftdates[0])
             x_m = x_m[dpre:]
             dates=dates[dpre:]
             p = p[dpre:]
         # else cut ftir
         elif dates[0] > ftdates[0]:
             dpre = util.date_index(dates[0],ftdates)[0]
-            print('dpre1:',dpre, dates[0], ftdates[dpre])
+            #print('dpre1:',dpre, dates[0], ftdates[dpre])
             x_a = x_a[dpre:]
             ftdates=ftdates[dpre:]
             ftp = ftp[dpre:]
@@ -349,7 +355,8 @@ class Wgong(campaign):
         # if input ends before ftir, then cut ftir down
         if dates[-1] < ftdates[-1]:
             dpost = util.date_index(dates[-1],ftdates)[0] + 1 # need to add 1 to get right subset
-            print('dpost0:',dpost)
+            #print('dpost0:',dpost)
+            #print( dates[-1], ftdates[-1])
             x_a = x_a[:dpost]
             ftdates=ftdates[:dpost]
             ftp = ftp[:dpost]
@@ -358,14 +365,16 @@ class Wgong(campaign):
         # else if input ends after ftir cut input down
         elif dates[-1] > ftdates[-1]:
             dpost = util.date_index(ftdates[-1], dates)[0]  + 1 # need to add 1 to get right subset
-            print('dpost1:',dpost)
+            #print('dpost1:',dpost)
+            #print( dates[-1], ftdates[-1])
             x_m = x_m[:dpost]
             dates=dates[:dpost]
             p=p[:dpost]
         
         # check subsetting dates worked OK
-        print("model dates",dates[0],'..',dates[-1])
-        print("ftir dates", ftdates[0],'..',ftdates[-1])
+        if __VERBOSE__:
+            print("model dates",dates[0],'..',dates[-1])
+            print("ftir dates", ftdates[0],'..',ftdates[-1])
         assert np.all(dates == ftdates), "dates don't match after subsetting"
         
         # Now make sure x_m is interpolated to the same vertical resolution...
@@ -398,9 +407,9 @@ class Wgong(campaign):
         TOA = np.zeros(np.shape(dates))*ftp[:,0] # zeros or nans as TOA
         pedges = (ftp[:,1:]+ftp[:,0:-1])/(2.0)
         psurf  = ftp[:,-1] + (ftp[:,-1] - ftp[:,-2])/2.0 # approximated by extension
-        print('pmids : ',np.shape(ftp),ftp[checki,-6:])
-        print('pedges: ',np.shape(pedges),pedges[checki,-5:])
-        print('adding TOA and psurf : ',np.shape(TOA),TOA[checki],np.shape(psurf),psurf[checki])
+        #print('pmids : ',np.shape(ftp),ftp[checki,-6:])
+        #print('pedges: ',np.shape(pedges),pedges[checki,-5:])
+        #print('adding TOA and psurf : ',np.shape(TOA),TOA[checki],np.shape(psurf),psurf[checki])
         
         # insert TOA at start of pedges
         pedges = np.insert(pedges, 0, TOA, axis=1)
@@ -408,7 +417,7 @@ class Wgong(campaign):
         psurf = np.expand_dims(psurf,axis=1)
         pedges = np.append(pedges, psurf, axis=1)
         
-        print('pedges: ',np.shape(pedges),pedges[checki,:6],'...',pedges[checki,-6:])
+        #print('pedges: ',np.shape(pedges),pedges[checki,:6],'...',pedges[checki,-6:])
         
         # ppbv -> molec/cm2 assuming dry air profile
         dp = pedges[:,1:] - pedges[:,:-1]
@@ -426,4 +435,5 @@ class Wgong(campaign):
                 # FTIR outputs
                 'x_a':x_a, 'x_ret':x_ret, 'A':A, 
                 # TOtal columns
+                # new_TC is total column after deconvolution, orig_TC is after interpolation only, TC_ret is the ftir total column for matching day
                 'new_TC':new_TC, 'orig_TC':orig_TC, 'TC_ret':TC_ret}

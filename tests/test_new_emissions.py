@@ -226,6 +226,53 @@ def isop_biog_time_series(d0=datetime(2005,1,1), d1=None):
     plt.close(f)
 
 
+def GC_Profile_check(d0=datetime(2005,1,1),d1=datetime(2005,1,31), title=None):
+    """
+        Compare satellite output hcho profiles
+    """
+    LatWol, LonWol = pp.__cities__['Wol']
+    # Read GC output    
+    trop = GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
+    tropa= GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emissions')
+    # make sure pedges and pmids are created
+    trop.add_pedges()
+    dates=trop.dates
+    
+    # colours for trop and tropa
+    c = 'r'
+    ca= 'm'
+    
+    # grab wollongong square
+    Woli, Wolj = util.lat_lon_index(LatWol,LonWol,trop.lats,trop.lons) # lat, lon indices
+    GC_VMR  = trop.hcho[:,Woli,Wolj,:]
+    GCa_VMR = tropa.hcho[:,Woli,Wolj,:]
+    
+    GC_zmids=trop.zmids[:,Woli,Wolj,:]
+    
+    # check profile
+    # TODO: split into summer and winter
+    plt.figure(figsize=[10,10])
+    #ax0=plt.subplot(1,2,1)
+    for i,prof in enumerate([GC_VMR,GCa_VMR]):
+        zmids = np.nanmean(GC_zmids,axis=0)/1000.0
+        #pmids = np.nanmean(GC_pmids[0:20,:],axis=0)
+        
+        mean = np.nanmean(prof,axis=0)
+        lq = np.nanpercentile(prof, 25, axis=0)
+        uq = np.nanpercentile(prof, 75, axis=0)
+        plt.fill_betweenx(zmids, lq, uq, alpha=0.5, color=[c,ca][i])
+        plt.plot(mean,zmids,label=['VMR','VMR$^{\\alpha}$'][i],linewidth=2,color=[c,ca][i])
+    #plt.yscale('log')
+    plt.ylim([0, 40])
+    plt.ylabel('altitude [km]')
+    plt.legend(fontsize=20)
+    plt.xlabel('HCHO [ppbv]')
+    if title is None:
+        title="Wollongong midday HCHO profile Jan 2005"
+    plt.title(title)
+    pname_checkprof='Figs/check_GC_profile.png'
+    plt.savefig(pname_checkprof)
+    print("Saved ", pname_checkprof)
 
 
 

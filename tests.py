@@ -285,8 +285,7 @@ def check_products(month=datetime(2005,1,1), region=pp.__AUSREGION__):
                                    colorbar=False)
 
     yms = month.strftime('%Y%m')
-    plt.suptitle('$\Omega_{HCHO}$ for %s'%yms,fontsize=35)
-
+    
     plt.subplot(3,1,3) # third row is all three as distributions
     dists=[]
     for arr in subsets['data']:
@@ -300,6 +299,8 @@ def check_products(month=datetime(2005,1,1), region=pp.__AUSREGION__):
     outfig=month.strftime("Figs/VCC_check_%Y%m.png")
     #plt.tight_layout()
     pp.add_colourbar(f,cs,label='molec/cm2',fontsize=24)
+    plt.suptitle('$\Omega_{HCHO}$ for %s'%yms,fontsize=35, y=0.99)
+
     plt.savefig(outfig)
     plt.close()
     print(outfig+" Saved.")
@@ -1745,13 +1746,13 @@ if __name__ == '__main__':
     # high ram test
     #start=timeit.default_timer()
     #test_new_emissions.hcho_ozone_timeseries(datetime(2005,1,1),datetime(2005,12,31))
-    test_new_emissions.spatial_comparisons(datetime(2005,1,1),datetime(2005,2,28), dlabel='Summer_05')
+    #test_new_emissions.spatial_comparisons(datetime(2005,1,1),datetime(2005,2,28), dlabel='Summer_05')
     #end=timeit.default_timer()
     #print("TIME: %6.2f minutes for time series analysis"%((end-start)/60.0))
     
     # Test time series between old/new runs
     
-    test_new_emissions.hcho_ozone_timeseries(d0,de)
+    #test_new_emissions.hcho_ozone_timeseries(d0,de)
     
     # Test maps between old/new runs
     #test_new_emissions.spatial_comparisons(jan1,jan31,'JanFeb05')
@@ -1790,7 +1791,8 @@ if __name__ == '__main__':
     ## Plots showing how it works
     #RSC_tests.summary(date) # Last run 31/5/18 # last run 18/5/18 - needs work
     #RSC_tests.check_RSC(date) # Last run 4/6/18
-
+    #RSC_tests.Summary_RSC() # updated titles 29/4/19
+    
     ## Look at different ways of making the RSC (different AMFs)
     #RSC_tests.intercomparison(date) # last run 4/6/18
 
@@ -1843,8 +1845,8 @@ if __name__ == '__main__':
     ### Tests to be sorted into files
     ######
     #Test_Uncertainty()              # last run 15/5/18
-    #check_products()               # last run 28/8/18
-
+    #check_products()               # last run 29/4/19
+    
     # GEOS Chem trop vs ucx restarts
     #check_HEMCO_restarts()
 

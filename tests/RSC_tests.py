@@ -238,8 +238,10 @@ def Summary_RSC(month=datetime(2005,1,1)):
     date=datetime(month.year,month.month,1)
     yms=month.strftime('%Y%m')
     dayn=util.last_day(month)
-    cbarname='plasma'
-
+    cbarname='jet'
+    
+    matplotlib.rcParams['image.cmap'] = cbarname #'PuRd' #'inferno_r'       # Colormap default
+    
     # read reprocessed data
     dat=omrp(day0=date,dayn=dayn)
     VCC_GC=np.nanmean(dat.VCC_GC,axis=0) # avg over month
@@ -260,7 +262,7 @@ def Summary_RSC(month=datetime(2005,1,1)):
         m,cs,cb=pp.createmap(arr,lats,lons,
                              colorbar=False,vmin=vmin,vmax=vmax,
                              region=lims)
-        plt.title([Og,Ogc][i],fontsize=25)
+        plt.title(["OMI VC","OMI corrected"][i],fontsize=25)
         m.drawparallels([-40,0,40],labels=[1-i,0,0,0],linewidth=0.0)
 
     # print some stats of changes
@@ -272,8 +274,8 @@ def Summary_RSC(month=datetime(2005,1,1)):
     # plot c) RSC by sensor and latitude
     plt.subplot2grid((2, 6), (1, 0), colspan=2)
     RSC_GC=np.nanmean(dat.RSC[:,:,:,1],axis=0) # average over time
-    norm = plt.cm.colors.Normalize(vmin=-4e14,vmax=4e14)
-    cmap=plt.cm.coolwarm
+    norm = plt.cm.colors.Normalize(vmin=-1e16,vmax=2e16)
+    cmap=plt.cm.cmap_d[cbarname]
 
     cp=plt.contourf(np.arange(1,60.1,1),dat.RSC_latitude,RSC_GC, cmap=cmap,norm=norm)
     plt.colorbar(cp)
@@ -289,7 +291,7 @@ def Summary_RSC(month=datetime(2005,1,1)):
         m,cs,cb=pp.createmap(arr,[gclats,lats][i],[gclons,lons][i],
                           colorbar=False,vmin=vmin,vmax=vmax,
                           region=lims2)
-        plt.title([Og,Ogc][i],fontsize=25)
+        plt.title(["GEOS-Chem VC","OMI corrected"][i],fontsize=25)
         # rectangle around RSC
         #plot_rec(m,dat.RSC_region,color='k',linewidth=4)
         meridians=m.drawmeridians([-160,-140],labels=[0,0,0,1], linewidth=4.0, dashes=(None,None))
@@ -300,7 +302,7 @@ def Summary_RSC(month=datetime(2005,1,1)):
             except:
                 pass
 
-    f.suptitle('Reference Sector Correction '+yms,fontsize=30)
+    f.suptitle('HCHO reference sector correction '+yms,fontsize=30)
     # Add colourbar to the right
     f.tight_layout()
     f.subplots_adjust(top=0.95)

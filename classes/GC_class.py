@@ -594,7 +594,10 @@ class GC_sat(GC_base):
                 nlevs=72
             else:
                 nlevs=47
-
+                
+        # Remove duplicate keys
+        keys = list(set(keys))
+        
         # Determine path of files:
         dates=util.list_days(day0,dayN)
         dstrs=util.list_days_strings(day0,dayN)

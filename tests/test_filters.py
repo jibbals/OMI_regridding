@@ -125,7 +125,7 @@ def summary_pixels_filtered():
     d0=datetime(2005,1,1)
 
     print("Pixels removed by filtering:")
-    print("year   ,   pixels    ,  fire               ,    anthro            ,  smoke           ,    both "  )
+    print("year   ,   pixels    ,  fire               ,    anthro            ,  smoke           ,    all "  )
     pixx=[]
     for year in util.list_years(d0,datetime(2012,1,1)):
         if not isfile('Data/Isop/E_new/emissions_%s.h5'%year.strftime("%Y%m")):

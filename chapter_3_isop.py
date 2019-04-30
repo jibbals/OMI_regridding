@@ -1327,6 +1327,11 @@ def FTIR_Comparison():
         Time series and seasonal mean and iqr of deconvolved HCHO total columns
         both a priori and posteriori plotted next to FTIR
     '''
+    
+    pname_TC_series='Figs/FTIR_TC_Comparison_series.png'
+    pname_mya='Figs/FTIR_TC_Comparison_MYA.png'
+    
+    
     # FTIR Comparison
     LatWol, LonWol = pp.__cities__['Wol']
     
@@ -1341,19 +1346,7 @@ def FTIR_Comparison():
     #plt.plot(middatas['DOF']) # DOFs range from 1.3 in summer to 1.7 in winters
     
     
-    #from tests import test_campaigns
-    # read ftir and plot some stuff for methods summary
-    #test_campaigns.ftir_method_plots()
-    
-    import chapter_3_isop
-    chapter_3_isop.fullpageFigure()
-    
-    # Read GC output
-    #trop = GC_class.GC_sat(datetime(2007,8,1), datetime(2012,12,31), keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
-    
     d0,d1=datetime(2007,7,1), datetime(2012,12,31)
-    #d0,d1=datetime(2007,7,1), datetime(2008,12,31)
-    #d0,d1=datetime(2008,1,1), datetime(2008,1,31)
     
     trop = GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
     tropa= GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emissions')
@@ -1373,9 +1366,6 @@ def FTIR_Comparison():
     #print("FTIR shapes before deconv:", np.shape(middatas['VMR']),np.shape(middatas['dates']), np.shape(ftir.dates))
     decon   = ftir.Deconvolve(GC_VMR, dates,p, checkname='check_interp.png')
     decona  = ftir.Deconvolve(GCa_VMR, dates,p,checkname='check_interp_a.png')
-    #print( "shapes after deconv")
-    #for key in ['new_TC', 'p','matched_x_m','x_m','dates','dp']:
-    #    print(key, np.shape(decon[key]), np.shape(decona[key]) )
     
     # need delta pressure for TC conversion:
     #data={ k:decon[k] for k in ['new_TC', 'orig_TC', 'TC_ret']}
@@ -1383,11 +1373,9 @@ def FTIR_Comparison():
     TC_df = pd.DataFrame(data, index=decon['dates'])
     
     # drop the NaNs and plot 
-    TC_df.dropna()
-    TC_df.plot(linestyle=':',marker='+')
+    TC_df.plot(linestyle='',marker='+')
     #plt.show()
     
-    pname_TC_series='Figs/FTIR_TC_Comparison_series.png'
     plt.savefig(pname_TC_series)
     plt.close()
     print("Saved ",pname_TC_series)
@@ -1414,7 +1402,6 @@ def FTIR_Comparison():
     plt.title('Multiyear monthly mean total columns HCHO ($\Omega$)',fontsize=25)
     plt.xlim([-0.5, 11.5])
     plt.xticks(range(12),['J','F','M','A','M','J','J','A','S','O','N','D'])
-    pname_mya='Figs/FTIR_TC_Comparison_MYA.png'
     plt.savefig(pname_mya)
     plt.close()
     print("Saved ",pname_mya)

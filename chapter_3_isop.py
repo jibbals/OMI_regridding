@@ -1321,12 +1321,12 @@ def regional_seasonal_comparison():
     print('SAVED ',pname)
     plt.close()
 
-def campaign_vs_emissions():
+def campaign_vs_emissions(midday=True):
     '''
         Compare campaign data to Enew and Egc in that one grid square
     '''
-    
-    pnames=['GC_vs_MUMBA.png','GC_vs_SPS1.png','GC_vs_SPS2.png']
+    mh='_midday'
+    pnames=[ p%mh for p in ['GC_vs_MUMBA%s.png','GC_vs_SPS1%s.png','GC_vs_SPS2%s.png'] ]
     # Wollongong/sydney grid square
     LatWol, LonWol = pp.__cities__['Wol']
     
@@ -1336,21 +1336,35 @@ def campaign_vs_emissions():
     sps1  = campaign.sps(1)
     sps2  = campaign.sps(2)
     
-    
+    # GEOS chem apri and apost keys and colours
+    gckeys = ['IJ-AVG-$_ISOP',
+              'IJ-AVG-$_CH2O',
+              'IJ-AVG-$_O3']
     cpri,cpost = ['m','cyan']
+    
+    ## Plot 3 rows x 3 columns, columns are campaigns, rows are species 
+    ##
+    f, axes=plt.subplots(3,3,sharex='col',sharey='row')
+    
     stitles=['MUMBA vs GEOS-Chem','SPS1 vs GEOS-Chem','SPS2 vs GEOS-chem']
-    for cdata, pname, stitle in zip([mumba,sps1,sps2],pnames,stitles):
+    for j, (cdata, pname, stitle) in enumerate(zip([mumba,sps1,sps2],pnames,stitles)):
         cdates=cdata.dates
-        d0,d1=util.first_day(cdates),util.last_day(cdates[-1])
+        d0,d1=util.first_day(cdates[0]),util.last_day(cdates[-1])
         
         # pull out ozone,hcho,isoprene
         cozone = cdata.ozone
         chcho  = cdata.hcho
         cisop  = cdata.isop
         
+        if midday:
+            cdates, cozone  = cdata.get_daily_hour(key='ozone')
+            _, chcho        = cdata.get_daily_hour(key='hcho')
+            _, cisop        = cdata.get_daily_hour(key='isop')
+        
         # Pull out satellite overpass data for comparison
-        trop = GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
-        tropa= GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emissions')
+        
+        trop = GC_class.GC_sat(d0,d1, keys=gckeys)
+        tropa= GC_class.GC_sat(d0,d1, keys=gckeys, run='new_emissions')
         # make sure pedges and pmids are created
         dates0=trop.dates
         dates = [d+timedelta(hours=13.5) for d in dates0] 
@@ -1365,18 +1379,22 @@ def campaign_vs_emissions():
         hchoa       = tropa.hcho[:,Woli,Wolj,0] # surface hcho ppb
         
         # for isoprene and HCHO, (and ozone?) plot time series comparison
-        f,axes = plt.subplots(3,1,sharex=True,sharey=False)
         for i, (meas, gc, gca, title) in enumerate(zip([cisop,chcho,cozone],[isop,hcho,ozone],[isopa,hchoa,ozonea],['Isoprene','HCHO','Ozone'])):
-            plt.sca(axes[i])
-            pp.plot_time_series(cdates,meas,':k+',label='measurement')
-            pp.plot_time_series(dates,gc,'%so'%cpri, label='a priori')
-            pp.plot_time_series(dates,gca,'%so'%cpost, label='a posteriori')
+            plt.sca(axes[i,j])
+            pp.plot_time_series(cdates,meas,color='k',marker='+',label='measurement')
+            pp.plot_time_series(dates,gc,color=cpri, marker='o', label='a priori')
+            pp.plot_time_series(dates,gca,color=cpost,marker='o', label='a posteriori')
+            
+            # Hide the right and top spines
+            axes[i,j].spines['right'].set_visible(False)
+            axes[i,j].spines['top'].set_visible(False)
+            
             if i==0:
                 plt.legend(loc='best')
-            plt.ylabel('ppb')
-            plt.title(title)
-            
-        plt.suptitle(stitle)
+                plt.title(stitle)
+            if j==0:
+                plt.ylabel('%s [ppb]'%title)
+                
         plt.savefig(pname)
         print("SAVED ",pname)
 
@@ -1902,7 +1920,7 @@ if __name__ == "__main__":
     
     ## CAMPAIGN COMPARISONS
     # time series mumba,sps1,sps2
-    campaign_vs_emissions()
+    [campaign_vs_emissions(flag) for flag in [True,False]]
     # FTIR comparison
     #FTIR_Comparison()
     

@@ -219,38 +219,41 @@ def show_mask_filtering(d0=datetime(2005,1,1), dn=datetime(2006,1,1)):
             time series of pixel counts with and without filtering
     '''
 
-    Enew = E_new(d0,dn,dkeys=['pixels_u','pixels','firefilter','anthrofilter',])
+    Enew = E_new(d0,dn,dkeys=['pixels_PP_u','pixels_PP','firemask','smokemask','anthromask',])
     lats = Enew.lats;  lons=Enew.lons
-    firesum = np.nansum(Enew.firefilter,axis=0).astype(np.float)
-    anthsum = np.nansum(Enew.anthrofilter,axis=0).astype(np.float)
-    pixsum  = np.nansum(Enew.pixels_u,axis=0).astype(np.float)
-    pix  = Enew.pixels_u # unfiltered pixel counts
+    firemask = Enew.firemask+Enew.smokemask > 0
+    anthmask = Enew.anthromask > 0
+    firesum = np.nansum(firemask,axis=0).astype(np.float)
+    anthsum = np.nansum(anthmask,axis=0).astype(np.float)
+    #smokesum = np.nansum(Enew.smokemask,axis=0).astype(np.float)
+    pixsum  = np.nansum(Enew.pixels_PP_u,axis=0).astype(np.float)
+    pix  = Enew.pixels_PP_u # unfiltered pixel counts
     pix[Enew.oceanmask3d]=0
     pixa=np.copy(pix)
     pixb=np.copy(pix)
     pixc=np.copy(pix)
-    pixa[Enew.firefilter]=0
-    pixb[Enew.anthrofilter]=0
-    pixc[Enew.firefilter]=0
-    pixc[Enew.anthrofilter]=0
+    pixa[firemask]=0
+    pixb[anthmask]=0
+    pixc[firemask]=0
+    pixc[anthmask]=0
 
 
     plt.figure(figsize=[16,16])
     plt.subplot(2,2,1)
-    pp.createmap(firesum,lats,lons,title='days filtered (fire)',
+    pp.createmap(firesum,lats,lons,title='days filtered (pyrogenic)',
                  aus=True,linear=True, set_under='grey',vmin=1)
     plt.subplot(2,2,2)
-    pp.createmap(anthsum,lats,lons,title='days filtered (anth)',
+    pp.createmap(anthsum,lats,lons,title='days filtered (anthropogenic)',
                  aus=True,linear=True, set_under='grey',vmin=1)
     plt.subplot(2,1,2)
     # time series for pixel counts
-    for arr,colour,label in zip([pix,pixa,pixb,pixc],['k','m','c','r'],['unfiltered','fire','anth','both']):
+    for arr,colour,label in zip([pix,pixa,pixb,pixc],['k','m','c','r'],['unfiltered','pyrogenic','anthropogenic','both']):
         pp.plot_time_series(Enew.dates,np.nansum(arr,axis=(1,2)),color=colour,label=label)
     plt.xlabel('day')
     plt.ylabel('pixel count')
     plt.legend(loc='best')
     timestr='%s-%s'%(d0.strftime('%Y%m%d'),dn.strftime('%Y%m%d'))
-    plt.suptitle('Anthro and Fire filters applied on %s'%timestr,fontsize=30)
+    plt.suptitle('Anthropogenic and pyrogenic filters applied on %s'%timestr,fontsize=30)
     pname='Figs/Filters/PixelsFiltered_%s.png'%timestr
     plt.savefig(pname)
     print('Saved ',pname)

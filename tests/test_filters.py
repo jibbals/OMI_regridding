@@ -124,7 +124,7 @@ def summary_pixels_filtered():
     '''
     d0=datetime(2005,1,1)
 
-    print("Pixels removed by filtering:")
+    print("Pixels removed by filtering: Number removed(portion removed(%%))")
     print("year   ,   pixels    ,  fire               ,    anthro            ,  smoke           ,    all "  )
     pixx=[]
     for year in util.list_years(d0,datetime(2012,1,1)):
@@ -133,25 +133,19 @@ def summary_pixels_filtered():
         # Enew is already subset to Australia
         Enew=E_new(datetime(year.year,1,1),datetime(year.year,12,31),dkeys=['pixels_u','firemask','anthromask','smokemask'])
 
+        fire = Enew.firemask > 0
+        anth = Enew.anthromask > 0
+        smok = Enew.smokemask > 0
+        both = fire+anth+smok
         pix  = Enew.pixels_u # unfiltered pixel counts
         pix[Enew.oceanmask3d]=0
-        pixa=np.copy(pix)
-        pixb=np.copy(pix)
-        pixc=np.copy(pix)
-        pixd=np.copy(pix)
-        pixa[Enew.firemask]=0
-        pixb[Enew.anthromask]=0
-        pixc[Enew.smokemask]=0
-        pixd[Enew.firemask]=0
-        pixd[Enew.anthromask]=0
-        pixd[Enew.smokemask]=0
         tot=np.sum(pix)
-        tota=np.sum(pixa)
-        totb=np.sum(pixb)
-        totc=np.sum(pixc)
-        totd=np.sum(pixd)
-        pixx.append((year.year, tot, tot-tota, 100*(tot-tota)/tot, tot-totb, 100*(tot-totb)/tot , tot-totc, 100*(tot-totc)/tot, tot-totd, 100*(tot-totd)/tot))
-        print("%4d   &  %5.1e    &  %5.1e(%4.1f\\%%)     &    %5.1e(%4.1f\\%%)    &    %5.1e(%4.1f\\%%)    &   %5.1e(%4.1f\\%)     \\\\"%pixx[-1] )
+        remf=np.sum(pix[fire])
+        rema=np.sum(pix[anth])
+        rems=np.sum(pix[smok])
+        remt=np.sum(pix[both])
+        pixx.append((year.year, tot, tot-remf, 100-(100*(tot-remf)/tot), tot-rema, 100- 100*(tot-rema)/tot , tot-rems, 100-100*(tot-rems)/tot, tot-remt, 100-100*(tot-remt)/tot))
+        print("%4d   &  %5.1e    &  %5.1e(%4.1f\\%%)     &    %5.1e(%4.1f\\%%)    &    %5.1e(%4.1f\\%%)    &   %5.1e(%4.1f\\%%)     \\\\"%pixx[-1] )
 
 
 

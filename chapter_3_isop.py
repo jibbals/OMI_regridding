@@ -1321,6 +1321,65 @@ def regional_seasonal_comparison():
     print('SAVED ',pname)
     plt.close()
 
+def campaign_vs_emissions():
+    '''
+        Compare campaign data to Enew and Egc in that one grid square
+    '''
+    
+    pnames=['GC_vs_MUMBA.png','GC_vs_SPS1.png','GC_vs_SPS2.png']
+    # Wollongong/sydney grid square
+    LatWol, LonWol = pp.__cities__['Wol']
+    
+    
+    # Read campaign data
+    mumba = campaign.mumba()
+    sps1  = campaign.sps(1)
+    sps2  = campaign.sps(2)
+    
+    
+    cpri,cpost = ['m','cyan']
+    stitles=['MUMBA vs GEOS-Chem','SPS1 vs GEOS-Chem','SPS2 vs GEOS-chem']
+    for cdata, pname, stitle in zip([mumba,sps1,sps2],pnames,stitles):
+        cdates=cdata.dates
+        d0,d1=cdates[0],cdates[-1]
+        
+        # pull out ozone,hcho,isoprene
+        cozone = cdata.ozone
+        chcho  = cdata.hcho
+        cisop  = cdata.isop
+        
+        # Pull out satellite overpass data for comparison
+        trop = GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__)
+        tropa= GC_class.GC_sat(d0,d1, keys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__, run='new_emissions')
+        # make sure pedges and pmids are created
+        dates0=trop.dates
+        dates = [d+timedelta(hours=13.5) for d in dates0] 
+        
+        # grab wollongong square
+        Woli, Wolj  = util.lat_lon_index(LatWol,LonWol,trop.lats,trop.lons) # lat, lon indices
+        ozone       = trop.O3[:,Woli,Wolj,0] # surface o3 ppb
+        isop        = 0.2*trop.isop[:,Woli,Wolj,0] # surface isop ppbC *0.2 for ppb isoprene
+        hcho        = trop.hcho[:,Woli,Wolj,0] # surface hcho ppb
+        ozonea      = tropa.O3[:,Woli,Wolj,0] # surface o3 ppb
+        isopa       = 0.2*tropa.isop[:,Woli,Wolj,0] # surface isop ppbC *0.2 for ppb isoprene
+        hchoa       = tropa.hcho[:,Woli,Wolj,0] # surface hcho ppb
+        
+        # for isoprene and HCHO, (and ozone?) plot time series comparison
+        f,axes = plt.subplots(3,1,sharex=True,sharey=False)
+        for i, (meas, gc, gca, title) in enumerate(zip([cisop,chcho,cozone],[isop,hcho,ozone],[isopa,hchoa,ozonea],['Isoprene','HCHO','Ozone'])):
+            plt.sca(axes[i])
+            pp.plot_time_series(cdates,meas,':k+',label='measurement')
+            pp.plot_time_series(dates,gc,'%so'%cpri, label='a priori')
+            pp.plot_time_series(dates,gca,'%so'%cpost, label='a posteriori')
+            if i==0:
+                plt.legend(loc='best')
+            plt.ylabel('ppb')
+            plt.title(title)
+            
+        plt.suptitle(stitle)
+        plt.savefig(pname)
+        print("SAVED ",pname)
+
 
 def FTIR_Comparison():
     '''
@@ -1841,8 +1900,11 @@ if __name__ == "__main__":
     #seasonal_differences()
     #[ozone_sensitivity(aa) for aa in [True, False] ]
     
+    ## CAMPAIGN COMPARISONS
+    # time series mumba,sps1,sps2
+    campaign_vs_emissions()
     # FTIR comparison
-    FTIR_Comparison()
+    #FTIR_Comparison()
     
     
     # Day cycle for each month compared to sin wave from postiori

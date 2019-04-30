@@ -1341,7 +1341,7 @@ def campaign_vs_emissions():
     stitles=['MUMBA vs GEOS-Chem','SPS1 vs GEOS-Chem','SPS2 vs GEOS-chem']
     for cdata, pname, stitle in zip([mumba,sps1,sps2],pnames,stitles):
         cdates=cdata.dates
-        d0,d1=cdates[0],cdates[-1]
+        d0,d1=util.first_day(cdates),util.last_day(cdates[-1])
         
         # pull out ozone,hcho,isoprene
         cozone = cdata.ozone

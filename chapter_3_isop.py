@@ -1321,7 +1321,7 @@ def regional_seasonal_comparison():
     print('SAVED ',pname)
     plt.close()
 
-def campaign_vs_emissions(midday=True):
+def campaign_vs_GC(midday=True):
     '''
         Compare campaign data to Enew and Egc in that one grid square
     '''
@@ -1920,7 +1920,7 @@ if __name__ == "__main__":
     
     ## CAMPAIGN COMPARISONS
     # time series mumba,sps1,sps2
-    [campaign_vs_emissions(flag) for flag in [True,False]]
+    [campaign_vs_GC(flag) for flag in [True,False]]
     # FTIR comparison
     #FTIR_Comparison()
     

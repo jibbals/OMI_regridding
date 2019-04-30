@@ -63,8 +63,12 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
+# Read campaign data
+mumba = campaign.mumba()
+sps1  = campaign.sps(1)
+sps2  = campaign.sps(2)
 
-
+print(sps2.ozone.shape,len(sps2.odates),sps2.isop.shape,len(sps2.dates))
 
 ###########
 ### Record and time STUJFFS

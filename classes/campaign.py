@@ -157,9 +157,30 @@ class sps(campaign):
         # set up attributes
         super(sps,self).__init__()
 
-        # data
+        # data for isop and hcho in ptrms
+        # ozone in air quality file
         self.fpath='Data/campaigns/SPS%d/SPS%d_PTRMS.csv'%(number,number)
+        self.fpath_ozone='Data/campaigns/SPS%d/SPS%d_Air_Quality_Station_Data.csv'%(number,number)
         data=fio.read_csv(self.fpath)
+        dato=fio.read_csv(self.fpath_ozone)
+        # hours are wrong: do hours minus 1
+        hourmap = {'1:00':0, '2:00':1, '3:00':2, '4:00':3, '5:00':4, '6:00':5,
+                   '7:00':6, '8:00':7, '9:00':8, '10:00':9, '11:00':10,
+                   '12:00':11, '13:00':12, '14:00':13, '15:00':14, '16:00':15,
+                   '17:00':16, '18:00':17, '19:00':18, '20:00':19, '21:00':20,
+                   '22:00':21, '23:00':22, '24:00:00':23 }
+
+        days = [ datetime.strptime(date, "%d/%m/%Y") for date in dato['Date'] ] 
+        hours = [ hourmap[hour] for hour in dato['Time']]
+        odates = [ d+timedelta(hours=h) for d,h in zip(days,hours)]
+
+        #for i in range(30):
+        #    print(do['Date'][i], do['Time'][i], dates[i])
+
+        o_key='WESTMEAD OZONE 1h average [ppb]'
+        self.ozone=np.array(dato[o_key])
+        self.odates=odates
+        
         # PTRMS names the columns with m/z ratio, we use
         #   HCHO = 31, ISOP = 69
         h_key='m/z 31'
@@ -201,7 +222,22 @@ class sps(campaign):
         if __VERBOSE__:
             print("read %d entries from %s to %s"%(len(self.dates),self.dates[0],self.dates[-1]))
         #self.dates=[datetime.strptime('%d/%m/%Y %H',d) for d in dates]
-
+        
+        def get_daily_hour(self, hour=13,key='hcho'):
+            '''
+                Return one value per day matching the hour (argument)
+                returns dates, data
+            '''
+            if key=='ozone':
+                dates=np.array(self.odates)
+            else:
+                dates=np.array(self.dates)
+            inds = np.array([d.hour == hour for d in dates])
+            dates_new=np.array(self.dates)[inds]
+            data=getattr(self,key)[inds]
+            return dates_new,data
+        
+        
         #print(data)
 
 __ftir_keys__ = {'H2CO.COLUMN_ABSORPTION.SOLAR':'VC', # vertical column 1d}

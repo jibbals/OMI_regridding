@@ -1327,6 +1327,7 @@ def campaign_vs_GC(midday=True):
     '''
     mh='_midday'
     pnames=[ p%mh for p in ['GC_vs_MUMBA%s.png','GC_vs_SPS1%s.png','GC_vs_SPS2%s.png'] ]
+    pnamea="GC_VS_CAMPAIGNS%s.png"%mh
     # Wollongong/sydney grid square
     LatWol, LonWol = pp.__cities__['Wol']
     
@@ -1397,7 +1398,9 @@ def campaign_vs_GC(midday=True):
                 
         plt.savefig(pname)
         print("SAVED ",pname)
-
+    plt.savefig(pnamea)
+    plt.close()
+    pring("SAVED: ",pnamea)
 
 def FTIR_Comparison():
     '''

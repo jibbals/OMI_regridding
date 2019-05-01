@@ -1399,15 +1399,22 @@ def hcho_vs_satellite():
         
         X = np.arange(4)
         width=0.3
-        plt.bar(X + 0.00, trop_mean, color = 'm', width = width, label=__Ogc__)
-        plt.bar(X + 2*width, new_mean, color = 'cyan', width = width, label=__Ogca__)
+        # mean
+        plt.bar(X + 0.00, trop_mean[:,i], color = 'm', width = width, label=__Ogc__)
+        # variance
+        plt.errorbar(X+width/2.0, trop_mean[:,i], yerr=trop_std[:,i], color='m')
         plt.bar(X + width, omi_mean, color='k', width=width, label=__Oomi__)
+        plt.errorbar(X+3*width/2.0, omi_mean[:,i], yerr=omi_std[:,i], color='k')
+        plt.bar(X + 2*width, new_mean, color = 'cyan', width = width, label=__Ogca__)
+        plt.errorbar(X+5*width/2.0, new_mean[:,i], yerr=new_std[:,i], color='cyan')
+        
         plt.xticks()
         plt.ylabel(labels[i], color=colors[i], fontsize=24)
         
         if i==0:
             plt.legend(loc='best', fontsize=18)
         if i%2 == 1:
+            
             axes[i].yaxis.set_label_position("right")
             axes[i].yaxis.tick_right()
     

@@ -1326,8 +1326,8 @@ def campaign_vs_GC(midday=True):
         Compare campaign data to Enew and Egc in that one grid square
     '''
     mh='_midday'
-    pnames=[ p%mh for p in ['GC_vs_MUMBA%s.png','GC_vs_SPS1%s.png','GC_vs_SPS2%s.png'] ]
     pnamea="GC_VS_CAMPAIGNS%s.png"%mh
+    pnames=[ p%mh for p in ['GC_vs_SPS1%s.png','GC_vs_SPS2%s.png','GC_vs_MUMBA%s.png'] ]
     # Wollongong/sydney grid square
     LatWol, LonWol = pp.__cities__['Wol']
     
@@ -1347,8 +1347,8 @@ def campaign_vs_GC(midday=True):
     ##
     f, axes=plt.subplots(3,3,sharex='col',sharey='row')
     
-    stitles=['MUMBA vs GEOS-Chem','SPS1 vs GEOS-Chem','SPS2 vs GEOS-chem']
-    for j, (cdata, pname, stitle) in enumerate(zip([mumba,sps1,sps2],pnames,stitles)):
+    stitles=['SPS1 vs GEOS-Chem','SPS2 vs GEOS-chem','MUMBA vs GEOS-Chem']
+    for j, (cdata, pname, stitle) in enumerate(zip([sps1,sps2,mumba],pnames,stitles)):
         cdates=cdata.dates
         d0,d1=util.first_day(cdates[0]),util.last_day(cdates[-1])
         
@@ -1383,8 +1383,8 @@ def campaign_vs_GC(midday=True):
         for i, (meas, gc, gca, title) in enumerate(zip([cisop,chcho,cozone],[isop,hcho,ozone],[isopa,hchoa,ozonea],['Isoprene','HCHO','Ozone'])):
             plt.sca(axes[i,j])
             pp.plot_time_series(cdates,meas,color='k',marker='+',label='measurement')
-            pp.plot_time_series(dates,gc,color=cpri, marker='o', label='a priori')
-            pp.plot_time_series(dates,gca,color=cpost,marker='o', label='a posteriori')
+            pp.plot_time_series(dates,gc,color=cpri, marker='T', label='a priori')
+            pp.plot_time_series(dates,gca,color=cpost,marker='x', label='a posteriori')
             
             # Hide the right and top spines
             axes[i,j].spines['right'].set_visible(False)

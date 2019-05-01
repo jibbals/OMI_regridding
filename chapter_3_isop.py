@@ -1349,8 +1349,12 @@ def campaign_vs_GC(midday=True):
     
     stitles=['SPS1 vs GEOS-Chem','SPS2 vs GEOS-chem','MUMBA vs GEOS-Chem']
     for j, (cdata, pname, stitle) in enumerate(zip([sps1,sps2,mumba],pnames,stitles)):
+        # SPS has different set of dates for ozone
         cdates=cdata.dates
-        d0,d1=util.first_day(cdates[0]),util.last_day(cdates[-1])
+        odates=cdates
+        if j<2:
+            odates=cdata.odates
+        d0,d1=util.first_day(odates[0]),util.last_day(odates[-1])
         
         # pull out ozone,hcho,isoprene
         cozone = cdata.ozone
@@ -1358,17 +1362,15 @@ def campaign_vs_GC(midday=True):
         cisop  = cdata.isop
         
         if midday:
-            cdates, cozone  = cdata.get_daily_hour(key='ozone')
-            _, chcho        = cdata.get_daily_hour(key='hcho')
+            odates, cozone  = cdata.get_daily_hour(key='ozone')
+            cdates, chcho   = cdata.get_daily_hour(key='hcho')
             _, cisop        = cdata.get_daily_hour(key='isop')
         
         # Pull out satellite overpass data for comparison
-        
         trop = GC_class.GC_sat(d0,d1, keys=gckeys)
         tropa= GC_class.GC_sat(d0,d1, keys=gckeys, run='new_emissions')
-        # make sure pedges and pmids are created
-        dates0=trop.dates
-        dates = [d+timedelta(hours=13.5) for d in dates0] 
+        dates0 = trop.dates
+        dates  = [d+timedelta(hours=13.5) for d in dates0] 
         
         # grab wollongong square
         Woli, Wolj  = util.lat_lon_index(LatWol,LonWol,trop.lats,trop.lons) # lat, lon indices
@@ -1379,11 +1381,11 @@ def campaign_vs_GC(midday=True):
         isopa       = 0.2*tropa.isop[:,Woli,Wolj,0] # surface isop ppbC *0.2 for ppb isoprene
         hchoa       = tropa.hcho[:,Woli,Wolj,0] # surface hcho ppb
         
-        # for isoprene and HCHO, (and ozone?) plot time series comparison
-        for i, (meas, gc, gca, title) in enumerate(zip([cisop,chcho,cozone],[isop,hcho,ozone],[isopa,hchoa,ozonea],['Isoprene','HCHO','Ozone'])):
+        # for each tracer plot time series comparison
+        for i, (meas, gc, gca, spsdates, title) in enumerate(zip([cisop,chcho,cozone],[isop,hcho,ozone],[isopa,hchoa,ozonea],[cdates,cdates,odates],['Isoprene','HCHO','Ozone'])):
             plt.sca(axes[i,j])
-            pp.plot_time_series(cdates,meas,color='k',marker='+',label='measurement')
-            pp.plot_time_series(dates,gc,color=cpri, marker='T', label='a priori')
+            pp.plot_time_series(spsdates,meas,color='k',marker='+',label='measurement')
+            pp.plot_time_series(dates,gc,color=cpri, marker='^', label='a priori')
             pp.plot_time_series(dates,gca,color=cpost,marker='x', label='a posteriori')
             
             # Hide the right and top spines
@@ -1398,6 +1400,7 @@ def campaign_vs_GC(midday=True):
                 
         plt.savefig(pname)
         print("SAVED ",pname)
+    plt.subplots_adjust(wspace=0.1, hspace=0.1)
     plt.savefig(pnamea)
     plt.close()
     pring("SAVED: ",pnamea)

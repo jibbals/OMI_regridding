@@ -70,6 +70,35 @@ sps2  = campaign.sps(2)
 
 print(sps2.ozone.shape,len(sps2.odates),sps2.isop.shape,len(sps2.dates))
 
+cdata=sps2
+cdates=cdata.dates
+d0,d1=util.first_day(cdates[0]),util.last_day(cdates[-1])
+
+# pull out ozone,hcho,isoprene
+cozone = cdata.ozone
+
+df=pd.DataFrame(data={'ozone':cdata.ozone}, index=cdata.odates)
+
+chcho  = cdata.hcho
+cisop  = cdata.isop
+
+odates, cozone  = cdata.get_daily_hour(key='ozone')
+cdates, chcho   = cdata.get_daily_hour(key='hcho')
+_, cisop        = cdata.get_daily_hour(key='isop')
+
+
+
+# for isoprene and HCHO, (and ozone?) plot time series comparison
+pp.plot_time_series(odates,cozone,color='k',marker='+',label='ozone')
+pp.plot_time_series(cdates,chcho,color='m', marker='^', label='hcho')
+pp.plot_time_series(cdates,cisop,color='cyan',marker='x', label='isoprene')
+plt.legend()
+pname='check_sps2.png'        
+plt.savefig(pname)
+print("SAVED ",pname)
+plt.show()
+
+
 ###########
 ### Record and time STUJFFS
 ###########

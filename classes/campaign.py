@@ -49,15 +49,19 @@ class campaign:
 
 
     def get_daily_hour(self, hour=13,key='hcho'):
-        '''
-            Return one value per day matching the hour (argument)
-            returns dates, data
-        '''
-
-        inds = np.array([d.hour == hour for d in self.dates])
-        dates=np.array(self.dates)[inds]
-        data=getattr(self,key)[inds]
-        return dates,data
+            '''
+                Return one value per day matching the hour (argument)
+                returns dates, data
+            '''
+            if hasattr(self,'odates') and key=='ozone':
+                dates=np.array(self.odates)
+            else:
+                dates=np.array(self.dates)
+            inds = np.array([d.hour == hour for d in dates])
+            dates_new=np.array(dates)[inds]
+            data=getattr(self,key)[inds]
+            return dates_new,data
+    
 
     def plot_series(self,title=None,pname=None,dfmt='%Y %b %d'): #'%d %b'):
 
@@ -179,6 +183,10 @@ class sps(campaign):
 
         o_key='WESTMEAD OZONE 1h average [ppb]'
         self.ozone=np.array(dato[o_key])
+        # change empty strings to 'NaN'
+        self.ozone[self.ozone==''] = 'NaN'
+        # convert to float
+        self.ozone = self.ozone.astype(np.float)
         self.odates=odates
         
         # PTRMS names the columns with m/z ratio, we use
@@ -223,19 +231,7 @@ class sps(campaign):
             print("read %d entries from %s to %s"%(len(self.dates),self.dates[0],self.dates[-1]))
         #self.dates=[datetime.strptime('%d/%m/%Y %H',d) for d in dates]
         
-        def get_daily_hour(self, hour=13,key='hcho'):
-            '''
-                Return one value per day matching the hour (argument)
-                returns dates, data
-            '''
-            if key=='ozone':
-                dates=np.array(self.odates)
-            else:
-                dates=np.array(self.dates)
-            inds = np.array([d.hour == hour for d in dates])
-            dates_new=np.array(self.dates)[inds]
-            data=getattr(self,key)[inds]
-            return dates_new,data
+        
         
         
         #print(data)

@@ -91,6 +91,56 @@ colors=util.__subregions_colors__
 regions=util.__subregions__
 n_regions=len(regions)
 
+
+def regional_seasonal(arr, dates, lats, lons, remove_ocean=True):
+    ''' split data into regional and seasonal bins
+    '''
+    
+    months = util.list_months(dates[0],dates[-1])
+    # subset to AUS and remove ocean
+    subs = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,data=[arr], has_time_dim=True)
+    darr = subs['data'][0]
+    dlats, dlons = subs['lats'], subs['lons']
+    
+    if remove_ocean:
+        om = util.oceanmask(dlats,dlons)
+        om = np.repeat(om[np.newaxis,:,:], len(dates), axis=0)
+        #print("shape of arrays in summarise")
+        #print(np.shape(om),np.shape(darr),np.shape(lats),np.shape(dlats),np.shape(lons),np.shape(dlons))
+        darr[om] = np.NaN
+    
+    # monthly averaged
+    monthly = util.monthly_averaged(dates, darr, keep_spatial=True)
+    darr = monthly['mean']
+    
+    # pull out summers
+    summers=np.array([ i%12 in [0,1,11] for i in range(len(months)) ])
+    autumns=np.array([ i%12 in [2,3,4] for i in range(len(months)) ])
+    
+    winters=np.array([ i%12 in [5,6,7] for i in range(len(months)) ])
+    springs=np.array([ i%12 in [8,9,10] for i in range(len(months)) ])
+    
+    # sub regions
+    darrsub, lats_regional, lons_regional = util.pull_out_subregions(darr,dlats,dlons,subregions=regions)
+    
+    output  = np.zeros([4,n_regions])
+    std     = np.zeros([4,n_regions])
+    uq      = np.zeros([4,n_regions])
+    lq      = np.zeros([4,n_regions])
+    for i in range(n_regions):
+        summer = darrsub[i][summers,:,:]
+        autumn = darrsub[i][autumns,:,:]
+        winter = darrsub[i][winters,:,:]
+        spring = darrsub[i][springs,:,:]
+        
+        for j,season in enumerate ([summer,autumn,winter,spring]):
+            output[j,i] = np.nanmean(season)
+            std[j,i]    = np.nanstd(season)
+            lq[j,i]     = np.nanpercentile(season,25)
+            uq[j,i]     = np.nanpercentile(season,75)
+        
+    return output,std,lq,uq
+    
 ## Summarise a data set over subregions
 def summarise(arr, dates, lats, lons, label):
     ''' regional seasonal mean, median, std within subregions after taking monthly averages '''
@@ -135,7 +185,6 @@ def summarise(arr, dates, lats, lons, label):
         for reglab, darray in zip(['SUMMER','AUTUMN','WINTER','SPRING'],[darr_sum, darr_aut, darr_win, darr_spr]):
             inner_str.append("%.1f(%.1f)"%(np.nanmean(darray),np.nanstd(darray)))
         print(inner_str)
-        
 
 ###################
 ### SAVE SATELLITE OUTPUT FOR QUICK ANALYSIS
@@ -1105,7 +1154,8 @@ def seasonal_differences():
         Second row: Winter before, winter after, diff
     '''
     d0 = datetime(2005,1,1)
-    d1 = datetime(2006,12,31)
+    #d1 = datetime(2006,12,31)
+    d1 = datetime(2012,12,31)
     print("CURRENTLY TESTING: NEED TO SET d1 TO 2012/12/31")
     #dstr = d0.strftime("%Y%m%d")
     pname1 = 'Figs/new_emiss/HCHO_total_columns_seasonal.png'
@@ -1156,7 +1206,7 @@ def seasonal_differences():
     units = ['molec cm$^{-2}$', 'ppbv', 'ppbv']
     linears= [False,True,False]
     stitles = ['Midday total column HCHO','Midday surface ozone','Midday surface NO$_x$']
-    titles = ['Tropchem run','Scaled run', 'Absolute difference']
+    titles = ['Tropchem run','Scaled run', 'Scaled - Tropchem']
     pnames = [pname1,pname2,pname3]
     for i, new_arr, trop_arr in zip(range(3),[new_hcho, new_o3, new_NOx],[trop_hcho, trop_o3, trop_NOx]):
         new_mya = util.multi_year_average_spatial(new_arr, dates)
@@ -1320,6 +1370,65 @@ def regional_seasonal_comparison():
     plt.savefig(pname)
     print('SAVED ',pname)
     plt.close()
+
+## HCHO Mean, variance per region, per season, satellite vs apri and apost
+
+def hcho_vs_satellite():
+    '''
+    '''
+    pname = "Figs/hcho_vs_satellite.png"
+    
+    d0=datetime(2005,1,1)
+    d1=datetime(2012,12,31)
+    omi = E_new(d0,d1,dkeys=['VCC_PP'])
+    hcho_omi = omi.VCC_PP
+    omi_mean, omi_std, omi_lq, omi_uq = regional_seasonal(hcho_omi,omi.dates,omi.lats,omi.lons)
+    satkeys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__
+    trop = GC_class.GC_sat(d0,d1,keys=satkeys)
+    hcho_trop = trop.get_total_columns(keys=['hcho'])['hcho']
+    trop_mean, trop_std, trop_lq, trop_uq = regional_seasonal(hcho_trop,trop.dates,trop.lats,trop.lons)
+    new = GC_class.GC_sat(d0,d1,keys=satkeys,run='new_emissions')
+    hcho_new  = new.get_total_columns(keys=['hcho'])['hcho']
+    new_mean, new_std, new_lq, new_uq = regional_seasonal(hcho_new,new.dates,new.lats,new.lons)
+    
+    ##
+    ## FIGURE:
+    f, axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True, sharey=True)
+    for i in range(n_regions):
+        plt.sca(axes[i])
+        
+        X = np.arange(4)
+        width=0.3
+        # mean
+        plt.bar(X + 0.00, trop_mean[:,i], color = 'm', width = width, label=__Ogc__)
+        # variance
+        plt.errorbar(X+width/2.0, trop_mean[:,i], yerr=trop_std[:,i], color='m')
+        plt.bar(X + width, omi_mean, color='k', width=width, label=__Oomi__)
+        plt.errorbar(X+3*width/2.0, omi_mean[:,i], yerr=omi_std[:,i], color='k')
+        plt.bar(X + 2*width, new_mean, color = 'cyan', width = width, label=__Ogca__)
+        plt.errorbar(X+5*width/2.0, new_mean[:,i], yerr=new_std[:,i], color='cyan')
+        
+        plt.xticks()
+        plt.ylabel(labels[i], color=colors[i], fontsize=24)
+        
+        if i==0:
+            plt.legend(loc='best', fontsize=18)
+        if i%2 == 1:
+            
+            axes[i].yaxis.set_label_position("right")
+            axes[i].yaxis.tick_right()
+    
+    plt.xticks(X+width, ['summer','autumn','winter','spring'])
+    plt.xlabel('season', fontsize=24)
+    plt.suptitle('HCHO columns [%s]'%__Ogc__units__,fontsize=30)
+    f.subplots_adjust(hspace=0)
+
+
+    ## save figure
+    plt.savefig(pname)
+    print('SAVED ',pname)
+    plt.close()
+
 
 def campaign_vs_GC(midday=True):
     '''
@@ -1916,14 +2025,18 @@ if __name__ == "__main__":
     # print out seasonal regional means and STDs
     #compare_model_outputs()
     
+    # Check how HCHO mean and variance looks compared to omi
+    hcho_vs_satellite()
+    
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
-    #seasonal_differences()
+    seasonal_differences()
     #[ozone_sensitivity(aa) for aa in [True, False] ]
+        
     
     ## CAMPAIGN COMPARISONS
     # time series mumba,sps1,sps2
-    [campaign_vs_GC(flag) for flag in [True,False]]
+    #[campaign_vs_GC(flag) for flag in [True,False]]
     # FTIR comparison
     #FTIR_Comparison()
     

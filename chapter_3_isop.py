@@ -1326,8 +1326,7 @@ def campaign_vs_GC(midday=True):
         Compare campaign data to Enew and Egc in that one grid square
     '''
     mh='_midday'
-    pnamea="GC_VS_CAMPAIGNS%s.png"%mh
-    pnames=[ p%mh for p in ['GC_vs_SPS1%s.png','GC_vs_SPS2%s.png','GC_vs_MUMBA%s.png'] ]
+    pnamea="Figs/GC_VS_CAMPAIGNS%s.png"%['',mh][midday]
     # Wollongong/sydney grid square
     LatWol, LonWol = pp.__cities__['Wol']
     
@@ -1398,12 +1397,10 @@ def campaign_vs_GC(midday=True):
             if j==0:
                 plt.ylabel('%s [ppb]'%title)
                 
-        plt.savefig(pname)
-        print("SAVED ",pname)
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
     plt.savefig(pnamea)
     plt.close()
-    pring("SAVED: ",pnamea)
+    print("SAVED: ",pnamea)
 
 def FTIR_Comparison():
     '''

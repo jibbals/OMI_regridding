@@ -63,7 +63,9 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-
+d0=datetime(2005,1,1)
+d1=datetime(2005,12,31)
+print(min(d0,d1))
 
 
 ###########

@@ -1454,8 +1454,8 @@ def campaign_vs_GC(midday=True):
     ## Plot 3 rows x 3 columns, columns are campaigns, rows are species 
     ##
     f, axes=plt.subplots(3,3,sharex='col',sharey='row')
-    
-    stitles=['SPS1 vs GEOS-Chem','SPS2 vs GEOS-chem','MUMBA vs GEOS-Chem']
+    dfmt="%d, %b"
+    stitles=['SPS1','SPS2','MUMBA']
     for j, (cdata, pname, stitle) in enumerate(zip([sps1,sps2,mumba],pnames,stitles)):
         # SPS has different set of dates for ozone
         cdates=cdata.dates
@@ -1480,6 +1480,7 @@ def campaign_vs_GC(midday=True):
         dates0 = trop.dates
         dates  = [d+timedelta(hours=13.5) for d in dates0] 
         
+        
         # grab wollongong square
         Woli, Wolj  = util.lat_lon_index(LatWol,LonWol,trop.lats,trop.lons) # lat, lon indices
         ozone       = trop.O3[:,Woli,Wolj,0] # surface o3 ppb
@@ -1489,24 +1490,44 @@ def campaign_vs_GC(midday=True):
         isopa       = 0.2*tropa.isop[:,Woli,Wolj,0] # surface isop ppbC *0.2 for ppb isoprene
         hchoa       = tropa.hcho[:,Woli,Wolj,0] # surface hcho ppb
         
+        # subset trop dates to match measurement dates
+        first_day   = min(cdates[0],odates[0])
+        last_day    = max(cdates[-1],odates[-1])
+        di0         = util.date_index(first_day,dates0)
+        di1         = util.date_index(last_day,dates0)
+        dates       = np.array(dates)[di0:di1]
+        
         # for each tracer plot time series comparison
+        
         for i, (meas, gc, gca, spsdates, title) in enumerate(zip([cisop,chcho,cozone],[isop,hcho,ozone],[isopa,hchoa,ozonea],[cdates,cdates,odates],['Isoprene','HCHO','Ozone'])):
             plt.sca(axes[i,j])
-            pp.plot_time_series(spsdates,meas,color='k',marker='+',label='measurement')
-            pp.plot_time_series(dates,gc,color=cpri, marker='^', label='a priori')
-            pp.plot_time_series(dates,gca,color=cpost,marker='x', label='a posteriori')
+            pp.plot_time_series(spsdates,meas,color='k',marker='+',
+                                label='measurement', dfmt=dfmt)
+            pp.plot_time_series(dates,gc[di0:di1+1],color=cpri, marker='^', 
+                                label='a priori', dfmt=dfmt)
+            pp.plot_time_series(dates,gca[di0:di1+1],color=cpost,marker='x',
+                                label='a posteriori', dfmt=dfmt)
             
             # Hide the right and top spines
             axes[i,j].spines['right'].set_visible(False)
             axes[i,j].spines['top'].set_visible(False)
+            # Only show ticks on the left and bottom spines
+            axes[i,j].yaxis.set_ticks_position('left')
+            axes[i,j].xaxis.set_ticks_position('bottom')
             
             if i==0:
-                plt.legend(loc='best')
+                if j==1:
+                    plt.legend(loc='best')
                 plt.title(stitle)
+            
             if j==0:
                 plt.ylabel('%s [ppb]'%title)
-                
+            
+            if i==2:
+                plt.xlabel([2011,2012][j>1])
+            
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
+    plt.suptitle('GEOS-Chem vs campaign data')
     plt.savefig(pnamea)
     plt.close()
     print("SAVED: ",pnamea)
@@ -2037,6 +2058,7 @@ if __name__ == "__main__":
     ## CAMPAIGN COMPARISONS
     # time series mumba,sps1,sps2
     #[campaign_vs_GC(flag) for flag in [True,False]]
+    campaign_vs_GC(True)
     # FTIR comparison
     #FTIR_Comparison()
     

@@ -1382,6 +1382,8 @@ def regional_seasonal_comparison():
 
 def hcho_vs_satellite():
     '''
+        Total column for geos chem apri and apost vs OMI_PP
+        bar chart for seasons and regions, with std error bars
     '''
     pname = "Figs/hcho_vs_satellite.png"
     if __VERBOSE__:
@@ -1425,7 +1427,7 @@ def hcho_vs_satellite():
         plt.ylabel(labels[i], color=colors[i], fontsize=24)
         
         if i==0:
-            plt.legend(loc='best', fontsize=15)
+            plt.legend(loc='best', fontsize=15,ncol=3)
         if i%2 == 1:
             
             axes[i].yaxis.set_label_position("right")
@@ -1506,8 +1508,8 @@ def campaign_vs_GC(midday=True):
         # subset trop dates to match measurement dates
         first_day   = min(cdates[0],odates[0])
         last_day    = max(cdates[-1],odates[-1])
-        di0         = util.date_index(first_day,dates0,ignore_hour=True)
-        di1         = util.date_index(last_day,dates0, ignore_hour=True)
+        di0         = util.date_index(first_day,dates0,ignore_hours=True)
+        di1         = util.date_index(last_day,dates0, ignore_hours=True)
         dirange     = np.arange(di0,di1+1)
         dates       = np.array(dates)[dirange]
         
@@ -1541,6 +1543,8 @@ def campaign_vs_GC(midday=True):
             
             if i==2:
                 plt.xlabel([2011,2012][j>1])
+                xinds = np.floor(np.linspace(0,len(dates),4))
+                plt.xticks(dates[xinds])
             
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
     plt.suptitle('GEOS-Chem vs campaign data')
@@ -2063,11 +2067,11 @@ if __name__ == "__main__":
     #compare_model_outputs()
     
     # Check how HCHO mean and variance looks compared to omi
-    #hcho_vs_satellite()
+    hcho_vs_satellite()
     
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
-    seasonal_differences()
+    #seasonal_differences()
     #[ozone_sensitivity(aa) for aa in [True, False] ]
         
     

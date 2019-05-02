@@ -574,16 +574,21 @@ def monthly_averaged(dates,data,keep_spatial=False):
     mstd=[]
     mcount=[]
     msum=[]
-    for m in months:
-        inds=(allyears==m.year) * (allmonths==m.month)
-        mdates.append(m)
-        axis=[None,0][keep_spatial]
+    
+    # Ignore numpy warnings dealing with nan entries
+    #with np.errstate(invalid='ignore',divide='ignore'):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for m in months:
+            inds=(allyears==m.year) * (allmonths==m.month)
+            mdates.append(m)
+            axis=[None,0][keep_spatial]
 
-        mmedian.append(np.nanmedian(data[inds],axis=axis))
-        mmean.append(np.nanmean(data[inds],axis=axis))
-        mstd.append(np.nanstd(data[inds],axis=axis))
-        mcount.append(np.nansum(inds,axis=axis))
-        msum.append(np.nansum(data[inds],axis=axis))
+            mmedian.append(np.nanmedian(data[inds],axis=axis))
+            mmean.append(np.nanmean(data[inds],axis=axis))
+            mstd.append(np.nanstd(data[inds],axis=axis))
+            mcount.append(np.nansum(inds,axis=axis))
+            msum.append(np.nansum(data[inds],axis=axis))
 
     mmean=np.array(mmean); mstd=np.array(mstd); mcount=np.array(mcount);
     mmedian=np.array(mmedian); msum=np.array(msum)

@@ -254,13 +254,18 @@ class E_new:
         # HANDLE NEGATIVE EMISSIONS ESTIMATIONS
         for key in __E_new_topd__:
             if hasattr(self,key):
+                
                 topd = getattr(self,key)
-                avg=np.nanmean(topd)
-                negs = topd<0
+                om = self.oceanmask3d
+                if 'lr' in key:
+                    om = self.oceanmask3d_lr
+                avg=np.nanmean(topd[~om])
+                with np.errstate(invalid='ignore'):
+                    negs = topd<0
                 topd[negs] = 0
                 #if __VERBOSE__:
-                print("Removing negatives from ",key)
-                print('%.2e -> %.2e'%(avg, np.nanmean(topd)))
+                print("Removing australian land negatives from ",key)
+                print('%.2e -> %.2e'%(avg, np.nanmean(topd[~om])))
                 setattr(self,key,topd)
                 # SET ERROR TO 100% where this happens
                 if key == 'E_PP_lr':

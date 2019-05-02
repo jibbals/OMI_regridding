@@ -1403,9 +1403,9 @@ def hcho_vs_satellite():
         plt.bar(X + 0.00, trop_mean[:,i], color = 'm', width = width, label=__Ogc__)
         # variance
         plt.errorbar(X+width/2.0, trop_mean[:,i], yerr=trop_std[:,i], color='m')
-        plt.bar(X + width, omi_mean, color='k', width=width, label=__Oomi__)
+        plt.bar(X + width, omi_mean[:,i], color='k', width=width, label=__Oomi__)
         plt.errorbar(X+3*width/2.0, omi_mean[:,i], yerr=omi_std[:,i], color='k')
-        plt.bar(X + 2*width, new_mean, color = 'cyan', width = width, label=__Ogca__)
+        plt.bar(X + 2*width, new_mean[:,i], color = 'cyan', width = width, label=__Ogca__)
         plt.errorbar(X+5*width/2.0, new_mean[:,i], yerr=new_std[:,i], color='cyan')
         
         plt.xticks()
@@ -2057,8 +2057,8 @@ if __name__ == "__main__":
     
     ## CAMPAIGN COMPARISONS
     # time series mumba,sps1,sps2
-    #[campaign_vs_GC(flag) for flag in [True,False]]
-    campaign_vs_GC(True)
+    [campaign_vs_GC(flag) for flag in [True,False]]
+    #campaign_vs_GC(True)
     # FTIR comparison
     #FTIR_Comparison()
     

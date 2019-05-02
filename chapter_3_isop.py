@@ -1414,13 +1414,12 @@ def hcho_vs_satellite():
         X = np.arange(4)
         width=0.3
         # mean
-        plt.bar(X + 0.00, trop_mean[:,i], color = 'm', width = width, label=__Ogc__)
-        # variance
-        plt.errorbar(X+width/2.0, trop_mean[:,i], yerr=trop_std[:,i], color='m', fmt='')
-        plt.bar(X + width, omi_mean[:,i], color='k', width=width, label=__Oomi__)
-        plt.errorbar(X+3*width/2.0, omi_mean[:,i], yerr=omi_std[:,i], color='k', fmt='')
-        plt.bar(X + 2*width, new_mean[:,i], color = 'cyan', width = width, label=__Ogca__)
-        plt.errorbar(X+5*width/2.0, new_mean[:,i], yerr=new_std[:,i], color='cyan', fmt='')
+        plt.bar(X + 0.00, trop_mean[:,i], yerr=trop_std[:,i], 
+                color = 'm', width = width, label=__Ogc__)
+        plt.bar(X + width, omi_mean[:,i], yerr=omi_std[:,i],
+                color='k', width=width, label=__Oomi__)
+        plt.bar(X + 2*width, new_mean[:,i], yerr=new_std[:,i], 
+                color = 'cyan', width = width, label=__Ogca__)
         
         plt.xticks()
         plt.ylabel(labels[i], color=colors[i], fontsize=24)
@@ -1507,19 +1506,22 @@ def campaign_vs_GC(midday=True):
         # subset trop dates to match measurement dates
         first_day   = min(cdates[0],odates[0])
         last_day    = max(cdates[-1],odates[-1])
-        di0         = util.date_index(first_day,dates0)
-        di1         = util.date_index(last_day,dates0)
-        dates       = np.array(dates)[di0:di1]
+        di0         = util.date_index(first_day,dates0,ignore_hour=True)
+        di1         = util.date_index(last_day,dates0, ignore_hour=True)
+        dirange     = np.arange(di0,di1+1)
+        dates       = np.array(dates)[dirange]
+        
         
         # for each tracer plot time series comparison
+        
         
         for i, (meas, gc, gca, spsdates, title) in enumerate(zip([cisop,chcho,cozone],[isop,hcho,ozone],[isopa,hchoa,ozonea],[cdates,cdates,odates],['Isoprene','HCHO','Ozone'])):
             plt.sca(axes[i,j])
             pp.plot_time_series(spsdates,meas,color='k',marker='+',
                                 label='measurement', dfmt=dfmt)
-            pp.plot_time_series(dates,gc[di0:di1+1],color=cpri, marker='^', 
+            pp.plot_time_series(dates,gc[dirange],color=cpri, marker='^', 
                                 label='a priori', dfmt=dfmt)
-            pp.plot_time_series(dates,gca[di0:di1+1],color=cpost,marker='x',
+            pp.plot_time_series(dates,gca[dirange],color=cpost,marker='x',
                                 label='a posteriori', dfmt=dfmt)
             
             # Hide the right and top spines
@@ -2061,7 +2063,7 @@ if __name__ == "__main__":
     #compare_model_outputs()
     
     # Check how HCHO mean and variance looks compared to omi
-    hcho_vs_satellite()
+    #hcho_vs_satellite()
     
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()

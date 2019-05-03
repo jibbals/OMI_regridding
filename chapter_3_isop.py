@@ -1542,8 +1542,13 @@ def campaign_vs_GC(midday=True):
                 plt.ylabel('%s [ppb]'%title)
             
             if i==2:
-                plt.xlabel([2011,2012][j>1])
-                xinds = np.floor(np.linspace(0,len(dates),4))
+                # label the year, xticks will just be mon, day
+                xlabel=2011
+                if j==2: 
+                    xlabel=2012
+                plt.xlabel(xlabel)
+                # just do four xticks
+                xinds = np.floor(np.linspace(0,len(dates)-1,4)).astype(int)
                 plt.xticks(dates[xinds])
             
     plt.subplots_adjust(wspace=0.1, hspace=0.1)

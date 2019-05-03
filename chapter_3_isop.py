@@ -1288,13 +1288,16 @@ def regional_seasonal_comparison():
     
     enew = E_new(d0,d1,dkeys=dkeys)
     dates= enew.dates
+    months= util.list_months(dates[0],dates[-1])
     lats=enew.lats_lr
     lons=enew.lons_lr
     
+    print(np.shape(dates), np.shape(lats), np.shape(lons), np.shape(months))
+    print(np.shape(enew.E_MEGAN), np.shape(enew.E_PP_lr), np.shape(enew.E_PPm_rerr_lr))
     # Pull out apri and apost regional seasonal emissions
     apris, apristd, aprilq, apriuq      = regional_seasonal(enew.E_MEGAN, dates, lats, lons, )
     aposts, apoststd, apostlq, apostuq  = regional_seasonal(enew.E_PP_lr, dates, lats, lons, )
-    uncerts, _, _, _                     = regional_seasonal(enew.E_PPm_rerr_lr, dates, lats, lons, )
+    uncerts, _, _, _                     = regional_seasonal(enew.E_PPm_rerr_lr, months, lats, lons, )
     del enew
     # Priori and posteriori overpass output
     
@@ -2156,7 +2159,7 @@ if __name__ == "__main__":
     #compare_model_outputs()
     
     # Check how HCHO mean and variance looks compared to omi
-    hcho_vs_satellite()
+    #hcho_vs_satellite()
     
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
@@ -2166,7 +2169,7 @@ if __name__ == "__main__":
     
     ## CAMPAIGN COMPARISONS
     # time series mumba,sps1,sps2
-    [campaign_vs_GC(flag) for flag in [True,False]]
+    #[campaign_vs_GC(flag) for flag in [True,False]]
     #campaign_vs_GC(True)
     # FTIR comparison
     #FTIR_Comparison()

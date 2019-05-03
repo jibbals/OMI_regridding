@@ -188,7 +188,7 @@ class E_new:
                     print("Reading %s"%key )
             # Read in monthly data
             #
-            elif (key in ['BG_PP_rerr','ModelSlope','slope_rerr_lr','E_PPm_err_lr']) and key in dkeys:
+            elif (key in ['BG_PP_rerr','ModelSlope','slope_rerr_lr','E_PPm_err_lr','E_PPm_rerr_lr']) and key in dkeys:
 
                 # np array of the data [lats, lons]
                 data0=np.array(E_new_list[0][key])

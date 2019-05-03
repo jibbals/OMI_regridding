@@ -1274,6 +1274,8 @@ def regional_seasonal_comparison():
         
     '''
     pname = 'Figs/Emiss/E_zones_diffs.png'
+    if __VERBOSE__:
+        print("Running regional_seasonal_comparison")
     
     d0=datetime(2005,1,1)
     d1=datetime(2005,12,31)
@@ -1463,9 +1465,18 @@ def hcho_vs_satellite():
         print("running hcho_vs_satellite method")
     d0=datetime(2005,1,1)
     d1=datetime(2012,12,31)
-    omi = E_new(d0,d1,dkeys=['VCC_PP'])
-    hcho_omi = omi.VCC_PP
-    omi_mean, omi_std, omi_lq, omi_uq = regional_seasonal(hcho_omi,omi.dates,omi.lats,omi.lons)
+    omi = E_new(d0,d1,dkeys=['VCC_PP', 'pixels_PP'])
+    lats,lons = omi.lats, omi.lons
+    lats_lr,lons_lr = omi.lats_lr, omi.lons_lr
+    hcho_omi_hr = omi.VCC_PP
+    # convert to low resolution (to mach geos-chem output)
+    # may take ages
+    hcho_omi  = np.zeros([len(omi.dates),len(lats_lr),len(lons_lr)])
+    pixels= omi.pixels_PP
+    for i in range(len(omi.dates)):
+        hcho_omi[i] = util.regrid_to_lower(hcho_omi_hr[i],lats,lons,lats_lr,lons_lr,pixels=pixels[i])
+    del hcho_omi_hr
+    omi_mean, omi_std, omi_lq, omi_uq = regional_seasonal(hcho_omi,omi.dates,lats_lr,lons_lr)
     del hcho_omi
     del omi
     satkeys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__

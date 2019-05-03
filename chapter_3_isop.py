@@ -66,7 +66,7 @@ __Oomi__units__ = __Ogc__units__
 __apri__ = "$E_{GC}$"
 __apri__units__ = "atom C cm$^{-2}$ s$^{-1}$"
 __apri__label__ = r'%s [ %s ]'%(__apri__, __apri__units__)
-# a postiori
+# a posteriori
 __apost__ = "$E_{OMI}$"
 
 # Plot size and other things...
@@ -1252,9 +1252,84 @@ def seasonal_differences():
         plt.close(f)
         print('SAVING FIGURE ',pnames[i])
         
-
-    
 def regional_seasonal_comparison():
+    ''' 
+        Compare apri and apost in each region
+        # Grab all overpass data, resample to 3 monthly avg, then look at seasonal compariosn
+        #
+        # First plot: Time_series_emissions.png
+            Row1: a priori 3m averaged time series
+            Row2: a posteriori
+            Row3: Diffs
+            coloured by regionn, Aus region shaded for IQR
+        # Second plot: RegSeas_emissions.png
+            seasonal mean apri and apost for each region, as a bar chart
+        
+    '''
+    pname = 'Figs/Emiss/E_zones_diffs.png'
+    
+    d0=datetime(2005,1,1)
+    d1=datetime(2005,12,31)
+    
+    dkeys=['E_PP_lr',# low res a posteriori
+           'E_MEGAN', # low res a priori
+           'pixels_PP_lr', # pixel counts
+           'E_PPm_rerr_lr', #Monthly relative emissions error
+           ]
+    
+    enew = E_new(d0,d1,dkeys=dkeys)
+    dates= enew.dates
+    lats=enew.lats_lr
+    lons=enew.lons_lr
+    
+    # Pull out apri and apost regional seasonal emissions
+    apris, apristd, aprilq, apriuq      = regional_seasonal(enew.E_MEGAN, dates, lats, lons, )
+    aposts, apoststd, apostlq, apostuq  = regional_seasonal(enew.E_PP_lr, dates, lats, lons, )
+    uncerts, _, _, _                     = regional_seasonal(enew.E_PPm_rerr_lr, dates, lats, lons, )
+    del enew
+    # Priori and posteriori overpass output
+    
+    ##
+    ## FIGURE:
+    f, axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True, sharey=True)
+    for i in range(n_regions):
+        
+        plt.sca(axes[i])
+        # Grab seasonal data for this region
+        apri = apris[:,i]
+        apost= aposts[:,i]
+        # monthly uncertainty / rt(how many months)... 3*8 
+        rerr = uncerts[:,i] / np.sqrt(24)
+        err  = rerr*apost
+        
+        X = np.arange(4)
+        width=0.4
+        plt.bar(X + 0.00, apri, 
+                color = 'm', width = width, label=__apri__)
+        plt.bar(X + width, apost, yerr = err,
+                color = 'cyan', width = width, label=__apost__)
+        
+        plt.xticks()
+        plt.ylabel(labels[i], color=colors[i], fontsize=24)
+        
+        if i==0:
+            plt.legend(loc='best', fontsize=18)
+        if i%2 == 1:
+            axes[i].yaxis.set_label_position("right")
+            axes[i].yaxis.tick_right()
+    
+    plt.xticks(X+width, ['summer','autumn','winter','spring'])
+    plt.xlabel('season', fontsize=24)
+    plt.suptitle('Midday emissions [%s]'%__apri__units__,fontsize=30)
+    f.subplots_adjust(hspace=0)
+
+
+    ## save figure
+    plt.savefig(pname)
+    print('SAVED ',pname)
+    plt.close()
+    
+def regional_seasonal_timeseries():
     ''' 
         Compare apri and apost in each region
         # Grab all overpass data, resample to 3 monthly avg, then look at seasonal compariosn
@@ -1271,13 +1346,11 @@ def regional_seasonal_comparison():
     pname = 'Figs/new_emiss/RegSeas_emissions.png'
     pname1 = 'Figs/Emiss/E_zones_diffs.png'
     
-    d0=datetime(2005,1,1)
-    d1=datetime(2005,12,31)
     
     #read satellite overpass outputs
-    #DF = read_overpass_timeseries()
-    #dates=[datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
-    enew=E_new(d0,d1)
+    DF = read_overpass_timeseries()
+    dates=[datetime.strptime(dstr, '%Y-%m-%d') for dstr in DF.index]
+    #enew=E_new(d0,d1)
     
     
     # Priori and posteriori overpass output
@@ -1339,37 +1412,37 @@ def regional_seasonal_comparison():
     print('SAVED ',pname1)
     plt.close()
     
-    ##
-    ## SECOND FIGURE:
-    f, axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True, sharey=True)
-    for i in range(n_regions):
-        plt.sca(axes[i])
-        apriseasons    = [ np.nanmean(apri_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
-        apostseasons   = [ np.nanmean(apost_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
-
-        X = np.arange(4)
-        width=0.4
-        plt.bar(X + 0.00, apriseasons, color = 'm', width = width, label=__apri__)
-        plt.bar(X + width, apostseasons, color = 'cyan', width = width, label=__apost__)
-        plt.xticks()
-        plt.ylabel(labels[i], color=colors[i], fontsize=24)
-        
-        if i==0:
-            plt.legend(loc='best', fontsize=18)
-        if i%2 == 1:
-            axes[i].yaxis.set_label_position("right")
-            axes[i].yaxis.tick_right()
-    
-    plt.xticks(X+width, ['summer','autumn','winter','spring'])
-    plt.xlabel('season', fontsize=24)
-    plt.suptitle('Midday emissions [%s]'%__apri__units__,fontsize=30)
-    f.subplots_adjust(hspace=0)
-
-
-    ## save figure
-    plt.savefig(pname)
-    print('SAVED ',pname)
-    plt.close()
+    #    ##
+    #    ## SECOND FIGURE:
+    #    f, axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True, sharey=True)
+    #    for i in range(n_regions):
+    #        plt.sca(axes[i])
+    #        apriseasons    = [ np.nanmean(apri_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
+    #        apostseasons   = [ np.nanmean(apost_seasonal[i].mean().values.squeeze()[j::4]) for j in range(4) ]
+    #
+    #        X = np.arange(4)
+    #        width=0.4
+    #        plt.bar(X + 0.00, apriseasons, color = 'm', width = width, label=__apri__)
+    #        plt.bar(X + width, apostseasons, color = 'cyan', width = width, label=__apost__)
+    #        plt.xticks()
+    #        plt.ylabel(labels[i], color=colors[i], fontsize=24)
+    #        
+    #        if i==0:
+    #            plt.legend(loc='best', fontsize=18)
+    #        if i%2 == 1:
+    #            axes[i].yaxis.set_label_position("right")
+    #            axes[i].yaxis.tick_right()
+    #    
+    #    plt.xticks(X+width, ['summer','autumn','winter','spring'])
+    #    plt.xlabel('season', fontsize=24)
+    #    plt.suptitle('Midday emissions [%s]'%__apri__units__,fontsize=30)
+    #    f.subplots_adjust(hspace=0)
+    #
+    #
+    #    ## save figure
+    #    plt.savefig(pname)
+    #    print('SAVED ',pname)
+    #    plt.close()
 
 ## HCHO Mean, variance per region, per season, satellite vs apri and apost
 
@@ -1956,7 +2029,7 @@ def relative_error_summary():
     print("SAVED ",pname)
     plt.close()
     
-    # Finally do the a postiori summary error
+    # Finally do the a posteriori summary error
     plt.figure(figsize=[10,14])
     ylim,pname=ylims[0],pnames[0]
     label="$\Delta$%s/%s"%(__apost__,__apost__)
@@ -2063,13 +2136,13 @@ if __name__ == "__main__":
     #FTIR_Comparison()
     
     
-    # Day cycle for each month compared to sin wave from postiori
+    # Day cycle for each month compared to sin wave from posteriori
     #Seasonal_daycycle() # done with updated suptitle 4/4/19
     
     
     # TODO: time series compared to satellite HCHO
     # TODO: Seasonal regional multiyear comparison
-    #regional_seasonal_comparison()
+    regional_seasonal_comparison()
     
     #time_series()
     # TODO: 

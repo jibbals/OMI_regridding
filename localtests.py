@@ -63,10 +63,46 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 
-d0=datetime(2005,1,1)
-d1=datetime(2005,12,31)
-print(min(d0,d1))
-
+# Read campaign data
+mumba = campaign.mumba()
+sps1  = campaign.sps(1)
+sps2  = campaign.sps(2)
+    
+for j, cdata in enumerate([sps1,sps2,mumba]):
+    # SPS has different set of dates for ozone
+    cdates=cdata.dates
+    odates=cdates
+    if j<2:
+        odates=cdata.odates
+    
+    d0,d1=util.first_day(odates[0]),util.last_day(odates[-1])
+    print(j, 'before')
+    print(d0,d1)
+    print(cdates[0],cdates[-1])
+    print(odates[0],odates[-1])
+    
+    # pull out ozone,hcho,isoprene
+    cozone = cdata.ozone
+    chcho  = cdata.hcho
+    cisop  = cdata.isop
+    
+    odates, cozone  = cdata.get_daily_hour(key='ozone')
+    cdates, chcho   = cdata.get_daily_hour(key='hcho')
+    _, cisop        = cdata.get_daily_hour(key='isop')
+    
+    
+    d0,d1=util.first_day(odates[0]),util.last_day(odates[-1])
+    print(j, 'after')
+    print(d0,d1)
+    print(cdates[0],cdates[-1])
+    print(odates[0],odates[-1])
+    
+    first_day   = min(cdates[0],odates[0])
+    last_day    = max(cdates[-1],odates[-1])
+    di0         = util.date_index(first_day,dates0)
+    di1         = util.date_index(last_day,dates0)
+    dates       = np.array(dates)[di0:di1]
+            
 
 ###########
 ### Record and time STUJFFS

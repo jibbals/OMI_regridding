@@ -401,14 +401,14 @@ def hcho_ozone_timeseries(d0,d1):
 
         # Fig1: HCHO time series
         plt.sca(axes1[i])
-        pp.plot_time_series(newdates,hcho_new_emiss, label='new_emiss run', linestyle='-.', color=color, linewidth=2)
-        pp.plot_time_series(newdates,hcho_tropchem, label='tropchem run', linestyle='--', color=color, linewidth=2)
-        pp.plot_time_series(newdates,hcho_omi, dfmt='%Y%m%d', label='OMI', linestyle='-', color=color, linewidth=2)
+        pp.plot_time_series(newdates,hcho_new_emiss, label='$\Omega_{GC}^{\\alpha}$', linestyle='-.', color=color, linewidth=2)
+        pp.plot_time_series(newdates,hcho_tropchem, label='$\Omega_{GC}$', linestyle='--', color=color, linewidth=2)
+        pp.plot_time_series(newdates,hcho_omi, dfmt='%Y%m%d', label='$\Omega_{OMI}$', linestyle='-', color=color, linewidth=2)
         #pp.plot_time_series(newdates,hcho_pp, label='OMI recalculated', linestyle=':', color=color, linewidth=2)
         plt.title(label,fontsize=20)
         if i==0:
             plt.ylabel('HCHO cm$^{-2}$')
-            plt.legend(loc='best')
+            plt.legend(loc='best',ncol=3)
 
         # Fig2: Ozone timeseries
         plt.sca(axes2[i])
@@ -421,7 +421,7 @@ def hcho_ozone_timeseries(d0,d1):
 
 
     # final touches figure 1
-    plt.legend(loc='best')
+    plt.legend(loc='best',)
     for ii in [0,i]:
         plt.sca(axes1[ii])
         plt.ylabel('HCHO cm$^{-2}$')

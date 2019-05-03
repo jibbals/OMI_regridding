@@ -20,6 +20,8 @@ from mpl_toolkits.basemap import maskoceans #
 import timeit
 import concurrent.futures # parallelism
 import pandas as pd # for daily cycles grouping
+import warnings
+
 
 from utilities import GMAO, JesseRegression
 
@@ -157,17 +159,23 @@ def date_from_mjd2k(mjd2k):
         return([d0+timedelta(seconds=int(mjd2k*3600*24)),])
     return([d0+timedelta(seconds=int(hr*3600*24)) for hr in mjd2k])
 
-def date_index(date,dates, dn=None):
-
-    whr=np.where(np.array(dates) == date) # returns (matches_array,something)
+def date_index(date,dates, dn=None, ignore_hours=True):
+    new_date=date
+    new_dn=dn
+    if ignore_hours:
+        new_date=datetime(date.year,date.month,date.day)
+        if dn is not None:
+            new_dn=datetime(dn.year,dn.month,dn.day)
+        
+    whr=np.where(np.array(dates) == new_date) # returns (matches_array,something)
     if len(whr[0])==0:
         print (date, 'not in', dates[0], '...', dates[-1])
     elif dn is None:
         return np.array([whr[0][0]]) # We just want the match
     else:
-        whrn=np.where(np.array(dates) == dn) # returns last date match
+        whrn=np.where(np.array(dates) == new_dn) # returns last date match
         if len(whrn[0])==0: # last date not in dataset
-            print (dn, 'not in', dates[0], '...', dates[-1])
+            print (new_dn, 'not in', dates[0], '...', dates[-1])
         return np.arange(whr[0][0],whrn[0][0]+1)
 
 
@@ -574,16 +582,21 @@ def monthly_averaged(dates,data,keep_spatial=False):
     mstd=[]
     mcount=[]
     msum=[]
-    for m in months:
-        inds=(allyears==m.year) * (allmonths==m.month)
-        mdates.append(m)
-        axis=[None,0][keep_spatial]
+    
+    # Ignore numpy warnings dealing with nan entries
+    #with np.errstate(invalid='ignore',divide='ignore'):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        for m in months:
+            inds=(allyears==m.year) * (allmonths==m.month)
+            mdates.append(m)
+            axis=[None,0][keep_spatial]
 
-        mmedian.append(np.nanmedian(data[inds],axis=axis))
-        mmean.append(np.nanmean(data[inds],axis=axis))
-        mstd.append(np.nanstd(data[inds],axis=axis))
-        mcount.append(np.nansum(inds,axis=axis))
-        msum.append(np.nansum(data[inds],axis=axis))
+            mmedian.append(np.nanmedian(data[inds],axis=axis))
+            mmean.append(np.nanmean(data[inds],axis=axis))
+            mstd.append(np.nanstd(data[inds],axis=axis))
+            mcount.append(np.nansum(inds,axis=axis))
+            msum.append(np.nansum(data[inds],axis=axis))
 
     mmean=np.array(mmean); mstd=np.array(mstd); mcount=np.array(mcount);
     mmedian=np.array(mmedian); msum=np.array(msum)

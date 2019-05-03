@@ -55,7 +55,7 @@ __VERBOSE__=True
 ## LABELS
 # total column HCHO from GEOS-Chem
 __Ogc__ = "$\Omega_{GC}$"
-__Ogca__ = "$\Omega_{GC}^{\alpha}$"
+__Ogca__ = "$\Omega_{GC}^{\\alpha}$" # need to double escape the alpha for numpy plots for some reason
 __Ogc__units__ = 'molec cm$^{-2}$'
 
 
@@ -95,7 +95,8 @@ n_regions=len(regions)
 def regional_seasonal(arr, dates, lats, lons, remove_ocean=True):
     ''' split data into regional and seasonal bins
     '''
-    
+    if __VERBOSE__:
+        print("Regionalising and seasonalising array:",arr.shape) 
     months = util.list_months(dates[0],dates[-1])
     # subset to AUS and remove ocean
     subs = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,data=[arr], has_time_dim=True)
@@ -134,10 +135,14 @@ def regional_seasonal(arr, dates, lats, lons, remove_ocean=True):
         spring = darrsub[i][springs,:,:]
         
         for j,season in enumerate ([summer,autumn,winter,spring]):
-            output[j,i] = np.nanmean(season)
-            std[j,i]    = np.nanstd(season)
-            lq[j,i]     = np.nanpercentile(season,25)
-            uq[j,i]     = np.nanpercentile(season,75)
+            # Ignore slices of NaN warnings
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+            #with np.errstate(invalid='ignore'):
+                output[j,i] = np.nanmean(season)
+                std[j,i]    = np.nanstd(season)
+                lq[j,i]     = np.nanpercentile(season,25)
+                uq[j,i]     = np.nanpercentile(season,75)
         
     return output,std,lq,uq
     
@@ -947,7 +952,7 @@ def ozone_sensitivity(area_averaged=False):
     darrs   = [do3, dhcho, dnox]
     stitles = ['($E_{GC} - E_{OMI}$) vs. (ozone - ozone$^{\\alpha}$)',
                '($E_{GC} - E_{OMI}$) vs. (HCHO - HCHO$^{\\alpha}$)',
-               '($E_{GC} - E_{OMI}$) vs. (NO$_x$ - NO$_x$$^{\\alpha}$)']
+               '($E_{GC} - E_{OMI}$) vs. (NO$_x$ - NO$_x^{\\alpha}$)']
     keys    = ['ozone', 'HCHO', 'NOx']
     yticks = {'ozone':None ,'HCHO':np.arange(0,1.6,0.5), 'NOx':None} 
     for darr, stitle, key in zip(darrs,stitles, keys):
@@ -1156,7 +1161,8 @@ def seasonal_differences():
     d0 = datetime(2005,1,1)
     #d1 = datetime(2006,12,31)
     d1 = datetime(2012,12,31)
-    print("CURRENTLY TESTING: NEED TO SET d1 TO 2012/12/31")
+    if __VERBOSE__:
+        print("running seasonal_differences method")
     #dstr = d0.strftime("%Y%m%d")
     pname1 = 'Figs/new_emiss/HCHO_total_columns_seasonal.png'
     pname2 = 'Figs/new_emiss/O3_surf_map_seasonal.png'
@@ -1187,8 +1193,9 @@ def seasonal_differences():
     # Surface NOx in ppbv
     print("NO units: ",GCnew.attrs['NO']['units'], " NO2 units: ", GCnew.attrs['NO2']['units'])
     new_NOx = GCnew.NO2[:,:,:,0] + GCnew.NO[:,:,:,0]
-
     trop_NOx = GCtrop.NO2[:,:,:,0] + GCtrop.NO[:,:,:,0]
+    del GCnew
+    del GCtrop
     
     # MYA monthly averages:
     summer=np.array([0,1,11])
@@ -1448,21 +1455,30 @@ def regional_seasonal_timeseries():
 
 def hcho_vs_satellite():
     '''
+        Total column for geos chem apri and apost vs OMI_PP
+        bar chart for seasons and regions, with std error bars
     '''
     pname = "Figs/hcho_vs_satellite.png"
-    
+    if __VERBOSE__:
+        print("running hcho_vs_satellite method")
     d0=datetime(2005,1,1)
     d1=datetime(2012,12,31)
     omi = E_new(d0,d1,dkeys=['VCC_PP'])
     hcho_omi = omi.VCC_PP
     omi_mean, omi_std, omi_lq, omi_uq = regional_seasonal(hcho_omi,omi.dates,omi.lats,omi.lons)
+    del hcho_omi
+    del omi
     satkeys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__
     trop = GC_class.GC_sat(d0,d1,keys=satkeys)
     hcho_trop = trop.get_total_columns(keys=['hcho'])['hcho']
     trop_mean, trop_std, trop_lq, trop_uq = regional_seasonal(hcho_trop,trop.dates,trop.lats,trop.lons)
+    del hcho_trop
+    del trop
     new = GC_class.GC_sat(d0,d1,keys=satkeys,run='new_emissions')
     hcho_new  = new.get_total_columns(keys=['hcho'])['hcho']
     new_mean, new_std, new_lq, new_uq = regional_seasonal(hcho_new,new.dates,new.lats,new.lons)
+    del hcho_new
+    del new
     
     ##
     ## FIGURE:
@@ -1473,25 +1489,24 @@ def hcho_vs_satellite():
         X = np.arange(4)
         width=0.3
         # mean
-        plt.bar(X + 0.00, trop_mean[:,i], color = 'm', width = width, label=__Ogc__)
-        # variance
-        plt.errorbar(X+width/2.0, trop_mean[:,i], yerr=trop_std[:,i], color='m')
-        plt.bar(X + width, omi_mean[:,i], color='k', width=width, label=__Oomi__)
-        plt.errorbar(X+3*width/2.0, omi_mean[:,i], yerr=omi_std[:,i], color='k')
-        plt.bar(X + 2*width, new_mean[:,i], color = 'cyan', width = width, label=__Ogca__)
-        plt.errorbar(X+5*width/2.0, new_mean[:,i], yerr=new_std[:,i], color='cyan')
+        plt.bar(X + 0.00, trop_mean[:,i], yerr=trop_std[:,i], 
+                color = 'm', width = width, label=__Ogc__)
+        plt.bar(X + width, omi_mean[:,i], yerr=omi_std[:,i],
+                color='k', width=width, label=__Oomi__)
+        plt.bar(X + 2*width, new_mean[:,i], yerr=new_std[:,i], 
+                color = 'cyan', width = width, label=__Ogca__)
         
         plt.xticks()
         plt.ylabel(labels[i], color=colors[i], fontsize=24)
         
         if i==0:
-            plt.legend(loc='best', fontsize=18)
+            plt.legend(loc='best', fontsize=15,ncol=3)
         if i%2 == 1:
             
             axes[i].yaxis.set_label_position("right")
             axes[i].yaxis.tick_right()
     
-    plt.xticks(X+width, ['summer','autumn','winter','spring'])
+    plt.xticks(X+3*width/2.0, ['summer','autumn','winter','spring'])
     plt.xlabel('season', fontsize=24)
     plt.suptitle('HCHO columns [%s]'%__Ogc__units__,fontsize=30)
     f.subplots_adjust(hspace=0)
@@ -1529,7 +1544,7 @@ def campaign_vs_GC(midday=True):
     f, axes=plt.subplots(3,3,sharex='col',sharey='row')
     dfmt="%d, %b"
     stitles=['SPS1','SPS2','MUMBA']
-    for j, (cdata, pname, stitle) in enumerate(zip([sps1,sps2,mumba],pnames,stitles)):
+    for j, (cdata, stitle) in enumerate(zip([sps1,sps2,mumba],stitles)):
         # SPS has different set of dates for ozone
         cdates=cdata.dates
         odates=cdates
@@ -1566,19 +1581,22 @@ def campaign_vs_GC(midday=True):
         # subset trop dates to match measurement dates
         first_day   = min(cdates[0],odates[0])
         last_day    = max(cdates[-1],odates[-1])
-        di0         = util.date_index(first_day,dates0)
-        di1         = util.date_index(last_day,dates0)
-        dates       = np.array(dates)[di0:di1]
+        di0         = util.date_index(first_day,dates0,ignore_hours=True)
+        di1         = util.date_index(last_day,dates0, ignore_hours=True)
+        dirange     = np.arange(di0,di1+1)
+        dates       = np.array(dates)[dirange]
+        
         
         # for each tracer plot time series comparison
+        
         
         for i, (meas, gc, gca, spsdates, title) in enumerate(zip([cisop,chcho,cozone],[isop,hcho,ozone],[isopa,hchoa,ozonea],[cdates,cdates,odates],['Isoprene','HCHO','Ozone'])):
             plt.sca(axes[i,j])
             pp.plot_time_series(spsdates,meas,color='k',marker='+',
                                 label='measurement', dfmt=dfmt)
-            pp.plot_time_series(dates,gc[di0:di1+1],color=cpri, marker='^', 
+            pp.plot_time_series(dates,gc[dirange],color=cpri, marker='^', 
                                 label='a priori', dfmt=dfmt)
-            pp.plot_time_series(dates,gca[di0:di1+1],color=cpost,marker='x',
+            pp.plot_time_series(dates,gca[dirange],color=cpost,marker='x',
                                 label='a posteriori', dfmt=dfmt)
             
             # Hide the right and top spines
@@ -1598,6 +1616,8 @@ def campaign_vs_GC(midday=True):
             
             if i==2:
                 plt.xlabel([2011,2012][j>1])
+                xinds = np.floor(np.linspace(0,len(dates),4))
+                plt.xticks(dates[xinds])
             
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
     plt.suptitle('GEOS-Chem vs campaign data')
@@ -2124,7 +2144,7 @@ if __name__ == "__main__":
     
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
-    seasonal_differences()
+    #seasonal_differences()
     #[ozone_sensitivity(aa) for aa in [True, False] ]
         
     

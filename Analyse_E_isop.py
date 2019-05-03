@@ -449,9 +449,8 @@ def E_regional_time_series(d0=datetime(2005,1,1),dn=datetime(2012,12,31),
     plt.close()
 
 
-#TODO update titles and add Y axis, update legend
 #TODO run over 2005-2012
-def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
+def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2012,12,31),
                          etype='pp', lowres=True):
     '''
     Plot the time series of E_new, compare against MEGAN, using multi-year monthly average and IQR
@@ -481,7 +480,8 @@ def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2005,12,31),
     oceanmask       = np.repeat(oceanmask[np.newaxis,:,:], len(dates), axis=0)
     Emeg[oceanmask] = np.NaN
     E[oceanmask]    = np.NaN
-
+    del Enew
+    
     # multi-year monthly averages
     myaE    = util.multi_year_average_regional(E,dates,lats,lons,grain='monthly',regions=regions)
     myaEmeg = util.multi_year_average_regional(Emeg,dates,lats,lons,grain='monthly',regions=regions)
@@ -1227,7 +1227,7 @@ if __name__=='__main__':
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
     #MEGAN_vs_E_new(d0,dn)
-    distributions_comparison_regional(JUST_STITCH=True)
+    #distributions_comparison_regional(JUST_STITCH=True)
     # TODO: need to fix or manually combine the images made in this one...
 
     ## Plot showing comparison of different top-down estimates
@@ -1245,7 +1245,7 @@ if __name__=='__main__':
         #    E_regional_time_series(d0,dn,force_monthly=force_monthly)
         # Run for all years, monthly medians for time series
         
-        #E_regional_multiyear(d0=d0,dn=df, etype='pp')
+        E_regional_multiyear(d0=d0,dn=df, etype='pp')
         #np.warnings.filterwarnings('ignore')
         #for etype in ['gc','omi','pp']:
             #E_regional_multiyear(d0=d0,dn=de, etype=etype)

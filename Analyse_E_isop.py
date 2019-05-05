@@ -342,7 +342,7 @@ def E_time_series(d0=datetime(2005,1,1),dn=datetime(2006,12,31),
         if ylims is not None:
             plt.ylim(ylims)
         plt.title(locname+ ' [%.2f$^{\circ}$N, %.2f$^{\circ}$E]'%(lat,lon))
-        plt.ylabel(Enew.attributes[ekeys[0]]['units'])
+        plt.ylabel(Enew.attrs[ekeys[0]]['units'])
         plt.legend(loc='best')
         if count:
             plt.sca(axs[1])
@@ -717,7 +717,7 @@ def map_E_new(month=datetime(2005,1,1), GC=None, OMI=None,
     print('SAVED ', pname)
 
 
-def MEGAN_vs_E_new(d0=datetime(2005,1,1), d1=datetime(2007,12,31),
+def MEGAN_vs_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31),
                   key='E_PP_lr',
                   region=pp.__AUSREGION__):
     '''
@@ -759,15 +759,15 @@ def MEGAN_vs_E_new(d0=datetime(2005,1,1), d1=datetime(2007,12,31),
 
     # Compare megan and E_new
     pp.compare_maps([MEGAN, New_isop],[lats,meglats],[lons,meglons], pname='Figs/Emiss/MEGAN_vs_%s_%s-%s.png'%(key,d0s,d1s),
-                    titles=['$E_{GC}$','$E_{NEW}$'], rmin=-500, rmax=500, suptitle='Emissions Averaged from %s to %s'%(d0s,d1s),
-                    clabel=Enew.attributes['E_MEGAN']['units'],
+                    titles=['a priori','a posteriori'], rmin=-500, rmax=500, suptitle='Emissions Averaged from %s to %s'%(d0s,d1s),
+                    clabel=Enew.attrs['E_MEGAN']['units'],
                     lower_resolution=lowres, linear=True,
                     maskocean=True, normalise=False)
 
     # Compare megan and E_new after normalising
     pp.compare_maps([MEGAN, New_isop],[lats,meglats],[lons,meglons], pname='Figs/Emiss/MEGAN_vs_%s_%s-%s_normalised.png'%(key,d0s,d1s),
                     titles=['$E_{GC}$','$E_{NEW}$'], suptitle='Emissions Averaged from %s to %s, normalised by means'%(d0s,d1s),
-                    clabel=Enew.attributes['E_MEGAN']['units'],
+                    clabel=Enew.attrs['E_MEGAN']['units'],
                     lower_resolution=lowres, linear=True,
                     maskocean=True, normalise=True)
 
@@ -1226,7 +1226,8 @@ if __name__=='__main__':
     ## Plot MEGAN vs E_new (key)
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
-    #MEGAN_vs_E_new(d0,dn)
+    # comparison month with fixed titles
+    MEGAN_vs_E_new(d0,d1)
     #distributions_comparison_regional(JUST_STITCH=True)
     # TODO: need to fix or manually combine the images made in this one...
 
@@ -1245,7 +1246,7 @@ if __name__=='__main__':
         #    E_regional_time_series(d0,dn,force_monthly=force_monthly)
         # Run for all years, monthly medians for time series
         
-        E_regional_multiyear(d0=d0,dn=df, etype='pp')
+        #E_regional_multiyear(d0=d0,dn=df, etype='pp')
         #np.warnings.filterwarnings('ignore')
         #for etype in ['gc','omi','pp']:
             #E_regional_multiyear(d0=d0,dn=de, etype=etype)

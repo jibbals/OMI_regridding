@@ -1278,7 +1278,7 @@ def regional_seasonal_comparison():
         print("Running regional_seasonal_comparison")
     
     d0=datetime(2005,1,1)
-    d1=datetime(2005,12,31)
+    d1=datetime(2012,12,31)
     
     dkeys=['E_PP_lr',# low res a posteriori
            'E_MEGAN', # low res a priori
@@ -1313,14 +1313,26 @@ def regional_seasonal_comparison():
         # monthly uncertainty / rt(how many months)... 3*8 
         rerr = uncerts[:,i] / np.sqrt(24)
         err  = rerr*apost
+        # lower bound and upper bound of error different due to potential bias
+        # potential bias from satellite = 1/0.6 multiplyer
+        # potential bias from monthly avg = 1/1.13 multiplyer
+        # total bias could be up to factor of 1.47 
+        yerr = np.zeros([2,len(rerr)])
+        yerr[0,:] = apost - err
+        yerr[1,:] = apost * 1.47 + err
         
         X = np.arange(4)
         width=0.4
         plt.bar(X + 0.00, apri, 
                 color = 'm', width = width, label=__apri__)
-        plt.bar(X + width, apost, yerr = err,
+        plt.bar(X + width, apost, yerr = yerr,
                 color = 'cyan', width = width, label=__apost__)
-        
+        print("Region ", labels[i])
+        print("apri, ",apri)
+        print("apost, ",apost)
+        print("rerr, ", rerr)
+        print("yerr, ",yerr)
+        plt.ylim([0,8e12])
         plt.xticks()
         plt.ylabel(labels[i], color=colors[i], fontsize=24)
         

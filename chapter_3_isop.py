@@ -1297,8 +1297,29 @@ def regional_seasonal_comparison():
     # Pull out apri and apost regional seasonal emissions
     apris, apristd, aprilq, apriuq      = regional_seasonal(enew.E_MEGAN, dates, lats, lons, )
     aposts, apoststd, apostlq, apostuq  = regional_seasonal(enew.E_PP_lr, dates, lats, lons, )
-    uncerts, _, _, _                     = regional_seasonal(enew.E_PPm_rerr_lr, months, lats, lons, )
+    
+    
+    # Get monthly relative uncertaint per region per season
+    #uncerts, _, _, _                     = regional_seasonal(enew.E_PPm_rerr_lr, months, lats, lons, )
+    uncerts_all=enew.get_monthly_errors()['Ererrm']
+    print("uncertainty range:",np.nanmax(uncerts_all), np.nanmean(uncerts_all), np.nanmedian(uncerts_all))
     del enew
+    
+    uncerts_regional_all, lats_reg,lons_reg = util.pull_out_subregions(uncerts_all,lats,lons,subregions=regions)
+    
+    # average over spatial dims
+    uncerts_regional = [np.nanmean(ura,axis=(1,2)) for ura in uncerts_regional_all]
+    
+    # split into averages for each season, region
+    seasonj = [[0,1,11],[2,3,4],[5,6,7],[8,9,10]] # summer, aut, wint, spr
+    uncerts=np.zeros([4,n_regions])
+    for i in range(n_regions):
+        
+        for j in range(4):
+            sinds = np.array([m%12 in seasonj[j] for m in range(len(uncerts[i]))])
+            uncerts[j,i] =  np.nanmean(uncerts_regional[i][sinds])
+        print(labels[i], 'uncert = %.2f, %.2f, %.2f, %.2f'%(uncerts[:,i]))
+        
     # Priori and posteriori overpass output
     
     ##
@@ -2199,7 +2220,6 @@ if __name__ == "__main__":
     # TODO: 
     
     ## UNCERTAINTY
-    #TODO: implement
     #uncertainty_time_series()
     # TODO: add sums to analysis TS
     # todo: discuss plot output from 

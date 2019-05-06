@@ -1296,17 +1296,34 @@ def regional_seasonal_comparison():
     lats=enew.lats_lr
     lons=enew.lons_lr
     
-    print(np.shape(dates), np.shape(lats), np.shape(lons), np.shape(months))
-    print(np.shape(enew.E_MEGAN), np.shape(enew.E_PP_lr), np.shape(enew.E_PPm_rerr_lr))
+    # Get monthly relative uncertaint per region per season
+    #uncerts1, _, _, _                     = regional_seasonal(enew.E_PPm_rerr_lr, months, lats, lons, )
+    uncerts_all=enew.get_monthly_errors()['Ererrm']
+    # quick comparison of monthly RERR
+    pp.compare_maps([np.nanmean(uncerts_all,axis=0),np.nanmean(enew.E_PPm_rerr_lr,axis=0)], 
+                     [lats,lats],[lons,lons],
+                     linear=True,pname="test_monthly_Runcert.png",)
+    
     # Pull out apri and apost regional seasonal emissions
     apris, apristd, aprilq, apriuq      = regional_seasonal(enew.E_MEGAN, dates, lats, lons, )
-    aposts, apoststd, apostlq, apostuq  = regional_seasonal(enew.E_PP_lr, dates, lats, lons, )
     
     
-    # Get monthly relative uncertaint per region per season
-    #uncerts, _, _, _                     = regional_seasonal(enew.E_PPm_rerr_lr, months, lats, lons, )
-    uncerts_all=enew.get_monthly_errors()['Ererrm']
-    print("uncertainty range:",np.nanmax(uncerts_all), np.nanmean(uncerts_all), np.nanmedian(uncerts_all))
+    # clear the super uncertain squares...
+    E_PPm_lr = util.monthly_averaged(dates,enew.E_PP_lr,keep_spatial=True)['mean']
+    to_remove=uncerts_all > 5
+    prior_mean_E = np.nanmean(E_PPm_lr)
+    prior_mean_rerr = np.nanmean(uncerts_all)
+    E_PPm_lr[to_remove] = np.NaN
+    uncerts_all[to_remove] = np.NaN
+    
+    post_mean_E = np.nanmean(E_PPm_lr)
+    post_mean_rerr = np.nanmean(uncerts_all)
+    print("trimming ",np.nansum(to_remove)," uncertain days from E_PP_lr")
+    print("E_PPm_lr mean: %.2e to %.2e"%(prior_mean_E,post_mean_E))
+    print("E_PPm_rerr_lr mean: %.2e to %.2e"%(prior_mean_rerr, post_mean_rerr))
+    
+    aposts, apoststd, apostlq, apostuq  = regional_seasonal(E_PPm_lr, months, lats, lons, )
+    
     del enew
     
     uncerts_regional_all, lats_reg,lons_reg = util.pull_out_subregions(uncerts_all,lats,lons,subregions=regions)

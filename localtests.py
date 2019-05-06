@@ -25,6 +25,7 @@ from tests import utilities_tests, test_new_emissions, test_filters
 import reprocess
 import new_emissions
 import Analyse_E_isop
+import chapter_3_isop
 
 from classes.E_new import E_new # E_new class
 from classes import GC_class, campaign
@@ -62,9 +63,57 @@ start1=timeit.default_timer()
 ##########
 ### DO STUFFS
 ##########
+d0=datetime(2005,1,1)
+d1=datetime(2005,12,31)
 
-Analyse_E_isop.tga_summary(daye=datetime(2012,12,31))
-            
+dkeys=['E_PP_lr',# low res a posteriori
+       'E_MEGAN', # low res a priori
+       'pixels_PP_lr', # pixel counts
+       'E_PPm_rerr_lr', #Monthly relative emissions error
+       'E_PP_err_lr', # daily error low res
+       'E_PPm_err_lr', # monthly error low res
+       #'slope_rerr_lr', # monthly slope error
+       #'VCC_PP_lr', # daily VCC
+       ]
+
+enew = E_new(d0,d1,dkeys=dkeys)
+dates= enew.dates
+months= util.list_months(dates[0],dates[-1])
+lats=enew.lats_lr
+lons=enew.lons_lr
+
+# Get monthly relative uncertaint per region per season
+#uncerts1, _, _, _                     = regional_seasonal(enew.E_PPm_rerr_lr, months, lats, lons, )
+uncerts_all=enew.get_monthly_errors()['Ererrm']
+# quick comparison of monthly RERR
+pp.compare_maps([np.nanmean(uncerts_all,axis=0),np.nanmean(enew.E_PPm_rerr_lr,axis=0)], 
+                 [lats,lats],[lons,lons],
+                 linear=True,pname="test_monthly_Runcert.png",)
+
+# Pull out apri and apost regional seasonal emissions
+apris, apristd, aprilq, apriuq      = chapter_3_isop.regional_seasonal(enew.E_MEGAN, dates, lats, lons, )
+
+
+# clear the super uncertain squares...
+E_PPm_lr = util.monthly_averaged(dates,enew.E_PP_lr,keep_spatial=True)['mean']
+to_remove=uncerts_all > 5
+prior_mean_E = np.nanmean(E_PPm_lr)
+prior_mean_rerr = np.nanmean(uncerts_all)
+E_PPm_lr[to_remove] = np.NaN
+uncerts_all[to_remove] = np.NaN
+
+post_mean_E = np.nanmean(E_PPm_lr)
+post_mean_rerr = np.nanmean(uncerts_all)
+print("trimming ",np.nansum(to_remove)," uncertain days from E_PP_lr")
+print("E_PPm_lr mean: %.2e to %.2e"%(prior_mean_E,post_mean_E))
+print("E_PPm_rerr_lr mean: %.2e to %.2e"%(prior_mean_rerr, post_mean_rerr))
+
+aposts, apoststd, apostlq, apostuq  = chapter_3_isop.regional_seasonal(E_PPm_lr, months, lats, lons, )
+
+#del enew
+# Plot histogram of monthly Rerrors
+
+
 
 ###########
 ### Record and time STUJFFS

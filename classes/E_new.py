@@ -275,7 +275,34 @@ class E_new:
                     # set relative error to 100%
                     if hasattr(self,'E_PP_rerr_lr'):
                         self.E_PP_err_lr[negs] = 1.0
-              
+    
+    #    def trim_uncertain_days(self, rerr=10.0, print_losses=False):
+    #        ''' remove E_PP_lr where daily uncertainty is > 1000%
+    #        '''
+    #        #uncerts=self.E_PPm_rerr_lr > 5
+    #        Ererr = self.E_PP_err_lr / self.E_PP_lr
+    #        Ererr[~np.isfinite(Ererr)] = np.NaN
+    #        Ererr[Ererr<0] = np.NaN
+    #        
+    #        uncerts=Ererr > 10
+    #        
+    #        prior_mean_E = np.nanmean(self.E_PP_lr)
+    #        prior_mean_rerr = np.nanmean(self.E_PP_rerr_lr)
+    #        prior_mean_err = np.nanmean(self.E_PP_err_lr)
+    #        self.E_PP_lr[uncerts] = np.NaN
+    #        self.E_PP_rerr_lr[uncerts] = np.NaN
+    #        self.E_PP_err_lr[uncerts] = np.NaN
+    #        
+    #        if print_losses:
+    #            post_mean_E = np.nanmean(self.E_PP_lr)
+    #            post_mean_rerr = np.nanmean(self.E_PP_rerr_lr)
+    #            post_mean_err = np.nanmean(self.E_PP_err_lr)
+    #            print("trimming ",np.nansum(uncerts)," uncertain days from E_PP_lr")
+    #            print("E_PP_lr mean:", prior_mean_E, " to ", post_mean_E)
+    #            print("E_PP_rerr_lr mean:", prior_mean_rerr, " to ", post_mean_rerr)
+    #            print("E_PP_err_lr mean:", prior_mean_err, " to ", post_mean_err)
+            
+       
     def get_monthly_errors(self,get_S=False, get_O=False):
         '''
             Calculate monthly error and relative error for low resolution each grid square
@@ -296,6 +323,7 @@ class E_new:
         E[self.oceanmask3d_lr] = np.NaN
         Em      = util.monthly_averaged(dates,E,keep_spatial=True)['mean']
         Eerr    = self.E_PP_err_lr
+        
         Eerrm   = self.E_PPm_err_lr
         Ererr   = Eerr/E
         Ererr[~np.isfinite(Ererr)] = np.NaN
@@ -336,7 +364,9 @@ class E_new:
         Ererrm[oceanmask] = np.NaN
         
         return {'Ererrm':Ererrm, 'Eerrm':Eerrm, 'Orerrm':Orerrm, 'Srerrm':Srerrm, 'Oerrm':Oerrm}
-
+    
+    
+    
     def get_monthly_multiyear(self, key, region, maskocean=True):
         '''
             multiyear monthly average of key over region

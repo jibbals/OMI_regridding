@@ -276,7 +276,7 @@ class E_new:
                     if hasattr(self,'E_PP_rerr_lr'):
                         self.E_PP_err_lr[negs] = 1.0
               
-    def get_monthly_errors(self,):
+    def get_monthly_errors(self,get_S=False, get_O=False):
         '''
             Calculate monthly error and relative error for low resolution each grid square
         '''
@@ -288,8 +288,10 @@ class E_new:
         
         # GET MONTHLY TOTAL PIXELS
         pixm=util.monthly_averaged(dates,pix,keep_spatial=True)['sum']
+        # 3d monthly oceanmask:
+        oceanmask=np.repeat(self.oceanmask_lr[np.newaxis,:,:], len(months), axis=0)
     
-        # MASK OCEANS, 
+        # MASK daily OCEANS, 
         E       = self.E_PP_lr
         E[self.oceanmask3d_lr] = np.NaN
         Em      = util.monthly_averaged(dates,E,keep_spatial=True)['mean']
@@ -301,31 +303,33 @@ class E_new:
         Ererrm = Eerrm/Em
         Ererrm[~np.isfinite(Ererrm)] = np.NaN
         Ererrm[np.isclose(Em,0.0)] = np.NaN
-    
-        Srerrm  = self.slope_rerr_lr
-    
-        # monthly VCC error:from per pixel error divided by pixels in the month
-        O   = self.VCC_PP_lr
-        Om  = util.monthly_averaged(dates,O,keep_spatial=True)['mean']
-        Oerr  = self.VCC_err_lr * np.sqrt(pix) # error has already been divided by sqrt daily pix
-        Oerrm = util.monthly_averaged(dates,Oerr,keep_spatial=True)['mean'] /  np.sqrt(pixm)
-        # Same as Enew monthly error:replace error with NaN and set relative error to 100%
-        # Enew monthly negatives are replaced with zeros, but not VCCm 
-        Orerrm = Oerrm / Om
-        negerr = (Om < 0)+(Oerrm<0)
-        Orerrm[negerr] = 1.0
         
-    
-        # 3d monthly oceanmask:
-        oceanmask=np.repeat(self.oceanmask_lr[np.newaxis,:,:], len(months), axis=0)
-        #print("Checking Oerr")
-        # Definitely includes ocean squares
-        #print(np.nanmean(Orerrm), np.nanmean(Orerrm[oceanmask]))
-        Orerrm[oceanmask] = np.NaN
-        #print("Checking Serr")
-        # also
-        #print(np.nanmean(Srerrm), np.nanmean(Srerrm[oceanmask]))
-        Srerrm[oceanmask] = np.NaN
+        Srerrm = None
+        if get_S:
+            Srerrm  = self.slope_rerr_lr
+            #print("Checking Serr")
+            # also
+            #print(np.nanmean(Srerrm), np.nanmean(Srerrm[oceanmask]))
+            Srerrm[oceanmask] = np.NaN
+        
+        Oerrm = None
+        Orerrm = None
+        if get_O:
+            # monthly VCC error:from per pixel error divided by pixels in the month
+            O   = self.VCC_PP_lr
+            Om  = util.monthly_averaged(dates,O,keep_spatial=True)['mean']
+            Oerr  = self.VCC_err_lr * np.sqrt(pix) # error has already been divided by sqrt daily pix
+            Oerrm = util.monthly_averaged(dates,Oerr,keep_spatial=True)['mean'] /  np.sqrt(pixm)
+            # Same as Enew monthly error:replace error with NaN and set relative error to 100%
+            # Enew monthly negatives are replaced with zeros, but not VCCm 
+            Orerrm = Oerrm / Om
+            negerr = (Om < 0)+(Oerrm<0)
+            Orerrm[negerr] = 1.0
+            #print("Checking Oerr")
+            # Definitely includes ocean squares
+            #print(np.nanmean(Orerrm), np.nanmean(Orerrm[oceanmask]))
+            Orerrm[oceanmask] = np.NaN
+        
         #print("Checking Eerr")
         # does not seem to have ocean squares (good)
         #print(np.nanmean(Ererrm), np.nanmean(Ererrm[oceanmask]))

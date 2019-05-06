@@ -1284,6 +1284,10 @@ def regional_seasonal_comparison():
            'E_MEGAN', # low res a priori
            'pixels_PP_lr', # pixel counts
            'E_PPm_rerr_lr', #Monthly relative emissions error
+           'E_PP_err_lr', # daily error low res
+           'E_PPm_err_lr', # monthly error low res
+           #'slope_rerr_lr', # monthly slope error
+           #'VCC_PP_lr', # daily VCC
            ]
     
     enew = E_new(d0,d1,dkeys=dkeys)
@@ -1309,16 +1313,18 @@ def regional_seasonal_comparison():
     
     # average over spatial dims
     uncerts_regional = [np.nanmean(ura,axis=(1,2)) for ura in uncerts_regional_all]
-    
+    # [ 6 locations, 96 months ] 
     # split into averages for each season, region
     seasonj = [[0,1,11],[2,3,4],[5,6,7],[8,9,10]] # summer, aut, wint, spr
     uncerts=np.zeros([4,n_regions])
     for i in range(n_regions):
         
+        
         for j in range(4):
-            sinds = np.array([m%12 in seasonj[j] for m in range(len(uncerts[i]))])
+            sinds = np.array([m%12 in seasonj[j] for m in range(len(uncerts_regional[i]))])
             uncerts[j,i] =  np.nanmean(uncerts_regional[i][sinds])
-        print(labels[i], 'uncert = %.2f, %.2f, %.2f, %.2f'%(uncerts[:,i]))
+        
+        print(labels[i], 'uncert = %.2f, %.2f, %.2f, %.2f'%(uncerts[0,i],uncerts[1,i],uncerts[2,i],uncerts[3,i]))
         
     # Priori and posteriori overpass output
     
@@ -2212,8 +2218,7 @@ if __name__ == "__main__":
     #Seasonal_daycycle() # done with updated suptitle 4/4/19
     
     
-    # TODO: time series compared to satellite HCHO
-    # TODO: Seasonal regional multiyear comparison
+    # Emissions apriori vs aposteriori + uncertainty
     regional_seasonal_comparison()
     
     #time_series()

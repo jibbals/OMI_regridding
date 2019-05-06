@@ -1186,7 +1186,7 @@ def tga_summary(day0=datetime(2005,1,1), daye=datetime(2007,12,31)):
     omi = np.array(omi) # should be [year, lats, lons]
     gc  = np.array(gc)
     gca = np.array(gca)
-
+    
     pname='Figs/Emiss/tga_map.png'
     gca_flat = np.nanmean(gca,axis=0)
     omi_flat = np.nanmean(omi,axis=0)

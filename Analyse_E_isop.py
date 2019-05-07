@@ -1129,7 +1129,7 @@ def show_subregions():
                   fontsize='large'  )
     plt.savefig('Figs/subregions.png')
 
-def tga_summary(day0=datetime(2005,1,1), daye=datetime(2007,12,31)):
+def tga_summary(day0=datetime(2005,1,1), daye=datetime(2012,12,31)):
     '''
         calculate, print and plot emissions in Tg/annum from Enew and Egc
     '''
@@ -1175,8 +1175,8 @@ def tga_summary(day0=datetime(2005,1,1), daye=datetime(2007,12,31)):
         E_OMI_total = np.nansum(daily_kg,axis=0) * 1e-9 # kg/day -> total Tg
 
         print ('year: ',year.year)
-        print ('    global MEGAN : ' , np.sum(E_GC_total))
-        print ('    aus MEGAN    : ' , np.sum(E_GC_aus))
+        print ('    global MEGAN : ' , np.nansum(E_GC_total))
+        print ('    aus MEGAN    : ' , np.nansum(E_GC_aus))
         print ('    aus OMI      : ' , np.nansum(E_OMI_total))
         # store yearly total (keep spatial dims)
         omi.append(E_OMI_total)

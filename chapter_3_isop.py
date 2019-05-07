@@ -1310,7 +1310,7 @@ def regional_seasonal_comparison():
     
     # clear the super uncertain squares...
     E_PPm_lr = util.monthly_averaged(dates,enew.E_PP_lr,keep_spatial=True)['mean']
-    to_remove=uncerts_all > 5
+    to_remove=uncerts_all > 2
     prior_mean_E = np.nanmean(E_PPm_lr)
     prior_mean_rerr = np.nanmean(uncerts_all)
     E_PPm_lr[to_remove] = np.NaN
@@ -1361,16 +1361,17 @@ def regional_seasonal_comparison():
         # potential bias from satellite = 1/0.6 multiplyer
         # potential bias from monthly avg = 1/1.13 multiplyer
         # total bias could be up to factor of 1.47 
-        yerr = np.zeros([2,len(rerr)])
-        yerr[0,:] = apost - err
-        yerr[1,:] = apost * 1.47 + err
+        
+        yerr = err
+        yerrPotential = apost * 1.47 + err
         
         X = np.arange(4)
         width=0.4
         plt.bar(X + 0.00, apri, 
                 color = 'm', width = width, label=__apri__)
-        plt.bar(X + width, apost, yerr = yerr,
+        plt.bar(X + width, apost, yerr = yerr, error_kw={'elinewidth':2,'ecolor':'r'},
                 color = 'cyan', width = width, label=__apost__)
+        plt.plot(X+3/2.0 * width, yerrPotential, linestyle='', marker='+', color='r',)
         print("Region ", labels[i])
         print("apri, ",apri)
         print("apost, ",apost)

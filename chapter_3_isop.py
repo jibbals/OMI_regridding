@@ -1363,9 +1363,8 @@ def regional_seasonal_comparison():
         # total bias could be up to factor of 1.47 
         
         # uncertainty
-        yerr = err
         # potential bias
-        bias_p = apost * 1/0.4 + err
+        bias_p = apost * 1/0.6 + err
         bias_n = apost * 1/1.13 - err
         
         # Plot bar charts with error bars on a posteriori
@@ -1373,7 +1372,7 @@ def regional_seasonal_comparison():
         width=0.4
         plt.bar(X + 0.00, apri, 
                 color = 'm', width = width, label=__apri__)
-        plt.bar(X + width, apost, yerr = yerr, error_kw={'elinewidth':2,'ecolor':'r'},
+        plt.bar(X + width, apost, yerr = err, error_kw={'elinewidth':2,'ecolor':'r'},
                 color = 'cyan', width = width, label=__apost__)
         
         # Add horizontal dashes for potential bias
@@ -1384,7 +1383,8 @@ def regional_seasonal_comparison():
         print("apri, ",apri)
         print("apost, ",apost)
         print("rerr, ", rerr)
-        print("yerr, ",yerr)
+        print("yerr, ",err)
+        print("biasN, ",bias_n,"biasP, ",bias_p)
         plt.ylim([0,7e12])
         plt.xticks()
         plt.ylabel(labels[i], color=colors[i], fontsize=24)
@@ -2245,7 +2245,7 @@ if __name__ == "__main__":
     # Emissions apriori vs aposteriori + uncertainty
     regional_seasonal_comparison()
     #time_series()
-    regional_seasonal_timeseries
+    regional_seasonal_timeseries()
     
     
     ## UNCERTAINTY

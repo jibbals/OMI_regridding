@@ -1362,30 +1362,40 @@ def regional_seasonal_comparison():
         # potential bias from monthly avg = 1/1.13 multiplyer
         # total bias could be up to factor of 1.47 
         
+        # uncertainty
         yerr = err
-        yerrPotential = apost * 1.47 + err
+        # potential bias
+        bias_p = apost * 1/0.4 + err
+        bias_n = apost * 1/1.13 - err
         
+        # Plot bar charts with error bars on a posteriori
         X = np.arange(4)
         width=0.4
         plt.bar(X + 0.00, apri, 
                 color = 'm', width = width, label=__apri__)
         plt.bar(X + width, apost, yerr = yerr, error_kw={'elinewidth':2,'ecolor':'r'},
                 color = 'cyan', width = width, label=__apost__)
-        plt.plot(X+3/2.0 * width, yerrPotential, linestyle='', marker='+', color='r',)
+        
+        # Add horizontal dashes for potential bias
+        plt.plot(X+3/2.0 * width, bias_p, linestyle='', marker='_', color='r',markersize=20)
+        plt.plot(X+3/2.0 * width, bias_n, linestyle='', marker='_', color='r',markersize=20)
+        
         print("Region ", labels[i])
         print("apri, ",apri)
         print("apost, ",apost)
         print("rerr, ", rerr)
         print("yerr, ",yerr)
-        plt.ylim([0,8e12])
+        plt.ylim([0,7e12])
         plt.xticks()
         plt.ylabel(labels[i], color=colors[i], fontsize=24)
         
         if i==0:
             plt.legend(loc='best', fontsize=18)
         if i%2 == 1:
+            #plt.yticks(np.linspace(0,6e12,4))
             axes[i].yaxis.set_label_position("right")
             axes[i].yaxis.tick_right()
+            
     
     plt.xticks(X+width, ['summer','autumn','winter','spring'])
     plt.xlabel('season', fontsize=24)
@@ -1403,18 +1413,14 @@ def regional_seasonal_timeseries():
         Compare apri and apost in each region
         # Grab all overpass data, resample to 3 monthly avg, then look at seasonal compariosn
         #
-        # First plot: Time_series_emissions.png
+        # plot: Time_series_emissions.png
             Row1: a priori 3m averaged time series
             Row2: a posteriori
             Row3: Diffs
             coloured by regionn, Aus region shaded for IQR
-        # Second plot: RegSeas_emissions.png
-            seasonal mean apri and apost for each region, as a bar chart
         
     '''
-    pname = 'Figs/new_emiss/RegSeas_emissions.png'
-    pname1 = 'Figs/Emiss/E_zones_diffs.png'
-    
+    pname = 'Figs/new_emiss/RegSeas_emissions_timeseries.png'
     
     #read satellite overpass outputs
     DF = read_overpass_timeseries()
@@ -1477,8 +1483,8 @@ def regional_seasonal_timeseries():
             
         plt.xlim([seasons[0]-timedelta(days=40), seasons[-1]+timedelta(days=40)])
     ## save figure
-    plt.savefig(pname1)
-    print('SAVED ',pname1)
+    plt.savefig(pname)
+    print('SAVED ',pname)
     plt.close()
     
     #    ##
@@ -2238,9 +2244,9 @@ if __name__ == "__main__":
     
     # Emissions apriori vs aposteriori + uncertainty
     regional_seasonal_comparison()
-    
     #time_series()
-    # TODO: 
+    regional_seasonal_timeseries
+    
     
     ## UNCERTAINTY
     #uncertainty_time_series()

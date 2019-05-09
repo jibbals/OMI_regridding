@@ -1479,17 +1479,30 @@ def smearing_vs_yield(month=datetime(2005,1,1), hcho_life=2.5):
 def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
     '''
         test smearing creation process.
+        UPDATED 9/5/19:
+            Remove old definition
     '''
+    
+    pname1=year.strftime('Figs/Filters/smearing_definitions_comparison_%Y.png')
+    pname2=year.strftime('Figs/Filters/smearing_effects_%Y.png')
+    
+    
     summer= util.list_months(datetime(year.year,1,1), util.last_day(datetime(year.year,2,1)))
     if year.year > 2005:
         summer = util.list_months(datetime(year.year-1,12,1), util.last_day(datetime(year.year,2,1)))
     winter= util.list_months(datetime(year.year,6,1), util.last_day(datetime(year.year,8,1)))
+    spring= util.list_months(datetime(year.year,9,1), util.last_day(datetime(year.year,11,1)))
+    autumn= util.list_months(datetime(year.year,3,1), util.last_day(datetime(year.year,5,1)))
 
+    # Calculate first month of smearing for season
     summer_smear_midday, days,lats,lons=Inversion.smearing(summer[0],midday=True)
     summer_smear_dayavg, days,lats,lons=Inversion.smearing(summer[0],midday=False)
     winter_smear_midday, days,lats,lons=Inversion.smearing(winter[0],midday=True)
-    winter_smear_dayavg, days,lats,lons=Inversion.smearing(winter[0],midday=True)
-
+    winter_smear_dayavg, days,lats,lons=Inversion.smearing(winter[0],midday=False)
+    autumn_smear_midday, days,lats,lons=Inversion.smearing(autumn[0],midday=True)
+    spring_smear_midday, days,lats,lons=Inversion.smearing(spring[0],midday=True)
+    
+    # Loop over and add other two months of smearing
     for month in summer[1:]:
         # dayavg smearing
         dayavg, days,lats,lons = Inversion.smearing(month,midday=False)
@@ -1497,8 +1510,6 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
         # midday smearing
         midday, days,lats,lons = Inversion.smearing(month,midday=True)
         summer_smear_midday = np.append(summer_smear_midday,np.array(midday),axis=0)
-        # old version
-        #todo
     for month in winter[1:]:
         # dayavg smearing
         dayavg, days,lats,lons = Inversion.smearing(month,midday=False)
@@ -1506,12 +1517,23 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
         # midday smearing
         midday, days,lats,lons = Inversion.smearing(month,midday=True)
         winter_smear_midday = np.append(winter_smear_midday,np.array(midday),axis=0)
-        # old version
-        #todo
+    for month in autumn[1:]:
+        # midday smearing
+        midday, days,lats,lons = Inversion.smearing(month,midday=True)
+        autumn_smear_midday = np.append(autumn_smear_midday,np.array(midday),axis=0)
+
+    for month in spring[1:]:
+        # midday smearing
+        midday, days,lats,lons = Inversion.smearing(month,midday=True)
+        spring_smear_midday = np.append(spring_smear_midday,np.array(midday),axis=0)
+
+
 
     smear_units='molec$_{HCHO}$*s/atom$_C$'
     # fix infinity problem (basemap plots may be shitty)
-    for arr in [summer_smear_dayavg,summer_smear_midday,winter_smear_dayavg,winter_smear_midday]:
+    for arr in [summer_smear_dayavg,summer_smear_midday,
+                winter_smear_dayavg,winter_smear_midday,
+                autumn_smear_midday,spring_smear_midday]:
         arr[np.isinf(arr)]=np.NaN
 
     plt.figure(figsize=(13,13))
@@ -1546,10 +1568,48 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
 
     # title and save figure
     plt.suptitle("smearing definition comparisons",fontsize=27)
-    pname=year.strftime('Figs/Filters/smearing_definitions_%Y.png')
-    plt.savefig(pname)
-    print('SAVED ',pname)
+    
+    plt.savefig(pname1)
+    print('SAVED ',pname1)
     plt.close()
+    
+    
+    # Just show used smearing definition, for all seasons
+    plt.figure(figsize=(13,13))
+
+    ticks=np.arange(1000, 5001,  1000)  # custom ticks for midday smearing
+    ii=0
+    for arr, title in zip([summer_smear_midday,autumn_smear_midday,
+                           winter_smear_midday,spring_smear_midday],
+                          ['summer','autumn','winter','spring']):
+        ii=ii+1
+        plt.subplot(2,2,ii)
+        ## dayavg smearing in summer
+        flatarr = np.nanmean(arr,axis=0)
+        bmap,cs,cb = pp.createmap(flatarr, lats, lons, aus=True, title=title,
+                                  linear=True, vmin=ticks[0], vmax=ticks[-1],
+                                  ticks=ticks, clabel=smear_units)
+
+        if threshmask:
+            # Add diamond over strict threshold
+            # pink where at least one gridday filtered
+            maxarr=np.nanmax(arr,axis=0)
+            pp.add_marker_to_map(bmap, maxarr>Inversion.__Thresh_Smearing__,
+                                 lats, lons, marker='d',
+                                 landonly=False, markersize=6, color='pink')
+            # red where always over threshhold
+            minarr=np.nanmin(arr,axis=0)
+            pp.add_marker_to_map(bmap, minarr>Inversion.__Thresh_Smearing__,
+                                 lats, lons, marker='x',
+                                 landonly=False, markersize=8, color='darkred')
+
+
+    # title and save figure
+    plt.suptitle("Midday smearing effects",fontsize=27)
+    plt.savefig(pname2)
+    print('SAVED ',pname2)
+    plt.close()
+    
 
 def smearing_at_edges(d0=datetime(2005,1,1),dn=datetime(2005,2,28)):
     '''

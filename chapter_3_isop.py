@@ -418,6 +418,9 @@ def check_modelled_background(month=datetime(2005,1,1)):
     '''
         plot map of HCHO over remote pacific
         also plot map of HCHO when isop emissions are scaled to zero globally
+        UPDATE 9/5/19
+            put ocean over aus in top right
+            use diverging colour scheme for diff plot
     '''
     day0=month
     dayN=util.last_day(month)
@@ -435,7 +438,7 @@ def check_modelled_background(month=datetime(2005,1,1)):
     bg_ref = np.repeat(bg_ref[:,np.newaxis], len(lons), axis=1) # copy ref background over all the longitudes
     
     # monthly output already for no-isoprene run
-    hcho2 = gc_noisop.O_hcho
+    hcho2 = np.squeeze(gc_noisop.O_hcho)
     #bg2, bglats,bglons = util.remote_pacific_background(hcho2,lats,lons)
     # difference between no isoprene and reference sector background from normal run
     diff = hcho2 - bg_ref
@@ -450,9 +453,13 @@ def check_modelled_background(month=datetime(2005,1,1)):
     bgregion[2]=ausregion[2]
     clabel=r'$\Omega_{HCHO}$ [molec cm$^{-2}$]'
 
+    print("TEST:",np.shape(hcho1),np.shape(hcho2),)
+    print("TEST:",np.shape(bg1), np.shape(bg_ref), np.shape(diff))
     plt.figure(figsize=[15,15])
     plt.subplot(2,2,1)
-    pp.createmap(hcho1,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
+    #pp.createmap(hcho1,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
+    #             clabel=clabel, title='tropchem')
+    pp.createmap(bg_ref,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
                  clabel=clabel, title='tropchem')
     plt.subplot(2,2,2)
     pp.createmap(bg1,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, 
@@ -461,8 +468,9 @@ def check_modelled_background(month=datetime(2005,1,1)):
     pp.createmap(hcho2,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
                  clabel=clabel, title='no isoprene emitted')
     plt.subplot(2,2,4)
-    pp.createmap(diff,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
-                 clabel=clabel, title='no isoprene - reference sector',
+    pp.createmap(diff,lats,lons,region=ausregion, vmin=vmin,vmax=vmax,
+                 cmapname='afmhot_r', clabel=clabel, 
+                 title='no isoprene - reference sector',
                  pname='Figs/GC/GC_background_hcho_%s.png'%month.strftime('%Y%m'))
 
 
@@ -2223,9 +2231,9 @@ if __name__ == "__main__":
     
     ## METHOD PLOTS
     
-    #check_modelled_background() # finished? 24/2/19
+    check_modelled_background() # 9/5/19
     
-    [Examine_Model_Slope(use_smear_filter=flag) for flag in [True,False]] # 9/5/19
+    #[Examine_Model_Slope(use_smear_filter=flag) for flag in [True,False]] # 9/5/19
     
     ## Results Plots
     

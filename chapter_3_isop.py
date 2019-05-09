@@ -529,12 +529,15 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
         compares isop emission [atom_C/cm2/s] against hcho vert_column [molec_hcho/cm2]
         as done in Palmer et al. 2003
         Also plots sample of regressions over Australia
+        UPDATE 9/5/19:
+            remove or replace top right image with isop vs hcho for one of the sample grid boxes
     '''
-
+    
+    pname0="Figs/Example_HCHO_vs_Isop.png"
+    
     # Retrieve data
     dates= util.list_days(month,month=True)
     GC=GC_class.GC_biogenic(month)
-    region=pp.__AUSREGION__
     ymstr=month.strftime('%b, %Y')
     hcho_min=1e14
     hcho_max=3e16
@@ -565,37 +568,42 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
     isop[:,ocean] = np.NaN
 
     fullpageFigure() # set up full page figure size and fonts and etc...
-    f,axes=plt.subplots(2,2)
-
-    # Now plot the slope and r^2 on the map of Aus:
-    plt.sca(axes[0,0]) # first plot slope
-    vmin=1e-7
-    slope[slope < vmin] = np.NaN # Nan the zeros and negatives for nonlinear plot
-    pp.createmap(slope, lats, lons, vmin=slopemin, vmax=slopemax,
-                 aus=True, linear=False, cmapname=cmapname,
-                 suptitle="HCHO trop column vs isoprene emissions %s"%ymstr,
-                 clabel='s', title="Slope")
-    plt.sca(axes[1,0]) # then plot r2 and save figure
-    bmap,cs,cb = pp.createmap(reg**2,lats,lons,vmin=0,vmax=1.0,
-                              aus=True,linear=True, cmapname=cmapname,
-                              clabel='', title='r$^2$')
-
+    
+    # First figure looks at hcho vs isoprene over Australia
     # plot time series (spatially averaged)
     ts_isop=np.nanmean(isop,axis=(1,2))
     ts_hcho=np.nanmean(hcho,axis=(1,2))
-    plt.sca(axes[0,1])
+    plt.figure()
     pp.plot_time_series(dates,ts_isop,ylabel=__apri__label__,
         title='Australian midday mean', dfmt="%d", color='r',legend=False, label=__apri__)
-    h1, l1 = axes[0,1].get_legend_handles_labels()
-    twinx=axes[0,1].twinx()
+    ax0 = plt.gca()
+    h1, l1 = ax0.get_legend_handles_labels()
+    twinx=ax0.twinx()
     plt.sca(twinx)
     pp.plot_time_series(dates,ts_hcho,ylabel=r'HCHO [ molec cm$^{-2}$ ]',
         xlabel='day', dfmt="%d", color='m', legend=False, label='HCHO')
     h2, l2 = twinx.get_legend_handles_labels()
     plt.legend(h1+h2, l1+l2, loc='best')
 
-    plt.sca(axes[0,1])
     plt.autoscale(True)
+    plt.savefig(pname0)
+    print("SAVED ",pname0)
+    plt.close()
+    
+    plt.figure()
+    # Now plot the slope and r^2 on the map of Aus:
+    ax0=plt.subplot(2,2,1) # first plot slope
+    vmin=1e-7
+    slope[slope < vmin] = np.NaN # Nan the zeros and negatives for nonlinear plot
+    pp.createmap(slope, lats, lons, vmin=slopemin, vmax=slopemax,
+                 aus=True, linear=False, cmapname=cmapname,
+                 suptitle="HCHO trop column vs isoprene emissions %s"%ymstr,
+                 clabel='s', title="Slope")
+    ax1=plt.subplot(2,2,2) # then plot r2 and save figure
+    bmap,cs,cb = pp.createmap(reg**2,lats,lons,vmin=0,vmax=1.0,
+                              aus=True,linear=True, cmapname=cmapname,
+                              clabel='', title='r$^2$')
+
     # plot a sample of ii_max scatter plots and their regressions
     ii=0; ii_max=9
     colours=[matplotlib.cm.Set1(i) for i in np.linspace(0, 0.9, ii_max)]
@@ -610,7 +618,9 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
         randlattmp, randlontmp  = util.lat_lon_index(samplelats[i],samplelons[i],lats,lons)
         randlati.append(randlattmp)
         randloni.append(randlontmp)
-
+        
+    # Bottom row is regressions
+    ax2=plt.subplot(2,1,2)
     # loop over random lats and lons
     for xi,yi in zip(randloni,randlati):
         if ii==ii_max: break
@@ -619,11 +629,12 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
         if np.isclose(np.nanmean(X),0.0) or np.isnan(np.nanmean(X)): continue
 
         # add dot to map
-        plt.sca(axes[1,0])
-        bmap.plot(lon,lat,latlon=True,markersize=10,marker='o',color=colours[ii])
+        for ax in [ax0, ax1]:
+            plt.sca(ax)
+            bmap.plot(lon,lat,latlon=True,markersize=10,marker='o',color=colours[ii])
 
         # Plot scatter and regression
-        plt.sca(axes[1,1])
+        plt.sca(ax2)
         plt.scatter(X,Y,color=colours[ii])
         m,b,r = slope[yi,xi],off[yi,xi],reg[yi,xi]
         plt.plot(xlims, m*xlims+b,color=colours[ii],
@@ -641,7 +652,6 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
     plt.savefig(pname)
     plt.close()
     print("SAVED: ",pname)
-
 
 ### 
 # RESULTS
@@ -2214,7 +2224,8 @@ if __name__ == "__main__":
     ## METHOD PLOTS
     
     #check_modelled_background() # finished? 24/2/19
-    #Examine_Model_Slope() # finished ~ 20/2/19
+    
+    [Examine_Model_Slope(use_smear_filter=flag) for flag in [True,False]] # 9/5/19
     
     ## Results Plots
     
@@ -2243,9 +2254,9 @@ if __name__ == "__main__":
     
     
     # Emissions apriori vs aposteriori + uncertainty
-    regional_seasonal_comparison()
+    #regional_seasonal_comparison()
     #time_series()
-    regional_seasonal_timeseries()
+    #regional_seasonal_timeseries()
     
     
     ## UNCERTAINTY

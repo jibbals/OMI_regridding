@@ -1216,7 +1216,7 @@ class GC_biogenic:
             print("  nanmean trop_hcho = %.2e %s"%(np.nanmean(hcho),'molec/cm2'))
 
         # calculate slope etc
-        slope, bg, reg, err = slope_calc(isop,hcho,sublats,sublons)
+        slope, bg, reg, err = slope_calc(isop,hcho)
 
         # again for smear filtered
         # Read smearing mask from file
@@ -1231,7 +1231,7 @@ class GC_biogenic:
         hchosf[smearmask] = np.NaN
 
         # calculate slope etc
-        slopesf, bgsf, regsf, errsf = slope_calc(isopsf,hchosf,sublats,sublons)
+        slopesf, bgsf, regsf, errsf = slope_calc(isopsf,hchosf)
 
 
         if __VERBOSE__:
@@ -1302,6 +1302,41 @@ def check_units(d=datetime(2005,1,1)):
 
         # E_isop_bio is atom_C/cm2/s, around 5e12?
 
+def slope_calc(isop,hcho):
+    '''
+        Function that calculate slope on 3d array inputs isop and hcho
+    '''
+    arrshape=np.shape(isop)
+    #time, lats, lons
+    n_t, n_y, n_x= arrshape
+    
+    slope  = np.zeros([n_y,n_x]) + np.NaN
+    bg     = np.zeros([n_y,n_x]) + np.NaN
+    reg    = np.zeros([n_y,n_x]) + np.NaN
+    err = np.zeros([n_y,n_x,2]) + np.NaN
+    
+    # regression for each lat/lon gives us slope
+    for xi in range(n_x):
+        for yi in range(n_y):
+            # Y = m X + B
+            X=isop[:, yi, xi]
+            Y=hcho[:, yi, xi]
+
+            # Skip ocean or no emissions squares:
+            # potential problem: When using kgC/cm2/s, we are always close to zero (1e-11 order)
+            # however we are using molec/cm2/s
+            if np.isclose(np.mean(X), 0.0): continue
+            if np.all(np.isnan(X)): continue
+
+
+            # get regression
+            m, b, r, CI1, CI2=RMA(X, Y)
+            slope[yi, xi] = m
+            bg[yi, xi] = b
+            reg[yi, xi] = r
+            err[yi,xi] = CI1[0] # slope limits (CI: ricker method)
+
+    return slope,bg,reg,err
 
 def check_diag(d=datetime(2005,1,1)):
     '''
@@ -1413,8 +1448,8 @@ def create_slope_file(d0=datetime(2005,1,1),dN=datetime(2012,12,31), region=pp._
         n_mya[month] = np.sum(~np.isnan(X*Y),axis=0)
         n_sf_mya[month] = np.sum(~np.isnan(X_sf*Y_sf),axis=0)
 
-        s_mya[month], bg, r_mya[month], ci_mya[month] = slope_calc(X,Y,outlat,outlon)
-        s_sf_mya[month], bg, r_sf_mya[month], ci_sf_mya[month] = slope_calc(X_sf,Y_sf,outlat,outlon)
+        s_mya[month], bg, r_mya[month], ci_mya[month] = slope_calc(X,Y)
+        s_sf_mya[month], bg, r_sf_mya[month], ci_sf_mya[month] = slope_calc(X_sf,Y_sf)
 
     print("CHECK: FINAL Shapes ")
     for arr in s_mya,s_sf_mya,r_mya,ci_mya,n_mya:

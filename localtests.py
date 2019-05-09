@@ -64,54 +64,95 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 d0=datetime(2005,1,1)
-d1=datetime(2005,12,31)
+d1=datetime(2005,3,31)
 
-dkeys=['E_PP_lr',# low res a posteriori
-       'E_MEGAN', # low res a priori
-       'pixels_PP_lr', # pixel counts
-       'E_PPm_rerr_lr', #Monthly relative emissions error
-       'E_PP_err_lr', # daily error low res
-       'E_PPm_err_lr', # monthly error low res
-       #'slope_rerr_lr', # monthly slope error
-       #'VCC_PP_lr', # daily VCC
-       ]
+'''
+Look closely at AMFs over Australia, specifically over land
 
-enew = E_new(d0,d1,dkeys=dkeys)
-dates= enew.dates
-months= util.list_months(dates[0],dates[-1])
-lats=enew.lats_lr
-lons=enew.lons_lr
+FIGURE1:
+    maps :   AMF OMI, AMF GC, AMF PP 
+    TS   :   all threeeeeeeeeeeeeee   : monthly resampled?
+    TS   :   all three Emissions      : monthly resampled?
+'''
 
-# Get monthly relative uncertaint per region per season
-#uncerts1, _, _, _                     = regional_seasonal(enew.E_PPm_rerr_lr, months, lats, lons, )
-uncerts_all=enew.get_monthly_errors()['Ererrm']
-# quick comparison of monthly RERR
-pp.compare_maps([np.nanmean(uncerts_all,axis=0),np.nanmean(enew.E_PPm_rerr_lr,axis=0)], 
-                 [lats,lats],[lons,lons],
-                 linear=True,pname="test_monthly_Runcert.png",)
+ystr=d0.strftime('%Y%m%d')
+pname='Figs/Sensitivity_recalculation_%s.png'%(ystr)
 
-# Pull out apri and apost regional seasonal emissions
-apris, apristd, aprilq, apriuq      = chapter_3_isop.regional_seasonal(enew.E_MEGAN, dates, lats, lons, )
+# read in omhchorp
+omkeys= [ #  'VCC_GC',           # The vertical column corrected using the RSC
+          #  'VCC_PP',        # Corrected Paul Palmer VC
+          #  'VCC_OMI',       # OMI VCCs from original satellite swath outputs
+          #  'VCC_OMI_newrsc', # OMI VCCs using original VC_OMI and new RSC corrections
+            'AMF_GC',        # AMF calculated using by GEOS-Chem
+          #  'AMF_GCz',       # secondary way of calculating AMF with GC
+            'AMF_OMI',       # AMF from OMI swaths
+            'AMF_PP',        # AMF calculated using Paul palmers code
+            ]
+om=omhchorp(d0,d1, keylist=omkeys)
+lats,lons=om.lats,om.lons
+dates=om.dates
+
+# AMF Subsets
+subsets=util.lat_lon_subset(lats,lons,region,data=[om.AMF_OMI,om.AMF_GC,om.AMF_PP],has_time_dim=True)
+lats,lons=subsets['lats'],subsets['lons']
+for i,istr in enumerate(['AMF (OMI)', 'AMF (GC) ', 'AMF (PP) ']):
+    dat=subsets['data'][i]
+    print("%s mean : %7.4f, std: %7.4f"%(istr, np.nanmean(dat),np.nanstd(dat)))
+
+#unc = om.col_uncertainty_OMI
+mlons,mlats=np.meshgrid(lons,lats)
+
+# Mask oceans for AMFs
+oceanmask = util.oceanmask(lats,lons)
+oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],om.n_times,axis=0)
+
+# Mean for row of maps
+OMP = subsets['data'] # OMI, My, Palmer AMFs
+amf_titles= ['AMF$_{OMI}$', 'AMF$_{GC}$', 'AMF$_{PP}$']
+amf_colours=['orange','saddlebrown','salmon']
+
+chapter_3_isop.fullpageFigure() # Figure stuff
+plt.close()
+f=plt.figure()
+
+ax1=plt.subplot(3,1,2)
+ax2=plt.subplot(3,1,3)
+
+amf_min, amf_max = .4,2.5
+for i, (amf, title,color) in enumerate(zip(OMP,amf_titles,amf_colours)):
+    plt.subplot(3,3,i+1)
+    # map the average over time
+    m,cs,cb = pp.createmap(np.nanmean(amf,axis=0),lats,lons,
+                           vmin=amf_min,vmax=amf_max, aus=True, 
+                           linear=True, colorbar=False, title=title)
+    
+    # AMF time series:
+    plt.sca(ax1)
+    monthly = util.monthly_averaged(dates,amf)
+    mmean = monthly['mean']
+    mdates = monthly['dates']
+    mstd = monthly['std']
+    X = np.arange(len(mdates))
+    width=0.3
+    plt.bar(X+width*i,mmean,width=width,yerr=mstd,label=title,color=color)
+    #plt.fill_between(mdates,mmean+mstd,mmean-mstd, color=color, alpha=0.35)
+
+# Add colour bar at right edge for all three maps
+pp.add_colourbar(f,cs,label="AMF",axes=[0.9, 0.7, 0.02, 0.2])
+
+plt.sca(ax1)
+plt.legend(loc='best',ncol=3)
+plt.xticks(X+0.3,['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][0:len(mdates)])
+
+plt.show()
+assert False, 'stopping here'
 
 
-# clear the super uncertain squares...
-E_PPm_lr = util.monthly_averaged(dates,enew.E_PP_lr,keep_spatial=True)['mean']
-to_remove=uncerts_all > 5
-prior_mean_E = np.nanmean(E_PPm_lr)
-prior_mean_rerr = np.nanmean(uncerts_all)
-E_PPm_lr[to_remove] = np.NaN
-uncerts_all[to_remove] = np.NaN
-
-post_mean_E = np.nanmean(E_PPm_lr)
-post_mean_rerr = np.nanmean(uncerts_all)
-print("trimming ",np.nansum(to_remove)," uncertain days from E_PP_lr")
-print("E_PPm_lr mean: %.2e to %.2e"%(prior_mean_E,post_mean_E))
-print("E_PPm_rerr_lr mean: %.2e to %.2e"%(prior_mean_rerr, post_mean_rerr))
-
-aposts, apoststd, apostlq, apostuq  = chapter_3_isop.regional_seasonal(E_PPm_lr, months, lats, lons, )
-
-#del enew
-# Plot histogram of monthly Rerrors
+# save plot
+f.suptitle("Product comparison for %s"%ystr,fontsize=28)
+f.savefig(pname)
+print("%s saved"%pname)
+plt.close(f)
 
 
 

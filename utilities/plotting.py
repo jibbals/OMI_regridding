@@ -122,14 +122,16 @@ def regularbounds(x,fix=False):
 
     return newx
 
-def add_colourbar(f,cs,ticks=None,label=None,fontsize=15):
+def add_colourbar(f,cs,ticks=None,label=None,fontsize=15,
+                  axes=[0.87, 0.20, 0.04, 0.6]):
     '''
         Add a colour bar to a figure
+        axes are [left, bottom, width, height]
     '''
     f.tight_layout()
     f.subplots_adjust(top=0.95)
-    f.subplots_adjust(right=0.84)
-    cbar_ax = f.add_axes([0.87, 0.20, 0.04, 0.6])
+    f.subplots_adjust(right=axes[0]-0.03)
+    cbar_ax = f.add_axes(axes)
     cb=f.colorbar(cs,cax=cbar_ax)
     if ticks is not None:
         cb.set_ticks(ticks)

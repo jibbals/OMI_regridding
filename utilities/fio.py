@@ -88,6 +88,8 @@ __OMHCHORP_KEYS__ = [
     'RSC_GC',        # GEOS-Chem RSC [RSC_latitude] (molec/cm2)
     'VCC_GC',           # The vertical column corrected using the RSC
     'VCC_PP',        # Corrected Paul Palmer VC
+    'VCC_OMI',       # OMI VCCs from original satellite swath outputs
+    'VCC_OMI_newrsc', # OMI VCCs using original VC_OMI and new RSC corrections
     'AMF_GC',        # AMF calculated using by GEOS-Chem
     'AMF_GCz',       # secondary way of calculating AMF with GC
     'AMF_OMI',       # AMF from OMI swaths
@@ -96,8 +98,6 @@ __OMHCHORP_KEYS__ = [
     'VC_GC',         # GEOS-Chem Vertical Columns
     'VC_OMI',        # OMI VCs
     'VC_PP',         # VCs from PP amf
-    'VCC_OMI',       # OMI VCCs from original satellite swath outputs
-    'VCC_OMI_newrsc', # OMI VCCs using original VC_OMI and new RSC corrections
     'col_uncertainty_OMI',
     #'fires',         # Fire count
     #'AAOD',          # AAOD from omaeruvd

@@ -42,7 +42,7 @@ class omhchorp:
     Class for holding OMI regridded, reprocessed dataset
     generally time, latitude, longitude
     '''
-    def __init__(self, day0, dayn=None, latres=0.25, lonres=0.3125, keylist=None, ignorePP=False):
+    def __init__(self, day0, dayn=None, latres=0.25, lonres=0.3125, keylist=None):
         '''
         Read reprocessed OMI files, one month or longer
         Inputs:

@@ -1529,7 +1529,7 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
 
 
 
-    smear_units='molec$_{HCHO}$*s/atom$_C$'
+    smear_units='s'
     # fix infinity problem (basemap plots may be shitty)
     for arr in [summer_smear_dayavg,summer_smear_midday,
                 winter_smear_dayavg,winter_smear_midday,
@@ -1556,14 +1556,21 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
             # Add diamond over strict threshold
             # pink where at least one gridday filtered
             maxarr=np.nanmax(arr,axis=0)
-            pp.add_marker_to_map(bmap, maxarr>Inversion.__Thresh_Smearing__,
+            minarr=np.nanmin(arr,axis=0)
+            n_filtered= np.nansum((arr > masks.__smearmaxlit__) + (arr<masks.__smearminlit__), axis=0)
+            ten_filtered = n_filtered > 9
+            many_filtered = n_filtered > 29
+            all_filtered = (minarr > masks.__smearmaxlit__) + (maxarr<masks.__smearminlit__)
+            pp.add_marker_to_map(bmap, ten_filtered,
                                  lats, lons, marker='d',
                                  landonly=False, markersize=6, color='pink')
+            pp.add_marker_to_map(bmap, many_filtered,
+                                 lats, lons, marker='d',
+                                 landonly=False, markersize=6, color='red')
             # red where always over threshhold
-            minarr=np.nanmin(arr,axis=0)
-            pp.add_marker_to_map(bmap, minarr>Inversion.__Thresh_Smearing__,
+            pp.add_marker_to_map(bmap, all_filtered,
                                  lats, lons, marker='x',
-                                 landonly=False, markersize=8, color='darkred')
+                                 landonly=False, markersize=9, color='darkred')
 
 
     # title and save figure
@@ -1594,18 +1601,25 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
             # Add diamond over strict threshold
             # pink where at least one gridday filtered
             maxarr=np.nanmax(arr,axis=0)
-            pp.add_marker_to_map(bmap, maxarr>Inversion.__Thresh_Smearing__,
+            minarr=np.nanmin(arr,axis=0)
+            n_filtered= np.nansum((arr > masks.__smearmaxlit__) + (arr<masks.__smearminlit__), axis=0)
+            ten_filtered = n_filtered > 9
+            many_filtered = n_filtered > 29
+            all_filtered = (minarr > masks.__smearmaxlit__) + (maxarr<masks.__smearminlit__)
+            pp.add_marker_to_map(bmap, ten_filtered,
                                  lats, lons, marker='d',
                                  landonly=False, markersize=6, color='pink')
-            # red where always over threshhold
-            minarr=np.nanmin(arr,axis=0)
-            pp.add_marker_to_map(bmap, minarr>Inversion.__Thresh_Smearing__,
+            pp.add_marker_to_map(bmap, many_filtered,
+                                 lats, lons, marker='d',
+                                 landonly=False, markersize=6, color='red')
+            # red cross where always over threshhold
+            pp.add_marker_to_map(bmap, all_filtered,
                                  lats, lons, marker='x',
-                                 landonly=False, markersize=8, color='darkred')
+                                 landonly=False, markersize=9, color='darkred')
 
 
     # title and save figure
-    plt.suptitle("Midday smearing effects",fontsize=27)
+    plt.suptitle("smearing filter application",fontsize=27)
     plt.savefig(pname2)
     print('SAVED ',pname2)
     plt.close()

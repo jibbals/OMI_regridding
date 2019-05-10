@@ -194,8 +194,8 @@ for i, (emiss, title, color) in enumerate(zip(enews,enew_titles,enew_colours)):
 plt.legend(loc='best',ncol=4)
 plt.xticks(X+0.3,['Summer','Autumn','Winter','Spring'][0:len(smean)])
 plt.title("seasonal non-zero land-only emissions [atom C cm$^{-2}$ s$^{-1}$]")
-plt.show()
-assert False, 'stopping here'
+#plt.show()
+#assert False, 'stopping here'
 
 
 # save plot

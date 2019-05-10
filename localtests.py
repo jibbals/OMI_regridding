@@ -64,7 +64,7 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
 d0=datetime(2005,1,1)
-d1=datetime(2005,3,31)
+d1=datetime(2005,12,31)
 
 '''
 Look closely at AMFs over Australia, specifically over land
@@ -99,8 +99,6 @@ for i,istr in enumerate(['AMF (OMI)', 'AMF (GC) ', 'AMF (PP) ']):
     dat=subsets['data'][i]
     print("%s mean : %7.4f, std: %7.4f"%(istr, np.nanmean(dat),np.nanstd(dat)))
 
-#unc = om.col_uncertainty_OMI
-mlons,mlats=np.meshgrid(lons,lats)
 
 # Mask oceans for AMFs
 oceanmask = util.oceanmask(lats,lons)
@@ -110,6 +108,8 @@ oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],om.n_times,axis=0)
 OMP = subsets['data'] # OMI, My, Palmer AMFs
 amf_titles= ['AMF$_{OMI}$', 'AMF$_{GC}$', 'AMF$_{PP}$']
 amf_colours=['orange','saddlebrown','salmon']
+
+
 
 chapter_3_isop.fullpageFigure() # Figure stuff
 plt.close()
@@ -126,15 +126,26 @@ for i, (amf, title,color) in enumerate(zip(OMP,amf_titles,amf_colours)):
                            vmin=amf_min,vmax=amf_max, aus=True, 
                            linear=True, colorbar=False, title=title)
     
+    # For time series we just want land
+    amf[oceanmask3d] = np.NaN
+    
     # AMF time series:
     plt.sca(ax1)
-    monthly = util.monthly_averaged(dates,amf)
-    mmean = monthly['mean']
-    mdates = monthly['dates']
-    mstd = monthly['std']
-    X = np.arange(len(mdates))
+    
+    # EXPAND out spatially, then get seasonal means
+    seasonal = util.seasonally_averaged(amf,dates)
+    smean = seasonal['mean']
+    sstd = seasonal['std']
+    #to get quantiles need different method
+    slq = seasonal['lq']
+    suq = seasonal['uq']
+    
+    yerr=np.zeros([2,len(smean)])
+    yerr[0,:] = slq
+    yerr[1,:] = suq    
+    X = np.arange(len(smean))
     width=0.3
-    plt.bar(X+width*i,mmean,width=width,yerr=mstd,label=title,color=color)
+    plt.bar(X+width*i,smean,width=width,yerr=yerr,label=title,color=color)
     #plt.fill_between(mdates,mmean+mstd,mmean-mstd, color=color, alpha=0.35)
 
 # Add colour bar at right edge for all three maps
@@ -142,14 +153,52 @@ pp.add_colourbar(f,cs,label="AMF",axes=[0.9, 0.7, 0.02, 0.2])
 
 plt.sca(ax1)
 plt.legend(loc='best',ncol=3)
-plt.xticks(X+0.3,['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][0:len(mdates)])
+plt.xticks(X+0.2,['Summer','Autumn','Winter','Spring'][0:len(smean)])
+plt.title("seasonal land-only AMF")
 
+# Finally plot time series of emissions australian land average
+plt.sca(ax2)
+ekeys=['E_MEGAN',      #  {31, 18, 19}
+       'E_GC_lr',  #  at low resolution: {31,18,19}
+       'E_OMI_lr', #
+       'E_PP_lr',     #  {31, 18,19}
+       ]
+enew = E_new(d0,d1,dkeys=ekeys)
+dates = enew.dates
+lats,lons = enew.lats_lr,enew.lons_lr
+oceanmask = enew.oceanmask3d_lr
+enews = [enew.E_MEGAN, enew.E_OMI_lr,enew.E_GC_lr, enew.E_PP_lr]
+enew_colours = ['m', 'orange','saddlebrown','salmon']
+enew_titles = ['a priori', 'E$_{OMI}$','E$_{GC}$','E$_{PP}$']
+
+for i, (emiss, title, color) in enumerate(zip(enews,enew_titles,enew_colours)):
+    emiss[oceanmask] = np.NaN
+    emiss[emiss<10] = np.NaN
+    
+    # EXPAND out spatially, then get seasonal means
+    seasonal = util.seasonally_averaged(emiss,dates)
+    smean = seasonal['mean']
+    sstd = seasonal['std']
+    #to get quantiles need different method
+    slq = seasonal['lq']
+    suq = seasonal['uq']
+    
+    yerr=np.zeros([2,len(smean)])
+    yerr[0,:] = slq
+    yerr[1,:] = suq    
+    X = np.arange(len(smean))
+    width=0.2
+    plt.bar(X+width*i,smean,width=width,yerr=yerr,label=title,color=color)
+    #plt.fill_between(mdates,mmean+mstd,mmean-mstd, color=color, alpha=0.35)
+
+plt.legend(loc='best',ncol=4)
+plt.xticks(X+0.3,['Summer','Autumn','Winter','Spring'][0:len(smean)])
+plt.title("seasonal non-zero land-only emissions [atom C cm$^{-2}$ s$^{-1}$]")
 plt.show()
 assert False, 'stopping here'
 
 
 # save plot
-f.suptitle("Product comparison for %s"%ystr,fontsize=28)
 f.savefig(pname)
 print("%s saved"%pname)
 plt.close(f)

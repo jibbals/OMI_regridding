@@ -552,6 +552,8 @@ def multi_year_average_spatial(data,dates):
     mstd=[]
     mcount=[]
     msum=[]
+    mlq = []
+    muq = []
     for month in range(12):
         inds= allmonths == month+1
 
@@ -560,11 +562,12 @@ def multi_year_average_spatial(data,dates):
         mstd.append(np.nanstd(data[inds],axis=0))
         mcount.append(np.nansum(inds,axis=0))
         msum.append(np.nansum(data[inds],axis=0))
-
+        mlq.append(np.nanpercentile(data[inds],25,axis=0))
+        muq.append(np.nanpercentile(data[inds],75,axis=0))
     mmean=np.array(mmean); mstd=np.array(mstd); mcount=np.array(mcount);
     mmedian=np.array(mmedian); msum=np.array(msum)
     return {'dates':mdates, 'mean':mmean, 'median':mmedian, 'sum':msum,
-            'std':mstd,'count':mcount}
+            'std':mstd,'count':mcount,'uq':muq,'lq':mlq}
 
 def monthly_averaged(dates,data,keep_spatial=False):
     '''
@@ -582,6 +585,8 @@ def monthly_averaged(dates,data,keep_spatial=False):
     mstd=[]
     mcount=[]
     msum=[]
+    mlq=[]
+    muq=[]
     
     # Ignore numpy warnings dealing with nan entries
     #with np.errstate(invalid='ignore',divide='ignore'):
@@ -597,12 +602,39 @@ def monthly_averaged(dates,data,keep_spatial=False):
             mstd.append(np.nanstd(data[inds],axis=axis))
             mcount.append(np.nansum(inds,axis=axis))
             msum.append(np.nansum(data[inds],axis=axis))
+            mlq.append(np.nanpercentile(data[inds],25,axis=axis))
+            muq.append(np.nanpercentile(data[inds],75,axis=axis))
 
     mmean=np.array(mmean); mstd=np.array(mstd); mcount=np.array(mcount);
     mmedian=np.array(mmedian); msum=np.array(msum)
+    mlq = np.array(mlq); muq=np.array(muq)
     mid_dates=[d+timedelta(days=15) for d in mdates]
+    
     return {'dates':mdates, 'mean':mmean, 'median':mmedian, 'sum':msum,
-            'std':mstd,'count':mcount, 'middates':mid_dates}
+            'std':mstd,'count':mcount, 'middates':mid_dates, 'uq':muq, 'lq':mlq}
+
+def seasonally_averaged(data,dates,bins='Q-NOV'):
+    '''
+        take data array (first dim should be time, matching dates input)
+        flatten it out and resample to bin temporal resolution
+    '''
+    
+    meshdates=np.copy(dates)
+    if len(np.shape(data))>1:
+        _,nlats,nlons = np.shape(data)
+        meshdates = np.repeat(meshdates[:,np.newaxis],nlats,axis=1)
+        meshdates = np.repeat(meshdates[:,:,np.newaxis],nlons,axis=2)
+    
+    TS = pd.Series(data.flatten(), index=meshdates.flatten())
+    seasonal = TS.resample(bins)
+    smean = seasonal.mean()
+    sdates = seasonal.mean().index.to_pydatetime()
+    sstd = seasonal.std()
+    #to get quantiles need different method
+    slq = TS.resample(bins).agg(lambda x: x.quantile(0.25))
+    suq = TS.resample(bins).agg(lambda x: x.quantile(0.75))
+    return {'seasonal':seasonal,'mean':smean,'std':sstd,
+            'lq':slq,'uq':suq,'dates':sdates}
 
 def oceanmask(lats,lons,inlands=False):
     '''
@@ -924,6 +956,9 @@ def resample(data,dates, bins='M', **resampleargs):
     '''
     series = pd.Series(data,index=dates)
     resampled = series.resample(bins, **resampleargs)
+    # can also get quantiles...
+    #slq = TS.resample('Q-NOV').agg(lambda x: x.quantile(0.25))
+    #suq = TS.resample('Q-NOV').agg(lambda x: x.quantile(0.75))
     #newdates = resampled.mean().index.to_pydatetime()
     #mean=resampled.mean()
     #median=resampled.median()

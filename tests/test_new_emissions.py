@@ -38,8 +38,8 @@ def alpha_creation():
 
         Create yearly plots and compare with multi-year avg version
     '''
-    label_meg='$E_{GC}$'
-    label_topd='$E_{OMI}$'
+    label_meg='a priori'
+    label_topd='a posteriori'
 
     yearly_alphas=[]
     yearly_megan=[]
@@ -67,23 +67,23 @@ def alpha_creation():
         plt.figure(figsize=[15,13])
         # first plot alpha in jan, then alpha in
         plt.subplot(221)
-        pp.createmap(alpha[0],lats, lons, linear=True, region=region, title='Jan. alpha',vmin=vmin,vmax=vmax)
+        pp.createmap(alpha[0],lats, lons, linear=True, region=region, title='January',vmin=vmin,vmax=vmax)
         # then plot alpha in June
         plt.subplot(222)
-        pp.createmap(alpha[6],lats, lons, linear=True, region=region, title='Jul alpha',vmin=vmin,vmax=vmax)
+        pp.createmap(alpha[6],lats, lons, linear=True, region=region, title='July',vmin=vmin,vmax=vmax)
         #finally plot time series at sydney of alpha, megan, and topdown emissions
         plt.subplot(212)
-        plt.title('examine Sydney')
+        plt.title('Sydney',fontsize=24)
         plt.plot_date(dates, megan[:,lati,loni], 'm-', label=label_meg)
         plt.plot_date(dates, topd[:,lati,loni], '-', label=label_topd, color='cyan')
         plt.ylim(1e11,2e13)
         plt.ylabel('Emissions [atom C cm$^{-2}$ s$^{-1}$]')
         plt.legend()
         plt.sca(plt.twinx())
-        plt.plot_date(months, alpha[:,lati,loni], 'k-', linewidth=3, label='alpha')
+        plt.plot_date(months, alpha[:,lati,loni], 'k-', linewidth=3, label='$\\alpha$')
         plt.ylim(vmin,vmax)
-        plt.ylabel('Alpha')
-        plt.suptitle('Alpha for %4d'%year)
+        plt.ylabel('$\\alpha$')
+        plt.suptitle('$\\alpha$ for %4d'%year)
         plt.savefig('Figs/new_emiss/alpha_%4d.png'%year)
         plt.close()
 
@@ -115,10 +115,10 @@ def alpha_creation():
     plt.subplot(321)
     fixed=np.copy(alpha)
     fixed[fixed == 1] =np.NaN
-    pp.createmap(fixed[0],lats, lons, linear=True, region=region, title='January alpha',vmin=vmin,vmax=vmax)
+    pp.createmap(fixed[0],lats, lons, linear=True, region=region, title='January',vmin=vmin,vmax=vmax)
     # then plot alpha in June
     plt.subplot(322)
-    pp.createmap(fixed[6],lats, lons, linear=True, region=region, title='July alpha',vmin=vmin,vmax=vmax)
+    pp.createmap(fixed[6],lats, lons, linear=True, region=region, title='July',vmin=vmin,vmax=vmax)
     #finally plot time series at sydney of alpha, megan, and topdown emissions
     plt.subplot(312)
     X=range(12)
@@ -127,7 +127,7 @@ def alpha_creation():
     plt.ylim(1e11,2e13)
     plt.ylabel('Emissions [atom C cm$^{-2}$ s$^{-1}$]')
     plt.legend()
-    plt.title('examine Sydney')
+    plt.title('Sydney', fontsize=24)
     plt.sca(plt.twinx())
     plt.plot(X, alpha[:,lati,loni], 'k-', linewidth=3, label='alpha')
     plt.plot([X[0],X[-1]], [1,1], 'k--', linewidth=1) # dotted line
@@ -136,7 +136,7 @@ def alpha_creation():
     plt.gca().set_xticklabels(['J','F','M','A','M','J','J','A','S','O','N','D'])
 
     plt.ylim(vmin,vmax)
-    plt.ylabel('Alpha')
+    plt.ylabel('$\\alpha$')
 
     plt.subplot(313)
     plt.plot_date(allmonths, allmegan[:,lati,loni], 'm-', label=label_meg)
@@ -148,10 +148,10 @@ def alpha_creation():
     plt.sca(plt.twinx())
     plt.plot_date(allmonths,allalpha[:,lati,loni], 'k-', linewidth=3)
     plt.plot_date([allmonths[0],allmonths[-1]], [1,1], 'k--',linewidth=1) # dotted line
-    plt.ylabel('alpha')
+    plt.ylabel('$\\alpha$')
     plt.ylim(vmin,vmax)
 
-    plt.suptitle('Alpha for multi-year average 2005-2012')
+    plt.suptitle('$\\alpha$ for multi-year average 2005-2012',fontsize=24)
     plt.savefig('Figs/new_emiss/alpha_mya.png')
     plt.close()
 

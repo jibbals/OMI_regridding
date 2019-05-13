@@ -1757,7 +1757,8 @@ if __name__ == '__main__':
     # Test maps between old/new runs
     #test_new_emissions.spatial_comparisons(jan1,jan31,'JanFeb05')
     #test_new_emissions.spatial_comparisons(jun1,jun30,'JunJul05')
-    
+    # Check alpha creations makes sense
+    test_new_emissions.alpha_creation()
     
     #####################
     ### E_new tests
@@ -1829,7 +1830,7 @@ if __name__ == '__main__':
     #test_filters.smearing_at_edges()
     ## Test smearing at midday vs average smearing...
     # run/14/8/18
-    test_filters.smearing_definition(threshmask=True)
+    #test_filters.smearing_definition(threshmask=True)
     ## check smearing distributions and filtering
     # run 8/8/18 TODO: add version using midday smearing..
     #test_filters.smearing_threshold()

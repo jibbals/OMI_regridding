@@ -880,15 +880,19 @@ def Seasonal_daycycle():
                     left=jj==0,
                     bottom=ii==3)
 
-                # first highlight the 1300-1400 time window with soft grey
-                #plt.fill_betweenx(ylim,[13,13],[14,14], color='grey', alpha=0.2)
-                plt.plot([13,13], ylim, color='grey',alpha=0.5)
-                plt.plot([14,14], ylim, color='grey',alpha=0.5)
+                ## Not adding vertical bars to show 1300-1400LT
+                #plt.plot([13,13], ylim, color='grey',alpha=0.5)
+                #plt.plot([14,14], ylim, color='grey',alpha=0.5)
                 
 
                 if r == 0 :
                     plt.fill_between(np.arange(24), mhigh, mlow, color='k', alpha=0.25)
-                plt.plot(np.arange(24), mdata, color=colors[r], linewidth=1+2*(r==0))
+                # Plot a priori regional diurnal emissions
+                #plt.plot(np.arange(24), mdata, color=colors[r], linewidth=1+2*(r==0))
+                # Now just showing australia comparison
+                if r == 0:
+                    plt.plot(np.arange(24), mdata, color=colors[r], linewidth=3)
+                
                 plt.title(titles[ii,jj])
         
                 # also plot topd from 1300-1400
@@ -2366,17 +2370,87 @@ def sensitivity_filtering():
     '''
         FIGURE: 
         Each row shows a regionally averaged time series for emissions with (solid) and without (dashed) applying the anthropogenic and pyrogenic filters.
-        Portion of good pixels filtered is also shown (dotted, grey) using the right axis.
+        Portion of good pixels filtered is also shown (dotted, blue) using the right axis.
     '''
+    
+    pname = 'Figs/Sensitivity_filtering.png'
+    
+    d0=datetime(2005,1,1)
+    d1=datetime(2012,12,31)
     
     ## Read emissions filtered and unfiltered
     
+    dkeys=['E_PP',# low res a posteriori
+           'E_PP_u',
+           #'E_MEGAN', # low res a priori
+           'pixels_PP', # pixel counts
+           'pixels_PP_u', # pixels before filtering (high resolution)
+           #'slope_rerr_lr', # monthly slope error
+           #'VCC_PP_lr', # daily VCC
+           ]
+        
+    enew = E_new(d0,d1,dkeys=dkeys)
+    dates= enew.dates
+    #lats_lr=enew.lats_lr
+    #lons_lr=enew.lons_lr
+    lats,lons = enew.lats, enew.lons
+    
+    
+    ## Pull out apri and apost regional monthly emissions
+    #aprisdict       = regional_seasonal(enew.E_MEGAN, dates, lats_lr, lons_lr, average_monthly=True)
+    apostsdict      = regional_seasonal(enew.E_PP, dates, lats, lons, average_monthly=True)
+    aposts_udict    = regional_seasonal(enew.E_PP_u, dates, lats, lons, average_monthly=True)
     ## Also read pixel counts, determine portion filtered
+    pixdict         = regional_seasonal(enew.pixels_PP.astype(float), dates, lats, lons, average_monthly=True)
+    pix_udict       = regional_seasonal(enew.pixels_PP_u.astype(float), dates, lats, lons, average_monthly=True)
+    #apris           = aprisdict['mean']
+    aposts          = apostsdict['mean']
+    aposts_u        = aposts_udict['mean']
+    pix             = pixdict['sum']
+    pix_u           = pix_udict['sum']
+    filtered = 100-(100.0*pix/pix_u)
     
-    ## split into regional averages
-    
+    # Remove enew for RAM saving
+    del enew
+        
+            
     ## plot time series
+    ##
+    ## FIGURE:
+    plt.close()
+    f, axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True, sharey=True)
+    for i in range(n_regions):
+        
+        plt.sca(axes[i])
+        # Grab monthly data for this region
+        #apri = apris[:,i]
+        apost= aposts[:,i]
+        apostu = aposts_u[:,i]
+        pixgone = filtered[:,i]
+        
+        #plt.plot(range(12),apri, color='k',label='a priori')
+        plt.plot(range(12),apost, color=colors[i], linewidth=2,
+                 label='a posteriori')
+        plt.plot(range(12),apostu, color=colors[i], linewidth=2, linestyle='--',
+                 label='a posteriori (unfiltered)')
+        
+        plt.title(labels[i],color=colors[i])
+        #plt.ylabel('isoprene emissions [atom C cm$^{-2}$ s$^{-1}$]')
+        #    plt.ylim([0,1e13])
+        if i ==0:
+            plt.legend(loc='best',ncol=2)
+        # add portion filtered thingy
+        plt.twinx()
+        plt.plot(range(12),pixgone,color='blue',linestyle=':',linewidth=2)
+        plt.ylabel('portion filtered',color='blue')
+        plt.ylim([20,70])
+    plt.sca(axes[-1])
+    plt.xlim([-0.5, 11.5])
+    plt.xticks(range(12),['J','F','M','A','M','J','J','A','S','O','N','D'])
     
+    plt.savefig(pname)
+    print("SAVED ",pname)
+    plt.close()
 
 if __name__ == "__main__":
     
@@ -2418,7 +2492,7 @@ if __name__ == "__main__":
     
     
     # Day cycle for each month compared to sin wave from posteriori
-    #Seasonal_daycycle() # done with updated suptitle 4/4/19
+    Seasonal_daycycle() # updated to just show AUS 13/5/19
     
     
     # Emissions apriori vs aposteriori + uncertainty
@@ -2435,7 +2509,7 @@ if __name__ == "__main__":
     ## summarised uncertainty
     #relative_error_summary()
     # what does the filtering actually do to end results?
-    sensitivity_recalculation()
+    #sensitivity_recalculation()
     #sensitivity_filtering()
     
     ### Record and time STUJFFS

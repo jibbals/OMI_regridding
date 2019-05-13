@@ -139,13 +139,13 @@ for i in range(n_regions):
     plt.title(labels[i],color=colors[i])
     #    plt.ylabel('isoprene emissions [atom C cm$^{-2}$ s$^{-1}$]')
     #    plt.ylim([0,1e13])
-    if i ==1:
+    if i ==0:
         plt.legend(loc='best',ncol=2)
     # add portion filtered thingy
     plt.twinx()
     plt.plot(range(12),pixgone,color='blue',linestyle=':',linewidth=2)
     plt.ylabel('portion filtered',color='blue')
-    plt.ylim([20,90])
+    plt.ylim([20,70])
 plt.sca(axes[-1])
 plt.xlim([-0.5, 11.5])
 plt.xticks(range(12),['J','F','M','A','M','J','J','A','S','O','N','D'])

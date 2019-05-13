@@ -73,7 +73,7 @@ def alpha_creation():
         pp.createmap(alpha[6],lats, lons, linear=True, region=region, title='July',vmin=vmin,vmax=vmax)
         #finally plot time series at sydney of alpha, megan, and topdown emissions
         plt.subplot(212)
-        plt.title('Sydney',fontsize=24)
+        plt.title('Sydney',fontsize=22)
         plt.plot_date(dates, megan[:,lati,loni], 'm-', label=label_meg)
         plt.plot_date(dates, topd[:,lati,loni], '-', label=label_topd, color='cyan')
         plt.ylim(1e11,2e13)
@@ -124,10 +124,10 @@ def alpha_creation():
     X=range(12)
     plt.plot(X, megan[:,lati,loni], 'm-', label=label_meg)
     plt.plot(X, topd[:,lati,loni], '-', label=label_topd, color='cyan')
-    plt.ylim(1e11,2e13)
-    plt.ylabel('Emissions [atom C cm$^{-2}$ s$^{-1}$]')
-    plt.legend()
-    plt.title('Sydney', fontsize=24)
+    plt.ylim(1e11,1.5e13)
+    plt.ylabel('Emissions [atom C cm$^{-2}$ s$^{-1}$]',fontsize=17)
+    plt.legend(loc='best',fontsize=14)
+    plt.title('Sydney', fontsize=22)
     plt.sca(plt.twinx())
     plt.plot(X, alpha[:,lati,loni], 'k-', linewidth=3, label='alpha')
     plt.plot([X[0],X[-1]], [1,1], 'k--', linewidth=1) # dotted line
@@ -141,9 +141,9 @@ def alpha_creation():
     plt.subplot(313)
     plt.plot_date(allmonths, allmegan[:,lati,loni], 'm-', label=label_meg)
     plt.plot_date(allmonths, alltopd[:,lati,loni], '-', label=label_topd, color='cyan')
-    plt.ylim(1e11,2e13)
-    plt.ylabel('Emissions [atom C cm$^{-2}$ s$^{-1}$]')
-    plt.legend()
+    plt.ylim(1e11,1.5e13)
+    plt.ylabel('Emissions [atom C cm$^{-2}$ s$^{-1}$]',fontsize=17)
+    plt.legend(loc='best',fontsize=14)
     plt.title('monthly average')
     plt.sca(plt.twinx())
     plt.plot_date(allmonths,allalpha[:,lati,loni], 'k-', linewidth=3)
@@ -151,8 +151,9 @@ def alpha_creation():
     plt.ylabel('$\\alpha$')
     plt.ylim(vmin,vmax)
 
-    plt.suptitle('$\\alpha$ for multi-year average 2005-2012',fontsize=24)
+    plt.suptitle('$\\alpha$ for multi-year average 2005-2012',fontsize=22)
     plt.savefig('Figs/new_emiss/alpha_mya.png')
+    print("SAVED ", 'Figs/new_emiss/alpha_mya.png')
     plt.close()
 
 def check_old_vs_new_emission_diags(month=datetime(2005,1,1)):

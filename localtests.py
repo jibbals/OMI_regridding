@@ -51,6 +51,10 @@ import concurrent.futures as confut
 ###############
 __VERBOSE__=True
 region=pp.__AUSREGION__
+regions=chapter_3_isop.regions
+n_regions=chapter_3_isop.n_regions
+colors=chapter_3_isop.colors
+labels=chapter_3_isop.labels
 
 #####
 ## SETUP STUFFS
@@ -63,145 +67,95 @@ start1=timeit.default_timer()
 ##########
 ### DO STUFFS
 ##########
+
+'''
+    FIGURE: 
+    Each row shows a regionally averaged time series for emissions with (solid) and without (dashed) applying the anthropogenic and pyrogenic filters.
+    Portion of good pixels filtered is also shown (dotted, grey) using the right axis.
+'''
+
+pname = 'Figs/Sensitivity_filtering.png'
+
 d0=datetime(2005,1,1)
-d1=datetime(2005,12,31)
+d1=datetime(2012,12,31)
 
-'''
-Look closely at AMFs over Australia, specifically over land
+## Read emissions filtered and unfiltered
 
-FIGURE1:
-    maps :   AMF OMI, AMF GC, AMF PP 
-    TS   :   all threeeeeeeeeeeeeee   : monthly resampled?
-    TS   :   all three Emissions      : monthly resampled?
-'''
-
-ystr=d0.strftime('%Y%m%d')
-pname='Figs/Sensitivity_recalculation_%s.png'%(ystr)
-
-# read in omhchorp
-omkeys= [ #  'VCC_GC',           # The vertical column corrected using the RSC
-          #  'VCC_PP',        # Corrected Paul Palmer VC
-          #  'VCC_OMI',       # OMI VCCs from original satellite swath outputs
-          #  'VCC_OMI_newrsc', # OMI VCCs using original VC_OMI and new RSC corrections
-            'AMF_GC',        # AMF calculated using by GEOS-Chem
-          #  'AMF_GCz',       # secondary way of calculating AMF with GC
-            'AMF_OMI',       # AMF from OMI swaths
-            'AMF_PP',        # AMF calculated using Paul palmers code
-            ]
-om=omhchorp(d0,d1, keylist=omkeys)
-lats,lons=om.lats,om.lons
-dates=om.dates
-
-# AMF Subsets
-subsets=util.lat_lon_subset(lats,lons,region,data=[om.AMF_OMI,om.AMF_GC,om.AMF_PP],has_time_dim=True)
-lats,lons=subsets['lats'],subsets['lons']
-for i,istr in enumerate(['AMF (OMI)', 'AMF (GC) ', 'AMF (PP) ']):
-    dat=subsets['data'][i]
-    print("%s mean : %7.4f, std: %7.4f"%(istr, np.nanmean(dat),np.nanstd(dat)))
-
-
-# Mask oceans for AMFs
-oceanmask = util.oceanmask(lats,lons)
-oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],om.n_times,axis=0)
-
-# Mean for row of maps
-OMP = subsets['data'] # OMI, My, Palmer AMFs
-amf_titles= ['AMF$_{OMI}$', 'AMF$_{GC}$', 'AMF$_{PP}$']
-amf_colours=['orange','saddlebrown','salmon']
-
-
-
-chapter_3_isop.fullpageFigure() # Figure stuff
-plt.close()
-f=plt.figure()
-
-ax1=plt.subplot(3,1,2)
-ax2=plt.subplot(3,1,3)
-
-amf_min, amf_max = .4,2.5
-for i, (amf, title,color) in enumerate(zip(OMP,amf_titles,amf_colours)):
-    plt.subplot(3,3,i+1)
-    # map the average over time
-    m,cs,cb = pp.createmap(np.nanmean(amf,axis=0),lats,lons,
-                           vmin=amf_min,vmax=amf_max, aus=True, 
-                           linear=True, colorbar=False, title=title)
-    
-    # For time series we just want land
-    amf[oceanmask3d] = np.NaN
-    
-    # AMF time series:
-    plt.sca(ax1)
-    
-    # EXPAND out spatially, then get seasonal means
-    seasonal = util.seasonally_averaged(amf,dates)
-    smean = seasonal['mean']
-    sstd = seasonal['std']
-    #to get quantiles need different method
-    slq = seasonal['lq']
-    suq = seasonal['uq']
-    
-    yerr=np.zeros([2,len(smean)])
-    yerr[0,:] = slq
-    yerr[1,:] = suq    
-    X = np.arange(len(smean))
-    width=0.3
-    plt.bar(X+width*i,smean,width=width,yerr=yerr,label=title,color=color)
-    #plt.fill_between(mdates,mmean+mstd,mmean-mstd, color=color, alpha=0.35)
-
-# Add colour bar at right edge for all three maps
-pp.add_colourbar(f,cs,label="AMF",axes=[0.9, 0.7, 0.02, 0.2])
-
-plt.sca(ax1)
-plt.legend(loc='best',ncol=3)
-plt.xticks(X+0.2,['Summer','Autumn','Winter','Spring'][0:len(smean)])
-plt.title("seasonal land-only AMF")
-
-# Finally plot time series of emissions australian land average
-plt.sca(ax2)
-ekeys=['E_MEGAN',      #  {31, 18, 19}
-       'E_GC_lr',  #  at low resolution: {31,18,19}
-       'E_OMI_lr', #
-       'E_PP_lr',     #  {31, 18,19}
+dkeys=['E_PP',# low res a posteriori
+       'E_PP_u',
+       'E_MEGAN', # low res a priori
+       'pixels_PP', # pixel counts
+       'pixels_PP_u', # pixels before filtering (high resolution)
+       #'slope_rerr_lr', # monthly slope error
+       #'VCC_PP_lr', # daily VCC
        ]
-enew = E_new(d0,d1,dkeys=ekeys)
-dates = enew.dates
-lats,lons = enew.lats_lr,enew.lons_lr
-oceanmask = enew.oceanmask3d_lr
-enews = [enew.E_MEGAN, enew.E_OMI_lr,enew.E_GC_lr, enew.E_PP_lr]
-enew_colours = ['m', 'orange','saddlebrown','salmon']
-enew_titles = ['a priori', 'E$_{OMI}$','E$_{GC}$','E$_{PP}$']
-
-for i, (emiss, title, color) in enumerate(zip(enews,enew_titles,enew_colours)):
-    emiss[oceanmask] = np.NaN
-    emiss[emiss<10] = np.NaN
     
-    # EXPAND out spatially, then get seasonal means
-    seasonal = util.seasonally_averaged(emiss,dates)
-    smean = seasonal['mean']
-    sstd = seasonal['std']
-    #to get quantiles need different method
-    slq = seasonal['lq']
-    suq = seasonal['uq']
+enew = E_new(d0,d1,dkeys=dkeys)
+dates= enew.dates
+months= util.list_months(dates[0],dates[-1])
+lats_lr=enew.lats_lr
+lons_lr=enew.lons_lr
+lats,lons = enew.lats, enew.lons
+
+
+## Pull out apri and apost regional monthly emissions
+aprisdict       = chapter_3_isop.regional_seasonal(enew.E_MEGAN, dates, lats_lr, lons_lr, average_monthly=True)
+apostsdict      = chapter_3_isop.regional_seasonal(enew.E_PP, dates, lats, lons, average_monthly=True)
+aposts_udict    = chapter_3_isop.regional_seasonal(enew.E_PP_u, dates, lats, lons, average_monthly=True)
+## Also read pixel counts, determine portion filtered
+pixdict         = chapter_3_isop.regional_seasonal(enew.pixels_PP.astype(float), dates, lats, lons, average_monthly=True)
+pix_udict       = chapter_3_isop.regional_seasonal(enew.pixels_PP_u.astype(float), dates, lats, lons, average_monthly=True)
+apris           = aprisdict['mean']
+aposts          = apostsdict['mean']
+aposts_u        = aposts_udict['mean']
+pix             = pixdict['sum']
+pix_u           = pix_udict['sum']
+filtered = 100-(100.0*pix/pix_u)
+
+# Remove enew for RAM saving
+del enew
     
-    yerr=np.zeros([2,len(smean)])
-    yerr[0,:] = slq
-    yerr[1,:] = suq    
-    X = np.arange(len(smean))
-    width=0.2
-    plt.bar(X+width*i,smean,width=width,yerr=yerr,label=title,color=color)
-    #plt.fill_between(mdates,mmean+mstd,mmean-mstd, color=color, alpha=0.35)
+        
+## plot time series
+##
+## FIGURE:
+plt.close()
+f, axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True, sharey=True)
+for i in range(n_regions):
+    
+    plt.sca(axes[i])
+    # Grab monthly data for this region
+    apri = apris[:,i]
+    apost= aposts[:,i]
+    apostu = aposts_u[:,i]
+    pixgone = filtered[:,i]
+    
+    #plt.plot(range(12),apri, color='k',label='a priori')
+    plt.plot(range(12),apost, color=colors[i], linewidth=2,
+             label='a posteriori')
+    plt.plot(range(12),apostu, color=colors[i], linewidth=2, linestyle='--',
+             label='a posteriori (unfiltered)')
+    
+    plt.title(labels[i],color=colors[i])
+    #    plt.ylabel('isoprene emissions [atom C cm$^{-2}$ s$^{-1}$]')
+    #    plt.ylim([0,1e13])
+    if i ==1:
+        plt.legend(loc='best',ncol=2)
+    # add portion filtered thingy
+    plt.twinx()
+    plt.plot(range(12),pixgone,color='blue',linestyle=':',linewidth=2)
+    plt.ylabel('portion filtered',color='blue')
+    plt.ylim([20,90])
+plt.sca(axes[-1])
+plt.xlim([-0.5, 11.5])
+plt.xticks(range(12),['J','F','M','A','M','J','J','A','S','O','N','D'])
 
-plt.legend(loc='best',ncol=4)
-plt.xticks(X+0.3,['Summer','Autumn','Winter','Spring'][0:len(smean)])
-plt.title("seasonal non-zero land-only emissions [atom C cm$^{-2}$ s$^{-1}$]")
-#plt.show()
-#assert False, 'stopping here'
+plt.savefig(pname)
+print("SAVED ",pname)
+plt.close()
+    
 
 
-# save plot
-f.savefig(pname)
-print("%s saved"%pname)
-plt.close(f)
 
 
 

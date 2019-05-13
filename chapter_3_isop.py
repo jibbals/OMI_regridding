@@ -92,8 +92,11 @@ regions=util.__subregions__
 n_regions=len(regions)
 
 
-def regional_seasonal(arr, dates, lats, lons, remove_ocean=True):
-    ''' split data into regional and seasonal bins
+def regional_seasonal(arr, dates, lats, lons, remove_ocean=True, 
+                      average_monthly=False):
+    ''' 
+    split data into regional and seasonal bins
+    optionally do monthly instead of seasonally
     '''
     if __VERBOSE__:
         print("Regionalising and seasonalising array:",arr.shape) 
@@ -114,38 +117,44 @@ def regional_seasonal(arr, dates, lats, lons, remove_ocean=True):
     monthly = util.monthly_averaged(dates, darr, keep_spatial=True)
     darr = monthly['mean']
     
-    # pull out summers
+    # pull out seasons
     summers=np.array([ i%12 in [0,1,11] for i in range(len(months)) ])
-    autumns=np.array([ i%12 in [2,3,4] for i in range(len(months)) ])
-    
+    autumns=np.array([ i%12 in [2,3,4] for i in range(len(months)) ])    
     winters=np.array([ i%12 in [5,6,7] for i in range(len(months)) ])
     springs=np.array([ i%12 in [8,9,10] for i in range(len(months)) ])
     
     # sub regions
     darrsub, lats_regional, lons_regional = util.pull_out_subregions(darr,dlats,dlons,subregions=regions)
-    
-    output  = np.zeros([4,n_regions])
-    std     = np.zeros([4,n_regions])
-    uq      = np.zeros([4,n_regions])
-    lq      = np.zeros([4,n_regions])
+    ntime=[4,12][average_monthly]
+    output  = np.zeros([ntime, n_regions])
+    std     = np.zeros([ntime, n_regions])
+    uq      = np.zeros([ntime, n_regions])
+    lq      = np.zeros([ntime, n_regions])
+    total   = np.zeros([ntime, n_regions])
     for i in range(n_regions):
-        summer = darrsub[i][summers,:,:]
-        autumn = darrsub[i][autumns,:,:]
-        winter = darrsub[i][winters,:,:]
-        spring = darrsub[i][springs,:,:]
-        
-        for j,season in enumerate ([summer,autumn,winter,spring]):
-            # Ignore slices of NaN warnings
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-            #with np.errstate(invalid='ignore'):
-                output[j,i] = np.nanmean(season)
-                std[j,i]    = np.nanstd(season)
-                lq[j,i]     = np.nanpercentile(season,25)
-                uq[j,i]     = np.nanpercentile(season,75)
-        
-    return output,std,lq,uq
-    
+        # ignore nan warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+
+            if average_monthly:
+                for j in range(12):
+                    thismonth=darrsub[i][j::12,:,:]
+                    output[j,i] = np.nanmean(thismonth)
+                    std[j,i]    = np.nanstd(thismonth)
+                    lq[j,i]     = np.nanpercentile(thismonth,25)
+                    uq[j,i]     = np.nanpercentile(thismonth,75)
+                    total[j,i]  = np.nansum(thismonth)
+            else:
+                for j,seasoninds in enumerate ([summers, autumns, winters, springs]):
+                    season = darrsub[i][seasoninds,:,:]
+                    output[j,i] = np.nanmean(season)
+                    std[j,i]    = np.nanstd(season)
+                    lq[j,i]     = np.nanpercentile(season,25)
+                    uq[j,i]     = np.nanpercentile(season,75)
+                    total[j,i]  = np.nansum(season)
+    retdict = {'mean':output,'std':std,'lq':lq,'uq':uq,'sum':total}
+    return retdict
+
 ## Summarise a data set over subregions
 def summarise(arr, dates, lats, lons, label):
     ''' regional seasonal mean, median, std within subregions after taking monthly averages '''
@@ -2118,7 +2127,6 @@ def relative_error_summary():
 
 
     # first lets do A seasonal plot of relative monthly error
-    arrs=[Ererrm, Srerrm, Orerrm]
     titles = ['relative error in monthly a posteriori', 
               'relative error in monthly slope',
               'relative error in monthly $\Omega$']
@@ -2216,6 +2224,158 @@ def relative_error_summary():
                  title='relative a posteriori error',
                  pname='Figs/Ererr_map_summerwinter.png')
     plt.ylabel("Winter")
+
+def sensitivity_recalculation(d0=datetime(2005,1,1),d1=datetime(2005,11,30)):
+    '''
+    Look closely at AMFs over Australia, specifically over land
+    
+    FIGURE1:
+        maps :   AMF OMI, AMF GC, AMF PP 
+        TS   :   all threeeeeeeeeeeeeee   : monthly resampled?
+        TS   :   all three Emissions      : monthly resampled?
+    '''
+    
+    ystr=d0.strftime('%Y')
+    pname='Figs/Sensitivity_recalculation_%s.png'%(ystr)
+    
+    # read in omhchorp
+    omkeys= [ #  'VCC_GC',           # The vertical column corrected using the RSC
+              #  'VCC_PP',        # Corrected Paul Palmer VC
+              #  'VCC_OMI',       # OMI VCCs from original satellite swath outputs
+              #  'VCC_OMI_newrsc', # OMI VCCs using original VC_OMI and new RSC corrections
+                'AMF_GC',        # AMF calculated using by GEOS-Chem
+              #  'AMF_GCz',       # secondary way of calculating AMF with GC
+                'AMF_OMI',       # AMF from OMI swaths
+                'AMF_PP',        # AMF calculated using Paul palmers code
+                ]
+    om=omhchorp(d0,d1, keylist=omkeys)
+    lats,lons=om.lats,om.lons
+    dates=om.dates
+    
+    # AMF Subsets
+    subsets=util.lat_lon_subset(lats,lons,pp.__AUSREGION__,data=[om.AMF_OMI,om.AMF_GC,om.AMF_PP],has_time_dim=True)
+    lats,lons=subsets['lats'],subsets['lons']
+    for i,istr in enumerate(['AMF (OMI)', 'AMF (GC) ', 'AMF (PP) ']):
+        dat=subsets['data'][i]
+        print("%s mean : %7.4f, std: %7.4f"%(istr, np.nanmean(dat),np.nanstd(dat)))
+    
+    
+    # Mask oceans for AMFs
+    oceanmask = util.oceanmask(lats,lons)
+    oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],om.n_times,axis=0)
+    
+    # Mean for row of maps
+    OMP = subsets['data'] # OMI, My, Palmer AMFs
+    amf_titles= ['AMF$_{OMI}$', 'AMF$_{GC}$', 'AMF$_{PP}$']
+    amf_colours=['orange','saddlebrown','salmon']
+    
+    
+    
+    fullpageFigure() # Figure stuff
+    plt.close()
+    f=plt.figure()
+    
+    ax1=plt.subplot(3,1,2)
+    ax2=plt.subplot(3,1,3)
+    
+    amf_min, amf_max = .4,2.5
+    for i, (amf, title,color) in enumerate(zip(OMP,amf_titles,amf_colours)):
+        plt.subplot(3,3,i+1)
+        # map the average over time
+        m,cs,cb = pp.createmap(np.nanmean(amf,axis=0),lats,lons,
+                               vmin=amf_min,vmax=amf_max, aus=True, 
+                               linear=True, colorbar=False, title=title)
+        
+        # For time series we just want land
+        amf[oceanmask3d] = np.NaN
+        
+        # AMF time series:
+        plt.sca(ax1)
+        
+        # EXPAND out spatially, then get seasonal means
+        seasonal = util.seasonally_averaged(amf,dates)
+        smean = seasonal['mean']
+        
+        #to get quantiles need different method
+        slq = seasonal['lq']
+        suq = seasonal['uq']
+        
+        yerr=np.zeros([2,len(smean)])
+        yerr[0,:] = slq
+        yerr[1,:] = suq    
+        X = np.arange(len(smean))
+        width=0.3
+        plt.bar(X+width*i,smean,width=width,yerr=yerr,label=title,color=color)
+        #plt.fill_between(mdates,mmean+mstd,mmean-mstd, color=color, alpha=0.35)
+    
+    # Add colour bar at right edge for all three maps
+    pp.add_colourbar(f,cs,label="AMF",axes=[0.9, 0.7, 0.02, 0.2])
+    
+    plt.sca(ax1)
+    plt.legend(loc='best',ncol=3)
+    plt.xticks(X+0.2,['Summer','Autumn','Winter','Spring'][0:len(smean)])
+    plt.title("seasonal land-only AMF")
+    
+    # Finally plot time series of emissions australian land average
+    plt.sca(ax2)
+    ekeys=['E_MEGAN',      #  {31, 18, 19}
+           'E_GC_lr',  #  at low resolution: {31,18,19}
+           'E_OMI_lr', #
+           'E_PP_lr',     #  {31, 18,19}
+           ]
+    enew = E_new(d0,d1,dkeys=ekeys)
+    dates = enew.dates
+    lats,lons = enew.lats_lr,enew.lons_lr
+    oceanmask = enew.oceanmask3d_lr
+    enews = [enew.E_MEGAN, enew.E_OMI_lr,enew.E_GC_lr, enew.E_PP_lr]
+    enew_colours = ['m', 'orange','saddlebrown','salmon']
+    enew_titles = ['a priori', 'E$_{OMI}$','E$_{GC}$','E$_{PP}$']
+    
+    for i, (emiss, title, color) in enumerate(zip(enews,enew_titles,enew_colours)):
+        emiss[oceanmask] = np.NaN
+        emiss[emiss<10] = np.NaN
+        
+        # EXPAND out spatially, then get seasonal means
+        seasonal = util.seasonally_averaged(emiss,dates)
+        smean = seasonal['mean']
+        #sstd = seasonal['std']
+        #to get quantiles need different method
+        slq = seasonal['lq']
+        suq = seasonal['uq']
+        
+        yerr=np.zeros([2,len(smean)])
+        yerr[0,:] = slq
+        yerr[1,:] = suq    
+        X = np.arange(len(smean))
+        width=0.2
+        plt.bar(X+width*i,smean,width=width,yerr=yerr,label=title,color=color)
+        #plt.fill_between(mdates,mmean+mstd,mmean-mstd, color=color, alpha=0.35)
+    
+    plt.legend(loc='best',ncol=4)
+    plt.xticks(X+0.3,['Summer','Autumn','Winter','Spring'][0:len(smean)])
+    plt.title("seasonal non-zero land-only emissions [atom C cm$^{-2}$ s$^{-1}$]")
+    
+    
+    # save plot
+    f.savefig(pname)
+    print("%s saved"%pname)
+    plt.close(f)
+
+
+def sensitivity_filtering():
+    '''
+        FIGURE: 
+        Each row shows a regionally averaged time series for emissions with (solid) and without (dashed) applying the anthropogenic and pyrogenic filters.
+        Portion of good pixels filtered is also shown (dotted, grey) using the right axis.
+    '''
+    
+    ## Read emissions filtered and unfiltered
+    
+    ## Also read pixel counts, determine portion filtered
+    
+    ## split into regional averages
+    
+    ## plot time series
     
 
 if __name__ == "__main__":
@@ -2231,7 +2391,7 @@ if __name__ == "__main__":
     
     ## METHOD PLOTS
     
-    check_modelled_background() # 9/5/19
+    #check_modelled_background() # 9/5/19
     
     #[Examine_Model_Slope(use_smear_filter=flag) for flag in [True,False]] # 9/5/19
     
@@ -2274,7 +2434,10 @@ if __name__ == "__main__":
     #pixel_counts_summary()
     ## summarised uncertainty
     #relative_error_summary()
-
+    # what does the filtering actually do to end results?
+    sensitivity_recalculation()
+    sensitivity_filtering()
+    
     ### Record and time STUJFFS
     
     end=timeit.default_timer()

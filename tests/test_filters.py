@@ -1602,7 +1602,10 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
             # pink where at least one gridday filtered
             maxarr=np.nanmax(arr,axis=0)
             minarr=np.nanmin(arr,axis=0)
+            unfiltered = np.nansum(np.isfinite(arr))
             n_filtered= np.nansum((arr > masks.__smearmaxlit__) + (arr<masks.__smearminlit__), axis=0)
+            filtered = np.nansum(n_filtered)
+            print(title," values: ",unfiltered,", filtered: ",filtered, " (%.2f%%) "%(100-100*filtered/unfiltered))
             ten_filtered = n_filtered > 9
             many_filtered = n_filtered > 29
             all_filtered = (minarr > masks.__smearmaxlit__) + (maxarr<masks.__smearminlit__)
@@ -1623,8 +1626,46 @@ def smearing_definition(year=datetime(2005,1,1), old=False, threshmask=False):
     plt.savefig(pname2)
     print('SAVED ',pname2)
     plt.close()
-    
 
+def check_smearing():
+    '''
+        Print where smearing is completely masked
+    '''
+    pname="Figs/Filters/smearing_portion_filtered.png"
+    d0=datetime(2005,1,1)
+    dE=datetime(2010,12,31)
+    smask,dates,lats,lons = masks.get_smear_mask(d0,dE, region=pp.__AUSREGION__)
+    allmonths=np.array([d.month for d in dates])
+    om=util.oceanmask(lats,lons)
+    smask=smask.astype(int)
+    n_meas = np.ones(smask.shape)
+    
+    # Chech how much smearing filters overall
+    portional = 100 * np.sum(smask,axis=0)/np.sum(n_meas,axis=0)
+    pp.createmap(portional,lats,lons,aus=True,vmin=0,vmax=100,linear=True, pname="check_smear_filtering.png")
+    
+    summers=np.array( [am in [1,2,12] for am in allmonths] )
+    autumns=np.array( [am in [3,4,5] for am in allmonths] )
+    winters=np.array( [am in [6,7,8] for am in allmonths] )
+    springs=np.array( [am in [9,10,11] for am in allmonths] )
+    titles=['summer','autumn','winter','spring']
+    plt.close()
+    plt.figure(figsize=[12,12])
+    for i, season in enumerate([summers,autumns,winters,springs]):
+        plt.subplot(2,2,i+1)
+        smaski      = smask[season,:,:]
+        n_measi     = np.ones(smaski.shape)
+        portionali  = 100 * np.sum(smaski,axis=0)/np.sum(n_measi,axis=0)
+        print(titles[i],"portion filtered: ",np.nanmean(portionali[~om]), )
+        
+        pp.createmap(portionali,lats,lons, title=titles[i],
+                     aus=True,vmin=0,vmax=100,linear=True)
+    
+    plt.suptitle("Percentage of data removed by smearing filter")
+    plt.savefig(pname)
+    print("SAVED ",pname)
+    plt.close()
+    
 def smearing_at_edges(d0=datetime(2005,1,1),dn=datetime(2005,2,28)):
     '''
     '''

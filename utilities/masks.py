@@ -131,7 +131,7 @@ def read_smearmask(d0, dN=None, keys=None):
         Read smearmask (or extra keys) between d0 and dN
     '''
     datakeys=['smearmask','smearmasklit','smear']
-    dimkeys =['lats','lons','dates']
+    #dimkeys =['lats','lons','dates']
     years=util.list_years(d0,dN)
     for year in years:
         path= 'Data/smearmask_%d.h5'%year.year
@@ -150,7 +150,7 @@ def read_smearmask(d0, dN=None, keys=None):
         else:
             for k in datay:
                 if k not in ['lats','lons']:
-                    data[k] = np.append(datay[k],axis=0)
+                    data[k] = np.append(data[k],datay[k],axis=0)
 
     # converting greg to numpy datetime
     dates = util.date_from_gregorian(data['dates'])

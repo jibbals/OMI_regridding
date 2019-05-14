@@ -1758,7 +1758,7 @@ if __name__ == '__main__':
     #test_new_emissions.spatial_comparisons(jan1,jan31,'JanFeb05')
     #test_new_emissions.spatial_comparisons(jun1,jun30,'JunJul05')
     # Check alpha creations makes sense
-    test_new_emissions.alpha_creation()
+    #test_new_emissions.alpha_creation()
     
     #####################
     ### E_new tests
@@ -1828,9 +1828,9 @@ if __name__ == '__main__':
     ## Look at what's going on at smearing edgepoints
     # TODO update and dig deeper
     #test_filters.smearing_at_edges()
-    ## Test smearing at midday vs average smearing...
-    # run/14/8/18
-    #test_filters.smearing_definition(threshmask=True)
+    ## Test smearing definition...
+    test_filters.smearing_definition(threshmask=True) #15/5/19 to print portion filtered / season in 2005 
+    
     ## check smearing distributions and filtering
     # run 8/8/18 TODO: add version using midday smearing..
     #test_filters.smearing_threshold()

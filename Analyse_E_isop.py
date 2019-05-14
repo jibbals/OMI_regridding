@@ -524,13 +524,15 @@ def E_regional_multiyear(d0=datetime(2005,1,1),dn=datetime(2012,12,31),
     print("Saved %s"%pname)
     plt.close()
 
-# UPDATE: fix Y axis labels -> a priori, X axis -> a posteriori, add units, remove negative axes, REMOVE legend point marker
-def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,31), JUST_STITCH=False):
+def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,31), JUST_STITCH=False, use_winter=False):
     '''
     '''
+    
     if JUST_STITCH:
         combined='Figs/Emiss/monthly_Egressions.png'
         pnames = [ 'Figs/Emiss/%s_summer_monthly.png'%label for label in pp.__subregions_labels__]
+        if use_winter:
+            pnames = [ 'Figs/Emiss/%s_winter_monthly.png'%label for label in pp.__subregions_labels__]
         images = [Image.open(pname) for pname in pnames]
         width, height = images[0].size
     
@@ -560,10 +562,11 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
         Eo[Eo<1] = np.NaN
         dates=Enew.dates
         # summer date indices
-        summer= [ d.month in [1,2,12] for d in dates ]
+        summer= np.array([ d.month in [1,2,12] for d in dates ])
         # winter date indices
-        winter= [ d.month in [6,7,8] for d in dates ]
-    
+        winter= np.array([ d.month in [6,7,8] for d in dates ])
+        
+        season=[summer,winter][use_winter]
         # also work on monthly datasets
         # ignore warnings from taking mean of nans
         with np.warnings.catch_warnings():
@@ -575,9 +578,10 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
             monthlyo = util.monthly_averaged(dates, Eo.copy(), keep_spatial=True)
         Eo_m = monthlyo['mean']
     
-        summer_m = [d.month in [1,2,12] for d in dates_m]
-        winter_m = [d.month in [6,7,8] for d in dates_m]
-    
+        summer_m = np.array([d.month in [1,2,12] for d in dates_m])
+        winter_m = np.array([d.month in [6,7,8] for d in dates_m])
+        season_m = [summer_m,winter_m][use_winter]
+        
         pname1=[]
         pname2=[]
         for region,color,label in zip(pp.__subregions__, pp.__subregions_colors__, pp.__subregions_labels__):
@@ -588,15 +592,15 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
             Emsub=Emsub[:,:,loni]
             Eosub=Eo[:,lati,:]
             Eosub=Eosub[:,:,loni]
-            Emsub=Emsub[summer]
-            Eosub=Eosub[summer]
+            Emsub=Emsub[season]
+            Eosub=Eosub[season]
             # for monthly also
             Emsub_m=Em_m[:,lati,:]
             Emsub_m=Emsub_m[:,:,loni]
             Eosub_m=Eo_m[:,lati,:]
             Eosub_m=Eosub_m[:,:,loni]
-            Emsub_m=Emsub_m[summer_m]
-            Eosub_m=Eosub_m[summer_m]
+            Emsub_m=Emsub_m[season_m]
+            Eosub_m=Eosub_m[season_m]
     
             # set 95th percentile as axes limits
             xmax=np.nanpercentile(Eosub,99)
@@ -644,7 +648,10 @@ def distributions_comparison_regional(d0=datetime(2005,1,1),dE=datetime(2012,12,
                 # halve the x axis limit
                 #g.ax_marg_x.set_xlim(0,g.ax_marg_x.get_xlim()[1]/2.0)
             plt.suptitle(label,fontsize=20)
-            pname2.append('Figs/Emiss/%s_summer_monthly.png'%label)
+            if use_winter:
+                pname2.append('Figs/Emiss/%s_winter_monthly.png'%label)
+            else:
+                pname2.append('Figs/Emiss/%s_summer_monthly.png'%label)
             plt.savefig(pname2[-1])
             print('SAVED ',pname2[-1])
             plt.close()
@@ -1227,8 +1234,8 @@ if __name__=='__main__':
     ## compare megan to a top down estimate, both spatially and temporally
     ## Ran 17/7/18 for Jenny jan06 check
     # comparison month with fixed titles
-    MEGAN_vs_E_new(d0,d1)
-    #distributions_comparison_regional(JUST_STITCH=True)
+    #MEGAN_vs_E_new(d0,d1)
+    distributions_comparison_regional(use_winter=True)
     # TODO: need to fix or manually combine the images made in this one...
 
     ## Plot showing comparison of different top-down estimates

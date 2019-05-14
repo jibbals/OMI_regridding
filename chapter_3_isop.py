@@ -1613,7 +1613,18 @@ def hcho_vs_satellite():
             
             axes[i].yaxis.set_label_position("right")
             axes[i].yaxis.tick_right()
-    
+        
+        
+        # Print out portional regional variances for discussion
+        print(labels[i])
+        for j in range(4):
+            print(['summer','autumn','winter','spring'][i]," Normal Run",
+                  "Mean=%.1e, variance=%.1e  (%.2f%%)"%(trop_mean[j,i],trop_std[j,i], 100*trop_std[j,i]/trop_mean[j,i] ))
+            print(['summer','autumn','winter','spring'][i]," scaled Run",
+                  "Mean=%.1e, variance=%.1e  (%.2f%%)"%(new_mean[j,i],new_std[j,i], 100*new_std[j,i]/new_mean[j,i] ))
+            print(['summer','autumn','winter','spring'][i]," OMI",
+                  "Mean=%.1e, variance=%.1e  (%.2f%%)"%(omi_mean[j,i],omi_std[j,i], 100*omi_std[j,i]/omi_mean[j,i] ))
+            
     plt.xticks(X+3*width/2.0, ['summer','autumn','winter','spring'])
     plt.xlabel('season', fontsize=24)
     plt.suptitle('HCHO columns [%s]'%__Ogc__units__,fontsize=30)
@@ -2475,7 +2486,7 @@ if __name__ == "__main__":
     #compare_model_outputs()
     
     # Check how HCHO mean and variance looks compared to omi
-    #hcho_vs_satellite()
+    hcho_vs_satellite()
     
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
@@ -2492,7 +2503,7 @@ if __name__ == "__main__":
     
     
     # Day cycle for each month compared to sin wave from posteriori
-    Seasonal_daycycle() # updated to just show AUS 13/5/19
+    #Seasonal_daycycle() # updated to just show AUS 13/5/19
     
     
     # Emissions apriori vs aposteriori + uncertainty

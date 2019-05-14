@@ -1240,7 +1240,7 @@ def seasonal_differences():
     f=plt.figure()
     vmins = [1e15, 20, 0.01]
     vmaxs = [2e16, 50, 1]
-    difflims = [[-3.5e15, 3.5e15], [-4,4], [-0.05,0.05]]
+    difflims = [[-3.5e15, 3.5e15], [-4,0], [-0.05,0.05]]
     units = ['molec cm$^{-2}$', 'ppbv', 'ppbv']
     linears= [False,True,False]
     stitles = ['Midday total column HCHO','Midday surface ozone','Midday surface NO$_x$']
@@ -1257,30 +1257,31 @@ def seasonal_differences():
         # SUMMER PLOTS:
         vmin=vmins[i]; vmax=vmaxs[i]
         dmin=difflims[i][0]; dmax=difflims[i][1]
+        diffcmap=['bwr','Blues_r'][i==1]
         plt.subplot(2,3,1)
-        pp.createmap(new_summers[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
+        pp.createmap(trop_summers[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
                      clabel=units[i], linear=linears[i], title=titles[0])
         plt.ylabel('Summer')
         plt.subplot(2,3,2)
-        pp.createmap(trop_summers[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
+        pp.createmap(new_summers[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
                      clabel=units[i], linear=linears[i], title=titles[1])
         plt.subplot(2,3,3)
         pp.createmap(new_summers[i]-trop_summers[i],lats,lons,aus=True, vmin=dmin,vmax=dmax, 
                      clabel=units[i], linear=True, title=titles[2], 
-                     cmapname='bwr')
+                     cmapname=diffcmap)
 
         # WINTER PLOTS:
         plt.subplot(2,3,4)
-        pp.createmap(new_winters[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
+        pp.createmap(trop_winters[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
                      clabel=units[i], linear=linears[i], title=titles[0])
         plt.ylabel('Winter')
         plt.subplot(2,3,5)
-        pp.createmap(trop_winters[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
+        pp.createmap(new_winters[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
                      clabel=units[i], linear=linears[i], title=titles[1])
         plt.subplot(2,3,6)
         pp.createmap(new_winters[i]-trop_winters[i],lats,lons,aus=True, vmin=dmin,vmax=dmax, 
-                     clabel=units[i], linear=True, title=titles[2], 
-                     cmapname='bwr')
+                     clabel=units[i], linear=True, title=titles[2], cbarxtickrot=20, 
+                     cmapname=diffcmap)
         
         
         plt.subplots_adjust(wspace=0.05)
@@ -2490,7 +2491,7 @@ if __name__ == "__main__":
     
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
-    #seasonal_differences()
+    seasonal_differences()
     #[ozone_sensitivity(aa) for aa in [True, False] ]
         
     

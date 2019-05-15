@@ -51,7 +51,7 @@ import timeit
 ### Globals ###
 ###############
 __VERBOSE__=True
-
+__THRESHHOLD_Ererr__ = 2.0 ## THRESHOLD for uncertainty of 200%
 ## LABELS
 # total column HCHO from GEOS-Chem
 __Ogc__ = "$\Omega_{GC}$"
@@ -1342,7 +1342,7 @@ def regional_seasonal_comparison():
      
     # clear the super uncertain squares...
     E_PPm_lr = util.monthly_averaged(dates,enew.E_PP_lr,keep_spatial=True)['mean']
-    to_remove=uncerts_all > 2
+    to_remove=uncerts_all > __THRESHHOLD_Ererr__
     prior_mean_E = np.nanmean(E_PPm_lr)
     prior_mean_rerr = np.nanmean(uncerts_all)
     E_PPm_lr[to_remove] = np.NaN
@@ -2331,6 +2331,99 @@ def relative_error_summary():
                  pname='Figs/Ererr_map_summerwinter.png')
     plt.ylabel("Winter")
 
+def print_relative_error_summary():
+    '''
+    print relative errors for latex table
+    '''
+    d0,dN = datetime(2005,1,1),datetime(2012,12,31)
+    dkeys=['E_PP_lr', 'pixels_PP_lr', # emissiosn and pixel counts
+           'E_PP_err_lr','E_PPm_err_lr','E_PPm_rerr_lr', # Error in emissions estimate
+           'SC_err_lr', 
+           'VCC_PP_lr', # Omega 
+           'VCC_err_lr','VCC_rerr_lr', # daily OmegaPP error in
+           'slope_rerr_lr'] # monthly portional error in slope
+
+    # READ EMISSIONS AND ERROR
+    enew=E_new(d0,dN,dkeys=dkeys)
+    dates=enew.dates
+    months=util.list_months(d0,dN)
+    lats,lons=enew.lats_lr, enew.lons_lr
+    pix=enew.pixels_PP_lr
+    # GET MONTHLY TOTAL PIXELS
+    pixm=util.monthly_averaged(dates,pix,keep_spatial=True)['sum']
+
+    for key in dkeys:
+        print(key, getattr(enew,key).shape)
+
+    # MASK OCEANS, 
+    E = enew.E_PP_lr
+    E[enew.oceanmask3d_lr] = np.NaN
+    Em      = util.monthly_averaged(dates,E,keep_spatial=True)['mean']
+    Eerr   = enew.E_PP_err_lr
+    Eerrm  = enew.E_PPm_err_lr
+    Ererr  = Eerr/E
+    Ererr[~np.isfinite(Ererr)] = np.NaN
+    Ererr[np.isclose(E,0.0)] = np.NaN
+    Ererrm = Eerrm/Em
+    Ererrm[~np.isfinite(Ererrm)] = np.NaN
+    Ererrm[np.isclose(Em,0.0)] = np.NaN
+
+    Srerrm  = enew.slope_rerr_lr
+
+    # monthly VCC error:from per pixel error divided by pixels in the month
+    O   = enew.VCC_PP_lr
+    Om  = util.monthly_averaged(dates,O,keep_spatial=True)['mean']
+    Oerr  = enew.VCC_err_lr * np.sqrt(pix) # error has already been divided by sqrt daily pix
+    Oerrm = util.monthly_averaged(dates,Oerr,keep_spatial=True)['mean'] /  np.sqrt(pixm)
+    # Same as Enew monthly error:replace error with NaN and set relative error to 100%
+    # Enew monthly negatives are replaced with zeros, but not VCCm 
+    Orerrm = Oerrm / Om
+    negerr = (Om < 0)+(Oerrm<0)
+    Orerrm[negerr] = 1.0
+    
+
+    # 3d monthly oceanmask:
+    oceanmask=np.repeat(enew.oceanmask_lr[np.newaxis,:,:], len(months), axis=0)
+    print("Checking Oerr")
+    # Definitely includes ocean squares
+    print(np.nanmean(Orerrm), np.nanmean(Orerrm[oceanmask]))
+    Orerrm[oceanmask] = np.NaN
+    print("Checking Serr")
+    # also
+    print(np.nanmean(Srerrm), np.nanmean(Srerrm[oceanmask]))
+    Srerrm[oceanmask] = np.NaN
+    print("Checking Eerr")
+    # does not seem to have ocean squares (good)
+    print(np.nanmean(Ererrm), np.nanmean(Ererrm[oceanmask]))
+    Ererrm[oceanmask] = np.NaN
+    # Also remove super high Ererr values
+    Ererrm[Ererrm > __THRESHHOLD_Ererr__] = np.NaN
+
+    #          &                 & Summer         &             &                   & Winter       &   \\
+    #   Region & Ererr           & Orerr          & Srerr       & Ererr           & Orerr          & Srerr       \\
+    #    \midrule
+    #    REGION &  ERERR, ORERR, SRERR, again
+    # EG:
+    #   Aus & 60\% &  20\% &  40\%  & 100\% & 100\% &  40\%  \\
+    formstring = "%s & %4.0f%% & %4.0f%% & %4.0f%% & %4.0f%% & %4.0f%% & %4.0f%% \\\\"
+    # EG usage: 
+    # test=['Aus',1,2,3,4,5,6]
+    # print(formstring%tuple(test))
+    
+    # Get regional seasonal mean values for Ererr, Orerr, Srerr
+    RSErerrd = regional_seasonal(Ererrm,months,lats,lons)
+    RSErerr  = RSErerrd['mean']
+    RSOrerrd = regional_seasonal(Orerrm,months,lats,lons)
+    RSOrerr  = RSOrerrd['mean']
+    RSSrerrd = regional_seasonal(Srerrm,months,lats,lons)
+    RSSrerr  = RSSrerrd['mean']
+    
+    print("================= TABLE ======================")
+    for i in range(n_regions):
+        rsummary = [labels[i],RSErerr[0,i]*100, RSOrerr[0,i]*100, RSSrerr[0,i]*100,RSErerr[2,i]*100, RSOrerr[2,i]*100, RSSrerr[2,i]*100]
+        print(formstring%tuple(rsummary))
+    
+
 def sensitivity_recalculation(d0=datetime(2005,1,1),d1=datetime(2005,11,30)):
     '''
     Look closely at AMFs over Australia, specifically over land
@@ -2581,7 +2674,7 @@ if __name__ == "__main__":
     
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
-    seasonal_differences()
+    #seasonal_differences()
     #[ozone_sensitivity(aa) for aa in [True, False] ]
         
     
@@ -2610,6 +2703,7 @@ if __name__ == "__main__":
     #pixel_counts_summary()
     ## summarised uncertainty
     #relative_error_summary()
+    print_relative_error_summary() # 15/5/19 for uncert table
     # what does the filtering actually do to end results?
     #sensitivity_recalculation()
     #sensitivity_filtering()

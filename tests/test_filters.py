@@ -1290,12 +1290,16 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
     '''
         Look at smearing and satellite no2
     '''
+    
+    pname=month.strftime('Figs/Filters/smearing_nox_%Y%m.png')
     region = pp.__AUSREGION__
     # loss rate (assuming loss only from chemistry)
-    k_hcho = 1/(hcho_life*3600) # in seconds
-
-    S1, B1, S2, B2, smear, days,lats,lons = smearing(month,region=region)
-    smear_mean = np.nanmean(smear,axis=0) # average over time
+    #k_hcho = 1/(hcho_life*3600) # in seconds
+    
+    #S1, B1, S2, B2, smear, days,lats,lons = smearing(month,region=region)
+    smear, days,lats,lons = Inversion.smearing(month,region=region,midday=True)
+    print("SMEAR.shape",smear.shape)
+    #smear_mean = np.nanmean(smear,axis=0) # average over time
     smear_low = smear < smear_bounds[0]
     smear_high = smear > smear_bounds[1]
     smear_filter =  smear_low + smear_high
@@ -1308,7 +1312,8 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
                                           latres=GMAO.__LATRES_GC__,
                                           lonres=GMAO.__LONRES_GC__,) # ~ 1e13-1e17 molec/cm2
     no2=omno2d['tropno2']
-
+    print("OMNO2d.shape",no2.shape)
+    
     # just take aus region
     no2 = util.lat_lon_subset(omno2d['lats'],omno2d['lons'],
                               region=region, data=[no2],
@@ -1326,7 +1331,7 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
     # bottom left: NO2 vs Shat scatter plot of regressions
     # right side: Distributions of smearing binned by NO2 levels
     plt.figure(figsize=(12,12))
-    plt.subplot(2,2,1)
+    plt.subplot(2,1,1)
     pp.createmap(no2_mean,lats,lons,
                  title="OMNO2d on %s"%month.strftime("%Y%m"),
                  aus=True,linear=True, clabel='molec cm$^{-2}$')
@@ -1338,10 +1343,10 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
     ## Plot NO2 vs Shat
     no2lims=[1e14,1e15]
     slims=[-1e3,3e4]
-    plt.subplot(2,2,3)
-    plt.scatter(no2.flatten(), smear.flatten(), color='orange')
-    plt.scatter(fno2.flatten(), fsmear.flatten(), color='magenta')
-    plt.ylabel("$\hat{S}$")
+    #plt.subplot(2,2,3)
+    #plt.scatter(no2.flatten(), smear.flatten(), color='orange')
+    #plt.scatter(fno2.flatten(), fsmear.flatten(), color='magenta')
+    #plt.ylabel("$\hat{S}$")
     #plt.xlabel("NO$_2$ [molec cm$^{-2}$]")
 
     ## Plot again but zoomed in with regression
@@ -1357,7 +1362,7 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
     #plt.ylim(slims)
 
 
-    plt.subplot(1,2,2)
+    plt.subplot(2,1,2)
     ## distribution binned by NO2
 
     bins=np.linspace(5e13,1e15,21)
@@ -1388,7 +1393,8 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
     mean   = sy / n # mean per bin
     std    = np.sqrt(sy2/n - mean*mean) # stdev per bin
     #, add error bar of Y
-    plt.errorbar((_[1:] + _[:-1])/2 - 1e14, mean, yerr=std, lolims=True, # don't show down error bars
+    xoffset = 1e13
+    plt.errorbar((_[1:] + _[:-1])/2 - xoffset, mean, yerr=std, lolims=True, # don't show down error bars
                   linewidth=2, color='orange',fmt='-', barsabove=True)
 
     # add error bar of fY
@@ -1399,7 +1405,7 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
     fstd    = np.sqrt(fsy2/fn - fmean*fmean) # stdev per bin
 
     #, add error bar of y
-    plt.errorbar((_[1:] + _[:-1])/2 + 1e14, fmean, yerr=fstd,
+    plt.errorbar((_[1:] + _[:-1])/2 + xoffset, fmean, yerr=fstd,
                   linewidth=2, color='magenta',fmt='-', barsabove=True)
 
 
@@ -1409,7 +1415,7 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
 
     plt.ylabel('$\hat{S}$')
     plt.xlabel('NO$_2$')
-    pname=month.strftime('Figs/Filters/smearing_nox_%Y%m.png')
+    
     plt.savefig(pname)
     print('saved ',pname)
 
@@ -1782,6 +1788,7 @@ def smearing_vs_slope(month=datetime(2005,1,1)):
                     titles=['Smearing','Slope'],
                     linear=True,
                     pname=d0.strftime("Figs/Filters/smear_vs_slope_%Y%m.png"))
+    
 def smearing_vs_NO2(month=datetime(2005,1,1)):
     '''
     '''

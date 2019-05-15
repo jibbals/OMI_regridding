@@ -1799,6 +1799,11 @@ def FTIR_Comparison():
     #data={ k:decon[k] for k in ['new_TC', 'orig_TC', 'TC_ret']}
     data= {'apri':decon['new_TC'], 'apost':decona['new_TC'], 'FTIR':decon['TC_ret']}
     TC_df = pd.DataFrame(data, index=decon['dates'])
+    bias = -decon['new_TC'] + decon['TC_ret']
+    biasa= -decona['new_TC'] + decon['TC_ret']
+    print("MEAN DIFFERENCE BETWEEN DECONVOLVED MODEL VERTICAL COLUMN AND FTIR")
+    print(" FTIR - VCC = %.2e(+-%.2f%%)"%(np.nanmean(bias),np.nanstd(bias)))
+    print("FTIR - VCCa = %.2e(+-%.2f%%)"%(np.nanmean(biasa),np.nanstd(biasa)))
     
     # drop the NaNs and plot 
     TC_df.plot(linestyle='',marker='+')
@@ -2592,7 +2597,7 @@ if __name__ == "__main__":
     #[campaign_vs_GC(flag) for flag in [True,False]]
     #campaign_vs_GC(True)
     # FTIR comparison
-    #FTIR_Comparison()
+    FTIR_Comparison()
     
     
     # Day cycle for each month compared to sin wave from posteriori

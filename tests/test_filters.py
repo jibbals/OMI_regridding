@@ -1290,6 +1290,8 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
     '''
         Look at smearing and satellite no2
     '''
+    
+    pname=month.strftime('Figs/Filters/smearing_nox_%Y%m.png')
     region = pp.__AUSREGION__
     # loss rate (assuming loss only from chemistry)
     #k_hcho = 1/(hcho_life*3600) # in seconds
@@ -1309,9 +1311,9 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
     omno2d, omno2dattrs = fio.read_omno2d(d0,d1,max_procs=4,
                                           latres=GMAO.__LATRES_GC__,
                                           lonres=GMAO.__LONRES_GC__,) # ~ 1e13-1e17 molec/cm2
-    print("OMNO2d.shape",omno2d.shape)
     no2=omno2d['tropno2']
-
+    print("OMNO2d.shape",no2.shape)
+    
     # just take aus region
     no2 = util.lat_lon_subset(omno2d['lats'],omno2d['lons'],
                               region=region, data=[no2],
@@ -1391,7 +1393,8 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
     mean   = sy / n # mean per bin
     std    = np.sqrt(sy2/n - mean*mean) # stdev per bin
     #, add error bar of Y
-    plt.errorbar((_[1:] + _[:-1])/2 - 1e14, mean, yerr=std, lolims=True, # don't show down error bars
+    xoffset = 1e13
+    plt.errorbar((_[1:] + _[:-1])/2 - xoffset, mean, yerr=std, lolims=True, # don't show down error bars
                   linewidth=2, color='orange',fmt='-', barsabove=True)
 
     # add error bar of fY
@@ -1402,7 +1405,7 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
     fstd    = np.sqrt(fsy2/fn - fmean*fmean) # stdev per bin
 
     #, add error bar of y
-    plt.errorbar((_[1:] + _[:-1])/2 + 1e14, fmean, yerr=fstd,
+    plt.errorbar((_[1:] + _[:-1])/2 + xoffset, fmean, yerr=fstd,
                   linewidth=2, color='magenta',fmt='-', barsabove=True)
 
 
@@ -1412,7 +1415,7 @@ def smearing_vs_nox(month=datetime(2005,1,1), hcho_life=2.5, smear_bounds=[masks
 
     plt.ylabel('$\hat{S}$')
     plt.xlabel('NO$_2$')
-    pname=month.strftime('Figs/Filters/smearing_nox_%Y%m.png')
+    
     plt.savefig(pname)
     print('saved ',pname)
 

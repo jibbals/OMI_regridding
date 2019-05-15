@@ -1841,7 +1841,8 @@ if __name__ == '__main__':
     # TODO: Finish this one
     #test_filters.smearing_vs_yield()
     ## smearing binned by NOx levels
-    test_filters.smearing_vs_nox()
+    test_filters.smearing_vs_nox(month=datetime(2005,1,1))
+    test_filters.smearing_vs_nox(month=datetime(2005,7,1))
 
     ######
     ### Tests to be sorted into files

@@ -1829,7 +1829,7 @@ if __name__ == '__main__':
     # TODO update and dig deeper
     #test_filters.smearing_at_edges()
     ## Test smearing definition...
-    test_filters.smearing_definition(threshmask=True) #15/5/19 to print portion filtered / season in 2005 
+    #test_filters.smearing_definition(threshmask=True) #15/5/19 to print portion filtered / season in 2005 
     
     ## check smearing distributions and filtering
     # run 8/8/18 TODO: add version using midday smearing..
@@ -1841,7 +1841,7 @@ if __name__ == '__main__':
     # TODO: Finish this one
     #test_filters.smearing_vs_yield()
     ## smearing binned by NOx levels
-    #test_filters.smearing_vs_nox()
+    test_filters.smearing_vs_nox()
 
     ######
     ### Tests to be sorted into files

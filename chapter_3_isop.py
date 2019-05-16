@@ -2256,7 +2256,9 @@ def print_relative_error_summary():
            'SC_err_lr', 
            'VCC_PP_lr', # Omega 
            'VCC_err_lr','VCC_rerr_lr', # daily OmegaPP error in
-           'slope_rerr_lr'] # monthly portional error in slope
+           'slope_rerr_lr', # monthly portional error in slope
+           'BG_PP_rerr', # monthly low res portional error from background correction
+           ] 
 
     # READ EMISSIONS AND ERROR
     enew=E_new(d0,dN,dkeys=dkeys)
@@ -2296,7 +2298,9 @@ def print_relative_error_summary():
     negerr = (Om < 0)+(Oerrm<0)
     Orerrm[negerr] = 1.0
     
-
+    BGrerrm = enew.BG_PP_rerr
+    
+    
     # 3d monthly oceanmask:
     oceanmask=np.repeat(enew.oceanmask_lr[np.newaxis,:,:], len(months), axis=0)
     print("Checking Oerr")
@@ -2311,7 +2315,10 @@ def print_relative_error_summary():
     # does not seem to have ocean squares (good)
     print(np.nanmean(Ererrm), np.nanmean(Ererrm[oceanmask]))
     Ererrm[oceanmask] = np.NaN
-
+    
+    print("Checking BGrerr")
+    print(np.nanmean(BGrerrm), np.nanmean(BGrerrm[oceanmask]))
+    BGrerrm[oceanmask] = np.NaN
 
     #          &                 & Summer         &             &                   & Winter       &   \\
     #   Region & Ererr           & Orerr          & Srerr       & Ererr           & Orerr          & Srerr       \\
@@ -2331,11 +2338,21 @@ def print_relative_error_summary():
     RSOrerr  = RSOrerrd['mean']
     RSSrerrd = regional_seasonal(Srerrm,months,lats,lons)
     RSSrerr  = RSSrerrd['mean']
+    BGrerrd  = regional_seasonal(BGrerrm,months,lats,lons)
+    BGrerr   = BGrerrd['mean']
+    
+    print('===BGRERR===')
+    print(" region,   summer,    winter")
+    for i in range(n_regions):
+        print("%s,   %6.2f,    %6.2f"%(labels[i], BGrerr[0,i], BGrerr[2,i]))
+    
     
     print("================= TABLE ======================")
     for i in range(n_regions):
         rsummary = [labels[i],RSErerr[0,i], RSOrerr[0,i], RSSrerr[0,i],RSErerr[2,i], RSOrerr[2,i], RSSrerr[2,i]]
         print(formstring%tuple(rsummary))
+    
+    
     
 
 def sensitivity_recalculation(d0=datetime(2005,1,1),d1=datetime(2005,11,30)):
@@ -2597,7 +2614,7 @@ if __name__ == "__main__":
     #[campaign_vs_GC(flag) for flag in [True,False]]
     #campaign_vs_GC(True)
     # FTIR comparison
-    FTIR_Comparison()
+    #FTIR_Comparison()
     
     
     # Day cycle for each month compared to sin wave from posteriori

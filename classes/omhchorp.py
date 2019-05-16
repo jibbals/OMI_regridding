@@ -162,19 +162,19 @@ class omhchorp:
         # Also lets get daily remote pacific background error
         # This matches process in Inversion.py
         # get mean error over remote pacific, and total pixels used
-        bg, _,_      = util.remote_pacific_background(rO, lats, lons,
+        rbg, _,_      = util.remote_pacific_background(rO, lats, lons,
                               average_lons=True, has_time_dim=True)
         bgpix, _,_      = util.remote_pacific_background(pix, lats, lons,
                               average_lons=True, has_time_dim=True, func = np.nansum)
-        bg_lr, _,_   = util.remote_pacific_background(rO_lr, lats_lr, lons_lr,
+        rbg_lr, _,_   = util.remote_pacific_background(rO_lr, lats_lr, lons_lr,
                               average_lons=True, has_time_dim=True)
         bgpix_lr, _,_   = util.remote_pacific_background(pix_lr, lats_lr, lons_lr,
                               average_lons=True, has_time_dim=True, func = np.nansum)
-        bg_u, _,_    = util.remote_pacific_background(rO_u, lats, lons,
+        rbg_u, _,_    = util.remote_pacific_background(rO_u, lats, lons,
                               average_lons=True, has_time_dim=True)
         bgpix_u, _,_    = util.remote_pacific_background(pix_u, lats, lons,
                               average_lons=True, has_time_dim=True, func = np.nansum)
-        bg_u_lr, _,_ = util.remote_pacific_background(rO_u_lr, lats_lr, lons_lr,
+        rbg_u_lr, _,_ = util.remote_pacific_background(rO_u_lr, lats_lr, lons_lr,
                               average_lons=True, has_time_dim=True)
         bgpix_u_lr, _,_ = util.remote_pacific_background(pix_u_lr, lats_lr, lons_lr,
                               average_lons=True, has_time_dim=True, func = np.nansum)
@@ -183,27 +183,27 @@ class omhchorp:
         
         # daily error reduced by sqrt(n), monthly too
         
-        bgm_lr   = np.nanmean(bg_lr,axis=0)/np.nansum(bgpix_lr,axis=0)
-        bg       = bg/np.sqrt(bgpix)
-        bg_u     = bg_u/np.sqrt(bgpix_u)
-        bg_lr    = bg_lr/np.sqrt(bgpix_lr)
-        bg_u_lr  = bg_u_lr/np.sqrt(bgpix_u_lr)
+        rbgm_lr   = np.nanmean(rbg_lr,axis=0)/np.nansum(bgpix_lr,axis=0)
+        rbg       = rbg/np.sqrt(bgpix)
+        rbg_u     = rbg_u/np.sqrt(bgpix_u)
+        rbg_lr    = rbg_lr/np.sqrt(bgpix_lr)
+        rbg_u_lr  = rbg_u_lr/np.sqrt(bgpix_u_lr)
         # finally repeat them over the longitudinal dimension
-        bg       = np.repeat(bg[:,:,np.newaxis],len(lons), axis=2)
-        bg_u     = np.repeat(bg_u[:,:,np.newaxis],len(lons), axis=2)
-        bg_lr    = np.repeat(bg_lr[:,:,np.newaxis],len(lons_lr), axis=2)
-        bg_u_lr  = np.repeat(bg_u_lr[:,:,np.newaxis],len(lons_lr), axis=2)
+        rbg       = np.repeat(rbg[:,:,np.newaxis],len(lons), axis=2)
+        rbg_u     = np.repeat(rbg_u[:,:,np.newaxis],len(lons), axis=2)
+        rbg_lr    = np.repeat(rbg_lr[:,:,np.newaxis],len(lons_lr), axis=2)
+        rbg_u_lr  = np.repeat(rbg_u_lr[:,:,np.newaxis],len(lons_lr), axis=2)
         # monthly also
-        bgm_lr   = np.repeat(bgm_lr[:,np.newaxis],len(lons_lr), axis=1)
+        rbgm_lr   = np.repeat(rbgm_lr[:,np.newaxis],len(lons_lr), axis=1)
         
         # remove infinites?
         #rO[~np.isfinite(rO)] = np.NaN
         
         # Subset to region
-        errs        = [rOd, rOd_u, pix, pix_u, bg, bg_u, RSC]
+        errs        = [rOd, rOd_u, pix, pix_u, rbg, rbg_u, RSC]
         errsm       = [rOm, rOm_u, pixm, pixm_u ]
-        errs_lr     = [rOd_lr, rOd_u_lr, pix_lr, pix_u_lr, bg_lr, bg_u_lr, RSC_lr]
-        errsm_lr    = [rOm_lr, rOm_u_lr, pixm_lr, pixm_u_lr, bgm_lr]
+        errs_lr     = [rOd_lr, rOd_u_lr, pix_lr, pix_u_lr, rbg_lr, rbg_u_lr, RSC_lr]
+        errsm_lr    = [rOm_lr, rOm_u_lr, pixm_lr, pixm_u_lr, rbgm_lr]
         subs=util.lat_lon_subset(lats,lons,region,data=errs, has_time_dim=True)
         subs_lr=util.lat_lon_subset(lats_lr, lons_lr, region, data=errs_lr, has_time_dim=True)
         subsm=util.lat_lon_subset(lats,lons,region,data=errsm, has_time_dim=False)
@@ -213,12 +213,12 @@ class omhchorp:
         lats_lr=subs_lr['lats']
         lons_lr=subs_lr['lons']
         
-        [rOd, rOd_u, pix, pix_u, bg, bg_u, RSC]     = subs['data']
+        [rOd, rOd_u, pix, pix_u, rbg, rbg_u, RSC]     = subs['data']
         [rOm, rOm_u, pixm, pixm_u,]                 = subsm['data']
         [rOd_lr, rOd_u_lr, pix_lr, pix_u_lr, 
-         bg_lr, bg_u_lr, RSC_lr]                    = subs_lr['data']
+         rbg_lr, rbg_u_lr, RSC_lr]                    = subs_lr['data']
         [rOm_lr, rOm_u_lr, pixm_lr, pixm_u_lr, 
-         bgm_lr, ]                                  = subsm_lr['data']
+         rbgm_lr, ]                                  = subsm_lr['data']
                   # these are the mean per pixel relative errors
         return  { 'rO':rOd, 'rO_u':rOd_u, 'rO_lr':rOd_lr, 'rO_u_lr':rOd_u_lr, 
                  # number of pixels per grid square per day
@@ -230,9 +230,9 @@ class omhchorp:
                  # Reference sector correction errors (RSC is repeated along longitudes)
                  'RSC':RSC, 'RSC_lr':RSC_lr, 'dRSC':dRSC,
                  # background errors per day from remote pacific
-                 'bg':bg, 'bg_u':bg_u, 'bg_lr':bg_lr, 'bg_u_lr':bg_u_lr, 
+                 'rbg':rbg, 'rbg_u':rbg_u, 'rbg_lr':rbg_lr, 'rbg_u_lr':rbg_u_lr, 
                  # background errors per monnth
-                 'bgm_lr':bgm_lr,
+                 'rbgm_lr':rbgm_lr,
                  # Fitting Error:
                  'dSC':dSC, 'dSC_lr':dSC_lr,
                  # extras

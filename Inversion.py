@@ -304,9 +304,9 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
     # monthly relative uncertainty
     
     # also need background uncertainty
-    rbg_lr = vccuncert['bg_lr']
+    rbg_lr = vccuncert['rbg_lr']
     #rbg_u, rbg_u_lr = vccuncert['bg_u'],vccuncert['bg_u_lr']
-    rbgm_lr = vccuncert['bgm_lr']
+    rbgm_lr = vccuncert['rbgm_lr']
     dbg_lr = rbg_lr * BG_PP_lr
     
     # Error in E_isop = E_isop * sqrt (  (dO^2 + dO_0^2 ) / (dO-dO_0)^2 + (dSlope/Slope)^2 )

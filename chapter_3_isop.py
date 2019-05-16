@@ -1892,8 +1892,15 @@ def FTIR_Comparison():
     bias = -decon['new_TC'] + decon['TC_ret']
     biasa= -decona['new_TC'] + decon['TC_ret']
     print("MEAN DIFFERENCE BETWEEN DECONVOLVED MODEL VERTICAL COLUMN AND FTIR")
-    print(" FTIR - VCC = %.2e(+-%.2f%%)"%(np.nanmean(bias),np.nanstd(bias)))
-    print("FTIR - VCCa = %.2e(+-%.2f%%)"%(np.nanmean(biasa),np.nanstd(biasa)))
+    print(" FTIR - VCC = %.2e(+-%.2f%%)"%(np.nanmean(bias),100*np.nanstd(bias)/np.nanmean(bias)))
+    print("FTIR - VCCa = %.2e(+-%.2f%%)"%(np.nanmean(biasa),100*np.nanstd(biasa)/np.nanmean(biasa)))
+    # pull out summer and winter and check biases then:
+    summerinds = np.array([ d.month in [1,2,12] for d in dates ])
+    winterinds = np.array([ d.month in [6,7,8]  for d in dates ])
+    print("SUMMER : FTIR - VCC = %.2e "%np.nanmean(bias[summerinds]))
+    print("WINTER : FTIR - VCC = %.2e "%np.nanmean(bias[winterinds]))
+    print("SUMMER : FTIR - VCCa = %.2e "%np.nanmean(biasa[summerinds]))
+    print("WINTER : FTIR - VCCa = %.2e "%np.nanmean(biasa[winterinds]))
     
     # drop the NaNs and plot 
     TC_df.plot(linestyle='',marker='+')
@@ -2708,7 +2715,7 @@ if __name__ == "__main__":
     #pixel_counts_summary()
     ## summarised uncertainty
     #relative_error_summary()
-    print_relative_error_summary() # 15/5/19 for uncert table
+    #print_relative_error_summary() # 15/5/19 for uncert table
     # what does the filtering actually do to end results?
     #sensitivity_recalculation()
     #sensitivity_filtering()

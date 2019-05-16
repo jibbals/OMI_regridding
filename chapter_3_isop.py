@@ -1886,19 +1886,6 @@ def FTIR_Comparison():
     #data={ k:decon[k] for k in ['new_TC', 'orig_TC', 'TC_ret']}
     data= {'apri':decon['new_TC'], 'apost':decona['new_TC'], 'FTIR':decon['TC_ret']}
     TC_df = pd.DataFrame(data, index=decon['dates'])
-    bias = -decon['new_TC'] + decon['TC_ret']
-    biasa= -decona['new_TC'] + decon['TC_ret']
-    print("MEAN DIFFERENCE BETWEEN DECONVOLVED MODEL VERTICAL COLUMN AND FTIR")
-    print(" FTIR - VCC = %.2e(+-%.2f%%)"%(np.nanmean(bias),100*np.nanstd(bias)/np.nanmean(bias)))
-    print("FTIR - VCCa = %.2e(+-%.2f%%)"%(np.nanmean(biasa),100*np.nanstd(biasa)/np.nanmean(biasa)))
-    # pull out summer and winter and check biases then:
-    summerinds = np.array([ d.month in [1,2,12] for d in dates ])
-    winterinds = np.array([ d.month in [6,7,8]  for d in dates ])
-    print("SUMMER : FTIR - VCC = %.2e "%np.nanmean(bias[summerinds]))
-    print("WINTER : FTIR - VCC = %.2e "%np.nanmean(bias[winterinds]))
-    print("SUMMER : FTIR - VCCa = %.2e "%np.nanmean(biasa[summerinds]))
-    print("WINTER : FTIR - VCCa = %.2e "%np.nanmean(biasa[winterinds]))
-    
     # drop the NaNs and plot 
     TC_df.plot(linestyle='',marker='+')
     #plt.show()
@@ -1934,6 +1921,26 @@ def FTIR_Comparison():
     print("Saved ",pname_mya)
 
 
+    print("MEAN DIFFERENCE BETWEEN DECONVOLVED MODEL VERTICAL COLUMN AND FTIR")
+    bias = data['apri'] - data['FTIR']
+    biasa= data['apost']- data['FTIR']
+    
+    # pull out summer and winter and check biases then:
+    apri = np.copy(data['apri'])
+    apost=np.copy(data['apost'])
+    ftir = np.copy(data['FTIR'])
+    bias = apri - ftir
+    biasa= apost- ftir
+    summerinds = np.array([ d.month in [1,2,12] for d in decon['dates'] ])
+    winterinds = np.array([ d.month in [6,7,8]  for d in decon['dates'] ])
+    
+    print("SUMMER : VCC bias = %9.2e"%(np.nanmean(bias[summerinds])))
+    print("WINTER : VCC bias = %9.2e"%(np.nanmean(bias[winterinds])))
+    print("SUMMER : VCCa bias= %9.2e"%(np.nanmean(biasa[summerinds])))
+    print("WINTER : VCCa bias= %9.2e"%(np.nanmean(biasa[winterinds])))
+    print("SUMMER : VCC = %9.2e, FTIR=%9.2e, VCCa=%9.2e"%(np.nanmean(apri[summerinds]),np.nanmean(ftir[summerinds]),np.nanmean(apost[summerinds])))
+    print("WINTER : VCC = %9.2e, FTIR=%9.2e, VCCa=%9.2e"%(np.nanmean(apri[winterinds]),np.nanmean(ftir[winterinds]),np.nanmean(apost[winterinds])))
+    
 
 ################
 ### UNCERTAINTY

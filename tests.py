@@ -1752,7 +1752,7 @@ if __name__ == '__main__':
     
     # Test time series between old/new runs
     
-    #test_new_emissions.hcho_ozone_timeseries(d0,datetime(2005,2,28))
+    test_new_emissions.hcho_ozone_timeseries(d0,datetime(2005,2,28)) # 16/5/19 # run to print overall bias
     
     # Test maps between old/new runs
     #test_new_emissions.spatial_comparisons(jan1,jan31,'JanFeb05')
@@ -1841,8 +1841,8 @@ if __name__ == '__main__':
     # TODO: Finish this one
     #test_filters.smearing_vs_yield()
     ## smearing binned by NOx levels
-    test_filters.smearing_vs_nox(month=datetime(2005,1,1))
-    test_filters.smearing_vs_nox(month=datetime(2005,7,1))
+    #test_filters.smearing_vs_nox(month=datetime(2005,1,1))
+    #test_filters.smearing_vs_nox(month=datetime(2005,7,1))
 
     ######
     ### Tests to be sorted into files

@@ -2400,7 +2400,7 @@ def print_relative_error_summary():
     Orerrm[negerr] = 1.0
     
     BGrerrm = enew.BG_PP_rerr
-    
+    BGrerrm[~np.isfinite(BGrerrm)] = np.NaN
     
     # 3d monthly oceanmask:
     oceanmask=np.repeat(enew.oceanmask_lr[np.newaxis,:,:], len(months), axis=0)
@@ -2446,9 +2446,9 @@ def print_relative_error_summary():
     BGrerr   = BGrerrd['mean']
     
     print('===BGRERR===')
-    print(" region,   summer,    winter")
+    print(" region,   summer,    autumn,    winter,    spring")
     for i in range(n_regions):
-        print("%s,   %6.2f,    %6.2f"%(labels[i], BGrerr[0,i], BGrerr[2,i]))
+        print("%s,   %8.2f,    %8.2f,    %8.2f,    %8.2f"%(labels[i], BGrerr[0,i],BGrerr[1,i],BGrerr[2,i],BGrerr[3,i]))
     
     
     print("================= TABLE ======================")
@@ -2718,7 +2718,7 @@ if __name__ == "__main__":
     #[campaign_vs_GC(flag) for flag in [True,False]]
     #campaign_vs_GC(True)
     # FTIR comparison
-    FTIR_Comparison()
+    #FTIR_Comparison()
     
     
     # Day cycle for each month compared to sin wave from posteriori
@@ -2738,7 +2738,7 @@ if __name__ == "__main__":
     #pixel_counts_summary()
     ## summarised uncertainty
     #relative_error_summary()
-    #print_relative_error_summary() # 15/5/19 for uncert table
+    print_relative_error_summary() # 15/5/19 for uncert table
     # what does the filtering actually do to end results?
     #sensitivity_recalculation()
     #sensitivity_filtering()

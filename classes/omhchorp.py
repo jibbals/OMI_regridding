@@ -183,7 +183,7 @@ class omhchorp:
         
         # daily error reduced by sqrt(n), monthly too
         
-        rbgm_lr   = np.nanmean(rbg_lr,axis=0)/np.nansum(bgpix_lr,axis=0)
+        rbgm_lr   = np.nanmean(rbg_lr,axis=0)/np.sqrt(np.nansum(bgpix_lr,axis=0))
         rbg       = rbg/np.sqrt(bgpix)
         rbg_u     = rbg_u/np.sqrt(bgpix_u)
         rbg_lr    = rbg_lr/np.sqrt(bgpix_lr)

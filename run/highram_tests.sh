@@ -1,9 +1,9 @@
 #!/bin/bash
 #PBS -P m19
-#PBS -q express
-#PBS -N script
+#PBS -q normal
+#PBS -N scriptHR
 #PBS -l walltime=02:00:00
-#PBS -l mem=65000MB
+#PBS -l mem=200000MB
 #PBS -l cput=02:00:00
 #PBS -l wd
 #PBS -l ncpus=1
@@ -17,7 +17,7 @@
 if [ $# -lt 1 ]; then
     if [ -z ${fname} ]; then 
         echo "EG: $0 tests.py"
-        echo "    will run tests.py on qsub express queue"
+        echo "    will run tests.py on qsub normal queue"
         exit 0
     fi
 else

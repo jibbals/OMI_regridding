@@ -61,6 +61,9 @@ labels=chapter_3_isop.labels
 #####
 
 
+
+
+
 # start timer
 start1=timeit.default_timer()
 
@@ -68,12 +71,6 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
     
-
-test=("aus",60.4,20.2,40.4,100.6,100.8,40.0)
-# EG:
-#   Aus & 60\% &  20\% &  40\%  & 100\% & 100\% &  40\%  \\
-formstring = "%s & %4.0f%% & %4.0f%% & %4.0f%% & %4.0f%% & %4.0f%% & %4.0f%% \\\\"
-print(formstring%tuple(test))
 
 ###########
 ### Record and time STUJFFS

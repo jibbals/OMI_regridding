@@ -51,7 +51,7 @@ import timeit
 ### Globals ###
 ###############
 __VERBOSE__=True
-
+__THRESHHOLD_Ererr__ = 2.0 ## THRESHOLD for uncertainty of 200%
 ## LABELS
 # total column HCHO from GEOS-Chem
 __Ogc__ = "$\Omega_{GC}$"
@@ -1337,12 +1337,12 @@ def regional_seasonal_comparison():
                      linear=True,pname="test_monthly_Runcert.png",)
     
     # Pull out apri and apost regional seasonal emissions
-    apris, apristd, aprilq, apriuq      = regional_seasonal(enew.E_MEGAN, dates, lats, lons, )
-    
-    
+    aprisdict = regional_seasonal(enew.E_MEGAN, dates, lats, lons, )
+    apris, apristd, aprilq, apriuq = [ aprisdict[k] for k in ['mean','std','lq','uq' ]]
+     
     # clear the super uncertain squares...
     E_PPm_lr = util.monthly_averaged(dates,enew.E_PP_lr,keep_spatial=True)['mean']
-    to_remove=uncerts_all > 2
+    to_remove=uncerts_all > __THRESHHOLD_Ererr__
     prior_mean_E = np.nanmean(E_PPm_lr)
     prior_mean_rerr = np.nanmean(uncerts_all)
     E_PPm_lr[to_remove] = np.NaN
@@ -1353,9 +1353,8 @@ def regional_seasonal_comparison():
     print("trimming ",np.nansum(to_remove)," uncertain days from E_PP_lr")
     print("E_PPm_lr mean: %.2e to %.2e"%(prior_mean_E,post_mean_E))
     print("E_PPm_rerr_lr mean: %.2e to %.2e"%(prior_mean_rerr, post_mean_rerr))
-    
-    aposts, apoststd, apostlq, apostuq  = regional_seasonal(E_PPm_lr, months, lats, lons, )
-    
+    apostsdict=regional_seasonal(E_PPm_lr, months, lats, lons, )
+    aposts, apoststd, apostlq, apostuq  =   [ apostsdict[k] for k in ['mean','std','lq','uq' ] ]
     del enew
     
     uncerts_regional_all, lats_reg,lons_reg = util.pull_out_subregions(uncerts_all,lats,lons,subregions=regions)
@@ -1574,18 +1573,27 @@ def hcho_vs_satellite():
     for i in range(len(omi.dates)):
         hcho_omi[i] = util.regrid_to_lower(hcho_omi_hr[i],lats,lons,lats_lr,lons_lr,pixels=pixels[i])
     del hcho_omi_hr
-    omi_mean, omi_std, omi_lq, omi_uq = regional_seasonal(hcho_omi,omi.dates,lats_lr,lons_lr)
+    
+    omi_dict = regional_seasonal(hcho_omi,omi.dates,lats_lr,lons_lr)
+    omi_mean, omi_std, omi_lq, omi_uq =  [omi_dict[k] for k in ['mean','std','lq','uq']]
+    
     del hcho_omi
     del omi
+    
     satkeys=['IJ-AVG-$_CH2O']+GC_class.__gc_tropcolumn_keys__
     trop = GC_class.GC_sat(d0,d1,keys=satkeys)
     hcho_trop = trop.get_total_columns(keys=['hcho'])['hcho']
-    trop_mean, trop_std, trop_lq, trop_uq = regional_seasonal(hcho_trop,trop.dates,trop.lats,trop.lons)
+    trop_dict = regional_seasonal(hcho_trop,trop.dates,trop.lats,trop.lons)
+    trop_mean, trop_std, trop_lq, trop_uq = [trop_dict[k] for k in ['mean','std','lq','uq']]
+
     del hcho_trop
     del trop
+    
     new = GC_class.GC_sat(d0,d1,keys=satkeys,run='new_emissions')
     hcho_new  = new.get_total_columns(keys=['hcho'])['hcho']
-    new_mean, new_std, new_lq, new_uq = regional_seasonal(hcho_new,new.dates,new.lats,new.lons)
+    new_dict = regional_seasonal(hcho_new,new.dates,new.lats,new.lons)
+    new_mean, new_std, new_lq, new_uq = [new_dict[k] for k in ['mean','std','lq','uq']]
+
     del hcho_new
     del new
     
@@ -1619,11 +1627,11 @@ def hcho_vs_satellite():
         # Print out portional regional variances for discussion
         print(labels[i])
         for j in range(4):
-            print(['summer','autumn','winter','spring'][i]," Normal Run",
+            print(['summer','autumn','winter','spring'][j]," Normal Run",
                   "Mean=%.1e, variance=%.1e  (%.2f%%)"%(trop_mean[j,i],trop_std[j,i], 100*trop_std[j,i]/trop_mean[j,i] ))
-            print(['summer','autumn','winter','spring'][i]," scaled Run",
+            print(['summer','autumn','winter','spring'][j]," scaled Run",
                   "Mean=%.1e, variance=%.1e  (%.2f%%)"%(new_mean[j,i],new_std[j,i], 100*new_std[j,i]/new_mean[j,i] ))
-            print(['summer','autumn','winter','spring'][i]," OMI",
+            print(['summer','autumn','winter','spring'][j]," OMI",
                   "Mean=%.1e, variance=%.1e  (%.2f%%)"%(omi_mean[j,i],omi_std[j,i], 100*omi_std[j,i]/omi_mean[j,i] ))
             
     plt.xticks(X+3*width/2.0, ['summer','autumn','winter','spring'])
@@ -1632,11 +1640,93 @@ def hcho_vs_satellite():
     f.subplots_adjust(hspace=0)
 
 
+
     ## save figure
     plt.savefig(pname)
     print('SAVED ',pname)
     plt.close()
-
+    '''
+    Regionalising and seasonalising array: (2922, 28, 144)
+    Aus
+    summer  Normal Run Mean=9.8e+15, variance=2.7e+15  (27.67%)
+    summer  scaled Run Mean=7.4e+15, variance=1.8e+15  (24.05%)
+    summer  OMI Mean=4.9e+15, variance=1.9e+15  (39.13%)
+    autumn  Normal Run Mean=6.2e+15, variance=2.2e+15  (35.82%)
+    autumn  scaled Run Mean=5.0e+15, variance=1.4e+15  (27.04%)
+    autumn  OMI Mean=3.0e+15, variance=1.6e+15  (53.68%)
+    winter  Normal Run Mean=3.7e+15, variance=1.4e+15  (39.25%)
+    winter  scaled Run Mean=3.3e+15, variance=1.0e+15  (30.52%)
+    winter  OMI Mean=1.8e+15, variance=1.2e+15  (67.35%)
+    spring  Normal Run Mean=7.8e+15, variance=3.5e+15  (45.01%)
+    spring  scaled Run Mean=6.0e+15, variance=2.6e+15  (43.06%)
+    spring  OMI Mean=4.1e+15, variance=2.3e+15  (55.36%)
+    SE
+    summer  Normal Run Mean=1.1e+16, variance=3.5e+15  (31.65%)
+    summer  scaled Run Mean=8.1e+15, variance=2.1e+15  (25.25%)
+    summer  OMI Mean=5.9e+15, variance=2.2e+15  (37.37%)
+    autumn  Normal Run Mean=6.0e+15, variance=2.3e+15  (38.07%)
+    autumn  scaled Run Mean=5.2e+15, variance=1.5e+15  (28.61%)
+    autumn  OMI Mean=3.5e+15, variance=1.8e+15  (51.00%)
+    winter  Normal Run Mean=3.1e+15, variance=5.4e+14  (17.58%)
+    winter  scaled Run Mean=3.0e+15, variance=5.4e+14  (18.02%)
+    winter  OMI Mean=1.6e+15, variance=1.2e+15  (73.29%)
+    spring  Normal Run Mean=7.1e+15, variance=2.7e+15  (38.35%)
+    spring  scaled Run Mean=5.9e+15, variance=1.9e+15  (32.91%)
+    spring  OMI Mean=4.3e+15, variance=1.8e+15  (42.49%)
+    NE
+    summer  Normal Run Mean=1.1e+16, variance=2.8e+15  (24.64%)
+    summer  scaled Run Mean=8.2e+15, variance=1.6e+15  (19.02%)
+    summer  OMI Mean=4.8e+15, variance=2.0e+15  (40.69%)
+    autumn  Normal Run Mean=6.7e+15, variance=2.1e+15  (31.55%)
+    autumn  scaled Run Mean=5.5e+15, variance=1.1e+15  (20.43%)
+    autumn  OMI Mean=3.1e+15, variance=1.5e+15  (46.87%)
+    winter  Normal Run Mean=3.9e+15, variance=8.2e+14  (21.04%)
+    winter  scaled Run Mean=3.6e+15, variance=6.5e+14  (17.99%)
+    winter  OMI Mean=2.1e+15, variance=1.0e+15  (46.83%)
+    spring  Normal Run Mean=8.9e+15, variance=2.5e+15  (28.13%)
+    spring  scaled Run Mean=7.0e+15, variance=1.8e+15  (26.12%)
+    spring  OMI Mean=4.7e+15, variance=1.8e+15  (38.85%)
+    Mid
+    summer  Normal Run Mean=9.1e+15, variance=1.5e+15  (16.66%)
+    summer  scaled Run Mean=6.6e+15, variance=8.0e+14  (12.08%)
+    summer  OMI Mean=4.1e+15, variance=1.6e+15  (38.37%)
+    autumn  Normal Run Mean=5.4e+15, variance=1.8e+15  (33.41%)
+    autumn  scaled Run Mean=4.3e+15, variance=9.9e+14  (22.74%)
+    autumn  OMI Mean=2.4e+15, variance=1.3e+15  (54.63%)
+    winter  Normal Run Mean=3.0e+15, variance=5.7e+14  (18.89%)
+    winter  scaled Run Mean=2.8e+15, variance=3.8e+14  (13.73%)
+    winter  OMI Mean=1.5e+15, variance=8.1e+14  (55.37%)
+    spring  Normal Run Mean=6.6e+15, variance=1.8e+15  (27.08%)
+    spring  scaled Run Mean=4.9e+15, variance=1.1e+15  (22.14%)
+    spring  OMI Mean=3.3e+15, variance=1.7e+15  (50.66%)
+    SW
+    summer  Normal Run Mean=8.6e+15, variance=2.4e+15  (27.38%)
+    summer  scaled Run Mean=6.3e+15, variance=1.2e+15  (18.78%)
+    summer  OMI Mean=4.3e+15, variance=1.6e+15  (37.64%)
+    autumn  Normal Run Mean=5.4e+15, variance=1.8e+15  (33.20%)
+    autumn  scaled Run Mean=4.5e+15, variance=1.1e+15  (24.22%)
+    autumn  OMI Mean=2.4e+15, variance=1.3e+15  (53.16%)
+    winter  Normal Run Mean=2.7e+15, variance=4.0e+14  (14.73%)
+    winter  scaled Run Mean=2.6e+15, variance=3.3e+14  (12.70%)
+    winter  OMI Mean=1.2e+15, variance=7.2e+14  (62.25%)
+    spring  Normal Run Mean=4.9e+15, variance=1.7e+15  (33.92%)
+    spring  scaled Run Mean=4.1e+15, variance=1.1e+15  (25.91%)
+    spring  OMI Mean=2.4e+15, variance=1.4e+15  (59.26%)
+    N
+    summer  Normal Run Mean=1.0e+16, variance=2.3e+15  (22.13%)
+    summer  scaled Run Mean=8.8e+15, variance=1.9e+15  (21.29%)
+    summer  OMI Mean=5.8e+15, variance=1.9e+15  (32.22%)
+    autumn  Normal Run Mean=7.6e+15, variance=1.9e+15  (24.99%)
+    autumn  scaled Run Mean=6.0e+15, variance=1.2e+15  (20.03%)
+    autumn  OMI Mean=3.7e+15, variance=1.8e+15  (47.57%)
+    winter  Normal Run Mean=5.8e+15, variance=1.6e+15  (27.04%)
+    winter  scaled Run Mean=4.7e+15, variance=1.0e+15  (22.37%)
+    winter  OMI Mean=2.8e+15, variance=1.5e+15  (54.36%)
+    spring  Normal Run Mean=1.2e+16, variance=3.1e+15  (24.90%)
+    spring  scaled Run Mean=9.4e+15, variance=3.0e+15  (31.97%)
+    spring  OMI Mean=6.5e+15, variance=2.4e+15  (36.52%)
+    SAVED  Figs/hcho_vs_satellite.png
+    '''
 
 def campaign_vs_GC(midday=True):
     '''
@@ -1782,9 +1872,6 @@ def FTIR_Comparison():
     trop.add_pedges()
     dates=trop.dates
     
-    # colours for trop and tropa
-    c = 'r'
-    ca= 'm'
     
     # grab wollongong square
     Woli, Wolj = util.lat_lon_index(LatWol,LonWol,trop.lats,trop.lons) # lat, lon indices
@@ -1802,8 +1889,15 @@ def FTIR_Comparison():
     bias = -decon['new_TC'] + decon['TC_ret']
     biasa= -decona['new_TC'] + decon['TC_ret']
     print("MEAN DIFFERENCE BETWEEN DECONVOLVED MODEL VERTICAL COLUMN AND FTIR")
-    print(" FTIR - VCC = %.2e(+-%.2f%%)"%(np.nanmean(bias),np.nanstd(bias)))
-    print("FTIR - VCCa = %.2e(+-%.2f%%)"%(np.nanmean(biasa),np.nanstd(biasa)))
+    print(" FTIR - VCC = %.2e(+-%.2f%%)"%(np.nanmean(bias),100*np.nanstd(bias)/np.nanmean(bias)))
+    print("FTIR - VCCa = %.2e(+-%.2f%%)"%(np.nanmean(biasa),100*np.nanstd(biasa)/np.nanmean(biasa)))
+    # pull out summer and winter and check biases then:
+    summerinds = np.array([ d.month in [1,2,12] for d in dates ])
+    winterinds = np.array([ d.month in [6,7,8]  for d in dates ])
+    print("SUMMER : FTIR - VCC = %.2e "%np.nanmean(bias[summerinds]))
+    print("WINTER : FTIR - VCC = %.2e "%np.nanmean(bias[winterinds]))
+    print("SUMMER : FTIR - VCCa = %.2e "%np.nanmean(biasa[summerinds]))
+    print("WINTER : FTIR - VCCa = %.2e "%np.nanmean(biasa[winterinds]))
     
     # drop the NaNs and plot 
     TC_df.plot(linestyle='',marker='+')
@@ -2315,6 +2409,9 @@ def print_relative_error_summary():
     # does not seem to have ocean squares (good)
     print(np.nanmean(Ererrm), np.nanmean(Ererrm[oceanmask]))
     Ererrm[oceanmask] = np.NaN
+    # Also remove super high Ererr values
+    Ererrm[Ererrm > __THRESHHOLD_Ererr__] = np.NaN
+
     
     print("Checking BGrerr")
     print(np.nanmean(BGrerrm), np.nanmean(BGrerrm[oceanmask]))
@@ -2349,7 +2446,7 @@ def print_relative_error_summary():
     
     print("================= TABLE ======================")
     for i in range(n_regions):
-        rsummary = [labels[i],RSErerr[0,i], RSOrerr[0,i], RSSrerr[0,i],RSErerr[2,i], RSOrerr[2,i], RSSrerr[2,i]]
+        rsummary = [labels[i],RSErerr[0,i]*100, RSOrerr[0,i]*100, RSSrerr[0,i]*100,RSErerr[2,i]*100, RSOrerr[2,i]*100, RSSrerr[2,i]*100]
         print(formstring%tuple(rsummary))
     
     
@@ -2601,7 +2698,7 @@ if __name__ == "__main__":
     #compare_model_outputs()
     
     # Check how HCHO mean and variance looks compared to omi
-    #hcho_vs_satellite() # 15/5/19 run to print portional variances
+    #hcho_vs_satellite() # 15/5/19 printed output saved in function
     
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
@@ -2614,7 +2711,7 @@ if __name__ == "__main__":
     #[campaign_vs_GC(flag) for flag in [True,False]]
     #campaign_vs_GC(True)
     # FTIR comparison
-    #FTIR_Comparison()
+    FTIR_Comparison()
     
     
     # Day cycle for each month compared to sin wave from posteriori
@@ -2634,7 +2731,7 @@ if __name__ == "__main__":
     #pixel_counts_summary()
     ## summarised uncertainty
     #relative_error_summary()
-    print_relative_error_summary() # 15/5/19 for uncert table
+    #print_relative_error_summary() # 15/5/19 for uncert table
     # what does the filtering actually do to end results?
     #sensitivity_recalculation()
     #sensitivity_filtering()

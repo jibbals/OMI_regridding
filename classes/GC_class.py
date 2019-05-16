@@ -613,6 +613,7 @@ class GC_sat(GC_base):
             nlats=28 # multiyear file is trimmed
         else:
             # read data/attrs and initialise class:
+            print("GC_sat reading keys:",keys)
             data,attrs = GC_fio.read_bpch(paths,keys=keys)
             
         times=util.datetimes_from_np_datetime64(dates,reverse=True)

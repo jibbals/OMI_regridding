@@ -861,7 +861,7 @@ def MEGAN_vs_E_new(d0=datetime(2005,1,1), d1=datetime(2005,1,31),
     #pp.plot_regression()
 
 
-def All_maps(month=datetime(2005,1,1),GC=None, OMI=None, ignorePP=True, region=pp.__AUSREGION__):
+def All_maps(month=datetime(2005,1,1),GC=None, OMI=None, region=pp.__AUSREGION__):
     '''
         Plot Emissions from OMI over region for averaged month
     '''
@@ -877,7 +877,7 @@ def All_maps(month=datetime(2005,1,1),GC=None, OMI=None, ignorePP=True, region=p
     if GC is None:
         GC=GC_class.GC_tavg(day0, dayn)
     if OMI is None:
-        OMI=omhchorp(day0,dayn,ignorePP=ignorePP)
+        OMI=omhchorp(day0,dayn)
 
     ## Plot E_new
     ##
@@ -906,7 +906,7 @@ def print_megan_comparison(month=datetime(2005,1,1), GC=None, OMI=None,
     if GC is None:
         GC=GC_class.GC_tavg(date=month)
     if OMI is None:
-        OMI=omhchorp(day0=day0,dayn=dayn,ignorePP=True)
+        OMI=omhchorp(day0=day0,dayn=dayn)
 
     ## Inversion
     # based on OMI using GC calculated yield (slope)
@@ -1286,7 +1286,7 @@ if __name__=='__main__':
 #        for month in [datetime(2005,1,1), datetime(2005,2,1)]:
 #            # Read month of data
 #            GC=GC_tavg(date=month)
-#            OMI=omhchorp(day0=month,dayn=util.last_day(month),ignorePP=True)
+#            OMI=omhchorp(day0=month,dayn=util.last_day(month))
 #
 #            # Run plots and print outputs
 #            print_megan_comparison(month, GC=GC, OMI=OMI, region=region,)

@@ -46,7 +46,7 @@ def check_swaths(date=datetime(2005,1,1),suffix=None):
     print('%d entries in first swath'% entries)
     print("%d good entries in first swath"%np.sum(~np.isnan(omhcho['HCHO'])))
 
-def check_omhchorp(date=datetime(2005,1,1),suffix='',ignorePP=True):
+def check_omhchorp(date=datetime(2005,1,1),suffix=''):
     ''' '''
     dstr=date.strftime("%Y%m%d") # yyyymmdd
     mstr=date.strftime("%Y, %B") # yyyy, Month
@@ -55,7 +55,7 @@ def check_omhchorp(date=datetime(2005,1,1),suffix='',ignorePP=True):
     # read month average
     day0=datetime(date.year,date.month,1)
     dayn=util.last_day(date)
-    om=omhchorp(day0=day0,dayn=dayn,ignorePP=ignorePP)
+    om=omhchorp(day0=day0,dayn=dayn)
     data_day=om.time_averaged(day0=date,keys=['VCC','gridentries'])
     data_month=om.time_averaged(day0=date,month=True,keys=['VCC','gridentries'])
 
@@ -159,7 +159,7 @@ def grid_comparison():
     GC_xy0 = (GC_x[2],GC_y[2])
     GC_res = (GC_x[3]-GC_x[2],GC_y[3]-GC_y[2])
 
-    #S=omhchorp(datetime(2005,1,1),ignorePP=True)
+    #S=omhchorp(datetime(2005,1,1))
     #S_x    = S.lons_e
     #S_y    = S.lats_e
     #S_xy0  = GC_xy0#(S_x[1],S_y[1])

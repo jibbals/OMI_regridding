@@ -553,7 +553,7 @@ def test_store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None
 
     # Read omhchorp VCs, AMFs, Fires, Smoke, etc...
     if OMHCHORP is None:
-        OMHCHORP=omhchorp(day0=day0,dayn=dayn, ignorePP=False)
+        OMHCHORP=omhchorp(day0=day0,dayn=dayn)
     if GCB is None:
         GCB=GC_class.GC_biogenic(day0,) # data like [time,lat,lon,lev]
 

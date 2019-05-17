@@ -27,7 +27,7 @@ def check_resolution_binning(d0=datetime(2005,1,1),):
     '''
     region=pp.__AUSREGION__
 
-    OMHCHORP=omhchorp(day0=d0, ignorePP=False)
+    OMHCHORP=omhchorp(day0=d0)
     arr_names=['VCC_OMI','gridentries','ppentries','col_uncertainty_OMI','firemask','smokemask','anthromask']
     arrs= [getattr(OMHCHORP,s) for s in arr_names]
     arrs_i= {arr_names[i]:i for i in range(len(arr_names))}

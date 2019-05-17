@@ -82,7 +82,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
 
     # Read omhchorp VCs, AMFs, Fires, Smoke, etc...
     if OMHCHORP is None:
-        OMHCHORP=omhchorp(day0=day0,dayn=dayn, ignorePP=False)
+        OMHCHORP=omhchorp(day0=day0,dayn=dayn)
     if GCB is None:
         GCB=GC_class.GC_biogenic(day0,) # data like [time,lat,lon,lev]
     # Also use megan subset for ease of analysis later on...
@@ -526,7 +526,7 @@ def store_emissions_month(month=datetime(2005,1,1), GCB=None, OMHCHORP=None,
         print("%s should now be saved"%fname)
 
 def store_emissions(day0=datetime(2005,1,1), dayn=None,
-                    region=pp.__AUSREGION__, ignorePP=False):
+                    region=pp.__AUSREGION__):
     '''
         Store many months of new emissions estimates into he5 files
         Just a wrapper for store_emissions_month which handles 1 to many months
@@ -545,7 +545,7 @@ def store_emissions(day0=datetime(2005,1,1), dayn=None,
     for month in months:
 
         # Grab reprocessed data for the month:
-        OMI=omhchorp(day0=month,dayn=util.last_day(month), ignorePP=ignorePP)
+        OMI=omhchorp(day0=month,dayn=util.last_day(month))
 
         # Read GC month:
         GCB=GC_class.GC_biogenic(month)

@@ -87,13 +87,12 @@ class fires:
             self.RSC_region=struct[0]['RSC_region']
 
         # remove small and negative AMFs
-        if not ignorePP:
-            print("Removing %d AMF_PP's less than 0.1"%np.nansum(self.AMF_PP<0.1))
-            self.AMF_PP[self.AMF_PP < 0.1]=np.NaN
-            screen=[-5e15,1e17]
-            screened=(self.VCC_PP<screen[0]) + (self.VCC_PP>screen[1])
-            print("Removing %d VCC_PP's outside [-5e15,1e17]"%(np.sum(screened)))
-            self.VCC_PP[screened]=np.NaN
+        print("Removing %d AMF_PP's less than 0.1"%np.nansum(self.AMF_PP<0.1))
+        self.AMF_PP[self.AMF_PP < 0.1]=np.NaN
+        screen=[-5e15,1e17]
+        screened=(self.VCC_PP<screen[0]) + (self.VCC_PP>screen[1])
+        print("Removing %d VCC_PP's outside [-5e15,1e17]"%(np.sum(screened)))
+        self.VCC_PP[screened]=np.NaN
 
         mlons,mlats=np.meshgrid(self.lons,self.lats)
 

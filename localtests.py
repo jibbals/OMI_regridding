@@ -71,6 +71,105 @@ start1=timeit.default_timer()
 ### DO STUFFS
 ##########
     
+chapter_3_isop.fullpageFigure()
+
+d0=datetime(2005,1,1)
+dN=datetime(2005,1,31)
+
+dkeys=['E_PP_lr', 'pixels_PP_lr', # emissiosn and pixel counts
+       'E_PP_err_lr','E_PPm_err_lr','E_PPm_rerr_lr', # Error in emissions estimate
+       'SC_err_lr', 
+       'VCC_PP_lr', # Omega 
+       'VCC_err_lr','VCC_rerr_lr', # daily OmegaPP error in
+       'BG_PP_rerr',  # monthly low res rerr over Aus
+       'slope_rerr_lr'] # monthly portional error in slope
+
+# READ EMISSIONS AND ERROR
+enew=E_new(d0,dN,dkeys=dkeys)
+dates=enew.dates
+months=util.list_months(d0,dN)
+lats,lons=enew.lats_lr, enew.lons_lr
+pix=enew.pixels_PP_lr
+# GET MONTHLY TOTAL PIXELS
+pixm=util.monthly_averaged(dates,pix,keep_spatial=True)['sum']
+
+for key in dkeys:
+    print(key, getattr(enew,key).shape)
+
+# MASK OCEANS, 
+E = enew.E_PP_lr
+E[enew.oceanmask3d_lr] = np.NaN
+Em      = util.monthly_averaged(dates,E,keep_spatial=True)['mean']
+Eerr   = enew.E_PP_err_lr
+Eerrm  = enew.E_PPm_err_lr
+Ererr  = Eerr/E
+Ererr[~np.isfinite(Ererr)] = np.NaN
+Ererr[np.isclose(E,0.0)] = np.NaN
+Ererrm = Eerrm/Em
+Ererrm[~np.isfinite(Ererrm)] = np.NaN
+Ererrm[np.isclose(Em,0.0)] = np.NaN
+
+Srerrm  = enew.slope_rerr_lr
+
+# monthly VCC error:from per pixel error divided by pixels in the month
+O   = enew.VCC_PP_lr
+Om  = util.monthly_averaged(dates,O,keep_spatial=True)['mean']
+Oerr  = enew.VCC_err_lr * np.sqrt(pix) # error has already been divided by sqrt daily pix
+Oerrm = util.monthly_averaged(dates,Oerr,keep_spatial=True)['mean'] /  np.sqrt(pixm)
+# Same as Enew monthly error:replace error with NaN and set relative error to 100%
+# Enew monthly negatives are replaced with zeros, but not VCCm 
+Orerrm = Oerrm / Om
+negerr = (Om < 0)+(Oerrm<0)
+Orerrm[negerr] = 1.0
+
+
+# 3d monthly oceanmask:
+oceanmask=np.repeat(enew.oceanmask_lr[np.newaxis,:,:], len(months), axis=0)
+print("Checking Oerr")
+# Definitely includes ocean squares
+print(np.nanmean(Orerrm), np.nanmean(Orerrm[oceanmask]))
+Orerrm[oceanmask] = np.NaN
+print("Checking Serr")
+# also
+print(np.nanmean(Srerrm), np.nanmean(Srerrm[oceanmask]))
+Srerrm[oceanmask] = np.NaN
+print("Checking Eerr")
+# does not seem to have ocean squares (good)
+print(np.nanmean(Ererrm), np.nanmean(Ererrm[oceanmask]))
+Ererrm[oceanmask] = np.NaN
+
+BGrerrm = enew.BG_PP_rerr
+BGrerrm[oceanmask]=np.NaN
+BGrerrm[~np.isfinite(BGrerrm)]=np.NaN
+
+
+
+# first lets do A seasonal plot of relative monthly error
+titles = ['relative error in monthly a posteriori', 
+          'relative error in monthly slope',
+          'relative error in monthly $\Omega$',
+          'relative error in monthly $\Omega_{BG}$']
+pnames = ['Ererr_postfix.png',
+            'Srerr_postfix.png',
+            'Orerr_postfix.png',
+            'BGrerr_postfix.png']
+ylims = [ [0,1.5], [0.2, 0.5], [0,1], [0,.03]]
+
+
+for title, pname, ylim, rerr in zip(titles,pnames,ylims,[Ererrm[0],Srerrm[0],Orerrm[0],BGrerrm[0]]):
+    
+    plt.close()
+    plt.figure(figsize=[10,14])
+    bmap,cs,cb = pp.createmap(rerr,lats,lons,aus=True,linear=True,vmin=ylim[0],vmax=ylim[1],
+                 colorbar=False)
+    plt.colorbar(cs)
+    plt.suptitle(title,fontsize=20)
+    plt.savefig(pname)
+    print("SAVED ",pname)
+    plt.close()
+
+
+
 
 ###########
 ### Record and time STUJFFS

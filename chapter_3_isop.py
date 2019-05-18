@@ -2178,14 +2178,14 @@ def pixel_counts_summary():
     print('SAVED ',pname3)
     plt.close()
 
-def relative_error_summary():
+def relative_error_summary(d0=datetime(2005,1,1), dN = datetime(2012,12,31)):
     '''
         Plots: MYA seasonal relative error in E, Omega, and S
         Plots2: summer vs winter relative error in E
         Prints: summer/winter mean and IQR of regionally averaged rerrs
     '''
     
-    d0,dN = datetime(2005,1,1),datetime(2012,12,31)
+    
     dkeys=['E_PP_lr', 'pixels_PP_lr', # emissiosn and pixel counts
            'E_PP_err_lr','E_PPm_err_lr','E_PPm_rerr_lr', # Error in emissions estimate
            'SC_err_lr', 

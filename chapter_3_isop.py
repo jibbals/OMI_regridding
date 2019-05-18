@@ -2726,19 +2726,17 @@ if __name__ == "__main__":
     
     
     # Emissions apriori vs aposteriori + uncertainty
-    #regional_seasonal_comparison()
+    regional_seasonal_comparison()
     #time_series()
     #regional_seasonal_timeseries()
     
     
     ## UNCERTAINTY
     #uncertainty_time_series()
-    # TODO: add sums to analysis TS
-    # todo: discuss plot output from 
     #pixel_counts_summary()
     ## summarised uncertainty
     #relative_error_summary()
-    print_relative_error_summary() # 15/5/19 for uncert table
+    #print_relative_error_summary() # 15/5/19 for uncert table
     # what does the filtering actually do to end results?
     #sensitivity_recalculation()
     #sensitivity_filtering()

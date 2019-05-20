@@ -2465,8 +2465,8 @@ def sensitivity_recalculation(d0=datetime(2005,1,1),d1=datetime(2005,11,30)):
     
     FIGURE1:
         maps :   AMF OMI, AMF GC, AMF PP 
-        TS   :   all threeeeeeeeeeeeeee   : monthly resampled?
-        TS   :   all three Emissions      : monthly resampled?
+        bar  :   seasonal distr
+        emiss:   seasonal comparison with EMEGAN
     '''
     
     ystr=d0.strftime('%Y')

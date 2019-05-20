@@ -181,7 +181,6 @@ def date_index(date,dates, dn=None, ignore_hours=True):
 
 def datetimes_from_np_datetime64(times, reverse=False):
     # '2005-01-01T00:00:00.000000000'
-
     if reverse:
         return np.squeeze([np.datetime64(d.strftime('%Y-%m-%dT%H:%M:%S.000000000')) for d in times])
     return np.squeeze([datetime.strptime(str(d),'%Y-%m-%dT%H:%M:%S.000000000') for d in times])

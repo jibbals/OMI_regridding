@@ -260,7 +260,18 @@ class GC_base:
             self.time=[attrs['init_date'].strftime("%Y-%m-%dT%H:%M:%S.000000000")]
             self.dates=[datetime.strptime(self.time[0],"%Y-%m-%dT%H:%M:%S.000000000"),]
         else:
-            self.dates=list(util.datetimes_from_np_datetime64(self.time))
+            
+            #print("WARNING: GC_SAT: TIME ATTR:",type(self.time),self.time,np.shape(self.time))
+            if len(np.shape(self.time)) == 0: # zero dim array!
+                self.dates=[attrs['init_date']]
+                # need to squeeze all our arrays in this case...
+            elif isinstance(self.time[0], datetime):
+                self.dates=list(self.time)
+            elif isinstance(self.time[0], np.datetime64):
+                self.dates=list(util.datetimes_from_np_datetime64(self.time))
+            else:
+                print("WARNING: GC_SAT: TIME ATTR:",type(self.time),type(self.time[0]),self.time[0])
+                self.dates=[]
         
         # debug
         #print('self.time',self.time)
@@ -268,7 +279,7 @@ class GC_base:
         self.dstr=self.dates[0].strftime("%Y%m")
 
         # flag to see if class has time dimension
-        self._has_time_dim = len(self.dates) > 1
+        self._has_time_dim = len(self.hcho.shape) > 3
         
         # Check that all the lats match the GMAO resolution we use
         assert (set(self.lats) & set(GMAO.lats_m)) == set(self.lats), "LATS DON'T MATCH GMAO 2x25 MIDS"
@@ -676,7 +687,8 @@ class GC_sat(GC_base):
             self.attrs['N_hcho']={'units':'molec/cm3','desc':'HCHO number density'}
 
             # levels are final dimension
-            arrshape=self.hcho.shape
+            arrshape=np.squeeze(self.hcho).shape
+            print("HCHO SHAPE:",arrshape)
             n_lats,n_lons,n_levs = arrshape
 
             # Column air (molec/cm2) = (molec/cm3 * m * 100 cm/m)

@@ -90,7 +90,7 @@ def check_amf_differences(month=datetime(2005,1,1)):
     plt.scatter(agc, agcz)
     plt.xlabel('$AMF_{\sigma}$')
     plt.ylabel('$AMF_z$')
-     plt.title('AMF comparison over Australia for January 2005')
+    plt.title('AMF comparison over Australia for January 2005')
     pname='test_amfs.png'
     plt.savefig(pname)
     print('saved ',pname)
@@ -1493,7 +1493,7 @@ def compare_tc_ucx(d0=datetime(2007,1,1), dn=datetime(2007,2,28)):
                         linear=False, region=region,
                         suptitle='%s surface amounts (daily mean %s) [%s]'%(str.upper(key),dstr,units[key]))
 
-def AMF_comparison_tc_ucx(month=datetime(2005,1,1),max_procs=14):
+def AMF_comparison_tc_ucx(month=datetime(2005,1,1),max_procs=4):
     '''
     Look at monthly averaged AMF using UCX and using tropchem
     '''
@@ -1918,11 +1918,11 @@ if __name__=='__main__':
     #    GCe_vs_OMNO2d(year=year)
     
     ## EXAMINE AMFs
-    check_amf_differences()
+    #check_amf_differences()
     
     ## UCX VS TROPCHEM AMF
     #
-    #AMF_comparison_tc_ucx()
+    AMF_comparison_tc_ucx()
 
     ## tropchem vs UCX plots
     # Look at 2007 summer since I have OH for daily avg files from then.

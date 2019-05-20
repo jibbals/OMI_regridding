@@ -69,106 +69,82 @@ start1=timeit.default_timer()
 
 ##########
 ### DO STUFFS
-##########
-    
+##########    
+
+
+
+
+
 chapter_3_isop.fullpageFigure()
 
-d0=datetime(2005,1,1)
-dN=datetime(2005,1,31)
-
-dkeys=['E_PP_lr', 'pixels_PP_lr', # emissiosn and pixel counts
-       'E_PP_err_lr','E_PPm_err_lr','E_PPm_rerr_lr', # Error in emissions estimate
-       'SC_err_lr', 
-       'VCC_PP_lr', # Omega 
-       'VCC_err_lr','VCC_rerr_lr', # daily OmegaPP error in
-       'BG_PP_rerr',  # monthly low res rerr over Aus
-       'slope_rerr_lr'] # monthly portional error in slope
-
-# READ EMISSIONS AND ERROR
-enew=E_new(d0,dN,dkeys=dkeys)
-dates=enew.dates
-months=util.list_months(d0,dN)
-lats,lons=enew.lats_lr, enew.lons_lr
-pix=enew.pixels_PP_lr
-# GET MONTHLY TOTAL PIXELS
-pixm=util.monthly_averaged(dates,pix,keep_spatial=True)['sum']
-
-for key in dkeys:
-    print(key, getattr(enew,key).shape)
-
-# MASK OCEANS, 
-E = enew.E_PP_lr
-E[enew.oceanmask3d_lr] = np.NaN
-Em      = util.monthly_averaged(dates,E,keep_spatial=True)['mean']
-Eerr   = enew.E_PP_err_lr
-Eerrm  = enew.E_PPm_err_lr
-Ererr  = Eerr/E
-Ererr[~np.isfinite(Ererr)] = np.NaN
-Ererr[np.isclose(E,0.0)] = np.NaN
-Ererrm = Eerrm/Em
-Ererrm[~np.isfinite(Ererrm)] = np.NaN
-Ererrm[np.isclose(Em,0.0)] = np.NaN
-
-Srerrm  = enew.slope_rerr_lr
-
-# monthly VCC error:from per pixel error divided by pixels in the month
-O   = enew.VCC_PP_lr
-Om  = util.monthly_averaged(dates,O,keep_spatial=True)['mean']
-Oerr  = enew.VCC_err_lr * np.sqrt(pix) # error has already been divided by sqrt daily pix
-Oerrm = util.monthly_averaged(dates,Oerr,keep_spatial=True)['mean'] /  np.sqrt(pixm)
-# Same as Enew monthly error:replace error with NaN and set relative error to 100%
-# Enew monthly negatives are replaced with zeros, but not VCCm 
-Orerrm = Oerrm / Om
-negerr = (Om < 0)+(Oerrm<0)
-Orerrm[negerr] = 1.0
 
 
-# 3d monthly oceanmask:
-oceanmask=np.repeat(enew.oceanmask_lr[np.newaxis,:,:], len(months), axis=0)
-print("Checking Oerr")
-# Definitely includes ocean squares
-print(np.nanmean(Orerrm), np.nanmean(Orerrm[oceanmask]))
-Orerrm[oceanmask] = np.NaN
-print("Checking Serr")
-# also
-print(np.nanmean(Srerrm), np.nanmean(Srerrm[oceanmask]))
-Srerrm[oceanmask] = np.NaN
-print("Checking Eerr")
-# does not seem to have ocean squares (good)
-print(np.nanmean(Ererrm), np.nanmean(Ererrm[oceanmask]))
-Ererrm[oceanmask] = np.NaN
+month=datetime(2005,1,1)
+max_procs=4
+'''
+Look at monthly averaged AMF using UCX and using tropchem
+'''
+## read tropchem and ucx run
+#
+d0 = month
+dN = util.last_day(month)
+dates = util.list_days(datetime(2005,1,1), datetime(2005,1,2))
+#ucx=GC_class.GC_sat(d0,dN,run='UCX') # [days, lats, lons,72]
+#trop=GC_class.GC_sat(d0,dN,run='tropchem') # [days, lats, lons, 47]
+# read one day at a time....
+start=timeit.default_timer()
+## To calculate AMFs we need scattering weights from satellite swath files
+#
+lats,lons,amfu,amft = [],[],[],[]
+print("TESTING: NEED TO DO WHOLE MONTH")
+for i, d in enumerate(dates):
+    omhcho  = reprocess.get_good_pixel_list(d,getExtras=True)
+    ucx     = GC_class.GC_sat(d, run='UCX')
+    trop    = GC_class.GC_sat(d, run='tropchem')
+    w       = omhcho['omega'][:,0::50] # [47, 677...]
+    w_pmids = omhcho['omega_pmids'][:,0::50] #[47,677...]
+    AMF_G   = omhcho['AMF_G'][0::50] # [677...]
+    lat     = omhcho['lat'][0::50]   # [677...]
+    lon     = omhcho['lon'][0::50]   # [677...]
 
-BGrerrm = enew.BG_PP_rerr
-BGrerrm[oceanmask]=np.NaN
-BGrerrm[~np.isfinite(BGrerrm)]=np.NaN
+    print("Running amf calc for tropchem")
+    omegain,pmidsin,amfgin,latin,lonin=[],[],[],[],[]
+    for j in range(len(AMF_G)): # just do one pixel from each 50
+
+        omegain.append(w[:,j])
+        pmidsin.append(w_pmids[:,j])
+        amfgin.append(AMF_G[j])
+        latin.append(lat[j])
+        lonin.append(lon[j])
+        lats.extend(lat)
+        lons.extend(lon)
+
+    with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
+        #trop_amf_z, trop_amf_s = trop.calculate_AMF(...)
+        #ucx_amf_z, ucx_amf_s = ucx.calculate_AMF(w[:,j], w_pmids[:,j], AMF_G[j], lat[j], lon[j], plotname=None, debug_levels=False)
+        tropreturns=executor.map(trop.calculate_AMF,omegain,pmidsin,amfgin,latin,lonin)
+        ucxreturns=executor.map(ucx.calculate_AMF,omegain,pmidsin,amfgin,latin,lonin)
+        amft.extend([a for a,b in tropreturns])
+        amfu.extend([a for a,b in ucxreturns])
 
 
+end=timeit.default_timer()
+print("TIMEIT: took %6.2f minutes to run amf comparison"%(end-start/60.0))
 
-# first lets do A seasonal plot of relative monthly error
-titles = ['relative error in monthly a posteriori', 
-          'relative error in monthly slope',
-          'relative error in monthly $\Omega$',
-          'relative error in monthly $\Omega_{BG}$']
-pnames = ['Ererr_postfix.png',
-            'Srerr_postfix.png',
-            'Orerr_postfix.png',
-            'BGrerr_postfix.png']
-ylims = [ [0,1.5], [0.2, 0.5], [0,1], [0,.03]]
+# lets save since it takes so long to run...
+fio.save_to_hdf5(month.strftime('Data/amfs_trop_ucx_%Y%m.h5'),
+                 arraydict={'amfu':amfu,'amft':amft,'lats':lats,'lons':lons,},
+                 attrdicts={'amfu':{'desc':'list of AMFs from UCX model output'},
+                            'amft':{'desc':'list of AMFs from tropchem model output'},})
 
+#save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attrdicts={}, fattrs={},verbose=False)
 
-for title, pname, ylim, rerr in zip(titles,pnames,ylims,[Ererrm[0],Srerrm[0],Orerrm[0],BGrerrm[0]]):
-    
-    plt.close()
-    plt.figure(figsize=[10,14])
-    bmap,cs,cb = pp.createmap(rerr,lats,lons,aus=True,linear=True,vmin=ylim[0],vmax=ylim[1],
-                 colorbar=False)
-    plt.colorbar(cs)
-    plt.suptitle(title,fontsize=20)
-    plt.savefig(pname)
-    print("SAVED ",pname)
-    plt.close()
-
-
+plt.figure(figsize=(14,10))
+pp.density(np.array(amfu),color='m',label="UCX")
+pp.density(np.array(amft),color='k',label="tropchem")
+plt.title("AMF distributions")
+plt.savefig(month.strftime("AMF_dists_trop_vs_ucx_%Y%m.png"))
+plt.close()
 
 
 ###########

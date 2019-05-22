@@ -23,6 +23,17 @@ from utilities import plotting as pp
 ###############
 __VERBOSE__=True
 
+__MUMBA_LAT__=-34.3972
+__MUMBA_LON__= 150.8996
+__SPS_LAT__  = -33.8688
+__SPS_LON__  = 151.2093
+#__SPS2_LAT__
+#__SPS2_LON__
+__FTIR_LAT__ = -34.406
+__FTIR_LON__ = 150.879
+
+
+
 ###############
 ### CLASS   ###
 ###############
@@ -105,8 +116,8 @@ class mumba(campaign):
         o3_df  =fio.read_mumba_var('O3')
 
         # LATITUDE: -34.397200 * LONGITUDE: 150.899600
-        self.lat        = -34.3972
-        self.lon        = 150.8996
+        self.lat        = __MUMBA_LAT__
+        self.lon        = __MUMBA_LON__ 
         self.height     = 10 # Metres off ground
         self.elevation  = 30 # Metres
 
@@ -194,7 +205,7 @@ class sps(campaign):
         h_key='m/z 31'
         i_key='m/z 69'
 
-        self.lat,self.lon=-33.8688, 151.2093 # sydney lat/lon
+        self.lat,self.lon=__SPS_LAT__,__SPS_LON__ # sydney lat/lon
 
         # First row is detection limits
         self.attrs['hcho']['DL']=float(data[h_key][0])

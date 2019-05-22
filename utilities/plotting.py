@@ -1056,11 +1056,12 @@ def add_grid_to_map(m, xy0=(-181.25,-89.), xyres=(2.5,2.), color='k', linewidth=
 
 def displaymap(region=__AUSREGION__,
                subregions=[], labels=[], colors=[], linewidths=[],
-               fontsize='small', bluemarble=True, drawstates=True):
+               fontsize='small', bluemarble=True, drawstates=True,
+               resolution='f', area_thresh=1):
     '''
         regions are [lat,lon,lat,lon]
     '''
-    m = Basemap(projection='mill', resolution='f',
+    m = Basemap(projection='mill', resolution=resolution, area_thresh=area_thresh,
         llcrnrlon=region[1], llcrnrlat=region[0],
         urcrnrlon=region[3], urcrnrlat=region[2])
     if bluemarble:

@@ -1501,6 +1501,8 @@ def AMF_comparison_tc_ucx(month=datetime(2005,1,1),max_procs=4):
     #
     d0 = month
     dN = util.last_day(month)
+    dates = util.list_days(datetime(2005,1,1), datetime(2005,1,2))
+
     #ucx=GC_class.GC_sat(d0,dN,run='UCX') # [days, lats, lons,72]
     #trop=GC_class.GC_sat(d0,dN,run='tropchem') # [days, lats, lons, 47]
     # read one day at a time....
@@ -1509,7 +1511,7 @@ def AMF_comparison_tc_ucx(month=datetime(2005,1,1),max_procs=4):
     #
     lats,lons,amfu,amft = [],[],[],[]
     print("TESTING: NEED TO DO WHOLE MONTH")
-    for i, d in enumerate(util.list_days(datetime(2005,1,1), datetime(2005,1,2))):
+    for i, d in enumerate(dates):
         omhcho  = reprocess.get_good_pixel_list(d,getExtras=True)
         ucx     = GC_class.GC_sat(d, run='UCX')
         trop    = GC_class.GC_sat(d, run='tropchem')
@@ -1518,6 +1520,7 @@ def AMF_comparison_tc_ucx(month=datetime(2005,1,1),max_procs=4):
         AMF_G   = omhcho['AMF_G'][0::50] # [677...]
         lat     = omhcho['lat'][0::50]   # [677...]
         lon     = omhcho['lon'][0::50]   # [677...]
+    
 
         print("Running amf calc for tropchem")
         omegain,pmidsin,amfgin,latin,lonin=[],[],[],[],[]
@@ -1561,6 +1564,9 @@ def AMF_comparison_tc_ucx(month=datetime(2005,1,1),max_procs=4):
 
 
     return
+
+
+
 
 #def OLD_compare_tc_ucx(date=datetime(2005,1,1),extra=False,fnames=None,suffix=None):
 #    '''

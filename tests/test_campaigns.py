@@ -99,3 +99,32 @@ def ftir_method_plots():
     
     plt.savefig(pname_AK)
     print('Saved ',pname_AK)
+    
+def show_locations():
+    '''
+    '''
+    
+    region=[-35,149,-33,152]
+    pname="Figs/Data_Locs.png"
+    
+    plt.close()
+    plt.figure(figsize=(14,16))
+    # create map, with gridsquare of comparison, and dots for campaigns
+    
+    m = pp.arc_map(region=region,)#service='World_Imagery')
+    
+    # Add dots to map
+    for i, [y,x] in enumerate([#[campaign.__MUMBA_LAT__,campaign.__MUMBA_LON__],
+                              [campaign.__SPS_LAT__,campaign.__SPS_LON__],
+                              [campaign.__FTIR_LAT__,campaign.__FTIR_LON__]]):
+        mx,my = m(x, y)
+        m.plot(mx, my, 'o', markersize=9, color='m')
+    
+    pp.add_grid_to_map(m,xy0=(-10,-80),xyres=(1,1),dashes=[1,1e6],labels=[1,0,0,1])
+    
+    #plt.show()
+    plt.savefig(pname)
+    print("SAVED ",pname)
+
+    
+    

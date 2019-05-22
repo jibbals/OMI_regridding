@@ -70,81 +70,9 @@ start1=timeit.default_timer()
 ##########
 ### DO STUFFS
 ##########    
-
-
-
-
-
 chapter_3_isop.fullpageFigure()
 
 
-
-month=datetime(2005,1,1)
-max_procs=4
-'''
-Look at monthly averaged AMF using UCX and using tropchem
-'''
-## read tropchem and ucx run
-#
-d0 = month
-dN = util.last_day(month)
-dates = util.list_days(datetime(2005,1,1), datetime(2005,1,2))
-#ucx=GC_class.GC_sat(d0,dN,run='UCX') # [days, lats, lons,72]
-#trop=GC_class.GC_sat(d0,dN,run='tropchem') # [days, lats, lons, 47]
-# read one day at a time....
-start=timeit.default_timer()
-## To calculate AMFs we need scattering weights from satellite swath files
-#
-lats,lons,amfu,amft = [],[],[],[]
-print("TESTING: NEED TO DO WHOLE MONTH")
-for i, d in enumerate(dates):
-    omhcho  = reprocess.get_good_pixel_list(d,getExtras=True)
-    ucx     = GC_class.GC_sat(d, run='UCX')
-    trop    = GC_class.GC_sat(d, run='tropchem')
-    w       = omhcho['omega'][:,0::50] # [47, 677...]
-    w_pmids = omhcho['omega_pmids'][:,0::50] #[47,677...]
-    AMF_G   = omhcho['AMF_G'][0::50] # [677...]
-    lat     = omhcho['lat'][0::50]   # [677...]
-    lon     = omhcho['lon'][0::50]   # [677...]
-
-    print("Running amf calc for tropchem")
-    omegain,pmidsin,amfgin,latin,lonin=[],[],[],[],[]
-    for j in range(len(AMF_G)): # just do one pixel from each 50
-
-        omegain.append(w[:,j])
-        pmidsin.append(w_pmids[:,j])
-        amfgin.append(AMF_G[j])
-        latin.append(lat[j])
-        lonin.append(lon[j])
-        lats.extend(lat)
-        lons.extend(lon)
-
-    with concurrent.futures.ProcessPoolExecutor(max_workers=max_procs) as executor:
-        #trop_amf_z, trop_amf_s = trop.calculate_AMF(...)
-        #ucx_amf_z, ucx_amf_s = ucx.calculate_AMF(w[:,j], w_pmids[:,j], AMF_G[j], lat[j], lon[j], plotname=None, debug_levels=False)
-        tropreturns=executor.map(trop.calculate_AMF,omegain,pmidsin,amfgin,latin,lonin)
-        ucxreturns=executor.map(ucx.calculate_AMF,omegain,pmidsin,amfgin,latin,lonin)
-        amft.extend([a for a,b in tropreturns])
-        amfu.extend([a for a,b in ucxreturns])
-
-
-end=timeit.default_timer()
-print("TIMEIT: took %6.2f minutes to run amf comparison"%(end-start/60.0))
-
-# lets save since it takes so long to run...
-fio.save_to_hdf5(month.strftime('Data/amfs_trop_ucx_%Y%m.h5'),
-                 arraydict={'amfu':amfu,'amft':amft,'lats':lats,'lons':lons,},
-                 attrdicts={'amfu':{'desc':'list of AMFs from UCX model output'},
-                            'amft':{'desc':'list of AMFs from tropchem model output'},})
-
-#save_to_hdf5(outfilename, arraydict, fillvalue=np.NaN, attrdicts={}, fattrs={},verbose=False)
-
-plt.figure(figsize=(14,10))
-pp.density(np.array(amfu),color='m',label="UCX")
-pp.density(np.array(amft),color='k',label="tropchem")
-plt.title("AMF distributions")
-plt.savefig(month.strftime("AMF_dists_trop_vs_ucx_%Y%m.png"))
-plt.close()
 
 
 ###########
@@ -283,29 +211,6 @@ for lowres in [True,False]:
     plt.close()
     print("SAVED ",pname)
 '''
-#plt.figure(figsize=(14,16))
-## create map, with gridsquare of comparison, and dots for campaigns
-#plt.subplot(2,1,1)
-#m=pp.displaymap(region=[-45,130,-14,155])
-#pp.add_grid_to_map(m,)
-## Add dot to map
-#for i,[y,x] in enumerate([[mumba.lat,mumba.lon],[sps1.lat,sps1.lon],[sps2.lat,sps2.lon]]):
-#    mx,my = m(x, y)
-#    m.plot(mx, my, 'o', markersize=3, color=colors[i])
-#
-#plt.subplot(2,1,2)
-#dates,isop=mumba.get_daily_hour(key='isop')
-#d1,i1=sps1.get_daily_hour(key='isop')
-#d2,i2=sps2.get_daily_hour(key='isop')
-#Enew.get_series('isop',)
-#
-#pp.plot_yearly_cycle(isop,dates,color='m',label='MUMBA',linewidth=2)
-#pp.plot_yearly_cycle(i1,d1,color='pink',label='SPS1',linewidth=2)
-#pp.plot_yearly_cycle(i2,d2,color='orange',label='SPS2',linewidth=2)
-#
-#plt.legend()
-#plt.title('isoprene yearly cycle')
-#plt.tight_layout()
 
 
 ### Things to be finished

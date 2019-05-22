@@ -69,9 +69,8 @@ start1=timeit.default_timer()
 
 ##########
 ### DO STUFFS
-##########    
+##########
 chapter_3_isop.fullpageFigure()
-
 
 
 

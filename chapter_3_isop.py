@@ -74,7 +74,7 @@ def fullpageFigure(*kvpair):
     """set some Matplotlib stuff."""
     matplotlib.rcParams["text.usetex"]      = False     #
     matplotlib.rcParams["legend.numpoints"] = 1         # one point for marker legends
-    matplotlib.rcParams["legend.fontsize"]  = 10        # legend font size
+    matplotlib.rcParams["legend.fontsize"]  = 14        # legend font size
     matplotlib.rcParams["figure.figsize"]   = (12, 14)  #
     matplotlib.rcParams["font.size"]        = 18        # font sizes:
     matplotlib.rcParams["axes.titlesize"]   = 18        # title font size

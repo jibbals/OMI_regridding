@@ -218,8 +218,50 @@ def AMF_distributions(d0=datetime(2005,1,1),d1=datetime(2005,12,31)):
 
 
 
+################################################
+###### OMI RECALC ######################
+#################################################
 
-
+def N_pixels_comparison(d0=datetime(2005,1,1), dn=datetime(2005,12,31)):
+    '''
+        monthly australian land pixel counts for GC and PP AMF recalculations (also filtered amounts shown)
+    '''
+    pname="Figs/N_pix_comparison.png"
+    Enew = E_new(d0,dn,dkeys=['pixels_PP_u','pixels_PP','pixels','pixels_u'])
+    #lats = Enew.lats;  lons=Enew.lons
+    dates= Enew.dates
+    
+    #smokesum = np.nansum(Enew.smokemask,axis=0).astype(np.float)
+    Ep      = Enew.pixels
+    Epu     = Enew.pixels_u
+    Epp     = Enew.pixels_PP
+    Eppu    = Enew.pixels_PP_u
+    OM      = Enew.oceanmask3d
+    del Enew
+    
+    arrays = Epu, Ep, Eppu, Epp
+    labels = ['N$_{GC}$ (unfiltered)','N$_{GC}$','N$_{PP}$ (unfiltered)','N$_{PP}$',]
+    colors = ['red','orange','blue','magenta']
+    plt.close()
+    for arr,label,color in zip(arrays,labels,colors):
+        # Set ocean to no pixels
+        arr[OM]=0
+        
+        monthly     = util.monthly_averaged(dates,arr,)
+        msum        = monthly['sum']
+        
+        
+        X = np.arange(len(msum))
+        plt.plot(X,msum,label=label,color=color,linewidth=2)
+    
+    plt.xlim([-.5,11.5])
+    plt.xticks(X,['J','F','M','A','M','J','J','A','S','O','N','D'][0:len(msum)])
+    plt.xlabel("2005")
+    plt.title("(N)umber of pixels over land")
+    plt.legend(loc='best')
+    #plt.show()
+    plt.savefig(pname)
+    print("SAVED ",pname)
 
 
 

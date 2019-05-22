@@ -189,8 +189,9 @@ def AMF_distributions(d0=datetime(2005,1,1),d1=datetime(2005,12,31)):
         # finally plot distributions in Jan/Feb:
         summerinds = np.array([d.month in [1,2] for d in dates])
         summer=amf[summerinds,:,:].flatten()
-        n_pix = np.nansum(~np.isnan(summer))
-        distrs.append(summer)
+        infs = ~np.isfinite(summer)
+        n_pix = np.nansum(~np.isnan(summer[~infs]))
+        distrs.append(summer[~infs])
         dlabels.append(title+"(N=%d)"%n_pix)
     
     # Add colour bar at right edge for all three maps

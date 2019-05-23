@@ -101,7 +101,7 @@ n_regions=len(regions)
 ####################################### OMI RECALC #########################
 ############################################################################
 
-def AMF_distributions(d0=datetime(2005,1,1),d1=datetime(2005,12,31)):
+def AMF_distributions(d0=datetime(2005,1,1),d1=datetime(2005,12,31), VCCs=False):
     '''
         Top row: averaged OMI Satellite AMF for 2005, from the OMHCHO data set (left, $AMF_{OMI}$), recalculated using GEOS-Chem shape factors  (middle, $AMF_{GC}$), and recalculated using GEOS-Chem shape factors and scattering weights (right, $AMF_{PP}$).
         Middle row: AMF time series over 2005 for each recalculation.
@@ -113,40 +113,69 @@ def AMF_distributions(d0=datetime(2005,1,1),d1=datetime(2005,12,31)):
     '''
     
     ystr=d0.strftime('%Y')
-    pname='Figs/AMF_distributions_%s.png'%(ystr)
+    if not VCCs:
+        pname='Figs/AMF_distributions_%s.png'%(ystr)
+        
+        # read in omhchorp
+        omkeys= [ #  'VCC_GC',           # The vertical column corrected using the RSC
+                  #  'VCC_PP',        # Corrected Paul Palmer VC
+                  #  'VCC_OMI',       # OMI VCCs from original satellite swath outputs
+                  #  'VCC_OMI_newrsc', # OMI VCCs using original VC_OMI and new RSC corrections
+                    'AMF_GC',        # AMF calculated using by GEOS-Chem
+                  #  'AMF_GCz',       # secondary way of calculating AMF with GC
+                    'AMF_OMI',       # AMF from OMI swaths
+                    'AMF_PP',        # AMF calculated using Paul palmers code
+                    ]
+        om=omhchorp(d0,d1, keylist=omkeys)
+        lats,lons=om.lats,om.lons
+        dates=om.dates
+        
+        # AMF Subsets
+        subsets=util.lat_lon_subset(lats,lons,pp.__AUSREGION__,data=[om.AMF_OMI,om.AMF_GC,om.AMF_PP],has_time_dim=True)
+        lats,lons=subsets['lats'],subsets['lons']
+        for i,istr in enumerate(['AMF (OMI)', 'AMF (GC) ', 'AMF (PP) ']):
+            dat=subsets['data'][i]
+            print("%s mean : %7.4f, std: %7.4f"%(istr, np.nanmean(dat),np.nanstd(dat)))
+        
+        amf_titles= ['AMF$_{OMI}$', 'AMF$_{GC}$', 'AMF$_{PP}$']
+        amf_min, amf_max = .4,2.5
+        bins=np.linspace(0.1,3,30)
+    else:
+        pname='Figs/VCC_distributions_%s.png'%(ystr)
+        
+        # read in omhchorp
+        omkeys= [   'VCC_GC',           # The vertical column corrected using the RSC
+                    'VCC_PP',        # Corrected Paul Palmer VC
+                    'VCC_OMI',       # OMI VCCs from original satellite swath outputs
+                  #  'VCC_OMI_newrsc', # OMI VCCs using original VC_OMI and new RSC corrections
+                  #  'AMF_GC',        # AMF calculated using by GEOS-Chem
+                  #  'AMF_GCz',       # secondary way of calculating AMF with GC
+                  #  'AMF_OMI',       # AMF from OMI swaths
+                  #  'AMF_PP',        # AMF calculated using Paul palmers code
+                  ]
+        om=omhchorp(d0,d1, keylist=omkeys)
+        lats,lons=om.lats,om.lons
+        dates=om.dates
+        
+        # AMF Subsets
+        subsets=util.lat_lon_subset(lats,lons,pp.__AUSREGION__,data=[om.VCC_OMI,om.VCC_GC,om.VCC_PP],has_time_dim=True)
+        lats,lons=subsets['lats'],subsets['lons']
+        for i,istr in enumerate(['VCC (OMI)', 'VCC (GC) ', 'VCC (PP) ']):
+            dat=subsets['data'][i]
+            print("%s mean : %.2e, std: %.2e"%(istr, np.nanmean(dat),np.nanstd(dat)))
+        
+        
+        amf_titles= ['VCC$_{OMI}$', 'VCC$_{GC}$', 'VCC$_{PP}$']
+        amf_min, amf_max = 1e14, 7e15
+        bins=np.linspace(5e12,3e16,30)
     
-    # read in omhchorp
-    omkeys= [ #  'VCC_GC',           # The vertical column corrected using the RSC
-              #  'VCC_PP',        # Corrected Paul Palmer VC
-              #  'VCC_OMI',       # OMI VCCs from original satellite swath outputs
-              #  'VCC_OMI_newrsc', # OMI VCCs using original VC_OMI and new RSC corrections
-                'AMF_GC',        # AMF calculated using by GEOS-Chem
-              #  'AMF_GCz',       # secondary way of calculating AMF with GC
-                'AMF_OMI',       # AMF from OMI swaths
-                'AMF_PP',        # AMF calculated using Paul palmers code
-                ]
-    om=omhchorp(d0,d1, keylist=omkeys)
-    lats,lons=om.lats,om.lons
-    dates=om.dates
-    
-    # AMF Subsets
-    subsets=util.lat_lon_subset(lats,lons,pp.__AUSREGION__,data=[om.AMF_OMI,om.AMF_GC,om.AMF_PP],has_time_dim=True)
-    lats,lons=subsets['lats'],subsets['lons']
-    for i,istr in enumerate(['AMF (OMI)', 'AMF (GC) ', 'AMF (PP) ']):
-        dat=subsets['data'][i]
-        print("%s mean : %7.4f, std: %7.4f"%(istr, np.nanmean(dat),np.nanstd(dat)))
-    
+    # Mean for row of maps
+    OMP = subsets['data'] # OMI, My, Palmer AMFs
+    amf_colours=['orange','saddlebrown','salmon']    
     
     # Mask oceans for AMFs
     oceanmask = util.oceanmask(lats,lons)
     oceanmask3d=np.repeat(oceanmask[np.newaxis,:,:],om.n_times,axis=0)
-    
-    # Mean for row of maps
-    OMP = subsets['data'] # OMI, My, Palmer AMFs
-    amf_titles= ['AMF$_{OMI}$', 'AMF$_{GC}$', 'AMF$_{PP}$']
-    amf_colours=['orange','saddlebrown','salmon']
-    
-    
     
     fullpageFigure() # Figure stuff
     plt.close()
@@ -155,7 +184,6 @@ def AMF_distributions(d0=datetime(2005,1,1),d1=datetime(2005,12,31)):
     ax1=plt.subplot(3,1,2)
     ax2=plt.subplot(3,1,3)
     
-    amf_min, amf_max = .4,2.5
     distrs=[]
     dlabels=[]
     for i, (amf, title,color) in enumerate(zip(OMP,amf_titles,amf_colours)):
@@ -175,9 +203,9 @@ def AMF_distributions(d0=datetime(2005,1,1),d1=datetime(2005,12,31)):
         seasonal = util.monthly_averaged(dates,amf)
         smean = seasonal['mean']
         
-        #to get quantiles need different method
-        slq = seasonal['lq']
-        suq = seasonal['uq']
+        # lower and upper quantile?
+        #slq = seasonal['lq']
+        #suq = seasonal['uq']
         
         #yerr=np.zeros([2,len(smean)])
         #yerr[0,:] = slq
@@ -195,18 +223,18 @@ def AMF_distributions(d0=datetime(2005,1,1),d1=datetime(2005,12,31)):
         dlabels.append(title+"(N=%d)"%n_pix)
     
     # Add colour bar at right edge for all three maps
-    pp.add_colourbar(f,cs,label="AMF",axes=[0.9, 0.7, 0.02, 0.2])
+    pp.add_colourbar(f,cs,label=["AMF",'VCC'][VCCs], axes=[0.9, 0.7, 0.02, 0.2])
     
     plt.sca(ax1)
     plt.legend(loc='best',ncol=3)
     plt.xlim([-.5,11.5])
     plt.xticks(X,['J','F','M','A','M','J','J','A','S','O','N','D'][0:len(smean)])
-    plt.title("mean land-only AMF")
+    plt.title("mean land-only %s"%(['AMF','VCC'][VCCs]))
     
     # Finally plot time series of emissions australian land average
     plt.sca(ax2)
     
-    plt.hist(distrs,bins=np.linspace(0.1,3,30), label=dlabels, color=amf_colours)
+    plt.hist(distrs,bins=bins, label=dlabels, color=amf_colours)
     
     plt.legend(loc='best', ncol=1)
     plt.title("distributions Jan-Feb, 2005")
@@ -281,5 +309,6 @@ if __name__=="__main__":
     #### OMI RECALC PLOTS ########
     
     # AMF distribution summary 
-    AMF_distributions()    
+    #AMF_distributions()
+    AMF_distributions(VCCs=True)
     

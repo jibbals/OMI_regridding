@@ -111,7 +111,7 @@ def area_quadrangle(SWNE):
     A= A_zone*p
     return A
 
-def area_grid(lats, lons):
+def area_grid(lats, lons, nongrid=False):
     '''
         Area give lats and lons in a grid in km^2
         can do non grid with provided lat, lon arrays
@@ -124,11 +124,20 @@ def area_grid(lats, lons):
     yr,xr=latres/2.0,lonres/2.0
 
     for yi,y in enumerate(lats):
-        for xi, x in enumerate(lons):
-            if not np.isfinite(x+y):
-                continue
-            SWNE=[y-yr, x-xr, y+yr, x+xr]
-            areas[yi,xi] = area_quadrangle(SWNE)
+        # each longitude will have the same area! No need for loop (takes ages in fine grids)
+        if nongrid:
+            for xi, x in enumerate(lons):
+                if not np.isfinite(x+y):
+                    continue
+                SWNE=[y-yr, x-xr, y+yr, x+xr]
+                areas[yi,xi] = area_quadrangle(SWNE)            
+        else:
+            x = lons[0]
+            SWNE = [y-yr,x-xr,y+yr,x+xr]
+            lat_areas = area_quadrangle(SWNE)
+            areas[yi,:] = lat_areas
+        
+
     return areas
 
 def combine_dicts(d1,d2):

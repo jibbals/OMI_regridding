@@ -474,7 +474,10 @@ def read_MOD14A1(date=datetime(2005,1,1), per_km2=False):
     fires[fires>9000] = 0. # np.NaN # ocean squares
     fires[fires==0.1] = 0. # land squares but no fire I think...
 
-
+    if not np.all(np.shape(fires) == (len(lats),len(lons))):
+        print("WARNING: fire file lats,lons are wrong!: ",np.shape(fires))
+        print("WARNING:    Continuing with nans for %s"%date.strftime("%Y%m%d"))
+        return np.zeros([len(lats),len(lons)])+np.NaN, lats,lons
 
     if not per_km2:
         # area per gridbox in km2:

@@ -128,6 +128,7 @@ def add_colourbar(f,cs,ticks=None,label=None,fontsize=15,
         Add a colour bar to a figure
         axes are [left, bottom, width, height]
     '''
+    
     f.tight_layout()
     f.subplots_adjust(top=0.95)
     f.subplots_adjust(right=axes[0]-0.03)

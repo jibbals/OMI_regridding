@@ -447,7 +447,7 @@ if __name__=="__main__":
     
     d0 = util.first_day(month)
     dn = util.last_day(month)
-    dn = datetime(2005,1,5) # Just do 5 days for now... 
+    #dn = datetime(2005,1,5) # Just do 5 days for now... 
     print("TESTING: need to do whole month for actual figure")
     # start by reading all the VCC stuff
     # useful strings
@@ -456,7 +456,7 @@ if __name__=="__main__":
     #pname2='Figs/VCC_entries_%s.png'%ymdstr
     vmin,vmax=4e15,9e15 # min,max for colourbar
     linear=True # linear colour scale?
-    vmin2,vmax2=0,40
+    vmin2,vmax2=0,70
     
     # read in omhchorp
     om=omhchorp(d0,dayn=dn, keylist=['VCC_PP','ppentries'])
@@ -479,18 +479,22 @@ if __name__=="__main__":
     # clear some ram
     del om
     
+    
+    
     # Plot rows,cols,size:
-    f,axes=plt.subplots(5,2,figsize=[12,14])
+    priordayslist=[0,2,4,8]
+    f,axes=plt.subplots(len(priordayslist),2,figsize=[12,14])
     
     # second plot just for entries
     # f2, axes2=plt.subplots(5,3,figsize=[18,18])
 
     # first line is maps of VCC, VC_GC, VCC_PP
-    titles=["VCC_{PP}", "$N_{pixels}$"]
+    titles=["$VCC_{PP}$", "$N_{pixels}$"]
     
     # Now loop over the same plots after NaNing our different fire masks
-    for j, N in enumerate([0,1,2,4,8]):
-        
+    
+    for j, N in enumerate(priordayslist):
+        #for j, N in enumerate([0,]):
         # first make the new active fire mask
         # firemask is 3dimensional: [days,lats,lons]
         fstart=timeit.default_timer()
@@ -522,8 +526,8 @@ if __name__=="__main__":
             plt.title(titles[0])
 
         # add a little thing showing entries and mean and max
-        txt=['N($\mu$)=%d(%.1f)'%(np.nansum(pixj),np.nanmean(pixj)), '$\mu$ = %.2e'%np.nanmean(VCCj), 'max = %.2e'%np.nanmax(VCCj)]
-        for txt, yloc in zip(txt,[0.01,0.07,0.13]):
+        txt=['N=%d'%(np.nansum(pixj)), 'mean = %.2e'%np.nanmean(VCCj), 'max = %.2e'%np.nanmax(VCCj)]
+        for txt, yloc in zip(txt,[0.005,0.07,0.14]):
             plt.text(0.01, yloc, txt,
                  verticalalignment='bottom', horizontalalignment='left',
                  transform=plt.gca().transAxes,
@@ -531,38 +535,38 @@ if __name__=="__main__":
 
         # also plot entries
         plt.sca(axes[j,1])
-        m2, cs2, cb2 = pp.createmap(np.nanmean(pixj,axis=0),lats,lons,
+        m2, cs2, cb2 = pp.createmap(np.nansum(pixj,axis=0),lats,lons,
                      region=region, linear=True,
-                     cmapname='jet', colorbar=False,
+                     cmapname='hot_r', colorbar=False,
                      vmin=vmin2,vmax=vmax2)
  
         if j==0:
             plt.title(titles[1])
 
     # Add row labels
-    rows = ['%d days'%fdays for fdays in [0,1,2,4,8]]
-    rows[0]='No filter applied'
+    rows = ['%d days'%fdays for fdays in priordayslist]
+    rows[0]='no filter'
     for ax, row in zip(axes[:,0], rows):
-        ax.set_ylabel(row, rotation=-90, size='small')
+        ax.set_ylabel(row, rotation=90, size='small')
 
     # Need to add colour bar for left column and right column
     f.tight_layout()
-    f.subplots_adjust(top=0.95)
+    f.subplots_adjust(bottom=0.2)
     # left bottom width height
-    axes0=[0.1,0.05,0.3,0.03]
-    axes1=[0.6,0.05,0.3,0.03]
-    axes= [0.1,0.05,0.9,0.03]
+    axes0=[0.125,0.05,0.3,0.03]
+    axes1=[0.575,0.05,0.3,0.03]
+    
     # left column:
     ticks=[np.logspace(np.log10(vmin),np.log10(vmax),5),np.linspace(vmin,vmax,5)][linear]
     
     cbar_ax = f.add_axes(axes0)
-    cb=f.colorbar(cs,cax=cbar_ax)
+    cb=f.colorbar(cs,cax=cbar_ax,orientation='horizontal')
     cb.set_ticks(ticks)
     cb.set_label('molec cm$^{-2}$')
     
     # right column:
     cbar_ax = f.add_axes(axes1)
-    cb=f.colorbar(cs2,cax=cbar_ax)
+    cb=f.colorbar(cs2,cax=cbar_ax,orientation='horizontal')
     #cb.set_ticks(ticks)
     cb.set_label('pixel count')
     

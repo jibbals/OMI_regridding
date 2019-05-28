@@ -301,9 +301,8 @@ def plot_VCC_firefilter_vs_days(month=datetime(2005,1,1),region=pp.__AUSREGION__
     '''
         Plot columns with different amf bases
         also different fire filtering strengths
-              |  VCC_pp | fires filtered
+              |  VCC_pp | pixel counts
         fire0 |
-        fire1 |
         fire2 |
         fire4 |
         fire8 |
@@ -316,13 +315,12 @@ def plot_VCC_firefilter_vs_days(month=datetime(2005,1,1),region=pp.__AUSREGION__
     ymstr=d0.strftime('%Y%m')
     pname='Figs/VCC_fires_%s.png'%ymstr
     #pname2='Figs/VCC_entries_%s.png'%ymdstr
-    vmin,vmax=4e15,9e15 # min,max for colourbar
+    vmin,vmax=1e15,6e15 # min,max for colourbar
     linear=True # linear colour scale?
-    vmin2,vmax2=0,40
+    vmin2,vmax2=5,60
     
     # read in omhchorp
     om=omhchorp(d0,dayn=dn, keylist=['VCC_PP','ppentries'])
-    
     VCC = om.VCC_PP
     pix = om.ppentries
     subsets=util.lat_lon_subset(om.lats,om.lons,region=region,data=[VCC,pix], 
@@ -341,153 +339,20 @@ def plot_VCC_firefilter_vs_days(month=datetime(2005,1,1),region=pp.__AUSREGION__
     # clear some ram
     del om
     
-    # Plot rows,cols,size:
-    f,axes=plt.subplots(5,2,figsize=[12,14])
-    
-    # second plot just for entries
-    # f2, axes2=plt.subplots(5,3,figsize=[18,18])
-
-    # first line is maps of VCC, VC_GC, VCC_PP
-    titles=["VCC_{PP}", "$N_{pixels}$"]
-    
-    # Now loop over the same plots after NaNing our different fire masks
-    for j, N in enumerate([0,1,2,4,8]):
-        
-        # first make the new active fire mask
-        # firemask is 3dimensional: [days,lats,lons]
-        fstart=timeit.default_timer()
-        if j==0:
-            firemask=np.zeros(np.shape(VCC)).astype(np.bool)
-        else:
-            firemask, fdays, flats, flons, fires=fio.make_fire_mask(d0,dN=dn,prior_days_masked=N,region=region)
-        felapsed = timeit.default_timer() - fstart
-        print ("TIMEIT: Took %6.2f seconds to make_fire_mask(%d days)"%(felapsed,N))
-        
-        # appply mask to VCC and pixels
-        VCCj = np.copy(VCC)
-        pixj = np.copy(pix)
-        VCCj[firemask] = np.NaN
-        pixj[firemask] = 0
-        
-        # Then plot VCC and entries maps
-        plt.sca(axes[j,0])
-        
-        # VCC first:
-        m,cs,cb= pp.createmap(np.nanmean(VCCj,axis=0),lats,lons,
-                              region=region, linear=linear,
-                              vmin=vmin,vmax=vmax,
-                              cmapname='rainbow',colorbar=False)
-        if j==0:
-            plt.title(titles[0])
-
-        # add a little thing showing entries and mean and max
-        txt=['N($\mu$)=%d(%.1f)'%(np.nansum(pixj),np.nanmean(pixj)), '$\mu$ = %.2e'%np.nanmean(VCCj), 'max = %.2e'%np.nanmax(VCCj)]
-        for txt, yloc in zip(txt,[0.01,0.07,0.13]):
-            plt.text(0.01, yloc, txt,
-                 verticalalignment='bottom', horizontalalignment='left',
-                 transform=plt.gca().transAxes,
-                 color='k', fontsize=10)
-
-        # also plot entries
-        plt.sca(axes[j,1])
-        m2, cs2, cb2 = pp.createmap(np.nanmean(pixj,axis=0),lats,lons,
-                     region=region, linear=True,
-                     cmapname='jet', colorbar=False,
-                     vmin=vmin2,vmax=vmax2)
- 
-        if j==0:
-            plt.title(titles[1])
-
-    # Add row labels
-    rows = ['%d days'%fdays for fdays in [0,1,2,4,8]]
-    rows[0]='No filter applied'
-    for ax, row in zip(axes[:,0], rows):
-        ax.set_ylabel(row, rotation=0, size='small')
-
-    # Need to add colour bar for left column and right column
-    # left column:
-    ticks=[np.logspace(np.log10(vmin),np.log10(vmax),5),np.linspace(vmin,vmax,5)][linear]
-    pp.add_colourbar(f,cs,ticks=ticks,label='molec/cm$^2$')
-    #pp.add_colourbar(f2,cs2,ticks=np.linspace(vmin2,vmax2,5),label='pixels')
-
-    f.savefig(pname)
-    plt.close(f)
-    print("Saved ",pname)
-    
-    
-
-###########################
-#### MAIN
-###########################
-
-
-if __name__=="__main__":
-    
-    
-    ##############################
-    #### OMI RECALC PLOTS ########
-    
-    # AMF distribution summary 
-    #AMF_distributions()
-    #AMF_distributions(VCCs=True)
-    
-    
-    month=datetime(2005,1,1)
-    region=pp.__AUSREGION__
-    '''
-        Plot columns with different amf bases
-        also different fire filtering strengths
-              |  VCC_pp | fires filtered
-        fire0 |
-        fire1 |
-        fire2 |
-        fire4 |
-        fire8 |
-    '''
-    
-    d0 = util.first_day(month)
-    dn = util.last_day(month)
-    #dn = datetime(2005,1,5) # Just do 5 days for now... 
-    print("TESTING: need to do whole month for actual figure")
-    # start by reading all the VCC stuff
-    # useful strings
-    ymstr=d0.strftime('%Y%m')
-    pname='Figs/VCC_fires_%s.png'%ymstr
-    #pname2='Figs/VCC_entries_%s.png'%ymdstr
-    vmin,vmax=4e15,9e15 # min,max for colourbar
-    linear=True # linear colour scale?
-    vmin2,vmax2=0,70
-    
-    # read in omhchorp
-    om=omhchorp(d0,dayn=dn, keylist=['VCC_PP','ppentries'])
-    
-    VCC = om.VCC_PP
-    pix = om.ppentries
-    subsets=util.lat_lon_subset(om.lats,om.lons,region=region,data=[VCC,pix], 
-                                has_time_dim=True)
-    VCC,pix = subsets['data'] # subsetted to region
-    lats=subsets['lats']
-    lons=subsets['lons']
-    
-    #print(vars(om).keys()) # [3, 720, 1152] data arrays returned, along with lats/lons etc.
-    oceanmask=util.oceanmask(lats,lons)# lets just look at land squares
-    oceanmask3d = np.repeat(oceanmask[np.newaxis,:,:], np.shape(VCC)[0], axis=0)
-    VCC[oceanmask3d] = np.NaN
-    pix[oceanmask3d] = 0
-    
-    
-    # clear some ram
-    del om
-    
+    # Will plot VCC at low resolution
+    lats_lr, _      = GMAO.GMAO_lats(2.0)
+    lons_lr, _      = GMAO.GMAO_lons(2.5)
+    lat_lri,lon_lri = util.lat_lon_range(lats_lr,lons_lr,region)
+    lats_lr         = lats_lr[lat_lri]
+    lons_lr         = lons_lr[lon_lri]
+    print("lats_lr:",lats_lr[0],'...',lats_lr[-1])
+    print("lons_lr:",lons_lr[0],'...',lons_lr[-1])
     
     
     # Plot rows,cols,size:
     priordayslist=[0,2,4,8]
     f,axes=plt.subplots(len(priordayslist),2,figsize=[12,14])
     
-    # second plot just for entries
-    # f2, axes2=plt.subplots(5,3,figsize=[18,18])
-
     # first line is maps of VCC, VC_GC, VCC_PP
     titles=["$VCC_{PP}$", "$N_{pixels}$"]
     
@@ -517,8 +382,13 @@ if __name__=="__main__":
         # Then plot VCC and entries maps
         plt.sca(axes[j,0])
         
+        # FIRST CONVERT TO LOW RES
+        VCCj_lr = np.nanmean(VCCj,axis=0) # Average over time
+        print(np.shape(VCCj),np.shape(VCCj_lr),np.shape(lats),np.shape(lons),np.shape(lats_lr),np.shape(lons_lr))
+        VCCj_lr= util.regrid_to_lower(VCCj_lr,lats,lons,lats_lr,lons_lr)
+        print(np.shape(VCCj),np.shape(VCCj_lr))
         # VCC first:
-        m,cs,cb= pp.createmap(np.nanmean(VCCj,axis=0),lats,lons,
+        m,cs,cb= pp.createmap(VCCj_lr,lats_lr,lons_lr,
                               region=region, linear=linear,
                               vmin=vmin,vmax=vmax,
                               cmapname='rainbow',colorbar=False)
@@ -551,7 +421,7 @@ if __name__=="__main__":
 
     # Need to add colour bar for left column and right column
     f.tight_layout()
-    f.subplots_adjust(bottom=0.2)
+    f.subplots_adjust(bottom=0.1)
     # left bottom width height
     axes0=[0.125,0.05,0.3,0.03]
     axes1=[0.575,0.05,0.3,0.03]
@@ -573,5 +443,27 @@ if __name__=="__main__":
     f.savefig(pname)
     plt.close(f)
     print("Saved ",pname)
+
+    
+
+###########################
+#### MAIN
+###########################
+
+
+if __name__=="__main__":
+    
+    
+    ##############################
+    #### OMI RECALC PLOTS ########
+    
+    # AMF distribution summary 
+    #AMF_distributions()
+    #AMF_distributions(VCCs=True)
+    
+
+
+    #plot_VCC_firefilter_vs_days()
+    
     
     

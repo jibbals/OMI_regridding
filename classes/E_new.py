@@ -102,7 +102,6 @@ __E_new_keys_lr__ = [
 #                     'E_VCC_GC_lr',  #  at low resolution
 #                     'E_VCC_OMI_lr', #  E_VCC_OMI at low resolution
 #                     'E_VCC_PP_lr',  #  at low resolution
-                     'smearfilter',  # smearing filter
                      'smearing',     # model resolution monthly smearing
                      'ModelSlope',   # model resolution monthly slope
                      'pixels_lr',    # OMI pixel count at low resolution

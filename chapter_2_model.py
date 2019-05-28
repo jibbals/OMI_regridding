@@ -502,6 +502,20 @@ def pyrogenic_filter():
     print('Saved ',pname)
             
 
+def HCHO_vs_temperature():
+    '''
+        Exponential RMA regression of Sydney, SEA HCHO vs CPC and GC temperatures, with and without fires
+        
+        FIGURE:  scatter of HCHO (Y axis) vs temperature (X axis)
+                  With fires    |    Without fires
+        Sydney
+        SEA
+            legend: colour = GC or CPC temperatures
+            inset: text: slope and regression coefficient, and N
+        
+        
+    '''
+    print("IMPLEMENTATIOPN REQUIREDD")
 ###########################
 #### MAIN
 ###########################
@@ -524,4 +538,114 @@ if __name__=="__main__":
     #plot_VCC_firefilter_vs_days()
     #pyrogenic_filter() # 2019/5/24
      
+
+    d0=datetime(2005,1,1)
+    d1=datetime(2005,2,28)
+    Syd = [-33.87,151.21] # Sydney lat, lon
+    SEA = util.__subregions__[1]
+    # read fire filter, VCC_PP, and pixel counts?
+    Enew=E_new(d0,d1,dkeys=['firemask','VCC_PP_u','VCC_PP','pixels_u','pixels'])
+    ntimes=len(Enew.dates)
+    
+    # read modelled hcho, and temperature at midday
+    gc=GC_class.GC_sat(d0,d1,keys=['IJ-AVG-$_CH2O','DAO-FLDS_TS'],run='tropchem')
+    
+    # Read the CPC temperatures
+    #tmax, _d, lats_cpc, lons_cpc = fio.read_CPC_temp(d0,d1,regrid=False)
+    #tmax=tmax+273.15 # to kelvin
+    #T_cpc = util.regrid_to_lower
+    
+    ymd=d0.strftime('%Y%m%d') + '-' + d1.strftime('%Y%m%d')
+    pname='Figs/Filters/HCHO_vs_temp_%s.png'%(ymd)
+
+    # fire filter to lower resolution
+    firemask = Enew.firemask
+
+    VCC_u = Enew.VCC_PP_u
+    VCC   = Enew.VCC_PP
+    assert np.all(np.isnan(VCC[firemask>0])), "Firemask squares were not masked?"
+    
+    firemask_lr = np.zeros([ntimes,len(Enew.lats_lr),len(Enew.lons_lr)],dtype=np.bool)
+    VCC_lr_u = np.zeros([ntimes,len(Enew.lats_lr),len(Enew.lons_lr)])
+    VCC_lr   = np.zeros([ntimes,len(Enew.lats_lr),len(Enew.lons_lr)])
+    for ti in range(ntimes):
+        firemask_lr[ti,:,:] = util.regrid(Enew.firemask[ti,:,:],
+                                            Enew.lats,Enew.lons,
+                                            Enew.lats_lr,Enew.lons_lr,
+                                            groupfunc=np.sum) > 0
+        VCC_lr_u[ti,:,:]   = util.regrid_to_lower(VCC_u[ti,:,:],
+                                                     Enew.lats,Enew.lons,
+                                                     Enew.lats_lr,Enew.lons_lr,
+                                                     pixels=Enew.pixels_u[ti,:,:])
+        VCC_lr[ti,:,:]     = util.regrid_to_lower(VCC[ti,:,:],
+                                                     Enew.lats,Enew.lons,
+                                                     Enew.lats_lr,Enew.lons_lr,
+                                                     pixels=Enew.pixels[ti,:,:])
+    # Temperature avg:
+    T_gc        = gc.surftemp[:,:,:,0] # surface temp in Kelvin
+    syd_lati, syd_loni = util.lat_lon_index(Syd[0],Syd[1],gc.lats,gc.lons)
+    T_gc_syd    = T_gc[:,syd_lati,syd_loni]
+    SEA_sub     = util.lat_lon_subset(gc.lats,gc.lons,region=SEA, data=[T_gc],
+                                      has_time_dim=True)
+    T_gc_sea    = np.nanmean(SEA_sub['data'][0], axis=(1,2))
+    
+    #T_cpc = ... # surface temp in Kelvin
+    
+    # PULL OUT Sydney time series, and SEA area averaged time series for HCHO and Temperature
+    syd_lati,syd_loni   = util.lat_lon_index(Syd[0],Syd[1],Enew.lats_lr,Enew.lons_lr)
+    VCC_syd_lr_u        = VCC_lr_u[:,syd_lati,syd_loni]
+    VCC_syd_lr          = VCC_lr[:,syd_lati,syd_loni]
+    SEA_sub             = util.lat_lon_subset(Enew.lats_lr,Enew.lons_lr,
+                                       region=SEA,data=[VCC_lr_u,VCC_lr],
+                                       has_time_dim=True)
+    VCC_sea_u           = np.nanmean(SEA_sub['data'][0],axis=(1,2))
+    VCC_sea             = np.nanmean(SEA_sub['data'][1],axis=(1,2))
+    
+    # FIGURE: corellations in following subplots
+    #
+    plt.close()
+    fig, ax = plt.subplots(2, 2, figsize=(20,18), sharex='all', sharey='all')
+    '''          With fires    |    Without fires
+        Sydney
+        SEA
+            legend: colour = GC or CPC temperatures
+            inset: text: slope and regression coefficient, and N
+    '''
+    titles=['Fires remain','Fires filtered out','','']
+    ylabels=['Sydney','','SEA','']
+    for i, (temp, hcho) in enumerate(zip([T_gc_syd, T_gc_syd, T_gc_sea, T_gc_sea],[VCC_syd_lr_u,VCC_syd_lr,VCC_sea_u,VCC_sea])):
+        
+        plt.sca(ax[i//2, i%2])
+        
+        # Plot temperature vs hcho scatter
+        plt.scatter(temp, hcho, color='saddlebrown')
+        
+        # add regression (exponential)
+        pp.add_regression(temp, hcho, addlabel=True,
+                          exponential=True, color='saddlebrown', linewidth=1)
+        
+        plt.legend(loc='upper center',fontsize=17)
+        
+        plt.title(titles[i])
+        plt.ylabel(ylabels[i])
+        plt.ylim([-0.4e16,3e16])
+        
+    plt.suptitle('Temperature vs HCHO %s'%ymd,fontsize=36)
+    for ax in [ax[1,0],ax[1,1]]:
+        plt.sca(ax)
+        plt.xlabel('Kelvin')
+    #plt.legend(loc='best')
+    # set fontsizes for plot
+    #fs=10
+    #for attr in ['ytick','xtick','axes']:
+    #    plt.rc(attr, labelsize=fs)
+    #plt.rc('font',size=fs)
+    
+    plt.show()
+    
+    assert False, 'stop'
+    plt.savefig(pname)
+    plt.close()
+    print('Saved ',pname)
+
     

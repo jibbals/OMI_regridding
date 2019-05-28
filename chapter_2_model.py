@@ -446,6 +446,70 @@ def plot_VCC_firefilter_vs_days(month=datetime(2005,1,1),region=pp.__AUSREGION__
 
     
 
+def pyrogenic_filter():
+    '''
+        Show pyrogenic filter pixels removed for 2005 and 2012, and time series
+    '''
+    pname = "Figs/Filters/Pyrogenic_filter.png"
+    d0=datetime(2005,1,1)
+    dN=datetime(2005,12,31)
+    
+    # Also want to look at 2012
+    d12 = datetime(2012,1,1)
+    d12N= datetime(2012,12,31)
+    
+    firemask05, dates05, lats, lons  = fio.get_fire_mask(d0,dN,region=pp.__AUSREGION__)
+    firemask12, dates12, lats, lons  = fio.get_fire_mask(d12,d12N,region=pp.__AUSREGION__)
+    smokemask05, _, _, _             = fio.get_smoke_mask(d0,dN,region=pp.__AUSREGION__)
+    smokemask12, _, _, _             = fio.get_smoke_mask(d12,d12N,region=pp.__AUSREGION__)
+    
+    pyro05 = firemask05+smokemask05
+    pyromap05 = np.nansum(pyro05,axis=0).astype(np.float)
+    pyro12 = firemask12+smokemask12
+    pyro12 = pyro12[0:-1] # cut off that leap year day
+    pyromap12 = np.nansum(pyro12,axis=0).astype(np.float)
+    
+    
+    plt.close()
+    #plt.figure(figsize=[16,16])
+    plt.subplot(2,2,1)
+    m,cs,cb    = pp.createmap(pyromap05,lats,lons,title='days filtered 2005',
+                              aus=True,linear=True, set_under='grey',vmin=1, vmax=300,colorbar=False)
+    plt.subplot(2,2,2)
+    m2,cs2,cb2 = pp.createmap(pyromap12,lats,lons,title='days filtered 2012',
+                              aus=True,linear=True, set_under='grey',vmin=1, vmax=300, colorbar=False)
+    
+    plt.subplot(2,1,2)
+    
+    # Take out ocean squares
+    om = util.oceanmask(lats,lons)
+    om = np.repeat(om[np.newaxis,:,:],365,axis=0)
+    squares = np.ones(om.shape).astype(np.float)
+    squares[om] = np.NaN
+    for arr, label, color in zip([pyro05,pyro12],['2005','2012'],['saddlebrown','magenta']):
+        arr = arr.astype(np.float)
+        arr[om]=np.NaN
+        # portion of gridsquares filtered out as a percentage of land squares available
+        ts = 100 * np.nansum(arr,axis=(1,2))/np.nansum(squares,axis=(1,2))
+        plt.plot(np.arange(1,len(ts)+1), ts, linewidth=2, label=label, color=color)
+    plt.title('land area filtered')
+    plt.legend(loc='best')
+    plt.ylabel('%')
+    plt.xlabel('Day of the year')
+    
+    # add axis to middle area just below maps
+    # left, bottom, width, height
+    axes=[0.33,0.54,0.33,0.03]
+    f=plt.gcf()
+    cbar_ax = f.add_axes(axes)
+    cb=f.colorbar(cs,cax=cbar_ax,orientation='horizontal')
+    #cb.set_ticks(ticks)
+    cb.set_label('days masked')
+    
+    plt.savefig(pname)
+    print('Saved ',pname)
+            
+
 ###########################
 #### MAIN
 ###########################
@@ -453,7 +517,7 @@ def plot_VCC_firefilter_vs_days(month=datetime(2005,1,1),region=pp.__AUSREGION__
 
 if __name__=="__main__":
     
-    
+    fullpageFigure()
     ##############################
     #### OMI RECALC PLOTS ########
     
@@ -461,9 +525,11 @@ if __name__=="__main__":
     #AMF_distributions()
     #AMF_distributions(VCCs=True)
     
-
-
+    
+    ##############################
+    ### FIltering stuff 3#########
+    #N_pixels_comparison()
     #plot_VCC_firefilter_vs_days()
-    
-    
+    #pyrogenic_filter() # 2019/5/24
+     
     

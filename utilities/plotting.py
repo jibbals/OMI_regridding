@@ -173,7 +173,7 @@ def add_point(bmap, lat,lon,
         plt.text(x+xlabeloffset,y+ylabeloffset, label,
                  color=fontcolor, fontsize=fontsize)
 
-def add_regression(X,Y,label=None, addlabel=True, exponential=False, **pargs):
+def add_regression(X,Y,label=None, addlabel=True, labelprefix="", exponential=False, **pargs):
     '''
     plots RMA between X and Y
         Y = mX+b
@@ -197,13 +197,13 @@ def add_regression(X,Y,label=None, addlabel=True, exponential=False, **pargs):
     # set up lable
     if addlabel and (label is None):
         n=len(X)
-        label='Y = %.1eX + %.2f ; r=%.2f, N=%d'%(m,b,r,n)
+        label='%s Y = %.1eX + %.2f ; r=%.2f, N=%d'%(labelprefix,m,b,r,n)
         if exponential:
             n=np.sum(~np.isnan(Y2))
-            label='Y = exp(%.2fX + %.2f) ; r=%.2f, N=%d'%(m,b,r,n)
+            label='%s Y = exp(%.2fX + %.2f) ; r=%.2f, N=%d'%(labelprefix,m,b,r,n)
 
     plt.plot(Xspace,Yline,label=label, **pargs)
-    return m,b,r,ci1,ci2
+    return m,b,r,ci1,ci2, n
 
 def arc_map(region=[-33.7, 149.4, -31.8, 151.8], res=1000, service='World_Topo_Map',epsg=4326,
             resolution='h',projection='mill'):

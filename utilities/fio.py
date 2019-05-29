@@ -343,9 +343,16 @@ def read_CPC_temp(d0, dn=None, regrid=True):
         Read CPC temperature, pull out date (or date range) and interpolate to GMAO grid
         Returns Data[dates,lats,lons], dates, lats, lons
     '''
-    fname = d0.strftime('Data/CPC_Temperatures/tmax.%Y.nc')
-    data,attrs=read_netcdf(fname)
-
+    data,attrs=None,None
+    for year in util.list_years(d0,dn):
+        fname = year.strftime('Data/CPC_Temperatures/tmax.%Y.nc')
+        dataY,attrsY=read_netcdf(fname)
+        if data is None:
+            data,attrs = dataY, attrsY
+        else:
+            data['time'] = np.append(data['time'],dataY['time'],axis=0)
+            data['tmax'] = np.append(data['tmax'],dataY['tmax'],axis=0)
+    
     # strings to datetimes
     dates = util.datetimes_from_np_datetime64(data['time'])
     # the dates which we want

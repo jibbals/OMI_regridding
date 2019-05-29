@@ -510,6 +510,8 @@ def pyrogenic_filter():
     print('Saved ',pname)
             
 
+
+
 def HCHO_vs_temperature(d0=datetime(2005,1,1), d1=datetime(2005,2,28),
                         hcholims=[-0.4e16,3e16], surfhcholims=[0.1,8]):
     '''
@@ -718,6 +720,15 @@ def HCHO_vs_temperature(d0=datetime(2005,1,1), d1=datetime(2005,2,28),
     print('Saved ',pname2)
 
 
+def no2_thresh(no2_orig,dates,lats,lons,
+               threshd=fio.__Thresh_NO2_d__, threshy=fio.__Thresh_NO2_y__,
+               subzones=pp.__subzones_AUS__,colors=pp.__subregions_colors__):
+    '''
+        Look at affect of applying threshhold
+        no2_orig should be [t,lats,lons] for a particular year
+    '''
+    print("IMPLEMENTATION REQUIRED")
+
 
 
 ###########################
@@ -741,5 +752,98 @@ if __name__=="__main__":
     #pyrogenic_filter() # 2019/5/24
     
     #HCHO_vs_temperature()
-    HCHO_vs_temperature(d0=datetime(2005,12,1),d1=datetime(2006,2,28))
+    #HCHO_vs_temperature(d0=datetime(2005,12,1),d1=datetime(2006,2,28))
     
+    
+    # READ NO2, dates,lats,lons
+    day0,dayN=datetime(2005,1,1),datetime(2005,1,31)
+    data, attrs = fio.get_anthro_mask(day0,dayN,region=pp.__AUSREGION__,)
+    no2_orig=
+    dates=
+    lats=
+    lons= 
+    threshd=fio.__Thresh_NO2_d__
+    threshy=fio.__Thresh_NO2_y__
+    subzones=pp.__subzones_AUS__
+    colors=pp.__subregions_colors__
+    #    '''
+    #        Look at affect of applying threshhold
+    #        no2_orig should be [t,lats,lons] for a particular year
+    #    '''
+    
+    year=dates[0].year
+    region=subzones[0]
+    pname='Figs/OMNO2_threshaffect_%d.png'%year
+    fig, axes = plt.subplots(2,2,figsize=[16,16])
+
+
+    # Subset to region:
+    subset=util.lat_lon_subset(lats,lons,region,data=[np.copy(no2_orig)],has_time_dim=True)
+    no2=subset['data'][0]
+    lats,lons=subset['lats'],subset['lons']
+
+
+    # Mask ocean
+    oceanmask=util.get_mask(no2[0],lats,lons,masknan=False,maskocean=True)
+    #print(no2.shape, lats.shape, lons.shape)
+    no2[:,oceanmask] = np.NaN
+
+    # Also remove negatives
+    negmask=no2 < 0
+    #no2[negmask]=np.NaN
+
+    # Filtered copy:
+    no2_f=np.copy(no2)
+    no2_mean=np.nanmean(no2,axis=0)
+
+    # Filter for yearly threshhold, first count how many we will remove
+    n_filtered_y = 0
+    n_days=len(no2_f[:,0,0])
+    n_filtered_y = n_days*np.nansum(no2_mean>threshy)
+    # if day is nan in square removed by threshy then don't count it as removed
+    n_filtered_y = n_filtered_y - np.sum(np.isnan(no2_f[:,no2_mean>threshy]))
+    # apply filter
+    no2_f[:,no2_mean>threshy]=np.NaN
+
+    # Write filtering stats to file
+    with open(__no2_txt_file__,'a') as outf: # append to file
+        ngoods=np.nansum(no2>0)
+        n_filtered_d=np.nansum(no2_f>threshd)
+        outf.write("negative gridsquaredays (made NaN)      : %d \n"%np.sum(negmask))
+        outf.write("non-NaN, non-ocean gridsquaredays       : %d \n"%ngoods)
+        outf.write("Year threshhold (%.1e) removes       : %d (%.2f%%) \n"%
+          (threshy, n_filtered_y, n_filtered_y*100/float(ngoods)))
+        outf.write("Then day threshhold (%.1e) removes   : %d (%.2f%%) \n"%
+          (threshd, n_filtered_d, n_filtered_d*100/float(ngoods)))
+
+    # Apply daily filter
+    no2_f[no2_f>threshd] = np.NaN
+
+    # plot stuff:
+    titles = ['Mean %d'%year, 'Threshholds applied']
+    vmin = 1e14
+    vmax = 2e15
+    for i,arr in enumerate([no2,no2_f]):
+
+        # Plot map with and without threshhold filter
+        mean=np.nanmean(arr,axis=0)
+        plt.sca(axes[0,i])
+        # only show subzones in first plot
+        bmap,_cs,_cb = no2_map(mean, lats, lons, vmin, vmax, [subzones,None][i==1], colors)
+        plt.title(titles[i])
+
+        # Hatch for yearly threshhold
+        pp.hatchmap(bmap, mean, lats, lons, threshy, region=region)
+
+        # Also time series with and without filter
+        plt.sca(axes[1,i])
+        no2_timeseries(arr,dates,lats,lons,subzones,colors,print_values=True)
+
+    # Add threshholds to last timeseries
+    plt.plot([0,395],[threshd,threshd], '--k',linewidth=1)
+    plt.plot([0,395],[threshy,threshy], ':k',linewidth=1)
+
+    plt.suptitle("OMNO2d threshhold affects %d"%year, fontsize=24)
+    plt.savefig(pname)
+    print('saved ',pname)
+    plt.close()

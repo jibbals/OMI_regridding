@@ -724,7 +724,7 @@ def no2_thresh(no2_orig,dates,lats,lons,
                threshd=fio.__Thresh_NO2_d__, threshy=fio.__Thresh_NO2_y__,
                subzones=pp.__subzones_AUS__,colors=pp.__subregions_colors__):
     '''
-        Look at affect of applying threshhold
+        Look at effect of applying threshold
         no2_orig should be [t,lats,lons] for a particular year
     '''
     print("IMPLEMENTATION REQUIRED")
@@ -753,30 +753,30 @@ if __name__=="__main__":
     
     #HCHO_vs_temperature()
     #HCHO_vs_temperature(d0=datetime(2005,12,1),d1=datetime(2006,2,28))
-    
+    from tests.test_filters import no2_map, no2_timeseries
     
     # READ NO2, dates,lats,lons
-    day0,dayN=datetime(2005,1,1),datetime(2005,1,31)
-    data, attrs = fio.get_anthro_mask(day0,dayN,region=pp.__AUSREGION__,)
-    no2_orig=
-    dates=
-    lats=
-    lons= 
+    day0,dayN=datetime(2005,1,1),datetime(2005,12,31)
+    data = fio.get_anthro_data(day0,dayN,region=pp.__AUSREGION__,)
+    no2_orig=data['no2']
+    dates=data['dates']
+    lats=data['lats']
+    lons= data['lons']
     threshd=fio.__Thresh_NO2_d__
     threshy=fio.__Thresh_NO2_y__
     subzones=pp.__subzones_AUS__
-    colors=pp.__subregions_colors__
+    colors=pp.__subzones_colours__
+
     #    '''
-    #        Look at affect of applying threshhold
+    #        Look at effect of applying threshold
     #        no2_orig should be [t,lats,lons] for a particular year
     #    '''
     
     year=dates[0].year
+    # first subzone is AUSTRALIA
     region=subzones[0]
-    pname='Figs/OMNO2_threshaffect_%d.png'%year
-    fig, axes = plt.subplots(2,2,figsize=[16,16])
-
-
+    
+    
     # Subset to region:
     subset=util.lat_lon_subset(lats,lons,region,data=[np.copy(no2_orig)],has_time_dim=True)
     no2=subset['data'][0]
@@ -796,7 +796,7 @@ if __name__=="__main__":
     no2_f=np.copy(no2)
     no2_mean=np.nanmean(no2,axis=0)
 
-    # Filter for yearly threshhold, first count how many we will remove
+    # Filter for yearly threshold, first count how many we will remove
     n_filtered_y = 0
     n_days=len(no2_f[:,0,0])
     n_filtered_y = n_days*np.nansum(no2_mean>threshy)
@@ -805,45 +805,61 @@ if __name__=="__main__":
     # apply filter
     no2_f[:,no2_mean>threshy]=np.NaN
 
-    # Write filtering stats to file
-    with open(__no2_txt_file__,'a') as outf: # append to file
-        ngoods=np.nansum(no2>0)
-        n_filtered_d=np.nansum(no2_f>threshd)
-        outf.write("negative gridsquaredays (made NaN)      : %d \n"%np.sum(negmask))
-        outf.write("non-NaN, non-ocean gridsquaredays       : %d \n"%ngoods)
-        outf.write("Year threshhold (%.1e) removes       : %d (%.2f%%) \n"%
-          (threshy, n_filtered_y, n_filtered_y*100/float(ngoods)))
-        outf.write("Then day threshhold (%.1e) removes   : %d (%.2f%%) \n"%
-          (threshd, n_filtered_d, n_filtered_d*100/float(ngoods)))
-
     # Apply daily filter
     no2_f[no2_f>threshd] = np.NaN
 
+    ## Printing table as follows:
+    #\textbf{Region} & \textbf{NO$_2$} & \textbf{NO$_2$ after filtering} & \textbf{\% Data lost}    \\ 
+    #Aus & 1.5e15 & 2e15 & 20\% \\
+    formstr = "%s & %.2f & %.2f & %5.1f\\%% \\\\"
+    print("MAKING TABLE FOR TEXT (1e14 * molec/cm2)")
+    for region, label in zip(subzones,pp.__subzones_labels__):
+        subset = util.lat_lon_subset(lats,lons,region,data=[no2,no2_f],has_time_dim=True)
+        sub_mean = np.nanmean(subset['data'][0])*1e-14
+        sub_mean_f = np.nanmean(subset['data'][1])*1e-14
+        ngoods=np.nansum(subset['data'][0]>0)
+        ngoods_f=np.nansum(subset['data'][1]>0)
+        portion_filtered = (1-ngoods_f/ngoods)*100
+        print(formstr%(label, sub_mean,sub_mean_f,portion_filtered))
+    
+    
+    
+    
+    
+    #### FIGURE
+    ###
+    pname='Figs/OMNO2_thresheffect_%d.png'%year
+    fig, axes = plt.subplots(2,2,figsize=[16,16])
+
+        
     # plot stuff:
-    titles = ['Mean %d'%year, 'Threshholds applied']
+    titles = ['NO$_2$ Mean', 'After filtering']
     vmin = 1e14
     vmax = 2e15
+    
     for i,arr in enumerate([no2,no2_f]):
 
-        # Plot map with and without threshhold filter
+        # Plot map with and without threshold filter
         mean=np.nanmean(arr,axis=0)
         plt.sca(axes[0,i])
         # only show subzones in first plot
         bmap,_cs,_cb = no2_map(mean, lats, lons, vmin, vmax, [subzones,None][i==1], colors)
         plt.title(titles[i])
 
-        # Hatch for yearly threshhold
-        pp.hatchmap(bmap, mean, lats, lons, threshy, region=region)
+        # Hatch for yearly threshold
+        #pp.hatchmap(bmap, mean, lats, lons, threshy, region=region)
 
         # Also time series with and without filter
         plt.sca(axes[1,i])
-        no2_timeseries(arr,dates,lats,lons,subzones,colors,print_values=True)
+        no2_timeseries(arr,dates,lats,lons,subzones,colors,print_values=False)
 
-    # Add threshholds to last timeseries
+    # Add thresholds to last timeseries
     plt.plot([0,395],[threshd,threshd], '--k',linewidth=1)
     plt.plot([0,395],[threshy,threshy], ':k',linewidth=1)
-
-    plt.suptitle("OMNO2d threshhold affects %d"%year, fontsize=24)
+    for ax in axes[1,:]:
+        plt.sca(ax)
+        plt.yticks([2e14,5e14,1e15,1.5e15,2e15,4e15],['2e14','5e14','1e15','1.5e15','2e15','4e15'])
+    plt.suptitle("OMNO2d threshold effects %d"%year, fontsize=24)
     plt.savefig(pname)
     print('saved ',pname)
     plt.close()

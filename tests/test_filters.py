@@ -844,12 +844,14 @@ def no2_map(data, lats, lons, vmin, vmax,
     if subzones is not None:
         region=subzones[0]
     bmap,cs,cb = pp.createmap(data, lats, lons, region=region,
-                              vmin=vmin, vmax=vmax, clabel='molec/cm2',
+                              vmin=vmin, vmax=vmax, clabel='NO$_2$ molec cm$^{-2}$',
                               cmapname=cmapname)
     # Add cities to map
     for city,latlon in cities.items():
+        if city=='Wol':
+            continue
         pp.add_point(bmap,latlon[0],latlon[1],markersize=12,
-                     color='floralwhite', label=city, fontsize=12,
+                     color='green', label=city, fontsize=13,
                      xlabeloffset=-50000,ylabeloffset=30000)
 
     # Add squares to map:
@@ -907,11 +909,11 @@ def no2_timeseries(no2_orig,dates,lats,lons,
         # change to log y scale?
         plt.ylim(ylims)
         plt.yscale('log')
-        plt.ylabel('molec/cm2')
+        plt.ylabel('NO$_2$ molec cm$^{-2}$')
         yticks=[2e14,5e14,1e15,4e15]
         ytickstr=['%.0e'%tick for tick in yticks]
         plt.yticks(yticks,ytickstr)
-        plt.xlabel('Day of year')
+        plt.xlabel('Days of the year')
 
         # Print some stats if desired
         if print_values:

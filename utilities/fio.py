@@ -1593,6 +1593,39 @@ def get_anthro_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
 
     return np.squeeze(mask[di]),np.squeeze(dates[di]),lats,lons
 
+def get_anthro_data(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
+    '''
+        Read anthro mask from d0 to dN.
+            If the mask does not exist, Fail and tell me to make one
+    '''
+    # read file for anthro mask:
+    path=__dir_anthro__ + 'anthromask_%4d.h5'%d0.year
+    assert isfile(path), 'NEED TO RUN make_anthro_mask_file(datetime(%4d,1,1))'%d0.year
+    data,attrs=read_hdf5(path)
+    mask=data['anthromask'].astype(bool)
+    no2 =data['no2']
+    lats=data['lats']
+    lons=data['lons']
+    if np.all(data['dates']==0):
+        dates = util.list_days(datetime(d0.year,1,1),datetime(d0.year,12,31))
+    else:
+        dates = util.date_from_gregorian(data['dates'])
+
+    # subset to desired area
+    if region is not None:
+        subset=util.lat_lon_subset(lats,lons,region=region,data=[mask,no2],has_time_dim=True)
+        mask=subset['data'][0]
+        no2=subset['data'][1]
+        lats=subset['lats']
+        lons=subset['lons']
+    
+    # subset to date range
+    di=util.date_index(d0,dates,dN) # indices of dates from d0 to dN
+    no2=np.squeeze(no2[di])
+    dates=np.squeeze(dates[di])
+    mask=np.squeeze(mask[di])
+    
+    return {"no2":no2, "smokemask":mask, "dates":dates,"lats":lats,"lons":lons}
 
 def get_smoke_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
     ''' read smoke mask '''
@@ -1614,6 +1647,38 @@ def get_smoke_mask(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
         lons=subset['lons']
 
     return np.squeeze(mask[di]),np.squeeze(dates[di]), lats,lons
+
+def get_smoke_data(d0,dN,region=None,latres=__LATRES__, lonres=__LONRES__):
+    ''' read smoke mask '''
+    # read file for anthro mask:
+    path=__dir_smoke__ + 'smokemask_%4d.h5'%d0.year
+    assert isfile(path), 'NEED TO RUN make_smoke_mask_file(datetime(%4d,1,1))'%d0.year
+    data,attrs=read_hdf5(path)
+    mask=data['smokemask'].astype(bool)
+    smoke=data['smoke']
+    lats=data['lats']
+    lons=data['lons']
+    dates=util.date_from_gregorian(data['dates'])
+    
+    # read multiple years?
+    
+    # subset to desired area
+    if region is not None:
+        subset=util.lat_lon_subset(lats,lons,region=region,data=[mask,smoke],has_time_dim=True)
+        mask=subset['data'][0]
+        smoke=subset['data'][1]
+        lats=subset['lats']
+        lons=subset['lons']
+    
+    # subset to date range
+    di=util.date_index(d0,dates,dN) # indices of dates from d0 to dN
+    smoke=np.squeeze(smoke[di])
+    dates=np.squeeze(dates[di])
+    mask=np.squeeze(mask[di])
+    
+    return {"smoke":smoke, "smokemask":mask, "dates":dates,"lats":lats,"lons":lons}
+
+
 
 #########################
 ###  READ MUMBA FROM JENNY

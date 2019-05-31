@@ -68,9 +68,20 @@ class campaign:
                 dates=np.array(self.odates)
             else:
                 dates=np.array(self.dates)
-            inds = np.array([d.hour == hour for d in dates])
-            dates_new=np.array(dates)[inds]
-            data=getattr(self,key)[inds]
+            dates_new = util.list_days(dates[0], dates[-1])
+            attr = getattr(self,key)
+            assert len(dates) == len(attr), "len(dates) "+str(len(dates)) + " != len(attr) "+str(len(attr))
+            data = np.zeros([len(dates_new)])+np.NaN
+            for i,day in enumerate(dates_new):
+                print(i,"finding day",day)
+                ind = np.array([(d.month == day.month) and (d.hour == hour) and (d.day == day.day) for d in dates])
+                assert np.sum(ind) < 2, "multiple matches"
+                if np.sum(ind) == 0:
+                    data[i] = np.NaN
+                else:
+                    data[i] = attr[ind]
+                    #assert dates[ind].day==day.day,  "dates[i].day"+str(dates[i].day) +" != day.day"+str(day.day)
+            
             return dates_new,data
     
 

@@ -1824,7 +1824,8 @@ def campaign_vs_GC(midday=True):
             offset_start=0
             if (j==0) and (i<2):
                 offset_start = util.date_index(cdates[0],dates,ignore_hours=True)[0]
-                
+            #dirange2 = util.date_index(spsdates[0],dates,spsdates[-1],ignore_hours=True)
+            
             for row, arr in enumerate([meas,compgc[offset_start:],compgca[offset_start:]]):
                 
                 assert len(arr) == len(meas), "dates dont match for MEAS vs MODEL"+str([j,i,stitle,title,offset_start])
@@ -1892,6 +1893,7 @@ def campaign_vs_GC(midday=True):
                               td[row,1,z1,0],td[row,1,z1,1],td[row,1,z1,2],
                               td[row,2,z1,0],td[row,2,z1,1],td[row,2,z1,2]))
     
+
 
 
 def FTIR_Comparison():

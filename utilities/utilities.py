@@ -377,6 +377,8 @@ def list_days(day0,dayn=None,month=False):
     if month:
         dayn=last_day(day0)
     if dayn is None: return [day0,]
+    day0 = datetime(day0.year,day0.month,day0.day)
+    dayn = datetime(dayn.year,dayn.month,dayn.day)
     numdays = (dayn-day0).days + 1 # timedelta
     return [day0 + timedelta(days=x) for x in range(0, numdays)]
 

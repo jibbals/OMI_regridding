@@ -1731,6 +1731,8 @@ def hcho_vs_satellite():
 def campaign_vs_GC(midday=True):
     '''
         Compare campaign data to Enew and Egc in that one grid square
+        % TODO: use darker color than cyan
+    % TODO: print mean bias and correlation before and after update
     '''
     mh='_midday'
     pnamea="Figs/GC_VS_CAMPAIGNS%s.png"%['',mh][midday]
@@ -1747,13 +1749,16 @@ def campaign_vs_GC(midday=True):
     gckeys = ['IJ-AVG-$_ISOP',
               'IJ-AVG-$_CH2O',
               'IJ-AVG-$_O3']
-    cpri,cpost = ['m','cyan']
+    cpri,cpost = ['m','saddlebrown']
     
     ## Plot 3 rows x 3 columns, columns are campaigns, rows are species 
     ##
     f, axes=plt.subplots(3,3,sharex='col',sharey='row')
     dfmt="%d, %b"
     stitles=['SPS1','SPS2','MUMBA']
+    # Tabulate for printout of summary
+    # row={meas,GC,GCa}, column={ mumba,SPS1,SPS2}, z1={isop,hcho,ozane} z2={mean, rmse, r}
+    tabledata=np.zeros([3,3,3,3])+np.NaN 
     for j, (cdata, stitle) in enumerate(zip([sps1,sps2,mumba],stitles)):
         # SPS has different set of dates for ozone
         cdates=cdata.dates
@@ -1798,16 +1803,42 @@ def campaign_vs_GC(midday=True):
         
         
         # for each tracer plot time series comparison
-        
-        
         for i, (meas, gc, gca, spsdates, title) in enumerate(zip([cisop,chcho,cozone],[isop,hcho,ozone],[isopa,hchoa,ozonea],[cdates,cdates,odates],['Isoprene','HCHO','Ozone'])):
+            
+            # comparable GC, GCa
+            compgc = np.copy(gc[dirange])
+            compgca= np.copy(gca[dirange])
+            
             plt.sca(axes[i,j])
             pp.plot_time_series(spsdates,meas,color='k',marker='+',
                                 label='measurement', dfmt=dfmt)
-            pp.plot_time_series(dates,gc[dirange],color=cpri, marker='^', 
+            pp.plot_time_series(dates,compgc,color=cpri, marker='^', 
                                 label='a priori', dfmt=dfmt)
-            pp.plot_time_series(dates,gca[dirange],color=cpost,marker='x',
+            pp.plot_time_series(dates,compgca,color=cpost,marker='x',
                                 label='a posteriori', dfmt=dfmt)
+            
+            
+            ## SAVE some infor into array for table at end of method
+            # j = campaign index, i=species index
+            # row={meas,GC,GCa}, column={ mumba,SPS1,SPS2}, z1={isop,hcho,ozane} z2={mean, rmse, r}
+            dirange2 = util.date_index(spsdates[0],dates,spsdates[-1])
+            for row, arr in enumerate([meas,compgc,compgca]):
+                #print(j,i,stitle,title)
+                #print("dirange2:",dirange2)
+                assert len(dirange2) == len(meas), "dates dont match for MEAS vs MODEL"
+                if row==0:
+                    tabledata[row,j,i,0] = np.nanmean(arr)
+                    continue
+                else:
+                    # mean
+                    arr = np.copy(arr[dirange2])
+                    tabledata[row,j,i,0] = np.nanmean(arr)
+                    # mean bias
+                    RMSE = np.sqrt(np.nanmean((arr-meas)**2))
+                    tabledata[row,j,i,1] = RMSE
+                    # RMA regression coefficient
+                    _, _, regr, _, _  = RMA(meas,arr)
+                    tabledata[row,j,i,2] = regr
             
             # Hide the right and top spines
             axes[i,j].spines['right'].set_visible(False)
@@ -1839,6 +1870,26 @@ def campaign_vs_GC(midday=True):
     plt.savefig(pnamea)
     plt.close()
     print("SAVED: ",pnamea)
+
+    # ALSO PRINT TABLE OF MEAN, MEAN BIAS, REGRESSION
+    #                        MUMBA               SPS1               SPS2
+    # Isop         & mean & RMSE & r   & mean & RMSE & r   & mean & RMSE & r   \\
+    #Meas          & .2f  &      &     & .2f  &      &     & .2f  &      &     \\
+    #GC            & .2f  &  .2f & .2f & .2f  &  .2f & .2f & .2f  &  .2f & .2f \\
+    #GC$^{\alpha}$ & .2f  &  .2f & .2f & .2f  &  .2f & .2f & .2f  &  .2f & .2f \\
+    
+    formstring = "%-15s & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %4.2f  \\\\"  
+    
+    # row={meas,GC,GCa}, column={ mumba,SPS1,SPS2}, z1={isop,hcho,ozane} z2={mean, rmse, r}
+    td=tabledata
+    print("+++++++++++++TABLE++++++++++++++++")
+    for z1, name in enumerate(['Isoprene', 'HCHO', 'Ozone']):
+        print("%-10s & mean & RMSE & r   & mean & RMSE & r   & mean & RMSE & r   \\\\"%name)
+        for row, rowname in enumerate(['Meas','GC','GCalpha']):
+            print(formstring%(rowname,
+                              td[row,0,z1,0],td[row,0,z1,1],td[row,0,z1,2],
+                              td[row,1,z1,0],td[row,1,z1,1],td[row,1,z1,2],
+                              td[row,2,z1,0],td[row,2,z1,1],td[row,2,z1,2]))
 
 def FTIR_Comparison():
     '''
@@ -2716,7 +2767,7 @@ if __name__ == "__main__":
     ## CAMPAIGN COMPARISONS
     # time series mumba,sps1,sps2
     #[campaign_vs_GC(flag) for flag in [True,False]]
-    #campaign_vs_GC(True)
+    campaign_vs_GC(True)
     # FTIR comparison
     #FTIR_Comparison()
     
@@ -2726,7 +2777,7 @@ if __name__ == "__main__":
     
     
     # Emissions apriori vs aposteriori + uncertainty
-    regional_seasonal_comparison()
+    #regional_seasonal_comparison()
     #time_series()
     #regional_seasonal_timeseries()
     

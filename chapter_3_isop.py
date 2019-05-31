@@ -1734,6 +1734,7 @@ def campaign_vs_GC(midday=True):
         % TODO: use darker color than cyan
     % TODO: print mean bias and correlation before and after update
     '''
+    midday=True
     mh='_midday'
     pnamea="Figs/GC_VS_CAMPAIGNS%s.png"%['',mh][midday]
     # Wollongong/sydney grid square
@@ -1778,10 +1779,11 @@ def campaign_vs_GC(midday=True):
             _, cisop        = cdata.get_daily_hour(key='isop')
         
         # Pull out satellite overpass data for comparison
+        
         trop = GC_class.GC_sat(d0,d1, keys=gckeys)
         tropa= GC_class.GC_sat(d0,d1, keys=gckeys, run='new_emissions')
         dates0 = trop.dates
-        dates  = [d+timedelta(hours=13.5) for d in dates0] 
+        dates  = [d+timedelta(hours=13) for d in dates0] 
         
         
         # grab wollongong square
@@ -1796,9 +1798,7 @@ def campaign_vs_GC(midday=True):
         # subset trop dates to match measurement dates
         first_day   = min(cdates[0],odates[0])
         last_day    = max(cdates[-1],odates[-1])
-        di0         = util.date_index(first_day,dates0,ignore_hours=True)
-        di1         = util.date_index(last_day,dates0, ignore_hours=True)
-        dirange     = np.arange(di0,di1+1)
+        dirange     = util.date_index(first_day,dates0,last_day,ignore_hours=True)
         dates       = np.array(dates)[dirange]
         
         
@@ -1817,24 +1817,22 @@ def campaign_vs_GC(midday=True):
             pp.plot_time_series(dates,compgca,color=cpost,marker='x',
                                 label='a posteriori', dfmt=dfmt)
             
-            
             ## SAVE some infor into array for table at end of method
             # j = campaign index, i=species index
             # row={meas,GC,GCa}, column={ mumba,SPS1,SPS2}, z1={isop,hcho,ozane} z2={mean, rmse, r}
-            dirange2 = util.date_index(spsdates[0],dates,spsdates[-1],ignore_hours=True)
-            print(spsdates[0], spsdates[-1],dates[0],dates[-1])
-            for row, arr in enumerate([meas,compgc,compgca]):
-                print(j,i,stitle,title)
-                print("dirange2:",dirange2)
-                print(dirange2)
+            # May need to subset model data again for SPS1 isoprene and hcho
+            offset_start=0
+            if (j==0) and (i<2):
+                offset_start = util.date_index(cdates[0],dates,ignore_hours=True)[0]
                 
-                assert len(dirange2) == len(meas), "dates dont match for MEAS vs MODEL"
+            for row, arr in enumerate([meas,compgc[offset_start:],compgca[offset_start:]]):
+                
+                assert len(arr) == len(meas), "dates dont match for MEAS vs MODEL"+str([j,i,stitle,title,offset_start])
                 if row==0:
                     tabledata[row,j,i,0] = np.nanmean(arr)
                     continue
                 else:
                     # mean
-                    arr = np.copy(arr[dirange2])
                     tabledata[row,j,i,0] = np.nanmean(arr)
                     # mean bias
                     RMSE = np.sqrt(np.nanmean((arr-meas)**2))
@@ -1873,7 +1871,7 @@ def campaign_vs_GC(midday=True):
     plt.savefig(pnamea)
     plt.close()
     print("SAVED: ",pnamea)
-
+    
     # ALSO PRINT TABLE OF MEAN, MEAN BIAS, REGRESSION
     #                        MUMBA               SPS1               SPS2
     # Isop         & mean & RMSE & r   & mean & RMSE & r   & mean & RMSE & r   \\
@@ -1893,6 +1891,8 @@ def campaign_vs_GC(midday=True):
                               td[row,0,z1,0],td[row,0,z1,1],td[row,0,z1,2],
                               td[row,1,z1,0],td[row,1,z1,1],td[row,1,z1,2],
                               td[row,2,z1,0],td[row,2,z1,1],td[row,2,z1,2]))
+    
+
 
 def FTIR_Comparison():
     '''

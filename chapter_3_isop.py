@@ -1821,10 +1821,13 @@ def campaign_vs_GC(midday=True):
             ## SAVE some infor into array for table at end of method
             # j = campaign index, i=species index
             # row={meas,GC,GCa}, column={ mumba,SPS1,SPS2}, z1={isop,hcho,ozane} z2={mean, rmse, r}
-            dirange2 = util.date_index(spsdates[0],dates,spsdates[-1])
+            dirange2 = util.date_index(spsdates[0],dates,spsdates[-1],ignore_hours=True)
+            print(spsdates[0], spsdates[-1],dates[0],dates[-1])
             for row, arr in enumerate([meas,compgc,compgca]):
-                #print(j,i,stitle,title)
-                #print("dirange2:",dirange2)
+                print(j,i,stitle,title)
+                print("dirange2:",dirange2)
+                print(dirange2)
+                
                 assert len(dirange2) == len(meas), "dates dont match for MEAS vs MODEL"
                 if row==0:
                     tabledata[row,j,i,0] = np.nanmean(arr)

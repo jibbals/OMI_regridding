@@ -6,7 +6,7 @@
 #PBS -l mem=55000MB
 #PBS -l cput=02:00:00
 #PBS -l wd
-#PBS -l ncpus=4
+#PBS -l ncpus=1
 #PBS -j oe
 
 #---------------------------------

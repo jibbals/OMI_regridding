@@ -1821,14 +1821,11 @@ def campaign_vs_GC(midday=True):
             # j = campaign index, i=species index
             # row={meas,GC,GCa}, column={ mumba,SPS1,SPS2}, z1={isop,hcho,ozane} z2={mean, rmse, r}
             # May need to subset model data again for SPS1 isoprene and hcho
-            offset_start=0
-            if (j==0) and (i<2):
-                offset_start = util.date_index(cdates[0],dates,ignore_hours=True)[0]
-            #dirange2 = util.date_index(spsdates[0],dates,spsdates[-1],ignore_hours=True)
+            dirange2 = util.date_index(spsdates[0],dates,spsdates[-1],ignore_hours=True)
             
-            for row, arr in enumerate([meas,compgc[offset_start:],compgca[offset_start:]]):
+            for row, arr in enumerate([meas,compgc[dirange2],compgca[dirange2]]):
                 
-                assert len(arr) == len(meas), "dates dont match for MEAS vs MODEL"+str([j,i,stitle,title,offset_start])
+                assert len(arr) == len(meas), "dates dont match for MEAS vs MODEL"+str([j,i,stitle,title,len(arr),len(meas),spsdates,])
                 if row==0:
                     tabledata[row,j,i,0] = np.nanmean(arr)
                     continue
@@ -1881,6 +1878,7 @@ def campaign_vs_GC(midday=True):
     #GC$^{\alpha}$ & .2f  &  .2f & .2f & .2f  &  .2f & .2f & .2f  &  .2f & .2f \\
     
     formstring = "%-15s & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %4.2f  \\\\"  
+    
     
     # row={meas,GC,GCa}, column={ mumba,SPS1,SPS2}, z1={isop,hcho,ozane} z2={mean, rmse, r}
     td=tabledata

@@ -392,9 +392,12 @@ def PlotMultiyear(data, dates, lats,lons, weekly=False,
     
     if ylims is not None:
         plt.ylim(ylims)
+    
     if xlims is not None:
         plt.xlim(xlims)
-    
+    else:
+        plt.xlim([np.nanmin(x)-0.5, np.nanmax(x)+0.5])
+
     monthletters=['J','F','M','A','M','J','J','A','S','O','N','D']
     #if weekly:
     plt.xticks([x,np.arange(2,52,4.5)][weekly])
@@ -1599,6 +1602,7 @@ def hcho_vs_satellite():
     
     ##
     ## FIGURE:
+    ## 3 bar colours in bargraph: obs, prior, posteriori
     f, axes = plt.subplots(n_regions,1,figsize=[16,12], sharex=True, sharey=True)
     for i in range(n_regions):
         plt.sca(axes[i])
@@ -1606,10 +1610,10 @@ def hcho_vs_satellite():
         X = np.arange(4)
         width=0.3
         # mean
-        plt.bar(X + 0.00, trop_mean[:,i], yerr=trop_std[:,i], 
-                color = 'm', width = width, label=__Ogc__)
-        plt.bar(X + width, omi_mean[:,i], yerr=omi_std[:,i],
+        plt.bar(X + 0.00, omi_mean[:,i], yerr=omi_std[:,i],
                 color='k', width=width, label=__Oomi__)
+        plt.bar(X + width, trop_mean[:,i], yerr=trop_std[:,i], 
+                color = 'm', width = width, label=__Ogc__)
         plt.bar(X + 2*width, new_mean[:,i], yerr=new_std[:,i], 
                 color = 'cyan', width = width, label=__Ogca__)
         
@@ -2318,6 +2322,7 @@ def relative_error_summary(d0=datetime(2005,1,1), dN = datetime(2012,12,31)):
                                      median=True,ylims=ylim)
     plt.suptitle(titles[1],fontsize=20)
     plt.yticks(np.linspace(ylim[0], ylim[1], 4))
+    plt.xlim([-0.5,11.5])
     plt.savefig(pname)
     print("SAVED ",pname)
     plt.close()
@@ -2329,6 +2334,7 @@ def relative_error_summary(d0=datetime(2005,1,1), dN = datetime(2012,12,31)):
                                      median=True,ylims=ylim)
     plt.suptitle(titles[2],fontsize=20)
     plt.yticks(np.linspace(ylim[0], ylim[1], 4))
+    plt.xlim([-0.5,11.5])
     plt.savefig(pname)
     print("SAVED ",pname)
     plt.close()
@@ -2759,7 +2765,7 @@ if __name__ == "__main__":
     #compare_model_outputs()
     
     # Check how HCHO mean and variance looks compared to omi
-    #hcho_vs_satellite() # 15/5/19 printed output saved in function
+    #hcho_vs_satellite() # 4/6/19 changed order: obs, prior, post
     
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
@@ -2770,7 +2776,7 @@ if __name__ == "__main__":
     ## CAMPAIGN COMPARISONS
     # time series mumba,sps1,sps2
     #[campaign_vs_GC(flag) for flag in [True,False]]
-    campaign_vs_GC(True)
+    #campaign_vs_GC(True)
     # FTIR comparison
     #FTIR_Comparison()
     
@@ -2789,7 +2795,7 @@ if __name__ == "__main__":
     #uncertainty_time_series()
     #pixel_counts_summary()
     ## summarised uncertainty
-    #relative_error_summary()
+    relative_error_summary() # 4/6/19 updated xlims
     #print_relative_error_summary() # 15/5/19 for uncert table
     # what does the filtering actually do to end results?
     #sensitivity_recalculation()

@@ -781,6 +781,105 @@ def time_series(d0=datetime(2005,1,1), d1=datetime(2012,12,31)):
         print('SAVED ',pnames%key)
         plt.close()
 
+def modelled_ozone_comparison(d0,d1):
+    '''
+        Time series of surface ozone apriori and aposteriori
+    '''
+    suptitle_prefix='Daily'
+    dstr = d0.strftime("%Y%m%d_") + d1.strftime("%Y%m%d")
+    pname = 'Figs/new_emiss/O3_surface_%s.png'%dstr
+
+    satkeys = [#'IJ-AVG-$_ISOP', 
+               #'IJ-AVG-$_CH2O',
+               #'IJ-AVG-$_NO2',     # NO2 in ppbv
+               'IJ-AVG-$_O3',      # O3 in ppbv
+               ] #+ GC_class.__gc_tropcolumn_keys__
+    new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
+    tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
+    print('GEOS-Chem satellite outputs read')
+    # new_sat.hcho.shape #(31, 91, 144, 47)
+    # new_sat.isop.shape #(31, 91, 144, 47)
+    
+    # Surface O3 in ppb
+    new_o3_surf = new_sat.O3[:,:,:,0]
+    tropchem_o3_surf = tropchem_sat.O3[:,:,:,0]
+
+
+    # dims for GEOS-Chem outputs
+    lats=new_sat.lats
+    lons=new_sat.lons
+    dates=new_sat.dates
+
+    # pull out regions and compare time series
+    new_sat_o3s, r_lats, r_lons = util.pull_out_subregions(new_o3_surf,
+                                                           lats, lons,
+                                                           subregions=pp.__subregions__)
+    tropchem_sat_o3s, r_lats, r_lons = util.pull_out_subregions(tropchem_o3_surf,
+                                                                lats, lons,
+                                                                subregions=pp.__subregions__)
+
+    # for plotting we may want daily, weekly, or monthly averages
+    def baseresample(datain, bins='M'):
+        return pd.Series(datain, index=dates).resample(bins)
+
+    # by default do nothing
+    resample = lambda datain : datain
+    newdates = dates
+    suptitle_prefix = 'Daily'
+
+    if (d1-d0).days > 100: # after 100 days switch to weekly averages
+        suptitle_prefix='Weekly'
+        bins='7D'
+        if (d1-d0).days > 500: # use monthly for > 500 days
+            suptitle_prefix='Monthly'
+            bins='M'
+        resample = lambda datain: np.array(baseresample(datain, bins).mean())
+        newdates = baseresample(np.arange(len(dates)), bins).mean().index.to_pydatetime()
+
+
+    # will be printing mean difference between estimates
+    print('area,   new_emiss hcho,   tropchem hcho,   OMI hcho,       OMI$_{PP}$ hcho, new_emiss O3, tropchem O3')
+    
+    f,axes = plt.subplots(6, figsize=(14,16), sharex=True, sharey=True)
+    twinax=[]
+    for i, [label, color] in enumerate(zip(pp.__subregions_labels__, pp.__subregions_colors__)):
+
+        # time series for the subregion
+        o3_new_emiss = np.nanmean(new_sat_o3s[i], axis=(1,2))
+        o3_tropchem = np.nanmean(tropchem_sat_o3s[i], axis=(1,2))
+
+        # resample daily into something else:
+        o3_new_emiss = resample(o3_new_emiss)
+        o3_tropchem = resample(o3_tropchem)
+
+        # Fig: Ozone timeseries
+        plt.sca(axes[i])
+        pp.plot_time_series(newdates,o3_new_emiss, label='new_emiss run', linestyle=':', color=color, linewidth=3)
+        pp.plot_time_series(newdates,o3_tropchem, label='tropchem run', linestyle='--', color=color, linewidth=3)
+        plt.title(label,fontsize=20)
+        
+        # Add another y axis, for absolute differences:
+        twinax.append(plt.twinx())
+        pp.plot_time_series(newdates,o3_tropchem-o3_new_emiss, label='difference', linestyle='-.',color='darkgrey',linewidth=2)
+        plt.plot([newdates[0],newdates[-1]+timedelta(days=50)],[0,0],'k--',alpha=0.35,linewidth=1,label='zero line') # zero line
+        plt.ylim([-1,4])
+        plt.yticks([0,2,4],[0,2,4])
+
+    # final touches figure
+    for ii in [0,-1]:
+        plt.sca(twinax[ii])
+        plt.ylabel('Diff [ppbv]',fontsize=18)
+        plt.legend(loc='upper right')
+    
+        plt.sca(axes[ii])
+        plt.ylabel('O$_3$ [ppbv]',fontsize=18)
+        plt.legend(loc='upper left')        
+    plt.xlim([newdates[0]-timedelta(days=4), newdates[-1]+timedelta(days=4)])
+    plt.suptitle('%s mean O$_3$ tropospheric column'%suptitle_prefix, fontsize=26)
+    
+    plt.savefig(pname)
+    print('SAVED FIGURE ',pname)
+    plt.close(f)
 
 def Seasonal_daycycle():
     '''
@@ -2767,6 +2866,10 @@ if __name__ == "__main__":
     # Check how HCHO mean and variance looks compared to omi
     #hcho_vs_satellite() # 4/6/19 changed order: obs, prior, post
     
+    #modelled_ozone_comparison(datetime(2005,1,1),datetime(2005,1,31))
+    modelled_ozone_comparison(datetime(2005,1,1),datetime(2005,12,31))
+    modelled_ozone_comparison(datetime(2005,1,1),datetime(2012,12,31))
+    
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
     #seasonal_differences()
@@ -2795,7 +2898,7 @@ if __name__ == "__main__":
     #uncertainty_time_series()
     #pixel_counts_summary()
     ## summarised uncertainty
-    relative_error_summary() # 4/6/19 updated xlims
+    #relative_error_summary() # 4/6/19 updated xlims
     #print_relative_error_summary() # 15/5/19 for uncert table
     # what does the filtering actually do to end results?
     #sensitivity_recalculation()

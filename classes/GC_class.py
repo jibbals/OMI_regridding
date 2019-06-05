@@ -279,7 +279,12 @@ class GC_base:
         self.dstr=self.dates[0].strftime("%Y%m")
 
         # flag to see if class has time dimension
-        self._has_time_dim = len(self.hcho.shape) > 3
+        if hasattr(self,'hcho'):
+            self._has_time_dim = len(self.hcho.shape) > 3
+        elif hasattr(self,'O3'):
+            self._has_time_dim = len(self.O3.shape) > 3
+        else:
+            self._has_time_dim = len(self.dates)>1
         
         # Check that all the lats match the GMAO resolution we use
         assert (set(self.lats) & set(GMAO.lats_m)) == set(self.lats), "LATS DON'T MATCH GMAO 2x25 MIDS"

@@ -861,8 +861,8 @@ def modelled_ozone_comparison(d0,d1):
         # Add another y axis, for absolute differences:
         twinax.append(plt.twinx())
         pp.plot_time_series(newdates,o3_tropchem-o3_new_emiss, label='difference', linestyle='-.',color='darkgrey',linewidth=2)
-        plt.plot([newdates[0],newdates[-1]+timedelta(days=50)],[0,0],'k--',alpha=0.35,linewidth=1,label='zero line') # zero line
-        plt.ylim([-1,4])
+        #plt.plot([newdates[0],newdates[-1]+timedelta(days=50)],[0,0],'k--',alpha=0.35,linewidth=1,label='zero line') # zero line
+        plt.ylim([0,4])
         plt.yticks([0,2,4],[0,2,4])
 
     # final touches figure
@@ -874,8 +874,8 @@ def modelled_ozone_comparison(d0,d1):
         plt.sca(axes[ii])
         plt.ylabel('O$_3$ [ppbv]',fontsize=18)
         plt.legend(loc='upper left')        
-    plt.xlim([newdates[0]-timedelta(days=4), newdates[-1]+timedelta(days=4)])
-    plt.suptitle('%s mean O$_3$ tropospheric column'%suptitle_prefix, fontsize=26)
+    #plt.xlim([newdates[0]-timedelta(days=4), newdates[-1]+timedelta(days=4)])
+    plt.suptitle('%s mean surface O$_3$'%suptitle_prefix, fontsize=26)
     
     plt.savefig(pname)
     print('SAVED FIGURE ',pname)

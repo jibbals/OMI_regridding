@@ -1288,11 +1288,11 @@ def seasonal_differences():
     ''' 
         Compare HCHO, O3, NO columns between runs over Australia
         # Grab all overpass data, resample to multiyear monthly avg, then look at seasonal compariosn
-        First row:  Summer before, summer after, diff
-        Second row: Winter before, winter after, diff
+        First row:  Summer before, summer after, relative diff
+        Second row: Winter before, winter after, relative diff
     '''
     d0 = datetime(2005,1,1)
-    #d1 = datetime(2006,12,31)
+    #d1 = datetime(2005,1,31)
     d1 = datetime(2012,12,31)
     if __VERBOSE__:
         print("running seasonal_differences method")
@@ -1339,16 +1339,20 @@ def seasonal_differences():
     trop_winters=[]
     
     # HCHO,   O3,   NOX  simple comparisons:
-    f=plt.figure()
     vmins = [1e15, 20, 0.01]
     vmaxs = [2e16, 50, 1]
     difflims = [[-3.5e15, 3.5e15], [-4,0], [-0.05,0.05]]
+    reldifflims = [[-20,20],[-10,0],[-10,10]]
     units = ['molec cm$^{-2}$', 'ppbv', 'ppbv']
     linears= [False,True,False]
     stitles = ['Midday total column HCHO','Midday surface ozone','Midday surface NO$_x$']
     titles = ['Tropchem run','Scaled run', 'Scaled - Tropchem']
     pnames = [pname1,pname2,pname3]
     for i, new_arr, trop_arr in zip(range(3),[new_hcho, new_o3, new_NOx],[trop_hcho, trop_o3, trop_NOx]):
+        
+        plt.close()
+        f=plt.figure(figsize=(15,10))
+        
         new_mya = util.multi_year_average_spatial(new_arr, dates)
         trop_mya = util.multi_year_average_spatial(trop_arr, dates)
         new_summers.append(np.nanmean(new_mya['mean'][summer,:,:],axis=0))
@@ -1358,37 +1362,52 @@ def seasonal_differences():
         
         # SUMMER PLOTS:
         vmin=vmins[i]; vmax=vmaxs[i]
-        dmin=difflims[i][0]; dmax=difflims[i][1]
+        #dmin=difflims[i][0]; dmax=difflims[i][1]
+        dmin=reldifflims[i][0]; dmax=reldifflims[i][1]
         diffcmap=['bwr','Blues_r'][i==1]
         plt.subplot(2,3,1)
         pp.createmap(trop_summers[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
-                     clabel=units[i], linear=linears[i], title=titles[0])
+                     colorbar=False, clabel=units[i], linear=linears[i], 
+                     title=titles[0])
         plt.ylabel('Summer')
         plt.subplot(2,3,2)
         pp.createmap(new_summers[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
-                     clabel=units[i], linear=linears[i], title=titles[1])
+                     colorbar=False, clabel=units[i], linear=linears[i], 
+                     title=titles[1])
         plt.subplot(2,3,3)
-        pp.createmap(new_summers[i]-trop_summers[i],lats,lons,aus=True, vmin=dmin,vmax=dmax, 
-                     clabel=units[i], linear=True, title=titles[2], 
-                     cmapname=diffcmap)
+        summerdiff= 100*(new_summers[i]-trop_summers[i]) / trop_summers[i] 
+        pp.createmap(summerdiff,lats,lons,aus=True, vmin=dmin,vmax=dmax, 
+                     colorbar=False, clabel=units[i], linear=True, 
+                     title=titles[2], cmapname=diffcmap)
 
         # WINTER PLOTS:
         plt.subplot(2,3,4)
         pp.createmap(trop_winters[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
-                     clabel=units[i], linear=linears[i], title=titles[0])
+                     colorbar=False, clabel=units[i], linear=linears[i], 
+                     title="")
         plt.ylabel('Winter')
         plt.subplot(2,3,5)
-        pp.createmap(new_winters[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
-                     clabel=units[i], linear=linears[i], title=titles[1])
+        m1,cs1,cb1 = pp.createmap(new_winters[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
+                     colorbar=False, clabel=units[i], linear=linears[i], 
+                     title="")
         plt.subplot(2,3,6)
-        pp.createmap(new_winters[i]-trop_winters[i],lats,lons,aus=True, vmin=dmin,vmax=dmax, 
-                     clabel=units[i], linear=True, title=titles[2], cbarxtickrot=20, 
+        winterdiff= 100*(new_winters[i]-trop_winters[i]) / trop_winters[i] 
+        m2,cs2,cb2 = pp.createmap(winterdiff,lats,lons,aus=True, vmin=dmin,vmax=dmax, 
+                     colorbar=False, clabel=units[i], linear=True, 
+                     title="", cbarxtickrot=20, 
                      cmapname=diffcmap)
         
-        
-        plt.subplots_adjust(wspace=0.05)
-        plt.tight_layout()
+        plt.subplots_adjust(wspace=0.025,hspace=0.06)
+        #plt.tight_layout()
         plt.suptitle(stitles[i])
+        
+        # Add colourbars
+        cbar_ax1 = f.add_axes([0.18, 0.1, .4, 0.04])
+        cb = f.colorbar(cs1,cax=cbar_ax1, orientation='horizontal')
+        cb.set_label(units[i])
+        cbar_ax2 = f.add_axes([0.65, 0.1, .235, 0.04])
+        cb = f.colorbar(cs2,cax=cbar_ax2, orientation='horizontal')
+        cb.set_label("%")
         plt.savefig(pnames[i])
         plt.close(f)
         print('SAVING FIGURE ',pnames[i])
@@ -2866,13 +2885,14 @@ if __name__ == "__main__":
     # Check how HCHO mean and variance looks compared to omi
     #hcho_vs_satellite() # 4/6/19 changed order: obs, prior, post
     
+    ## 6/6/19 updated to add abs diff axis
     #modelled_ozone_comparison(datetime(2005,1,1),datetime(2005,1,31))
-    modelled_ozone_comparison(datetime(2005,1,1),datetime(2005,12,31))
-    modelled_ozone_comparison(datetime(2005,1,1),datetime(2012,12,31))
+    #modelled_ozone_comparison(datetime(2005,1,1),datetime(2005,12,31))
+    #modelled_ozone_comparison(datetime(2005,1,1),datetime(2012,12,31))
     
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
-    #seasonal_differences()
+    seasonal_differences()
     #[ozone_sensitivity(aa) for aa in [True, False] ]
         
     

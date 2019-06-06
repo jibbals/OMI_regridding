@@ -1342,7 +1342,7 @@ def seasonal_differences():
     vmins = [1e15, 20, 0.01]
     vmaxs = [2e16, 50, 1]
     difflims = [[-3.5e15, 3.5e15], [-4,0], [-0.05,0.05]]
-    reldifflims = [[-20,20],[-10,0],[-10,10]]
+    reldifflims = [[-40,0],[-10,0],[-10,10]]
     units = ['molec cm$^{-2}$', 'ppbv', 'ppbv']
     linears= [False,True,False]
     stitles = ['Midday total column HCHO','Midday surface ozone','Midday surface NO$_x$']
@@ -1364,7 +1364,7 @@ def seasonal_differences():
         vmin=vmins[i]; vmax=vmaxs[i]
         #dmin=difflims[i][0]; dmax=difflims[i][1]
         dmin=reldifflims[i][0]; dmax=reldifflims[i][1]
-        diffcmap=['bwr','Blues_r'][i==1]
+        diffcmap=['bwr','Blues_r'][i<2]
         plt.subplot(2,3,1)
         pp.createmap(trop_summers[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, 
                      colorbar=False, clabel=units[i], linear=linears[i], 

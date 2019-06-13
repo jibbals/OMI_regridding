@@ -244,7 +244,9 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,
         pp.add_regression(areat, areah, addlabel=True,
                                   exponential=True, color='k',
                                   linewidth=3)
-
+    # top left plot should have y axis on outside
+    ax0b.yaxis.tick_right()
+    ax0b.yaxis.set_label_position("right")        
 
     ## Next we add regressions in each gridsquare over the time dimension
     #
@@ -1928,7 +1930,7 @@ if __name__=='__main__':
     
     ## UCX VS TROPCHEM AMF
     #
-    AMF_comparison_tc_ucx()
+    #AMF_comparison_tc_ucx()
 
     ## tropchem vs UCX plots
     # Look at 2007 summer since I have OH for daily avg files from then.
@@ -1953,14 +1955,14 @@ if __name__=='__main__':
     #             drop_low_anthro=True)
 
     #
-    #for dates,dstr in zip([sum05,spr05,win05,aut05],dstrs):
+    for dates,dstr in zip([sum05,spr05,win05,aut05],dstrs):
 
         #GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
         #             region=region, regionlabel=label)
 
-    #    for region, label in zip(subs,labels):
-    #        HCHO_vs_temp(d0=dates[0],d1=dates[1],
-    #                     region=region,regionlabel=label)
+        for region, label in zip(subs,labels):
+            HCHO_vs_temp(d0=dates[0],d1=dates[1],
+                         region=region,regionlabel=label)
     #        GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
     #                     region=region, regionlabel=label,
     #                     drop_low_anthro=True)

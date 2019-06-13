@@ -501,7 +501,7 @@ def match_bottom_levels(p1i, p2i, arr1i, arr2i):
 def multi_year_average(data,dates, grain='monthly'):
     '''
         Use pandas dataframes to get average for each month of the year
-        grain = { 'hourly' | 'daily' | 'monthly' }
+        grain = { 'hourly' | 'daily' | 'weekly' | 'monthly' }
         ONLY WORKS ON 1D DATA ARRAY (time dim)
     '''
 
@@ -628,6 +628,8 @@ def seasonally_averaged(data,dates,bins='Q-NOV'):
     '''
         take data array (first dim should be time, matching dates input)
         flatten it out and resample to bin temporal resolution
+        bins = { 'Q-NOV', 'D', 'T', 'S' }
+                Quarterly, Days, minuTes, Second
     '''
     
     meshdates=np.copy(dates)

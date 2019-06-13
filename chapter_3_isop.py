@@ -1411,6 +1411,157 @@ def seasonal_differences():
         plt.savefig(pnames[i])
         plt.close(f)
         print('SAVING FIGURE ',pnames[i])
+       
+def HCHO_check_multiyear():
+    '''
+    '''
+    d0=datetime(2005,1,1)
+    d1=datetime(2012,12,31)
+    
+    pname1 = 'Figs/new_emiss/HCHO_total_columns_summer_daily.png'
+    pname2 = 'Figs/new_emiss/HCHO_total_columns_weekly.png'
+
+    satkeys = ['IJ-AVG-$_CH2O'] + GC_class.__gc_tropcolumn_keys__
+    new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
+    tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
+    
+    print('GEOS-Chem satellite outputs read')
+    # new_sat.hcho.shape #(31, 91, 144, 47)
+    # new_sat.isop.shape #(31, 91, 144, 47)
+
+    new_sat_tc  = new_sat.get_total_columns(keys=['hcho'])
+    tropchem_sat_tc  = tropchem_sat.get_total_columns(keys=['hcho'])
+    # TOTAL column HCHO
+    new_hcho_tc = new_sat_tc['hcho']
+    tropchem_hcho_tc = tropchem_sat_tc['hcho']
+
+    # dims for GEOS-Chem outputs
+    lats=new_sat.lats
+    lons=new_sat.lons
+    dates=new_sat.dates
+
+    ## read old satellite hcho columns...
+    # OMI total columns, PP corrected total columns
+    Enew = E_new(d0, d1, dkeys=['VCC_OMI','VCC_PP'])
+
+    # grab total columns
+    vcc_omi     = Enew.VCC_OMI
+    vcc_pp      = Enew.VCC_PP
+    lats2, lons2= Enew.lats, Enew.lons
+    # Enew lats,lons are in high resolution
+
+    new_sat_hchos, r_lats, r_lons = util.pull_out_subregions(new_hcho_tc,
+                                                         lats, lons,
+                                                         subregions=pp.__subregions__)
+
+    tropchem_sat_hchos, r_lats, r_lons = util.pull_out_subregions(tropchem_hcho_tc,
+                                                         lats, lons,
+                                                         subregions=pp.__subregions__)
+
+    vcc_omis, r_lats2, r_lons2 = util.pull_out_subregions(vcc_omi,
+                                                         lats2, lons2,
+                                                         subregions=pp.__subregions__)
+
+    vcc_pps, r_lats3, r_lons3 = util.pull_out_subregions(vcc_pp,
+                                                         lats2, lons2,
+                                                         subregions=pp.__subregions__)
+
+    
+    
+    
+    # will be printing mean difference between estimates
+    print('area,   new_emiss hcho,   tropchem hcho,   OMI hcho,       OMI$_{PP}$ hcho')
+
+
+    f1,axes1 = plt.subplots(6, figsize=(14,16), sharex=True, sharey=True)
+    f2,axes2 = plt.subplots(6, figsize=(14,16), sharex=True, sharey=True)
+    
+    for i, [label, color] in enumerate(zip(pp.__subregions_labels__, pp.__subregions_colors__)):
+
+        # plot time series for each subregion
+        hcho_new_emiss = np.nanmean(new_sat_hchos[i], axis=(1,2)) # daily
+        hcho_tropchem = np.nanmean(tropchem_sat_hchos[i],axis=(1,2))
+        
+        hcho_omi = np.nanmean(vcc_omis[i],axis=(1,2)) # daily
+        hcho_pp  = np.nanmean(vcc_pps[i],axis=(1,2)) # daily
+        
+        # print mean differences
+        arr1 = [ hcho_new_emiss, hcho_tropchem, hcho_omi, hcho_pp ]
+        print(label, [np.nanmean(arr1i) for arr1i in [arr1[0], arr1[1], arr1[2], arr1[3]] ])
+        print('   ,', np.nanmean(100*(arr1[0] - arr1[2])/arr1[2]), 'new emiss difference from OMI orig')
+        print('   ,', np.nanmean(100*(arr1[0] - arr1[3])/arr1[3]), 'new emiss difference from OMI PP')
+        print('   ,', np.nanmean(100*(arr1[1] - arr1[2])/arr1[2]), 'tropchem difference from OMI orig')
+        print('   ,', np.nanmean(100*(arr1[1] - arr1[3])/arr1[3]), 'tropchem difference from OMI PP')
+        
+        # Multiyear average
+        # take HCHO daily mean from multiple years
+        hcho_new_emissd = util.multi_year_average(hcho_new_emiss,dates, grain='daily').mean()
+        hcho_tropchemd  = util.multi_year_average(hcho_tropchem,dates, grain='daily').mean()
+        hcho_omid       = util.multi_year_average(hcho_omi,dates, grain='daily').mean()
+        hcho_ppd        = util.multi_year_average(hcho_pp,dates, grain='daily').mean()
+        
+        hcho_new_emissw = util.multi_year_average(hcho_new_emiss,dates, grain='weekly').mean()
+        hcho_tropchemw  = util.multi_year_average(hcho_tropchem,dates, grain='weekly').mean()
+        hcho_omiw       = util.multi_year_average(hcho_omi,dates, grain='weekly').mean()
+        hcho_ppw        = util.multi_year_average(hcho_pp,dates, grain='weekly').mean()
+        
+        # for daily plot I only want to look at summer
+        # roll 31 days to start, then only plot first 90 days
+        summer_new_emiss= np.roll(hcho_new_emissd,31)[0:91]
+        summer_tropchem = np.roll(hcho_tropchemd,31)[0:91]
+        summer_omi      = np.roll(hcho_omid,31)[0:91]
+        summer_pp       = np.roll(hcho_ppd,31)[0:91]
+
+        # Fig1: daily summer HCHO
+        Xd = np.arange(1,91)
+        Xw = np.arange(1,len(hcho_new_emissw)+1)
+        
+        plt.sca(axes1[i])
+        pp.plot_time_series(Xd,summer_new_emiss, label='$\Omega_{GC}^{\\alpha}$', linestyle='-.', color=color, linewidth=2)
+        pp.plot_time_series(Xd,summer_tropchem, label='$\Omega_{GC}$', linestyle='--', color=color, linewidth=2)
+        pp.plot_time_series(Xd,summer_omi, dfmt='%Y%m%d', label='$\Omega_{OMI}$', linestyle='-', color=color, linewidth=2)
+        #pp.plot_time_series(newdates,hcho_pp, label='OMI recalculated', linestyle=':', color=color, linewidth=2)
+        plt.title(label,fontsize=20)
+        if i==0:
+            plt.ylabel('HCHO cm$^{-2}$')
+            plt.legend(loc='best',ncol=3)
+
+        # Fig2: weekly HCHO time series
+        plt.sca(axes2[i])
+        pp.plot_time_series(Xw,hcho_new_emissw, label='$\Omega_{GC}^{\\alpha}$', linestyle='-.', color=color, linewidth=2)
+        pp.plot_time_series(Xw,hcho_tropchemw, label='$\Omega_{GC}$', linestyle='--', color=color, linewidth=2)
+        pp.plot_time_series(Xw,hcho_omiw, dfmt='%Y%m%d', label='$\Omega_{OMI}$', linestyle='-', color=color, linewidth=2)
+        #pp.plot_time_series(newdates,hcho_pp, label='OMI recalculated', linestyle=':', color=color, linewidth=2)
+        plt.title(label,fontsize=20)
+        if i==0:
+            plt.ylabel('HCHO cm$^{-2}$')
+            plt.legend(loc='best',ncol=3)
+
+
+
+    # final touches figure 1
+    plt.legend(loc='best',)
+    for ii in [0,i]:
+        plt.sca(axes1[ii])
+        plt.ylabel('HCHO cm$^{-2}$')
+    plt.suptitle('Multi-year daily mean $\Omega_{HCHO}$ ', fontsize=26)
+    plt.xticks([15,45,75],['December','January','February'])
+    
+    plt.savefig(pname1)
+    print('SAVED FIGURE ',pname1)
+    plt.close(f1)
+
+    # final touches figure 1
+    for ii in [0,i]:
+        plt.sca(axes2[ii])
+        plt.ylabel('HCHO cm$^{-2}$')
+    plt.suptitle('Multi-year weekly mean $\Omega_{HCHO}$ ', fontsize=26)
+
+    plt.savefig(pname2)
+    print('SAVED FIGURE ',pname2)
+    plt.close(f2)
+
+    
         
 def regional_seasonal_comparison():
     ''' 
@@ -2884,6 +3035,7 @@ if __name__ == "__main__":
     
     # Check how HCHO mean and variance looks compared to omi
     #hcho_vs_satellite() # 4/6/19 changed order: obs, prior, post
+    HCHO_check_multiyear()
     
     ## 6/6/19 updated to add abs diff axis
     #modelled_ozone_comparison(datetime(2005,1,1),datetime(2005,1,31))
@@ -2892,7 +3044,7 @@ if __name__ == "__main__":
     
     #  trend analysis plots, printing slopes for tabularisation
     #trend_analysis()
-    seasonal_differences()
+    #seasonal_differences()
     #[ozone_sensitivity(aa) for aa in [True, False] ]
         
     

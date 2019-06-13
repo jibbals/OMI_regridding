@@ -509,6 +509,9 @@ def spatial_comparisons(d0, d1, dlabel):
     # order: hcho, O3, NO
     vmins = [1e15, 10, 0]
     vmaxs = [1.8e16, 40, 0.4]
+    amins = [-5e14, -5, -0.05]
+    amaxs = [5e14, 5, .05]
+    rlims = [[-40,40],[-10,10],[-10,10]]
     units = ['molec cm$^{-2}$', 'ppbv', 'ppbv']
     linears= [False,True,True]
     comparison_plots = [ omi_pp_map, None, None ]
@@ -526,25 +529,41 @@ def spatial_comparisons(d0, d1, dlabel):
 
     for i in range(3):
         vmin=vmins[i]; vmax=vmaxs[i]; unit=units[i]; pname=pnames[i]
+        amin=amins[i]; amax=amaxs[i]
+        rmin,rmax = rlims[i]
+        
         linear=linears[i]
         f=plt.figure(figsize=[14,14])
 
-        plt.subplot(2,2,1)
+        plt.subplot(3,2,1)
         pp.createmap(first_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
         plt.title(first_title)
 
-        plt.subplot(2,2,2)
+        plt.subplot(3,2,2)
         pp.createmap(second_maps[i],lats,lons,aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
         plt.title(second_title)
         
+        # add rel abs diff
+        plt.subplot(3,2,3)
+        pp.createmap(first_maps[i] - second_maps[i],lats,lons,aus=True, 
+                     vmin=amin,vmax=amax, clabel=unit, linear=True,
+                     cmapname='bwr')
+        plt.title('tropchem - scaled')
+    
+        plt.subplot(3,2,4)
+        pp.createmap(100*(first_maps[i] - second_maps[i])/second_maps[i],lats,lons,aus=True, 
+                     vmin=rmin,vmax=rmax, clabel='%', linear=True,
+                     cmapname='bwr')
+        plt.title('tropchem - scaled [%]')
+        
         if comparison_plots[i] is not None:
-            plt.subplot(2,2,3)
+            plt.subplot(3,2,5)
             pp.createmap(comparison_plots[i], comparison_lats[i], comparison_lons[i], aus=True, vmin=vmin,vmax=vmax, clabel=unit, linear=linear)
             plt.title(comparison_titles[i])
         
-            plt.subplot(2,2,4)
+            plt.subplot(3,2,6)
         else:
-            plt.subplot(2,1,2)
+            plt.subplot(3,1,3)
         # three way regression if possible
         subsets = util.lat_lon_subset(lats,lons,pp.__AUSREGION__,[first_maps[i],second_maps[i]],has_time_dim=False)
         X=subsets['data'][0].flatten() # new hcho map

@@ -173,10 +173,10 @@ def HCHO_vs_temp(d0=datetime(2005,1,1),d1=None,
     fig=plt.figure(figsize=[12,16])
 
     # Read omhcho (reprocessed)
-    omi=omhchorp(d0,d1,keylist=['latitude','longitude','VCC','gridentries'])
+    omi=omhchorp(d0,d1,keylist=['latitude','longitude','VCC_OMI','gridentries'])
     omivcc=np.zeros([gc.ntimes,gc.nlats,gc.nlons])
     for ti in range(omi.n_times):
-        omivcc[ti,:,:]=util.regrid(omi.VCC[ti,:,:],omi.lats,omi.lons,gc.lats,gc.lons)
+        omivcc[ti,:,:]=util.regrid(omi.VCC_OMI[ti,:,:],omi.lats,omi.lons,gc.lats,gc.lons)
 
     # region + view area
     if regionplus is None:

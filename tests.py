@@ -1847,7 +1847,7 @@ if __name__ == '__main__':
     #test_new_emissions.hcho_ozone_timeseries(datetime(2005,1,1),datetime(2012,12,31))
     #test_new_emissions.hcho_ozone_timeseries(datetime(2005,1,1),datetime(2005,12,31))
     test_new_emissions.spatial_comparisons(datetime(2005,1,1),datetime(2005,2,28), dlabel='Summer_05')
-    #end=timeit.default_timer()
+    end=timeit.default_timer()
     print("TIME: %6.2f minutes for time series analysis"%((end-start)/60.0))
     
     

@@ -582,6 +582,7 @@ def spatial_comparisons(d0, d1, dlabel):
         #pp.createmap(new_hcho_map,lats,lons,aus=True,title='scaled run', vmin=vmin,vmax=vmax)
 
         plt.suptitle(stitles[i])
+        plt.subplots_adjust(hspace=0.29)
         plt.savefig(pname)
         print('Saved ', pname)
         plt.close(f)

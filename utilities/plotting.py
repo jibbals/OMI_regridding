@@ -194,9 +194,9 @@ def add_regression(X,Y,label=None, addlabel=True, labelprefix="", exponential=Fa
     if exponential:
         Yline= np.exp( m * Xspace + b)
 
+    n = len(X)
     # set up lable
     if addlabel and (label is None):
-        n=len(X)
         label='%s Y = %.1eX + %.2f ; r=%.2f, N=%d'%(labelprefix,m,b,r,n)
         if exponential:
             n=np.sum(~np.isnan(Y2))

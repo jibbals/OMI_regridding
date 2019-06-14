@@ -442,6 +442,172 @@ def hcho_ozone_timeseries(d0,d1):
     print('SAVED FIGURE ',pname2)
     plt.close(f2)
 
+def print_ozone_isop_table_summary():
+    '''
+      Metric & AUS & SEA & NEA & NA & SWA & MID \\
+      \midrule
+      MEGAN & 43(2) & blah &  &  & & \\
+      Ozone & 9.70 & 11.17 & 11.03 & 11.19 & 11.69 & 9.09 \\
+      \midrule
+      Top-Down & 19(2) & & & & & \\
+      Ozone & 9.64 & 11.11 & 10.99 & 11.12 & 11.63 & 9.02 \\
+      \bottomrule
+    \end{tabular}
+    '''
+    from utilities import GMAO
+    
+    d0=datetime(2005,1,1)
+    #d1=datetime(2012,12,31)
+    d1=datetime(2005,1,31)
+    satkeys = [#'IJ-AVG-$_ISOP', # ppbv 
+               #'IJ-AVG-$_CH2O', # ppbv
+               #'IJ-AVG-$_NO2',     # NO2 in ppbv
+               'IJ-AVG-$_O3',      # O3 in ppbv
+               ]# + GC_class.__gc_tropcolumn_keys__
+    new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
+    tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
+    print('GEOS-Chem satellite outputs read')
+    # new_sat.hcho.shape #(31, 91, 144, 47)
+    # new_sat.isop.shape #(31, 91, 144, 47)
+
+    # Surface O3 in ppb
+    new_o3_surf = new_sat.O3[:,:,:,0]
+    tropchem_o3_surf = tropchem_sat.O3[:,:,:,0]
+
+    # dims for GEOS-Chem outputs
+    lats=new_sat.lats
+    lons=new_sat.lons
+    dates=new_sat.dates
+    
+    del new_sat
+    del tropchem_sat 
+    
+    # Read a priori and a posteriori
+    # Read megan (3-hourly)
+    MEGAN = GC_class.Hemco_diag(d0,d1)
+    meglats,meglons = MEGAN.lats, MEGAN.lons
+    aprior = MEGAN.E_isop_bio # hours, lats, lons
+    aprior = aprior / MEGAN.kgC_per_m2_to_atomC_per_cm2 # convert back to kgC/m2/s
+    del MEGAN # free up some ram
+    aprior = np.nansum(aprior*3*60*60, axis=0) # sum over the 3 hourly kgC/m2/s to get kgC/m2
+    assert np.all(np.shape(aprior)==np.shape(GMAO.area_m2)), "Area from GMAO does not match shape of emissions from MEGAN"
+    aprior = aprior * GMAO.area_m2 # now aprior is in kg total over the length of time
+    aprior = aprior/8.0 # now is TgC/a
+    
+    enew=E_new(d0,d1,dkeys=['E_PP_lr'])
+    enewlats,enewlons=enew.lats_lr, enew.lons_lr
+    
+    apost = enew.E_PP_lr # [days,lats,lons] atomC/cm2/s 
+    # convert from peak emissions to daily sin wave integrated
+    # 0.637 x peak x sunlight seconds
+    daily_seconds = util.daylengths_matched(enew.dates) * 60 # daylight seconds 
+    daily_seconds = np.repeat(daily_seconds[:,np.newaxis],len(enewlats),axis=1)
+    daily_seconds = np.repeat(daily_seconds[:,:,np.newaxis],len(enewlons),axis=2)
+    apost = apost * 0.637 * daily_seconds # now in daily atomC/cm2
+    apost = np.nansum(apost, axis=0) # sum over daily atomC/cm2 to get atomC/cm2
+    apost = apost * enew.SA_lr * 1e10 # multiply by cm2  (SA in km2) to get atomC emitted
+    
+    
+    # pull out regions and compare time series
+    apriors, r_lats, r_lons = util.pull_out_subregions(aprior, meglats, meglons, subregions=pp.__subregions__)
+    
+    
+    
+    new_sat_o3s, r_lats, r_lons = util.pull_out_subregions(new_o3_surf,
+                                                           lats, lons,
+                                                           subregions=pp.__subregions__)
+    tropchem_sat_o3s, r_lats, r_lons = util.pull_out_subregions(tropchem_o3_surf,
+                                                                lats, lons,
+                                                                subregions=pp.__subregions__)
+
+    # Build up an array with 6 columns, 4 rows:
+    #                        AUS,  SEA, NEA, NA, SWA, MID
+    #  isop TgC/a tropchem   ...
+    #  O3   ppb   tropchem   ...
+    #  isop TgC/a top-down   ...
+    #  O3   ppb   top-down
+    #  
+    table = np.zeros(4,6)
+    
+    # O3 ppb surface from tropchem and top-down
+    table[3,:] = [np.nanmean(new_sat_o3s[i]) for i in range(6)]
+    table[1,:] = [np.nanmean(tropchem_sat_o3s[i]) for i in range(6)]
+    
+    #isop TgC/a megan
+    table[0,:] = [np.nansum(apriors[i]) for i in range(6)]
+    #isop TgC/a top-down
+    
+    
+    
+    for i, [label] in enumerate(pp.__subregions_labels__):
+        
+        
+
+        # change hourly into daily time series
+        #r_old = np.array(pd.Series(r_old_hourly,index=old_dates).resample('D').mean())
+        hcho_omi = np.nanmean(vcc_omis[i],axis=(1,2)) # daily
+        hcho_pp  = np.nanmean(vcc_pps[i],axis=(1,2)) # daily
+
+
+        # resample daily into something else:
+        hcho_new_emiss = resample(hcho_new_emiss)
+        hcho_tropchem = resample(hcho_tropchem)
+        hcho_omi = resample(hcho_omi)
+        hcho_pp = resample(hcho_pp)
+        o3_new_emiss = resample(o3_new_emiss)
+        o3_tropchem = resample(o3_tropchem)
+
+        arr1 = np.array([np.nanmean(hcho_new_emiss), np.nanmean(hcho_tropchem), np.nanmean(hcho_omi), np.nanmean(hcho_pp)])
+        print(label, arr1[0], arr1[1], arr1[2], arr1[3])
+        print('   ,', 100*(arr1 - arr1[2])/arr1[2], 'difference from OMI orig')
+        print('   ,', 100*(arr1 - arr1[3])/arr1[3], ' difference from OMI PP')
+        
+        print( 'Ozone: new, old, rel-diff', np.nanmean(o3_new_emiss), np.nanmean(o3_tropchem), (np.nanmean(o3_new_emiss)-np.nanmean(o3_tropchem))*100/np.nanmean(o3_tropchem))
+
+        # Fig1: HCHO time series
+        plt.sca(axes1[i])
+        pp.plot_time_series(newdates,hcho_new_emiss, label='$\Omega_{GC}^{\\alpha}$', linestyle='-.', color=color, linewidth=2)
+        pp.plot_time_series(newdates,hcho_tropchem, label='$\Omega_{GC}$', linestyle='--', color=color, linewidth=2)
+        pp.plot_time_series(newdates,hcho_omi, dfmt='%Y%m%d', label='$\Omega_{OMI}$', linestyle='-', color=color, linewidth=2)
+        #pp.plot_time_series(newdates,hcho_pp, label='OMI recalculated', linestyle=':', color=color, linewidth=2)
+        plt.title(label,fontsize=20)
+        if i==0:
+            plt.ylabel('HCHO cm$^{-2}$')
+            plt.legend(loc='best',ncol=3)
+
+        # Fig2: Ozone timeseries
+        plt.sca(axes2[i])
+        pp.plot_time_series(newdates,o3_new_emiss, label='new_emiss run', linestyle=':', color=color, linewidth=2)
+        pp.plot_time_series(newdates,o3_tropchem, label='tropchem run', linestyle='--', color=color, linewidth=2)
+        #pp.plot_time_series(newdates,hcho_omi, dfmt='%Y%m%d', label='OMI', linestyle='-', color=color, linewidth=2)
+        #pp.plot_time_series(newdates,hcho_pp, label='OMI recalculated', linestyle=':', color=color, linewidth=2)
+        plt.title(label,fontsize=20)
+  
+
+
+    # final touches figure 1
+    plt.legend(loc='best',)
+    for ii in [0,i]:
+        plt.sca(axes1[ii])
+        plt.ylabel('HCHO cm$^{-2}$')
+    plt.suptitle('%s mean $\Omega_{HCHO}$'%suptitle_prefix, fontsize=26)
+
+    plt.savefig(pname1)
+    print('SAVED FIGURE ',pname1)
+    plt.close(f1)
+
+    # final touches figure 1
+    for ii in [0,i]:
+        plt.sca(axes2[ii])
+        plt.ylabel('O$_3$ ppb')
+    plt.suptitle('%s mean O$_3$ tropospheric column'%suptitle_prefix, fontsize=26)
+
+    plt.savefig(pname2)
+    print('SAVED FIGURE ',pname2)
+    plt.close(f2)
+
+
+
 def spatial_comparisons(d0, d1, dlabel):
     ''' Compare HCHO, O3, NO columns between runs over Australia averaged over input dates '''
 

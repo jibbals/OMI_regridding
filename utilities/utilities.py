@@ -202,6 +202,13 @@ def daylengths():
     monthly_daylengths = 14*60-20 + np.cumsum(monthly_daylength_changes) # in minutes
     return monthly_daylengths
 
+def daylengths_matched(dates):
+    MDL = daylengths() # [12] in minutes
+    months = [d.month for d in dates]
+    
+    DL = MDL[np.array(months)]
+    return DL
+
 def edges_from_mids(x,fix_max=None):#179.99):
     '''
         Take a lat or lon vector input and return the edges

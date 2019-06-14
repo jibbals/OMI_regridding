@@ -236,8 +236,8 @@ class E_new:
         self.oceanmask3d=np.repeat(self.oceanmask[np.newaxis,:,:],len(self.dates),axis=0)
         self.oceanmask3d_lr=np.repeat(self.oceanmask_lr[np.newaxis,:,:],len(self.dates),axis=0)
         
-        
-        if not hasattr(self,'SA'):
+        # surface area if earth was a sphere in km2
+        if not hasattr(self,'SA'): 
             self.SA = util.area_grid(self.lats,self.lons)
             self.SA_lr = util.area_grid(self.lats_lr,self.lons_lr)
         ## conversions to kg/s

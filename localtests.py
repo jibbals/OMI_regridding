@@ -72,7 +72,104 @@ start1=timeit.default_timer()
 ##########
 
 
+from utilities import GMAO
+from scipy.constants import N_A # avegaadro's number
 
+d0=datetime(2005,1,1)
+#d1=datetime(2012,12,31)
+d1=datetime(2012,12,31)
+satkeys = [#'IJ-AVG-$_ISOP', # ppbv 
+           #'IJ-AVG-$_CH2O', # ppbv
+           #'IJ-AVG-$_NO2',     # NO2 in ppbv
+           'IJ-AVG-$_O3',      # O3 in ppbv
+           ]# + GC_class.__gc_tropcolumn_keys__
+new_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='new_emissions')
+tropchem_sat = GC_class.GC_sat(day0=d0,dayN=d1, keys=satkeys, run='tropchem')
+print('GEOS-Chem satellite outputs read')
+# new_sat.hcho.shape #(31, 91, 144, 47)
+# new_sat.isop.shape #(31, 91, 144, 47)
+
+# Surface O3 in ppb
+new_o3_surf = new_sat.O3[:,:,:,0]
+tropchem_o3_surf = tropchem_sat.O3[:,:,:,0]
+
+# dims for GEOS-Chem outputs
+lats=new_sat.lats
+lons=new_sat.lons
+dates=new_sat.dates
+
+del new_sat
+del tropchem_sat 
+
+# Read a priori and a posteriori
+# Read megan (3-hourly)
+MEGAN = GC_class.Hemco_diag(d0,d1)
+meglats,meglons = MEGAN.lats, MEGAN.lons
+aprior = MEGAN.E_isop_bio # hours, lats, lons
+aprior = aprior / MEGAN.kgC_per_m2_to_atomC_per_cm2 # convert back to kgC/m2/s
+del MEGAN # free up some ram
+aprior = np.nansum(aprior*3*60*60, axis=0) # sum over the 3 hourly kgC/m2/s to get kgC/m2
+assert np.all(np.shape(aprior)==np.shape(GMAO.area_m2)), "Area from GMAO does not match shape of emissions from MEGAN"
+aprior = aprior * GMAO.area_m2 # now aprior is in kg total over the length of time
+aprior = (aprior/8.0) / 1e9 # now is TgC/a
+
+enew=E_new(d0,d1,dkeys=['E_PP_lr'])
+enewlats,enewlons=enew.lats_lr, enew.lons_lr
+
+apost = enew.E_PP_lr # [days,lats,lons] atomC/cm2/s 
+# convert from peak emissions to daily sin wave integrated
+# 0.637 x peak x sunlight seconds
+daily_seconds = util.daylengths_matched(enew.dates) * 60 # daylight seconds 
+daily_seconds = np.repeat(daily_seconds[:,np.newaxis],len(enewlats),axis=1)
+daily_seconds = np.repeat(daily_seconds[:,:,np.newaxis],len(enewlons),axis=2)
+apost = apost * 0.637 * daily_seconds # now in daily atomC/cm2
+apost = np.nansum(apost, axis=0) # sum over daily atomC/cm2 to get atomC/cm2
+apost = apost * enew.SA_lr * 1e10 # multiply by cm2  (SA in km2) to get atomC emitted
+# atomC * mol/atom * g/mol = g C 
+apost = (apost / N_A) * util.__grams_per_mole__['carbon']
+# we have 8 years totalled, divide to get TgC/a
+apost = (apost/8.0) /1e12 # 1e12 g/Tg
+
+# pull out regions and compare time series
+apriors, r_lats, r_lons = util.pull_out_subregions(aprior, meglats, meglons, subregions=pp.__subregions__)
+aposts, r_lats, r_lons = util.pull_out_subregions(apost, enewlats, enewlons, subregions=pp.__subregions__)
+
+new_sat_o3s, r_lats, r_lons = util.pull_out_subregions(new_o3_surf,
+                                                       lats, lons,
+                                                       subregions=pp.__subregions__)
+tropchem_sat_o3s, r_lats, r_lons = util.pull_out_subregions(tropchem_o3_surf,
+                                                            lats, lons,
+                                                            subregions=pp.__subregions__)
+
+# Build up an array with 6 columns, 4 rows:
+#                        AUS,  SEA, NEA, NA, SWA, MID
+#  isop TgC/a tropchem   ...
+#  O3   ppb   tropchem   ...
+#  isop TgC/a top-down   ...
+#  O3   ppb   top-down
+#  
+table = np.zeros([4,6])
+
+# O3 ppb surface from tropchem and top-down
+table[3,:] = [np.nanmean(new_sat_o3s[i]) for i in range(6)]
+table[1,:] = [np.nanmean(tropchem_sat_o3s[i]) for i in range(6)]
+
+#isop TgC/a megan
+table[0,:] = [np.nansum(apriors[i]) for i in range(6)]
+#isop TgC/a top-down
+table[2,:] = [np.nansum(aposts[i]) for i in range(6)]
+
+print("Isoprene emissions in TgC/a, O3 in ppb")
+print(pp.__subregions_labels__)
+formstring = "%5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f \\\\"
+print("TABLE=============")
+print("tropchem &&&&&&")
+print("isoprene & "+formstring%tuple(table[0,:]) + '# TOTAL = %5.2f'%np.sum(table[0,:]))
+print("O3       & "+formstring%tuple(table[1,:]))
+print("scaled   &&&&&&")
+print("isoprene & "+formstring%tuple(table[2,:]) + '# TOTAL = %5.2f'%np.sum(table[2,:]))
+print("O3       & "+formstring%tuple(table[3,:]))
+    
 
 
 

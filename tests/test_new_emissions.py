@@ -455,6 +455,7 @@ def print_ozone_isop_table_summary():
     \end{tabular}
     '''
     from utilities import GMAO
+    from scipy.constants import N_A # avegaadro's number
     
     d0=datetime(2005,1,1)
     #d1=datetime(2012,12,31)
@@ -506,12 +507,14 @@ def print_ozone_isop_table_summary():
     apost = apost * 0.637 * daily_seconds # now in daily atomC/cm2
     apost = np.nansum(apost, axis=0) # sum over daily atomC/cm2 to get atomC/cm2
     apost = apost * enew.SA_lr * 1e10 # multiply by cm2  (SA in km2) to get atomC emitted
-    
+    # atomC * mol/atom * g/mol = g C 
+    apost = (apost / N_A) * util.__grams_per_mole__['carbon']
+    # we have 8 years totalled, divide to get TgC/a
+    apost = (apost/8.0) /1e12 # 1e12 g/Tg
     
     # pull out regions and compare time series
     apriors, r_lats, r_lons = util.pull_out_subregions(aprior, meglats, meglons, subregions=pp.__subregions__)
-    
-    
+    aposts, r_lats, r_lons = util.pull_out_subregions(apost, enewlats, enewlons, subregions=pp.__subregions__)
     
     new_sat_o3s, r_lats, r_lons = util.pull_out_subregions(new_o3_surf,
                                                            lats, lons,
@@ -536,77 +539,20 @@ def print_ozone_isop_table_summary():
     #isop TgC/a megan
     table[0,:] = [np.nansum(apriors[i]) for i in range(6)]
     #isop TgC/a top-down
+    table[2,:] = [np.nansum(aposts[i]) for i in range(6)]
+    
+    print("Isoprene emissions in TgC/a, O3 in ppb")
+    print(pp.__subregions_labels__)
+    formstring = "%%5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f \\\\"
+    print("TABLE=============")
+    print("tropchem &&&&&&")
+    print("isoprene & "+formstring%table[0,:])
+    print("O3       & "+formstring%table[1,:])
+    print("scaled   &&&&&&")
+    print("isoprene & "+formstring%table[2,:])
+    print("O3       & "+formstring%table[3,:])
     
     
-    
-    for i, [label] in enumerate(pp.__subregions_labels__):
-        
-        
-
-        # change hourly into daily time series
-        #r_old = np.array(pd.Series(r_old_hourly,index=old_dates).resample('D').mean())
-        hcho_omi = np.nanmean(vcc_omis[i],axis=(1,2)) # daily
-        hcho_pp  = np.nanmean(vcc_pps[i],axis=(1,2)) # daily
-
-
-        # resample daily into something else:
-        hcho_new_emiss = resample(hcho_new_emiss)
-        hcho_tropchem = resample(hcho_tropchem)
-        hcho_omi = resample(hcho_omi)
-        hcho_pp = resample(hcho_pp)
-        o3_new_emiss = resample(o3_new_emiss)
-        o3_tropchem = resample(o3_tropchem)
-
-        arr1 = np.array([np.nanmean(hcho_new_emiss), np.nanmean(hcho_tropchem), np.nanmean(hcho_omi), np.nanmean(hcho_pp)])
-        print(label, arr1[0], arr1[1], arr1[2], arr1[3])
-        print('   ,', 100*(arr1 - arr1[2])/arr1[2], 'difference from OMI orig')
-        print('   ,', 100*(arr1 - arr1[3])/arr1[3], ' difference from OMI PP')
-        
-        print( 'Ozone: new, old, rel-diff', np.nanmean(o3_new_emiss), np.nanmean(o3_tropchem), (np.nanmean(o3_new_emiss)-np.nanmean(o3_tropchem))*100/np.nanmean(o3_tropchem))
-
-        # Fig1: HCHO time series
-        plt.sca(axes1[i])
-        pp.plot_time_series(newdates,hcho_new_emiss, label='$\Omega_{GC}^{\\alpha}$', linestyle='-.', color=color, linewidth=2)
-        pp.plot_time_series(newdates,hcho_tropchem, label='$\Omega_{GC}$', linestyle='--', color=color, linewidth=2)
-        pp.plot_time_series(newdates,hcho_omi, dfmt='%Y%m%d', label='$\Omega_{OMI}$', linestyle='-', color=color, linewidth=2)
-        #pp.plot_time_series(newdates,hcho_pp, label='OMI recalculated', linestyle=':', color=color, linewidth=2)
-        plt.title(label,fontsize=20)
-        if i==0:
-            plt.ylabel('HCHO cm$^{-2}$')
-            plt.legend(loc='best',ncol=3)
-
-        # Fig2: Ozone timeseries
-        plt.sca(axes2[i])
-        pp.plot_time_series(newdates,o3_new_emiss, label='new_emiss run', linestyle=':', color=color, linewidth=2)
-        pp.plot_time_series(newdates,o3_tropchem, label='tropchem run', linestyle='--', color=color, linewidth=2)
-        #pp.plot_time_series(newdates,hcho_omi, dfmt='%Y%m%d', label='OMI', linestyle='-', color=color, linewidth=2)
-        #pp.plot_time_series(newdates,hcho_pp, label='OMI recalculated', linestyle=':', color=color, linewidth=2)
-        plt.title(label,fontsize=20)
-  
-
-
-    # final touches figure 1
-    plt.legend(loc='best',)
-    for ii in [0,i]:
-        plt.sca(axes1[ii])
-        plt.ylabel('HCHO cm$^{-2}$')
-    plt.suptitle('%s mean $\Omega_{HCHO}$'%suptitle_prefix, fontsize=26)
-
-    plt.savefig(pname1)
-    print('SAVED FIGURE ',pname1)
-    plt.close(f1)
-
-    # final touches figure 1
-    for ii in [0,i]:
-        plt.sca(axes2[ii])
-        plt.ylabel('O$_3$ ppb')
-    plt.suptitle('%s mean O$_3$ tropospheric column'%suptitle_prefix, fontsize=26)
-
-    plt.savefig(pname2)
-    print('SAVED FIGURE ',pname2)
-    plt.close(f2)
-
-
 
 def spatial_comparisons(d0, d1, dlabel):
     ''' Compare HCHO, O3, NO columns between runs over Australia averaged over input dates '''

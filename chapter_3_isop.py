@@ -433,6 +433,11 @@ def check_modelled_background(month=datetime(2005,1,1)):
         UPDATE 9/5/19
             put ocean over aus in top right
             use diverging colour scheme for diff plot
+        UPDATRE 23/5/19
+            Oceanic BG top left
+            noisop  BG top right
+            BG as portion of column bottom left
+            difference bottom right
     '''
     day0=month
     dayN=util.last_day(month)
@@ -472,19 +477,44 @@ def check_modelled_background(month=datetime(2005,1,1)):
     #pp.createmap(hcho1,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
     #             clabel=clabel, title='tropchem')
     pp.createmap(bg_ref,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
-                 clabel=clabel, title='tropchem')
+                 clabel=clabel, title='Background (oceanic)')
+    #plt.subplot(2,2,2)
+    #pp.createmap(bg1,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, 
+    #             clabel=clabel, title='tropchem over Pacific ocean')
     plt.subplot(2,2,2)
-    pp.createmap(bg1,bglats,bglons,region=bgregion, vmin=vmin,vmax=vmax, 
-                 clabel=clabel, title='tropchem over Pacific ocean')
-    plt.subplot(2,2,3)
     pp.createmap(hcho2,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
-                 clabel=clabel, title='no isoprene emitted')
+                 clabel=clabel, title='Background (no isoprene emitted)')
+    plt.subplot(2,2,3)
+    # subset to AUS for oceanic, noisop, normal australia pictures
+    aus = util.lat_lon_subset(gc.lats,gc.lons,ausregion,[bg_ref,hcho2,hcho1]) 
+    om  = util.oceanmask(aus['lats'],aus['lons'])
+    bins= np.linspace(1e14,1e16,40)
+    plt.hist([aus['data'][i][~om] for i in range(3)], bins=bins, normed=False,
+             color = ['blue','cyan','orange'], 
+             label=['Background (oceanic)','Background (No isoprene)','$\Omega_{HCHO}$'],
+             title="Distributions")
+    aushcho=np.nanmean(aus['data'][2][~om]) # normal hcho levels
+    ausbg1 = np.nanmean(aus['data'][0][~om]) # oceanic bg
+    ausbg2 = np.nanmean(aus['data'][1][~om]) # no isop bg
+    print("MEAN HCHO COLUMN: %.2e"%(aushcho))
+    print("MEAN OCEANIC BG: %.2e (%.2f%%)"%(ausbg1, 100*ausbg1/aushcho))
+    print("MEAN NO ISOP BG: %.2e (%.2f%%)"%(ausbg2, 100*ausbg2/aushcho))
+    
     plt.subplot(2,2,4)
     pp.createmap(diff,lats,lons,region=ausregion, vmin=vmin,vmax=vmax,
                  cmapname='afmhot_r', clabel=clabel, 
                  title='no isoprene - reference sector',
                  pname='Figs/GC/GC_background_hcho_%s.png'%month.strftime('%Y%m'))
-
+    
+    plt.subplot(2,1,1)
+    pp.createmap(aus['data'][0]/aus['data'][2], aus['lats'],aus['lons'], 
+                 region=ausregion, vmin=0, vmax=1, linear=True,
+                 title="oceanic background / normal HCHO",clabel="portional")
+    plt.subplot(2,1,2)
+    pp.createmap(aus['data'][1]/aus['data'][2], aus['lats'],aus['lons'], 
+                 region=ausregion, vmin=0, vmax=1, linear=True,
+                 title="no isop background / normal HCHO",clabel="portional",
+                 pname="Figs/GC/CheckPortionBackground_%s.png"%month.strftime("%Y%m"))
 
 def check_modelled_profile():
     '''
@@ -3024,7 +3054,7 @@ if __name__ == "__main__":
     
     ## METHOD PLOTS
     
-    #check_modelled_background() # 9/5/19
+    check_modelled_background() # 9/5/19
     
     #[Examine_Model_Slope(use_smear_filter=flag) for flag in [True,False]] # 9/5/19
     
@@ -3035,7 +3065,7 @@ if __name__ == "__main__":
     
     # Check how HCHO mean and variance looks compared to omi
     #hcho_vs_satellite() # 4/6/19 changed order: obs, prior, post
-    HCHO_check_multiyear()
+    #HCHO_check_multiyear()
     
     ## 6/6/19 updated to add abs diff axis
     #modelled_ozone_comparison(datetime(2005,1,1),datetime(2005,1,31))

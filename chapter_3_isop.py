@@ -470,8 +470,6 @@ def check_modelled_background(month=datetime(2005,1,1)):
     bgregion[2]=ausregion[2]
     clabel=r'$\Omega_{HCHO}$ [molec cm$^{-2}$]'
 
-    print("TEST:",np.shape(hcho1),np.shape(hcho2),)
-    print("TEST:",np.shape(bg1), np.shape(bg_ref), np.shape(diff))
     plt.figure(figsize=[15,15])
     plt.subplot(2,2,1)
     #pp.createmap(hcho1,lats,lons,region=ausregion, vmin=vmin,vmax=vmax, 
@@ -488,11 +486,12 @@ def check_modelled_background(month=datetime(2005,1,1)):
     # subset to AUS for oceanic, noisop, normal australia pictures
     aus = util.lat_lon_subset(gc.lats,gc.lons,ausregion,[bg_ref,hcho2,hcho1]) 
     om  = util.oceanmask(aus['lats'],aus['lons'])
-    bins= np.linspace(1e14,1e16,40)
+    bins= np.linspace(5e14,1.5e16,45)
     plt.hist([aus['data'][i][~om] for i in range(3)], bins=bins, normed=False,
              color = ['blue','cyan','orange'], 
-             label=['Background (oceanic)','Background (No isoprene)','$\Omega_{HCHO}$'],
-             title="Distributions")
+             label=['Background (oceanic)','Background (No isoprene)','$\Omega_{HCHO}$'],)
+    plt.title("Distributions")
+    plt.legend(loc='best')
     aushcho=np.nanmean(aus['data'][2][~om]) # normal hcho levels
     ausbg1 = np.nanmean(aus['data'][0][~om]) # oceanic bg
     ausbg2 = np.nanmean(aus['data'][1][~om]) # no isop bg
@@ -503,7 +502,7 @@ def check_modelled_background(month=datetime(2005,1,1)):
     plt.subplot(2,2,4)
     pp.createmap(diff,lats,lons,region=ausregion, vmin=vmin,vmax=vmax,
                  cmapname='afmhot_r', clabel=clabel, 
-                 title='no isoprene - reference sector',
+                 title='no isoprene - oceanic backgrounds',
                  pname='Figs/GC/GC_background_hcho_%s.png'%month.strftime('%Y%m'))
     
     plt.subplot(2,1,1)
@@ -3054,7 +3053,12 @@ if __name__ == "__main__":
     
     ## METHOD PLOTS
     
-    check_modelled_background() # 9/5/19
+    check_modelled_background(datetime(2005,1,1)) # 9/5/19
+    check_modelled_background(datetime(2005,2,1))
+    check_modelled_background(datetime(2005,6,1))
+    check_modelled_background(datetime(2005,7,1))
+    check_modelled_background(datetime(2005,8,1))
+    
     
     #[Examine_Model_Slope(use_smear_filter=flag) for flag in [True,False]] # 9/5/19
     

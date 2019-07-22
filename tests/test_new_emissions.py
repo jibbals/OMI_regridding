@@ -110,17 +110,25 @@ def alpha_creation():
 
     lati,loni = util.lat_lon_index(sydlat,sydlon,lats,lons)
 
-    plt.figure(figsize=[15,13])
+    f=plt.figure(figsize=[15,13])
     # first plot alpha in jan, then alpha in
-    plt.subplot(321)
+    plt.subplot(221)
     fixed=np.copy(alpha)
     fixed[fixed == 1] =np.NaN
-    pp.createmap(fixed[0],lats, lons, linear=True, region=region, title='January',vmin=vmin,vmax=vmax)
+    pp.createmap(fixed[0],lats, lons, linear=True, region=region, 
+                 title='January',vmin=vmin,vmax=vmax, colorbar=False)
     # then plot alpha in June
-    plt.subplot(322)
-    pp.createmap(fixed[6],lats, lons, linear=True, region=region, title='July',vmin=vmin,vmax=vmax)
+    plt.subplot(222)
+    m,cs,cb = pp.createmap(fixed[6],lats, lons, linear=True, region=region, 
+                 title='July',vmin=vmin,vmax=vmax, colorbar=False)
+    
+    # add colourbar between maps
+    cbar_ax1 = f.add_axes([0.485, 0.55, .04, 0.4])
+    cb = f.colorbar(cs,cax=cbar_ax1, orientation='vertical')
+    cb.set_label('$\alpha$')
+    
     #finally plot time series at sydney of alpha, megan, and topdown emissions
-    plt.subplot(312)
+    plt.subplot(212)
     X=range(12)
     plt.plot(X, megan[:,lati,loni], 'm-', label=label_meg)
     plt.plot(X, topd[:,lati,loni], '-', label=label_topd, color='cyan')
@@ -137,23 +145,26 @@ def alpha_creation():
 
     plt.ylim(vmin,vmax)
     plt.ylabel('$\\alpha$')
-
-    plt.subplot(313)
+    plt.suptitle('$\\alpha$ multi-year monthly average 2005-2012',fontsize=22)
+    plt.savefig('Figs/new_emiss/alpha_mya.png')
+    print("SAVED ", 'Figs/new_emiss/alpha_mya.png')
+    plt.close()
+    
+    plt.figure()
     plt.plot_date(allmonths, allmegan[:,lati,loni], 'm-', label=label_meg)
     plt.plot_date(allmonths, alltopd[:,lati,loni], '-', label=label_topd, color='cyan')
     plt.ylim(1e11,1.5e13)
     plt.ylabel('Emissions [atom C cm$^{-2}$ s$^{-1}$]',fontsize=17)
     plt.legend(loc='best',fontsize=14)
-    plt.title('monthly average')
+    plt.title('monthly average $\alpha$ over grid square with Sydney')
     plt.sca(plt.twinx())
     plt.plot_date(allmonths,allalpha[:,lati,loni], 'k-', linewidth=3)
     plt.plot_date([allmonths[0],allmonths[-1]], [1,1], 'k--',linewidth=1) # dotted line
     plt.ylabel('$\\alpha$')
     plt.ylim(vmin,vmax)
 
-    plt.suptitle('$\\alpha$ for multi-year average 2005-2012',fontsize=22)
-    plt.savefig('Figs/new_emiss/alpha_mya.png')
-    print("SAVED ", 'Figs/new_emiss/alpha_mya.png')
+    plt.savefig('Figs/new_emiss/alpha_monthly_sydney.png')
+    print("SAVED ", 'Figs/new_emiss/alpha_monthly_sydney.png')
     plt.close()
 
 def check_old_vs_new_emission_diags(month=datetime(2005,1,1)):

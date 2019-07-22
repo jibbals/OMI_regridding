@@ -1736,29 +1736,30 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
 
 
     plt.subplots(figsize=(18,18))
-    ax11=plt.subplot(4,2,1)
+    ax11=plt.subplot(4,1,1)
     # first plot slope as time series, +- confidence interval
-    plt.plot_date(allmonths,s, 'b-', linewidth=3)
-    plt.fill_between(allmonths, ci[:,0], ci[:,1], alpha=.6)
-    plt.ylim(slopemin,slopemax)
+    plt.plot_date(allmonths,s, 'b-', linewidth=3, label='unfiltered')
+    plt.fill_between(allmonths, ci[:,0], ci[:,1], alpha=.4, color='b')
+    #plt.ylim(slopemin,slopemax)
     plt.ylabel('slope [s]')
-    plt.title('unfiltered',fontsize=24)
+    plt.title('slope',fontsize=24)
 
 
     # also do sf version
-    ax12=plt.subplot(4,2,2, sharex=ax11, sharey=ax11)
-    plt.plot_date(allmonths,s_sf, '-', linewidth=3)
-    plt.fill_between(allmonths, ci_sf[:,0], ci_sf[:,1], alpha=.6)
+    #ax12=plt.subplot(4,2,2, sharex=ax11, sharey=ax11)
+    plt.plot_date(allmonths,s_sf, 'm-', linewidth=3, label='filtered')
+    plt.fill_between(allmonths, ci_sf[:,0], ci_sf[:,1], alpha=.4, color='m')
     plt.ylim(slopemin,slopemax)
-    plt.plot([allmonths[0], allmonths[-1]], [smearmin,smearmin], 'b--')
-    plt.plot([allmonths[0], allmonths[-1]], [smearmax,smearmax], 'b--')
-    ax12.yaxis.set_label_position("right")
-    ax12.yaxis.tick_right()
-    plt.title('smear filtered',fontsize=24)
+    #plt.plot([allmonths[0], allmonths[-1]], [smearmin,smearmin], 'b--')
+    #plt.plot([allmonths[0], allmonths[-1]], [smearmax,smearmax], 'b--')
+    #ax12.yaxis.set_label_position("right")
+    #ax12.yaxis.tick_right()
+    #plt.title('smear filtered',fontsize=24)
     # Now set the ticks and labels
-    for ax in [ax11,ax12]:
-        plt.setp(ax.get_xticklabels(), visible=False)
-
+    #for ax in [ax11,ax12]:
+    #    plt.setp(ax.get_xticklabels(), visible=False)
+    plt.legend(loc='best')
+    
     # then plot r and count
     ax21=plt.subplot(4,2,3, sharex=ax11)
     plt.plot_date(allmonths,r, '-', color='r',linewidth=2)
@@ -1782,32 +1783,32 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
     plt.ylim(nmin,nmax)
 
     # now we do xlabels
-    for ax in [ax21,ax22]:
+    for ax in [ax11, ax21, ax22]:
         ax.set_xticks(allyears)
         ax.set_xticklabels([ i.strftime("%Y") for i in allyears], rotation=20)
 
     # plot mya version of slopes...
-    ax31 = plt.subplot(4,2,5)
-    plt.plot(range(12),s_mya, linewidth=3,color='b')
-    plt.fill_between(range(12), ci_mya[:,0], ci_mya[:,1], alpha=.6)
+    ax31 = plt.subplot(4,1,3)
+    plt.plot(range(12),s_mya, linewidth=3,color='b', label='unfiltered')
+    plt.fill_between(range(12), ci_mya[:,0], ci_mya[:,1], alpha=.4, color='b')
     plt.ylim(slopemin,slopemax)
 
     # plot mya sf
-    ax32 = plt.subplot(4,2,6, sharex=ax31, sharey=ax31)
-    plt.plot(range(12),s_sf_mya, linewidth=3, color='b')
-    plt.fill_between(range(12), ci_sf_mya[:,0], ci_sf_mya[:,1], alpha=.6)
-    plt.plot([0, 11], [smearmin,smearmin], 'b--')
-    plt.plot([0, 11], [smearmax,smearmax], 'b--')
+    #ax32 = plt.subplot(4,2,6, sharex=ax31, sharey=ax31)
+    plt.plot(range(12),s_sf_mya, linewidth=3, color='m', label='filtered')
+    plt.fill_between(range(12), ci_sf_mya[:,0], ci_sf_mya[:,1], alpha=.4, color='m')
+    #plt.plot([0, 11], [smearmin,smearmin], 'b--')
+    #plt.plot([0, 11], [smearmax,smearmax], 'b--')
     plt.ylabel('slope [s]')
     # Now set the ticks and labels
-    ax32.yaxis.set_label_position("right")
-    ax32.yaxis.tick_right()
-    for ax in [ax31,ax32]:
-        plt.setp(ax.get_xticklabels(), visible=False)
+    #ax32.yaxis.set_label_position("right")
+    #ax32.yaxis.tick_right()
+    #for ax in [ax31,ax32]:
+    #    plt.setp(ax.get_xticklabels(), visible=False)
 
 
     # then plot r and count
-    ax41 = plt.subplot(4,2,7,sharex=ax32)
+    ax41 = plt.subplot(4,2,7,sharex=ax31)
     plt.plot(range(12),r_mya, 'r-',linewidth=2)
     plt.ylim(rmin,rmax)
     plt.ylabel('r',color='r')
@@ -1827,7 +1828,7 @@ def model_slope_series(d0=datetime(2005,1,1),dN=datetime(2012,12,31), latlon=pp.
     plt.ylim(100,300)
     plt.ylabel('n',color='m')
     # Now set the ticks and labels
-    for ax in [ax41,ax42]:
+    for ax in [ax31,ax41,ax42]:
         ax.set_xticks(range(12))
         ax.set_xticklabels([ 'j','f','m','a','m','j','j','a','s','o','n','d' ])
         ax.set_xlim(-0.5,11.5)
@@ -1893,6 +1894,7 @@ def check_shapefactors(date=datetime(2005,1,1)):
     for key in ['Shape_s','N_HCHO','zmids','boxH','sigmas','pmids','pedges']:
         check_column(key)
 
+
 # If this script is run directly:
 if __name__=='__main__':
     pp.InitMatplotlib()
@@ -1939,8 +1941,8 @@ if __name__=='__main__':
     # Checking units:
 
     ## Check slope
-    #for latlon, label in zip([pp.__cities__['Syd'], pp.__cities__['Mel'], [-16,135]],['Syd','Mel','Nowhere']):
-    #    model_slope_series(latlon=latlon, loclabel=label)
+    for latlon, label in zip([pp.__cities__['Syd'], pp.__cities__['Mel'], [-16,135]],['Syd','Mel','Nowhere']):
+        model_slope_series(latlon=latlon, loclabel=label)
 
     
     #check_rsc_interp()   # last run 29/5/18
@@ -1955,14 +1957,14 @@ if __name__=='__main__':
     #             drop_low_anthro=True)
 
     #
-    for dates,dstr in zip([sum05,spr05,win05,aut05],dstrs):
+    #for dates,dstr in zip([sum05,spr05,win05,aut05],dstrs):
 
         #GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
         #             region=region, regionlabel=label)
 
-        for region, label in zip(subs,labels):
-            HCHO_vs_temp(d0=dates[0],d1=dates[1],
-                         region=region,regionlabel=label)
+        #for region, label in zip(subs,labels):
+        #    HCHO_vs_temp(d0=dates[0],d1=dates[1],
+        #                 region=region,regionlabel=label)
     #        GC_vs_OMNO2d(d0=dates[0], d1=dates[1],
     #                     region=region, regionlabel=label,
     #                     drop_low_anthro=True)

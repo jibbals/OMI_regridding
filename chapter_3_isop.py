@@ -702,6 +702,22 @@ def Examine_Model_Slope(month=datetime(2005,1,1),use_smear_filter=False):
     plt.close()
     print("SAVED: ",pname)
 
+def example_smearing_filter(date=datetime(2005,1,1)):
+    '''
+        Figure showing hcho vs emissions before and after smear filter 
+    '''
+    
+    #[ ] scatter plots with red x over removed squares
+	#	[ ] read overpass E and H
+	#	[ ] calculate RMA regression
+	#	[ ] read smearing
+	#	[ ] cross out where smearing is filtered
+	#	[ ] calculate RMA regression
+	#	[ ] plot scatter 
+	#	[ ] plot regression 
+	#	[ ] plot regression
+    print("TODO")
+    
 ### 
 # RESULTS
 ###
@@ -2611,7 +2627,7 @@ def relative_error_summary(d0=datetime(2005,1,1), dN = datetime(2012,12,31)):
     pnames = ['Figs/mya_Ererr.png',
                 'Figs/mya_Srerr.png',
                 'Figs/mya_Orerr.png']
-    ylims = [ [0,1.5], [0.2, 0.5], [0,3]]
+    ylims = [ [0,2.5], [0.2, 0.5], [0,3.5]]
     
     # First do Srerr
     plt.figure(figsize=[10,14])
@@ -3053,11 +3069,11 @@ if __name__ == "__main__":
     
     ## METHOD PLOTS
     
-    check_modelled_background(datetime(2005,1,1)) # 9/5/19
-    check_modelled_background(datetime(2005,2,1))
-    check_modelled_background(datetime(2005,6,1))
-    check_modelled_background(datetime(2005,7,1))
-    check_modelled_background(datetime(2005,8,1))
+    #check_modelled_background(datetime(2005,1,1)) # 9/5/19
+    #check_modelled_background(datetime(2005,2,1))
+    #check_modelled_background(datetime(2005,6,1))
+    #check_modelled_background(datetime(2005,7,1))
+    #check_modelled_background(datetime(2005,8,1))
     
     
     #[Examine_Model_Slope(use_smear_filter=flag) for flag in [True,False]] # 9/5/19
@@ -3104,7 +3120,7 @@ if __name__ == "__main__":
     #uncertainty_time_series()
     #pixel_counts_summary()
     ## summarised uncertainty
-    #relative_error_summary() # 4/6/19 updated xlims
+    relative_error_summary() # 21/7/19 updated ylims
     #print_relative_error_summary() # 15/5/19 for uncert table
     # what does the filtering actually do to end results?
     #sensitivity_recalculation()

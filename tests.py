@@ -1840,13 +1840,13 @@ if __name__ == '__main__':
     #####################
     ### new emissions tests
     #####################
-    print("hcho_ozone_timeseries")
+    #print("hcho_ozone_timeseries")
     ## high ram test
     start=timeit.default_timer()
     # Test time series between old/new runs
     #test_new_emissions.hcho_ozone_timeseries(datetime(2005,1,1),datetime(2012,12,31))
     #test_new_emissions.hcho_ozone_timeseries(datetime(2005,1,1),datetime(2005,12,31))
-    test_new_emissions.spatial_comparisons(datetime(2005,1,1),datetime(2005,2,28), dlabel='Summer_05')
+    #test_new_emissions.spatial_comparisons(datetime(2005,1,1),datetime(2005,2,28), dlabel='Summer_05')
     end=timeit.default_timer()
     print("TIME: %6.2f minutes for time series analysis"%((end-start)/60.0))
     
@@ -1855,7 +1855,7 @@ if __name__ == '__main__':
     #test_new_emissions.spatial_comparisons(jan1,jan31,'JanFeb05')
     #test_new_emissions.spatial_comparisons(jun1,jun30,'JunJul05')
     # Check alpha creations makes sense
-    #test_new_emissions.alpha_creation()
+    test_new_emissions.alpha_creation()
     
     #####################
     ### E_new tests

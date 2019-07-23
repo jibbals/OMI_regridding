@@ -2627,15 +2627,15 @@ def relative_error_summary(d0=datetime(2005,1,1), dN = datetime(2012,12,31)):
     pnames = ['Figs/mya_Ererr.png',
                 'Figs/mya_Srerr.png',
                 'Figs/mya_Orerr.png']
-    ylims = [ [0,2.5], [0.2, 0.5], [0,3.5]]
-    
+    ylims = [ [0,3.0], [0.2, 0.5], [0,4.0]]
+    nyticks = [ 4, 4, 5 ]
     # First do Srerr
     plt.figure(figsize=[10,14])
     ylim,pname=ylims[1],pnames[1]
     Sret,x,ax = PlotMultiyear(Srerrm,months,lats,lons,weekly=False,
                                      median=True,ylims=ylim)
     plt.suptitle(titles[1],fontsize=20)
-    plt.yticks(np.linspace(ylim[0], ylim[1], 4))
+    plt.yticks(np.linspace(ylim[0], ylim[1], nyticks[1]))
     plt.xlim([-0.5,11.5])
     plt.savefig(pname)
     print("SAVED ",pname)
@@ -2647,7 +2647,7 @@ def relative_error_summary(d0=datetime(2005,1,1), dN = datetime(2012,12,31)):
     Oret,x,ax = PlotMultiyear(Orerrm,months,lats,lons,weekly=False,
                                      median=True,ylims=ylim)
     plt.suptitle(titles[2],fontsize=20)
-    plt.yticks(np.linspace(ylim[0], ylim[1], 4))
+    plt.yticks(np.linspace(ylim[0], ylim[1], nyticks[2]))
     plt.xlim([-0.5,11.5])
     plt.savefig(pname)
     print("SAVED ",pname)
@@ -2660,7 +2660,7 @@ def relative_error_summary(d0=datetime(2005,1,1), dN = datetime(2012,12,31)):
     Eret,x,axes = PlotMultiyear(Ererrm,months,lats,lons,weekly=False,
                                      median=True,ylims=ylim,label=label)
     plt.suptitle(titles[0],fontsize=20)
-    plt.yticks(np.linspace(ylim[0], ylim[1], 4))
+    plt.yticks(np.linspace(ylim[0], ylim[1], nyticks[0]))
     for i,ax in enumerate(axes):
         plt.sca(ax)
         plt.plot(x,Sret[i], '--',label='$\Delta$S/S')

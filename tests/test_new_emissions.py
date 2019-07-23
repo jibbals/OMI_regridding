@@ -123,9 +123,9 @@ def alpha_creation():
                  title='July',vmin=vmin,vmax=vmax, colorbar=False)
     
     # add colourbar between maps
-    cbar_ax1 = f.add_axes([0.485, 0.55, .04, 0.4])
+    cbar_ax1 = f.add_axes([0.485, 0.55, .0225, 0.3])
     cb = f.colorbar(cs,cax=cbar_ax1, orientation='vertical')
-    cb.set_label('$\alpha$')
+    cb.set_label('$\\alpha$')
     
     #finally plot time series at sydney of alpha, megan, and topdown emissions
     plt.subplot(212)
@@ -137,7 +137,7 @@ def alpha_creation():
     plt.legend(loc='best',fontsize=14)
     plt.title('Sydney', fontsize=22)
     plt.sca(plt.twinx())
-    plt.plot(X, alpha[:,lati,loni], 'k-', linewidth=3, label='alpha')
+    plt.plot(X, alpha[:,lati,loni], 'k-', linewidth=3, label='$\\alpha$')
     plt.plot([X[0],X[-1]], [1,1], 'k--', linewidth=1) # dotted line
     plt.xlim(-0.5,11.5)
     plt.xticks(X)
@@ -156,7 +156,7 @@ def alpha_creation():
     plt.ylim(1e11,1.5e13)
     plt.ylabel('Emissions [atom C cm$^{-2}$ s$^{-1}$]',fontsize=17)
     plt.legend(loc='best',fontsize=14)
-    plt.title('monthly average $\alpha$ over grid square with Sydney')
+    plt.title('monthly average $\\alpha$ over grid square with Sydney')
     plt.sca(plt.twinx())
     plt.plot_date(allmonths,allalpha[:,lati,loni], 'k-', linewidth=3)
     plt.plot_date([allmonths[0],allmonths[-1]], [1,1], 'k--',linewidth=1) # dotted line

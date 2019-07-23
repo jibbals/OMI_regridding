@@ -1227,7 +1227,7 @@ def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
     dates=new_sat.dates
     months=util.list_months(d0,d1)
     
-    titles=['%s monthly anomaly', '%s monthly anomaly (scaled)']
+    titles=['a priori %s monthly anomaly', 'a posteriori %s monthly anomaly']
     
     
     # Same process for each key: read surface, split by region, plot trends
@@ -1314,7 +1314,10 @@ def trend_analysis(d0=datetime(2005,1,1),d1=datetime(2012,12,31)):
                     print("significant! ", key, label)
                 pp.plot_time_series( months, anomaly, color=color, label=label, marker='.', markersize=6, linewidth=0) # regression line
                 pp.plot_time_series( np.array(months)[outliers], anomaly[outliers], color=color, marker='x', markersize=8, linewidth=0)
-            plt.title(title%key,fontsize=24)
+            nicekey=key
+            if key == 'isop':
+                nicekey='isoprene'
+            plt.title(title%nicekey,fontsize=24)
             plt.ylabel(units)
             plt.xticks(util.list_years(d0,d1))
             plt.xlim(d0 - timedelta(days=31), d1+timedelta(days=31))
@@ -3093,7 +3096,7 @@ if __name__ == "__main__":
     #modelled_ozone_comparison(datetime(2005,1,1),datetime(2012,12,31))
     
     #  trend analysis plots, printing slopes for tabularisation
-    #trend_analysis()
+    trend_analysis()
     #seasonal_differences()
     #[ozone_sensitivity(aa) for aa in [True, False] ]
         
@@ -3120,7 +3123,7 @@ if __name__ == "__main__":
     #uncertainty_time_series()
     #pixel_counts_summary()
     ## summarised uncertainty
-    relative_error_summary() # 21/7/19 updated ylims
+    #relative_error_summary() # 21/7/19 updated ylims
     #print_relative_error_summary() # 15/5/19 for uncert table
     # what does the filtering actually do to end results?
     #sensitivity_recalculation()

@@ -204,7 +204,7 @@ def daylengths():
 
 def daylengths_matched(dates):
     MDL = daylengths() # [12] in minutes
-    months = [d.month for d in dates]
+    months = [(d.month-1) for d in dates]
     
     DL = MDL[np.array(months)]
     return DL

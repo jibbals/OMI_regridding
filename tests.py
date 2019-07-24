@@ -1851,7 +1851,7 @@ if __name__ == '__main__':
     #print("TIME: %6.2f minutes for time series analysis"%((end-start)/60.0))
     
     # Summary of isoprene and ozone between scaling runs
-    test_new_emissions.print_ozone_isop_table_summary(d0,dE)
+    test_new_emissions.print_ozone_isop_table_summary()
     end=timeit.default_timer()
     print("TIME: %6.2f minutes for table creation"%((end-start)/60.0))
     

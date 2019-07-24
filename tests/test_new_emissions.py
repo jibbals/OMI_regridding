@@ -455,22 +455,25 @@ def hcho_ozone_timeseries(d0,d1):
 
 def print_ozone_isop_table_summary():
     '''
-                     & AUS & SEA & NEA & NA & SWA & MID \\
-      \midrule
-      Bottom-up      & & & & & & \\
-      Isoprene       & 43(2) & blah &  &  & & \\
-      Ozone          & 9.70 & 11.17 & 11.03 & 11.19 & 11.69 & 9.09 \\
-      \midrule
-      Top-Down & & & & & & \\
-      Isoprene & 19(2) & & & & & \\
-      Ozone & 9.64 & 11.11 & 10.99 & 11.12 & 11.63 & 9.02 \\
+        Prints table of isoprene emission in TgC/a and ozone ppb
+        Isoprene emissions in TgC/a, O3 in ppb
+        ['Aus', 'SE', 'NE', 'Mid', 'SW', 'N']
+        TABLE=============
+        Bottom-up  &&&&&&
+            Isoprene & 34.67 &  2.80 &  6.33 &  2.31 &  2.04 &  9.95 \\
+            O3       & 27.72 & 33.97 & 30.64 & 33.32 & 30.51 & 32.13 \\
+            Top-down\$^a\$   &&&&&&
+            Isoprene & 18.26 &  1.61 &  3.02 &  1.03 &  0.99 &  6.31 \\
+            O3       & 26.93 & 33.10 & 29.99 & 32.19 & 29.69 & 30.92 \\
+        TIME:   9.63 minutes for table creation
+
     '''
     from utilities import GMAO
     from scipy.constants import N_A # avegaadro's number
     
     d0=datetime(2005,1,1)
-    #d1=datetime(2012,12,31)
-    d1=datetime(2005,1,31)
+    d1=datetime(2012,12,31)
+    #d1=datetime(2005,3,31)
     satkeys = [#'IJ-AVG-$_ISOP', # ppbv 
                #'IJ-AVG-$_CH2O', # ppbv
                #'IJ-AVG-$_NO2',     # NO2 in ppbv
@@ -501,10 +504,10 @@ def print_ozone_isop_table_summary():
     aprior = MEGAN.E_isop_bio # hours, lats, lons
     aprior = aprior / MEGAN.kgC_per_m2_to_atomC_per_cm2 # convert back to kgC/m2/s
     del MEGAN # free up some ram
-    aprior = np.nansum(aprior*3*60*60, axis=0) # sum over the 3 hourly kgC/m2/s to get kgC/m2
+    aprior = np.nansum(aprior*60*60, axis=0) # sum over the hourly kgC/m2/s to get kgC/m2
     assert np.all(np.shape(aprior)==np.shape(GMAO.area_m2)), "Area from GMAO does not match shape of emissions from MEGAN"
     aprior = aprior * GMAO.area_m2 # now aprior is in kg total over the length of time
-    aprior = aprior/8.0 # now is TgC/a
+    aprior = aprior/1e9 # kgC * Tg/kg
     
     enew=E_new(d0,d1,dkeys=['E_PP_lr'])
     enewlats,enewlons=enew.lats_lr, enew.lons_lr
@@ -520,8 +523,8 @@ def print_ozone_isop_table_summary():
     apost = apost * enew.SA_lr * 1e10 # multiply by cm2  (SA in km2) to get atomC emitted
     # atomC * mol/atom * g/mol = g C 
     apost = (apost / N_A) * util.__grams_per_mole__['carbon']
-    # we have 8 years totalled, divide to get TgC/a
-    apost = (apost/8.0) /1e12 # 1e12 g/Tg
+    # divide to get TgC
+    apost = apost /1e12 # 1e12 g/Tg
     
     # pull out regions and compare time series
     apriors, r_lats, r_lons = util.pull_out_subregions(aprior, meglats, meglons, subregions=pp.__subregions__)
@@ -541,27 +544,29 @@ def print_ozone_isop_table_summary():
     #  isop TgC/a top-down   ...
     #  O3   ppb   top-down
     #  
-    table = np.zeros(4,6)
+    table = np.zeros([4,6])
     
     # O3 ppb surface from tropchem and top-down
     table[3,:] = [np.nanmean(new_sat_o3s[i]) for i in range(6)]
     table[1,:] = [np.nanmean(tropchem_sat_o3s[i]) for i in range(6)]
     
+    # Isoprene is in TgC emitted, take total and divide by how many years we have for TgC/a
     #isop TgC/a megan
-    table[0,:] = [np.nansum(apriors[i]) for i in range(6)]
+    table[0,:] = [np.nansum(apriors[i])/8.0 for i in range(6)]
     #isop TgC/a top-down
-    table[2,:] = [np.nansum(aposts[i]) for i in range(6)]
+    table[2,:] = [np.nansum(aposts[i])/8.0 for i in range(6)]
     
+
     print("Isoprene emissions in TgC/a, O3 in ppb")
     print(pp.__subregions_labels__)
-    formstring = "%%5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f \\\\"
+    formstring = "%5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f \\\\"
     print("TABLE=============")
     print("Bottom-up  &&&&&&")
-    print("Isoprene & "+formstring%table[0,:])
-    print("O3       & "+formstring%table[1,:])
+    print("Isoprene & "+formstring%tuple(table[0,:]))
+    print("O3       & "+formstring%tuple(table[1,:]))
     print("Top-down\$^a\$   &&&&&&")
-    print("Isoprene & "+formstring%table[2,:])
-    print("O3       & "+formstring%table[3,:])
+    print("Isoprene & "+formstring%tuple(table[2,:]))
+    print("O3       & "+formstring%tuple(table[3,:]))
     
     
 

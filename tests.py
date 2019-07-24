@@ -1848,14 +1848,18 @@ if __name__ == '__main__':
     #test_new_emissions.hcho_ozone_timeseries(datetime(2005,1,1),datetime(2005,12,31))
     #test_new_emissions.spatial_comparisons(datetime(2005,1,1),datetime(2005,2,28), dlabel='Summer_05')
     end=timeit.default_timer()
-    print("TIME: %6.2f minutes for time series analysis"%((end-start)/60.0))
+    #print("TIME: %6.2f minutes for time series analysis"%((end-start)/60.0))
     
+    # Summary of isoprene and ozone between scaling runs
+    test_new_emissions.print_ozone_isop_table_summary(d0,dE)
+    end=timeit.default_timer()
+    print("TIME: %6.2f minutes for table creation"%((end-start)/60.0))
     
     # Test maps between old/new runs
     #test_new_emissions.spatial_comparisons(jan1,jan31,'JanFeb05')
     #test_new_emissions.spatial_comparisons(jun1,jun30,'JunJul05')
     # Check alpha creations makes sense
-    test_new_emissions.alpha_creation()
+    #test_new_emissions.alpha_creation()
     
     #####################
     ### E_new tests

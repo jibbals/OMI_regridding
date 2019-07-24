@@ -455,15 +455,15 @@ def hcho_ozone_timeseries(d0,d1):
 
 def print_ozone_isop_table_summary():
     '''
-      Metric & AUS & SEA & NEA & NA & SWA & MID \\
+                     & AUS & SEA & NEA & NA & SWA & MID \\
       \midrule
-      MEGAN & 43(2) & blah &  &  & & \\
-      Ozone & 9.70 & 11.17 & 11.03 & 11.19 & 11.69 & 9.09 \\
+      Bottom-up      & & & & & & \\
+      Isoprene       & 43(2) & blah &  &  & & \\
+      Ozone          & 9.70 & 11.17 & 11.03 & 11.19 & 11.69 & 9.09 \\
       \midrule
-      Top-Down & 19(2) & & & & & \\
+      Top-Down & & & & & & \\
+      Isoprene & 19(2) & & & & & \\
       Ozone & 9.64 & 11.11 & 10.99 & 11.12 & 11.63 & 9.02 \\
-      \bottomrule
-    \end{tabular}
     '''
     from utilities import GMAO
     from scipy.constants import N_A # avegaadro's number
@@ -556,11 +556,11 @@ def print_ozone_isop_table_summary():
     print(pp.__subregions_labels__)
     formstring = "%%5.2f & %5.2f & %5.2f & %5.2f & %5.2f & %5.2f \\\\"
     print("TABLE=============")
-    print("tropchem &&&&&&")
-    print("isoprene & "+formstring%table[0,:])
+    print("Bottom-up  &&&&&&")
+    print("Isoprene & "+formstring%table[0,:])
     print("O3       & "+formstring%table[1,:])
-    print("scaled   &&&&&&")
-    print("isoprene & "+formstring%table[2,:])
+    print("Top-down\$^a\$   &&&&&&")
+    print("Isoprene & "+formstring%table[2,:])
     print("O3       & "+formstring%table[3,:])
     
     
